@@ -1,0 +1,91 @@
+name: Tests
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.25.7"
+
+      - name: Run tests
+        run: go test ./...
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.25.7"
+
+      - name: Run tests with coverage
+        run: go test ./pkg/diffyml/ -coverprofile=coverage.out
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: coverage.out
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Check coverage thresholds
+        run: |
+          set -euo pipefail
+
+          COVER_OUTPUT=$(go tool cover -func=coverage.out)
+
+          get_file_coverage() {
+            local file="$1"
+            echo "$COVER_OUTPUT" \
+              | grep "^.*/${file}:" \
+              | tail -1 \
+              | awk '{print $NF}' \
+              | tr -d '%'
+          }
+
+          PARSER_COV=$(get_file_coverage "parser.go")
+          ORDERED_MAP_COV=$(get_file_coverage "ordered_map.go")
+          KUBERNETES_COV=$(get_file_coverage "kubernetes.go")
+
+          echo ""
+          echo "=== Coverage Summary ==="
+          printf "%-20s %8s %10s %s\n" "File" "Actual" "Required" "Status"
+          printf "%-20s %8s %10s %s\n" "----" "------" "--------" "------"
+
+          FAIL=0
+
+          check_threshold() {
+            local file="$1" actual="$2" required="$3"
+            local status="PASS"
+            if [ "$(echo "$actual < $required" | bc -l)" -eq 1 ]; then
+              status="FAIL"
+              FAIL=1
+            fi
+            printf "%-20s %7s%% %9s%% %s\n" "$file" "$actual" "$required" "$status"
+          }
+
+          check_threshold "parser.go"      "$PARSER_COV"      "100.0"
+          check_threshold "ordered_map.go"  "$ORDERED_MAP_COV" "100.0"
+          check_threshold "kubernetes.go"   "$KUBERNETES_COV"  "95.0"
+
+          echo ""
+
+          if [ "$FAIL" -eq 1 ]; then
+            echo "Coverage threshold check FAILED"
+            exit 1
+          fi
+
+          echo "All coverage thresholds passed"

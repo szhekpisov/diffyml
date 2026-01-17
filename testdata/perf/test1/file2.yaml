@@ -1,0 +1,811 @@
+metadata:
+  name: performance-test-v2
+  version: 2.0.0
+  environment: staging
+  region: eu-west-1
+  replicas: 5
+  newField: added
+
+config:
+  database:
+    host: db-new.example.com
+    port: 5433
+    username: superadmin
+    password: newsecret456
+    pool_size: 20
+    timeout: 60
+    ssl: true
+  cache:
+    enabled: false
+    ttl: 7200
+    max_size: 2000
+    eviction_policy: lru
+  logging:
+    level: debug
+    format: text
+    output: file
+    path: /var/log/app.log
+  newSection:
+    key1: value1
+    key2: value2
+
+services:
+- name: service-000
+  version: 2.0.0
+  replicas: 4
+  memory: 1Gi
+  cpu: 500m
+  enabled: true
+  ports:
+  - 8080
+  - 8443
+  - 9090
+  env:
+    DEBUG: "true"
+    LOG_LEVEL: debug
+    NEW_VAR: added
+- name: service-001
+  version: 1.5.0
+  replicas: 3
+  memory: 768Mi
+  cpu: 300m
+  enabled: false
+  ports:
+  - 8080
+  - 9090
+  env:
+    DEBUG: "true"
+- name: service-002
+  version: 1.1.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-003
+  version: 1.2.0
+  replicas: 3
+  memory: 768Mi
+  cpu: 300m
+  enabled: false
+- name: service-004
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-005
+  version: 1.1.0
+  replicas: 4
+  memory: 1Gi
+  cpu: 500m
+  enabled: true
+- name: service-006
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-007
+  version: 1.3.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-008
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-009
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-010
+  version: 1.5.0
+  replicas: 5
+  memory: 2Gi
+  cpu: 1000m
+  enabled: true
+- name: service-011
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-012
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-013
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-014
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-015
+  version: 2.0.0
+  replicas: 3
+  memory: 1Gi
+  cpu: 500m
+  enabled: true
+- name: service-016
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-017
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-018
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-019
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-020
+  version: 1.2.0
+  replicas: 4
+  memory: 1Gi
+  cpu: 500m
+  enabled: false
+- name: service-021
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-022
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-023
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-024
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-025
+  version: 1.5.0
+  replicas: 3
+  memory: 768Mi
+  cpu: 350m
+  enabled: true
+- name: service-026
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-027
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-028
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-029
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-030
+  version: 2.0.0
+  replicas: 6
+  memory: 2Gi
+  cpu: 1000m
+  enabled: true
+- name: service-031
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-032
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-033
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-034
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-035
+  version: 1.3.0
+  replicas: 3
+  memory: 768Mi
+  cpu: 350m
+  enabled: false
+- name: service-036
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-037
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-038
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-039
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-040
+  version: 1.8.0
+  replicas: 4
+  memory: 1Gi
+  cpu: 500m
+  enabled: true
+- name: service-041
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-042
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-043
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-044
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-045
+  version: 1.5.0
+  replicas: 3
+  memory: 768Mi
+  cpu: 350m
+  enabled: true
+- name: service-050
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-051
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-052
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-053
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+- name: service-054
+  version: 1.0.0
+  replicas: 2
+  memory: 512Mi
+  cpu: 250m
+  enabled: true
+
+dependencies:
+- name: dep-000
+  version: 2.0.0
+  required: true
+- name: dep-001
+  version: 1.1.0
+  required: true
+- name: dep-002
+  version: 2.0.0
+  required: false
+- name: dep-003
+  version: 1.3.0
+  required: true
+- name: dep-004
+  version: 2.0.0
+  required: true
+- name: dep-005
+  version: 1.5.0
+  required: true
+- name: dep-006
+  version: 2.0.0
+  required: false
+- name: dep-007
+  version: 1.7.0
+  required: true
+- name: dep-008
+  version: 2.0.0
+  required: true
+- name: dep-009
+  version: 1.9.0
+  required: true
+- name: dep-010
+  version: 3.0.0
+  required: true
+- name: dep-011
+  version: 2.1.0
+  required: true
+- name: dep-012
+  version: 3.0.0
+  required: false
+- name: dep-013
+  version: 2.3.0
+  required: true
+- name: dep-014
+  version: 3.0.0
+  required: true
+- name: dep-015
+  version: 2.5.0
+  required: true
+- name: dep-016
+  version: 3.0.0
+  required: false
+- name: dep-017
+  version: 2.7.0
+  required: true
+- name: dep-018
+  version: 3.0.0
+  required: true
+- name: dep-019
+  version: 2.9.0
+  required: true
+- name: dep-025
+  version: 4.0.0
+  required: true
+- name: dep-026
+  version: 4.1.0
+  required: true
+- name: dep-027
+  version: 4.2.0
+  required: true
+- name: dep-028
+  version: 4.3.0
+  required: true
+- name: dep-029
+  version: 4.4.0
+  required: true
+- name: dep-030
+  version: 1.0.0
+  required: true
+- name: dep-031
+  version: 1.0.0
+  required: true
+- name: dep-032
+  version: 1.0.0
+  required: true
+
+users:
+- id: user-000
+  name: Jonathan Doe
+  email: jonathan.doe@newexample.com
+  role: superadmin
+  active: true
+  lastLogin: "2024-01-15"
+- id: user-001
+  name: Jane Smith
+  email: jane.smith@example.com
+  role: admin
+  active: true
+- id: user-002
+  name: Bob Johnson
+  email: bob.j@newdomain.com
+  role: developer
+  active: false
+- id: user-003
+  name: Alice Brown
+  email: alice.brown@example.com
+  role: developer
+  active: true
+- id: user-004
+  name: Charles Wilson
+  email: charles.wilson@example.com
+  role: admin
+  active: true
+- id: user-005
+  name: Diana Lee
+  email: diana.lee@example.com
+  role: admin
+  active: false
+- id: user-006
+  name: Edward Kim
+  email: edward.kim@example.com
+  role: developer
+  active: true
+- id: user-007
+  name: Fiona Chen
+  email: fiona.c@newdomain.com
+  role: developer
+  active: true
+- id: user-008
+  name: George Wang
+  email: george.wang@example.com
+  role: developer
+  active: true
+- id: user-009
+  name: Helen Zhang
+  email: helen.zhang@example.com
+  role: admin
+  active: true
+- id: user-010
+  name: Ivan Petrov
+  email: ivan.petrov@example.com
+  role: admin
+  active: true
+- id: user-011
+  name: Julia Martinez
+  email: julia.martinez@example.com
+  role: developer
+  active: true
+- id: user-012
+  name: Kevin O'Brien
+  email: kevin.obrien@example.com
+  role: developer
+  active: true
+- id: user-020
+  name: New User Alpha
+  email: alpha@example.com
+  role: developer
+  active: true
+- id: user-021
+  name: New User Beta
+  email: beta@example.com
+  role: viewer
+  active: true
+- id: user-022
+  name: New User Gamma
+  email: gamma@example.com
+  role: developer
+  active: true
+
+namespaces:
+- name: namespace-000
+  labels:
+    env: staging
+    team: platform
+    version: v2
+  resources:
+    cpu: 2000m
+    memory: 4Gi
+- name: namespace-001
+  labels:
+    env: production
+    team: platform
+  resources:
+    cpu: 1000m
+    memory: 2Gi
+- name: namespace-002
+  labels:
+    env: development
+    team: backend
+  resources:
+    cpu: 500m
+    memory: 1Gi
+- name: namespace-003
+  labels:
+    env: production
+    team: frontend
+    tier: web
+  resources:
+    cpu: 1500m
+    memory: 3Gi
+- name: namespace-004
+  labels:
+    env: staging
+    team: frontend
+  resources:
+    cpu: 500m
+    memory: 1Gi
+- name: namespace-010
+  labels:
+    env: production
+    team: newteam
+  resources:
+    cpu: 1000m
+    memory: 2Gi
+- name: namespace-011
+  labels:
+    env: staging
+    team: newteam
+  resources:
+    cpu: 500m
+    memory: 1Gi
+
+secrets:
+- name: db-credentials
+  type: opaque
+  data:
+    username: superadmin
+    password: "newpassword123"
+    database: production_db
+- name: api-keys
+  type: opaque
+  data:
+    key1: "xyz789"
+    key2: "def456"
+    key3: "new-key"
+- name: tls-cert-v2
+  type: kubernetes.io/tls
+  data:
+    cert: "newbase64encoded..."
+    key: "newbase64encoded..."
+- name: oauth-secrets
+  type: opaque
+  data:
+    client_id: "new-oauth-client"
+    client_secret: "newsecret"
+    redirect_uri: "https://app.example.com/callback"
+- name: aws-credentials
+  type: opaque
+  data:
+    access_key: "AKIA..."
+    secret_key: "********"
+    region: eu-west-1
+
+configmaps:
+- name: app-config
+  data:
+    app.properties: |
+      server.port=9090
+      server.host=0.0.0.0
+      feature.flags.enabled=true
+      feature.newfeature=true
+      metrics.enabled=true
+    logging.yaml: |
+      level: debug
+      format: text
+      output: file
+    newconfig.json: |
+      {"key": "value"}
+- name: nginx-config
+  data:
+    nginx.conf: |
+      worker_processes 4;
+      events {
+        worker_connections 2048;
+      }
+      http {
+        gzip on;
+      }
+- name: prometheus-config
+  data:
+    prometheus.yml: |
+      global:
+        scrape_interval: 10s
+        evaluation_interval: 10s
+      scrape_configs:
+        - job_name: 'app'
+          static_configs:
+            - targets: ['localhost:9090']
+        - job_name: 'new-service'
+          static_configs:
+            - targets: ['localhost:8081']
+- name: grafana-config
+  data:
+    datasources.yaml: |
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          type: prometheus
+          url: http://prometheus:9090
+
+ingresses:
+- name: main-ingress
+  host: app-v2.example.com
+  paths:
+  - path: /api/v2
+    service: api-service-v2
+    port: 9090
+  - path: /web
+    service: web-service
+    port: 80
+  - path: /health
+    service: health-service
+    port: 8080
+  tls:
+    enabled: true
+    secret: tls-cert-v2
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+- name: admin-ingress
+  host: admin-new.example.com
+  paths:
+  - path: /
+    service: admin-service-v2
+    port: 9090
+  - path: /api
+    service: admin-api
+    port: 8080
+  tls:
+    enabled: true
+    secret: tls-cert-v2
+- name: api-gateway
+  host: gateway.example.com
+  paths:
+  - path: /
+    service: gateway-service
+    port: 8080
+  tls:
+    enabled: true
+    secret: tls-cert-v2
+
+jobs:
+- name: backup-job
+  schedule: "0 3 * * *"
+  image: backup:2.0
+  command: ["/bin/sh", "-c", "backup-v2.sh"]
+  retries: 5
+  timeout: 3600
+- name: cleanup-job
+  schedule: "0 5 * * 0"
+  image: cleanup:2.0
+  command: ["/bin/sh", "-c", "cleanup-v2.sh"]
+  retries: 3
+- name: report-job
+  schedule: "0 7 * * 1-5"
+  image: reporter:2.0
+  command: ["/bin/sh", "-c", "generate-report-v2.sh"]
+  retries: 2
+- name: sync-job
+  schedule: "*/10 * * * *"
+  image: sync:2.0
+  command: ["/bin/sh", "-c", "sync-data-v2.sh"]
+  retries: 5
+- name: migration-job
+  schedule: "0 1 * * *"
+  image: migrator:1.0
+  command: ["/bin/sh", "-c", "migrate.sh"]
+  retries: 3
+- name: metrics-job
+  schedule: "*/5 * * * *"
+  image: metrics-collector:1.0
+  command: ["/bin/sh", "-c", "collect-metrics.sh"]
+  retries: 2
+
+volumes:
+- name: data-volume
+  type: persistentVolumeClaim
+  size: 200Gi
+  storageClass: premium
+  accessModes:
+  - ReadWriteMany
+- name: logs-volume
+  type: persistentVolumeClaim
+  size: 100Gi
+  storageClass: standard
+- name: cache-volume
+  type: emptyDir
+  size: 20Gi
+  medium: Memory
+- name: config-volume
+  type: configMap
+  configMap: app-config
+- name: secrets-volume
+  type: secret
+  secret: db-credentials
+- name: backup-volume
+  type: persistentVolumeClaim
+  size: 500Gi
+  storageClass: archive
+- name: temp-volume
+  type: emptyDir
+  size: 5Gi
+
+networkPolicies:
+- name: allow-web
+  podSelector:
+    app: web
+    version: v2
+  ingress:
+  - from:
+    - namespaceSelector:
+        env: staging
+    - ipBlock:
+        cidr: 10.0.0.0/8
+    ports:
+    - port: 80
+    - port: 443
+    - port: 8080
+- name: allow-api
+  podSelector:
+    app: api
+  ingress:
+  - from:
+    - podSelector:
+        role: frontend
+    - podSelector:
+        role: gateway
+    ports:
+    - port: 8080
+    - port: 9090
+- name: allow-internal
+  podSelector:
+    internal: "true"
+  ingress:
+  - from:
+    - namespaceSelector: {}
+    ports:
+    - port: 8080
+
+additionalResources:
+  quotas:
+  - name: compute-quota
+    hard:
+      cpu: "100"
+      memory: 200Gi
+      pods: "500"
+  - name: storage-quota
+    hard:
+      persistentvolumeclaims: "50"
+      storage: 1Ti
+  limitRanges:
+  - name: default-limits
+    limits:
+    - type: Container
+      default:
+        cpu: 500m
+        memory: 512Mi
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi

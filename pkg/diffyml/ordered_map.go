@@ -1,0 +1,116 @@
+// ordered_map.go - OrderedMap preserves YAML field order during parsing.
+//
+// Standard Go maps do not preserve insertion order, but YAML documents
+// have a defined key order. OrderedMap stores both Keys (in order) and
+// Values (for fast lookup) so that formatters can reproduce the original
+// field ordering.
+package diffyml
+
+import (
+	"bytes"
+	"io"
+
+	"gopkg.in/yaml.v3"
+)
+
+// OrderedMap is a map that preserves insertion order of keys.
+type OrderedMap struct {
+	Keys   []string
+	Values map[string]interface{}
+}
+
+// NewOrderedMap creates an empty OrderedMap.
+func NewOrderedMap() *OrderedMap {
+	return &OrderedMap{
+		Keys:   nil,
+		Values: make(map[string]interface{}),
+	}
+}
+
+// ParseWithOrder parses YAML content into documents using OrderedMap for mappings
+// so that field order from the source document is preserved.
+func ParseWithOrder(content []byte) ([]interface{}, error) {
+	decoder := yaml.NewDecoder(bytes.NewReader(content))
+	var docs []interface{}
+
+	for {
+		var node yaml.Node
+		err := decoder.Decode(&node)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, wrapParseError(err)
+		}
+		docs = append(docs, nodeToInterface(&node))
+	}
+
+	return docs, nil
+}
+
+// nodeToInterface converts a yaml.Node tree into Go values,
+// using *OrderedMap for mapping nodes to preserve key order.
+func nodeToInterface(node *yaml.Node) interface{} {
+	if node == nil {
+		return nil
+	}
+
+	// A document node wraps a single content node.
+	if node.Kind == yaml.DocumentNode {
+		if len(node.Content) == 0 {
+			return nil
+		}
+		return nodeToInterface(node.Content[0])
+	}
+
+	switch node.Kind {
+	case yaml.MappingNode:
+		om := NewOrderedMap()
+		for i := 0; i+1 < len(node.Content); i += 2 {
+			key := node.Content[i].Value
+			if key == "<<" {
+				// YAML merge key: merge the referenced map's entries
+				merged := nodeToInterface(node.Content[i+1])
+				if mergedMap, ok := merged.(*OrderedMap); ok {
+					for _, mk := range mergedMap.Keys {
+						if _, exists := om.Values[mk]; !exists {
+							om.Keys = append(om.Keys, mk)
+							om.Values[mk] = mergedMap.Values[mk]
+						}
+					}
+				}
+				continue
+			}
+			val := nodeToInterface(node.Content[i+1])
+			om.Keys = append(om.Keys, key)
+			om.Values[key] = val
+		}
+		return om
+
+	case yaml.SequenceNode:
+		list := make([]interface{}, 0, len(node.Content))
+		for _, child := range node.Content {
+			list = append(list, nodeToInterface(child))
+		}
+		return list
+
+	case yaml.ScalarNode:
+		return resolveScalar(node)
+
+	case yaml.AliasNode:
+		return nodeToInterface(node.Alias)
+
+	default:
+		return nil
+	}
+}
+
+// resolveScalar converts a scalar yaml.Node into the appropriate Go type.
+func resolveScalar(node *yaml.Node) interface{} {
+	// Use yaml.v3's own resolution by decoding into interface{}
+	var val interface{}
+	if err := node.Decode(&val); err != nil {
+		return node.Value
+	}
+	return val
+}

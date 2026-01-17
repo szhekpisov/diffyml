@@ -1,0 +1,46 @@
+configmaps:
+- name: app-config
+  data:
+    app.properties: |
+      server.port=9090
+      server.host=0.0.0.0
+      feature.flags.enabled=true
+      feature.newfeature=true
+      metrics.enabled=true
+    logging.yaml: |
+      level: debug
+      format: text
+      output: file
+    newconfig.json: |
+      {"key": "value"}
+- name: nginx-config
+  data:
+    nginx.conf: |
+      worker_processes 4;
+      events {
+        worker_connections 2048;
+      }
+      http {
+        gzip on;
+      }
+- name: prometheus-config
+  data:
+    prometheus.yml: |
+      global:
+        scrape_interval: 10s
+        evaluation_interval: 10s
+      scrape_configs:
+        - job_name: 'app'
+          static_configs:
+            - targets: ['localhost:9090']
+        - job_name: 'new-service'
+          static_configs:
+            - targets: ['localhost:8081']
+- name: grafana-config
+  data:
+    datasources.yaml: |
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          type: prometheus
+          url: http://prometheus:9090

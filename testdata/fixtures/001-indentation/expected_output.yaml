@@ -1,0 +1,66 @@
+Found six differences
+
+configmaps
+  + one list entry added:
+    - name: grafana-config
+      data:
+        datasources.yaml: |
+          apiVersion: 1
+          datasources:
+            - name: Prometheus
+              type: prometheus
+              url: http://prometheus:9090
+
+configmaps.app-config.data.app.properties
+  ± value change in multiline text (three inserts, one deletion)
+    - server.port=8080
+    + server.port=9090
+      server.host=0.0.0.0
+      feature.flags.enabled=true
+    + feature.newfeature=true
+    + metrics.enabled=true
+      
+
+configmaps.app-config.data.logging.yaml
+  ± value change in multiline text (three inserts, two deletions)
+    - level: info
+    - format: json
+    + level: debug
+    + format: text
+    + output: file
+      
+
+configmaps.nginx-config.data.nginx.conf
+  ± value change in multiline text (five inserts, two deletions)
+    - worker_processes auto;
+    + worker_processes 4;
+      events {
+    -   worker_connections 1024;
+    +   worker_connections 2048;
+    + }
+    + http {
+    +   gzip on;
+      }
+      
+
+configmaps.prometheus-config.data.prometheus.yml
+  ± value change in multiline text (six inserts, two deletions)
+      global:
+    -   scrape_interval: 15s
+    +   scrape_interval: 10s
+    +   evaluation_interval: 10s
+      scrape_configs:
+        - job_name: 'app'
+          static_configs:
+    -       - targets: ['localhost:8080']
+    +       - targets: ['localhost:9090']
+    +   - job_name: 'new-service'
+    +     static_configs:
+    +       - targets: ['localhost:8081']
+      
+
+configmaps.app-config.data.newconfig.json
+  + one map entry added:
+    json: |
+      {"key": "value"}
+

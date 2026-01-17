@@ -1,0 +1,64 @@
+name: Feature Request
+description: Suggest a new feature or improvement
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have an idea for diffyml? Describe the problem first — the best solutions come from understanding the use case.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: >-
+        What are you trying to accomplish? What's painful or missing today?
+        Focus on the problem, not the solution.
+      placeholder: |
+        When comparing Helm-rendered manifests in CI, I need to...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: >-
+        Optional — describe what you'd like to see. The maintainer may design
+        it differently, so the problem description above is more important.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part of diffyml does this relate to?
+      options:
+        - Output formatting
+        - Comparison/diff logic
+        - Kubernetes detection
+        - Filtering
+        - CLI/UX
+        - Performance
+        - CI integration
+        - Remote file support
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any workarounds or other tools you've tried.
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Links, screenshots, related issues, or anything else.
+    validations:
+      required: false

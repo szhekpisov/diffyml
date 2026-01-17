@@ -1,0 +1,105 @@
+name: Bug Report
+description: Report a bug in diffyml
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug! Please fill in the details below so we can reproduce and fix it.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened? What did you expect to happen instead?
+      placeholder: |
+        When I run diffyml on two files with anchors, the output shows...
+        I expected it to show...
+    validations:
+      required: true
+
+  - type: textarea
+    id: input-yaml
+    attributes:
+      label: Input YAML
+      description: >-
+        Paste the YAML content directly — raw text is far more useful than
+        screenshots for reproducing the issue.
+      render: yaml
+    validations:
+      required: false
+
+  - type: textarea
+    id: command
+    attributes:
+      label: Command and flags
+      description: >-
+        The exact command you ran. Flags like --detect-kubernetes, --chroot,
+        and --filter-regexp trigger different code paths, so include them all.
+      placeholder: diffyml --detect-kubernetes old.yaml new.yaml
+      render: bash
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-output
+    attributes:
+      label: Actual output
+      description: Paste the output you got. Use raw text, not screenshots.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-output
+    attributes:
+      label: Expected output
+      description: What you expected to see instead.
+      render: text
+    validations:
+      required: false
+
+  - type: dropdown
+    id: output-format
+    attributes:
+      label: Output format
+      description: Which output format were you using?
+      options:
+        - pretty (default)
+        - github
+        - gitlab
+        - json
+        - quiet
+        - summary
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: input-characteristics
+    attributes:
+      label: Input characteristics
+      description: Check any that apply to your input files.
+      options:
+        - label: Multi-document YAML (multiple `---` separated documents)
+        - label: Kubernetes manifests
+        - label: YAML anchors/aliases
+        - label: Remote URL input
+        - label: Large files (>1000 lines)
+
+  - type: input
+    id: version
+    attributes:
+      label: diffyml version
+      description: Output of `diffyml --version`
+      placeholder: "diffyml v0.1.0 (abc1234, 2025-01-01)"
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: OS / Architecture
+      description: e.g. macOS 15.2 arm64, Ubuntu 24.04 amd64
+      placeholder: "macOS 15.2 arm64"
+    validations:
+      required: false

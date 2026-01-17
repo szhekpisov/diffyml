@@ -1,0 +1,7 @@
+Found one difference
+
+dependencies.library-a.version_min
+  ± value change
+    - 0.5.0
+    + 0.6.0
+

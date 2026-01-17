@@ -1,0 +1,39 @@
+version: "2"
+
+linters:
+  enable:
+    - errcheck
+    - gocritic
+    - gosec
+    - govet
+    - ineffassign
+    - misspell
+    - staticcheck
+  settings:
+    errcheck:
+      # Terminal output and cleanup — errors are intentionally ignored
+      exclude-functions:
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+        - (net/http.ResponseWriter).Write
+        - os.Remove
+        - os.Chdir
+    govet:
+      enable:
+        - shadow
+    gosec:
+      excludes:
+        # G602 (slice bounds) — false positive on LCS diff algorithm with guarded indices
+        - G602
+    staticcheck:
+      checks:
+        - "all"
+        # ST — style conventions (package comments, etc.), enforced by review
+        - "-ST*"
+  exclusions:
+    rules:
+      # Test files use exec.Command, os.ReadFile with variables, and ignore cleanup errors — all expected
+      - path: _test\.go
+        linters:
+          - gosec

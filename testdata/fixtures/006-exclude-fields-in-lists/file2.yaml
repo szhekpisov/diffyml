@@ -1,0 +1,7 @@
+dependencies:
+  - name: library-a
+    version_used: "1.1.0"
+    version_min: "0.6.0"
+  - name: library-b
+    version_used: "2.1.0"
+    version_min: "1.0.0"

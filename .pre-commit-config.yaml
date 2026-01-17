@@ -1,0 +1,44 @@
+repos:
+  - repo: local
+    hooks:
+      - id: go-fmt
+        name: gofmt
+        entry: make fmt
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: go-vet
+        name: go vet
+        entry: make vet
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      # - id: go-test
+      #   name: go test
+      #   entry: make test
+      #   language: system
+      #   pass_filenames: false
+      #   always_run: true
+
+      - id: check-coverage
+        name: check coverage
+        entry: make check-coverage
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: govulncheck
+        name: govulncheck
+        entry: make govulncheck
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: golangci-lint
+        name: golangci-lint
+        entry: make golangci-lint
+        language: system
+        pass_filenames: false
+        always_run: true

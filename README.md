@@ -19,35 +19,6 @@ Structural diff for YAML files. Understands YAML semantics and detects Kubernete
 - **Certificate inspection** — inspects and compares embedded x509 certificates
 - **Chroot navigation** — focus comparison on a specific YAML subtree
 
-## Performance
-
-Benchmarked against 4 Go-based YAML diff tools using [hyperfine](https://github.com/sharkdp/hyperfine) (20 runs, 5 warmup). Environment: Apple M1 Pro, macOS, Go 1.25.7.
-
-| File size | diffyml | [dyff](https://github.com/homeport/dyff) | [semihbkgr/yamldiff](https://github.com/semihbkgr/yamldiff) | [sters/yaml-diff](https://github.com/sters/yaml-diff) | [sahilm/yamldiff](https://github.com/sahilm/yamldiff) | diff |
-|-----------|--------:|-----:|----------:|------:|-------:|-----:|
-| ~70 lines | 5.7 ms | 15.3 ms | 3.9 ms | 4.0 ms | **3.7 ms** | 2.2 ms |
-| ~530 lines | 6.3 ms | 29.2 ms | **5.2 ms** | 11.5 ms | 16.1 ms | 2.6 ms |
-| ~5K lines | **22.3 ms** | 173.8 ms | 27.9 ms | 984 ms | 1,370 ms | 6.2 ms |
-| ~50K lines | **152.3 ms** | 3,647 ms | 245.7 ms | — | — | 46.2 ms |
-
-Lowest memory footprint at every size (18.4 MB at 5K lines vs 21–326 MB for alternatives). See [performance.md](performance.md) for full methodology and results.
-
-<details>
-<summary>Reproduce benchmarks</summary>
-
-```bash
-# Full benchmark (small, medium, large)
-make bench-compare
-
-# Include xlarge (sters/yaml-diff and sahilm/yamldiff are auto-excluded at this size)
-bash bench/compare/run.sh --sizes small,medium,large,xlarge
-
-# Quick check with fewer runs
-bash bench/compare/run.sh --runs 3
-```
-
-</details>
-
 ## Installation
 
 ### Go Install
@@ -202,6 +173,51 @@ diffyml -s before.yaml after.yaml || echo "Config drift detected"
 
 </details>
 
+## Code Quality
+
+Every push and PR is checked by:
+
+- [govulncheck](https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck) — known vulnerability detection
+- [golangci-lint](https://golangci-lint.run/) running:
+  [errcheck](https://github.com/kisielk/errcheck),
+  [gocritic](https://github.com/go-critic/go-critic),
+  [gosec](https://github.com/securego/gosec),
+  [govet](https://pkg.go.dev/cmd/vet) (with shadow detection),
+  [ineffassign](https://github.com/gordonklaus/ineffassign),
+  [misspell](https://github.com/client9/misspell),
+  [staticcheck](https://staticcheck.dev/) (all checks except style conventions)
+
+Core packages enforce 95–100% test coverage thresholds in CI.
+
+## Performance
+
+Benchmarked against 4 Go-based YAML diff tools using [hyperfine](https://github.com/sharkdp/hyperfine) (20 runs, 5 warmup). Environment: Apple M1 Pro, macOS, Go 1.25.7.
+
+| File size | diffyml | [dyff](https://github.com/homeport/dyff) | [semihbkgr/yamldiff](https://github.com/semihbkgr/yamldiff) | [sters/yaml-diff](https://github.com/sters/yaml-diff) | [sahilm/yamldiff](https://github.com/sahilm/yamldiff) | diff |
+|-----------|--------:|-----:|----------:|------:|-------:|-----:|
+| ~70 lines | 5.7 ms | 15.3 ms | 3.9 ms | 4.0 ms | **3.7 ms** | 2.2 ms |
+| ~530 lines | 6.3 ms | 29.2 ms | **5.2 ms** | 11.5 ms | 16.1 ms | 2.6 ms |
+| ~5K lines | **22.3 ms** | 173.8 ms | 27.9 ms | 984 ms | 1,370 ms | 6.2 ms |
+| ~50K lines | **152.3 ms** | 3,647 ms | 245.7 ms | — | — | 46.2 ms |
+
+Lowest memory footprint at every size (18.4 MB at 5K lines vs 21–326 MB for alternatives). See [performance.md](performance.md) for full methodology and results.
+
+<details>
+<summary>Reproduce benchmarks</summary>
+
+```bash
+# Full benchmark (small, medium, large)
+make bench-compare
+
+# Include xlarge (sters/yaml-diff and sahilm/yamldiff are auto-excluded at this size)
+bash bench/compare/run.sh --sizes small,medium,large,xlarge
+
+# Quick check with fewer runs
+bash bench/compare/run.sh --runs 3
+```
+
+</details>
+
 ## Contributing
 
 Contributions welcome! [Open an issue](https://github.com/szhekpisov/diffyml/issues) for bugs or feature requests.
@@ -225,7 +241,7 @@ pre-commit install
 | `go vet` | Static analysis |
 | `check-coverage` | Coverage thresholds (100% parser, 100% ordered_map, 95% kubernetes) |
 | `govulncheck` | Known vulnerabilities |
-| `golangci-lint` | 7 linters (gosec, staticcheck, errcheck, gocritic, ...) |
+| `golangci-lint` | 7 linters (errcheck, gocritic, gosec, govet, ineffassign, misspell, staticcheck) |
 
 **Useful Make targets:**
 
@@ -243,22 +259,6 @@ make coverage       # generate HTML coverage report
 - **Benchmark** — performance regression tracking
 
 </details>
-
-## Code Quality
-
-Every push and PR is checked by:
-
-- [govulncheck](https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck) — known vulnerability detection
-- [golangci-lint](https://golangci-lint.run/) running:
-  [gosec](https://github.com/securego/gosec),
-  [staticcheck](https://staticcheck.dev/),
-  [govet](https://pkg.go.dev/cmd/vet) (with shadow detection),
-  [errcheck](https://github.com/kisielk/errcheck),
-  [gocritic](https://github.com/go-critic/go-critic),
-  [ineffassign](https://github.com/gordonklaus/ineffassign),
-  [misspell](https://github.com/client9/misspell)
-
-Core packages enforce 95–100% test coverage thresholds in CI.
 
 ## License
 

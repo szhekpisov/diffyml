@@ -2884,3 +2884,70 @@ func TestDetailedFormatter_ListEntry_Snapshot(t *testing.T) {
 		t.Errorf("list entry snapshot mismatch.\nExpected:\n%s\nGot:\n%s", expected, output)
 	}
 }
+
+func TestDetailedFormatter_DocumentHeading(t *testing.T) {
+	f, _ := GetFormatter("detailed")
+	opts := DefaultFormatOptions()
+	opts.OmitHeader = true
+
+	t.Run("single doc replaces [0] with (document)", func(t *testing.T) {
+		diffs := []Difference{
+			{Path: "[0]", Type: DiffRemoved, From: "value", DocumentIndex: 0},
+		}
+		output := f.Format(diffs, opts)
+		if !strings.Contains(output, "(document)") {
+			t.Errorf("expected '(document)' in output, got: %q", output)
+		}
+		if strings.Contains(output, "[0]") {
+			t.Errorf("should not contain '[0]' in output, got: %q", output)
+		}
+	})
+
+	t.Run("multi doc replaces [0] with (document 1)", func(t *testing.T) {
+		diffs := []Difference{
+			{Path: "[0]", Type: DiffRemoved, From: "value1", DocumentIndex: 0},
+			{Path: "[1]", Type: DiffAdded, To: "value2", DocumentIndex: 1},
+		}
+		output := f.Format(diffs, opts)
+		if !strings.Contains(output, "(document 1)") {
+			t.Errorf("expected '(document 1)' in output, got: %q", output)
+		}
+		if !strings.Contains(output, "(document 2)") {
+			t.Errorf("expected '(document 2)' in output, got: %q", output)
+		}
+	})
+
+	t.Run("non-bare index paths are not transformed", func(t *testing.T) {
+		diffs := []Difference{
+			{Path: "items[0]", Type: DiffModified, From: "old", To: "new"},
+		}
+		output := f.Format(diffs, opts)
+		if !strings.Contains(output, "items[0]") {
+			t.Errorf("expected 'items[0]' preserved in output, got: %q", output)
+		}
+	})
+}
+
+func TestParseBareDocIndex(t *testing.T) {
+	tests := []struct {
+		path    string
+		wantIdx int
+		wantOk  bool
+	}{
+		{"[0]", 0, true},
+		{"[1]", 1, true},
+		{"[12]", 12, true},
+		{"items[0]", 0, false},
+		{"[0].spec", 0, false},
+		{"name", 0, false},
+		{"", 0, false},
+		{"[]", 0, false},
+		{"[abc]", 0, false},
+	}
+	for _, tt := range tests {
+		idx, ok := parseBareDocIndex(tt.path)
+		if ok != tt.wantOk || idx != tt.wantIdx {
+			t.Errorf("parseBareDocIndex(%q) = (%d, %v), want (%d, %v)", tt.path, idx, ok, tt.wantIdx, tt.wantOk)
+		}
+	}
+}

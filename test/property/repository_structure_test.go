@@ -10,10 +10,6 @@ import (
 	"regexp"
 	"strings"
 	"testing"
-
-	"github.com/leanovate/gopter"
-	"github.com/leanovate/gopter/gen"
-	"github.com/leanovate/gopter/prop"
 )
 
 // TestProperty16_MainPackageLocation tests that the main.go file exists in
@@ -23,63 +19,44 @@ func TestProperty16_MainPackageLocation(t *testing.T) {
 	cleanup := chdirToRepoRoot(t)
 	defer cleanup()
 
-	properties := newProperties()
+	info, err := os.Stat("main.go")
+	if err != nil {
+		t.Fatalf("main.go not found: %v", err)
+	}
 
-	properties.Property("main.go must exist in repository root", prop.ForAll(
-		func(dummyInput int) bool {
-			// Check if main.go exists in the current directory (repository root)
-			info, err := os.Stat("main.go")
-			if err != nil {
-				return false
-			}
+	if !info.Mode().IsRegular() {
+		t.Fatal("main.go is not a regular file")
+	}
 
-			// Verify it's a regular file
-			if !info.Mode().IsRegular() {
-				return false
-			}
+	absPath, err := filepath.Abs("main.go")
+	if err != nil {
+		t.Fatalf("Failed to get absolute path: %v", err)
+	}
 
-			// Verify the file is in the repository root (not in a subdirectory)
-			absPath, err := filepath.Abs("main.go")
-			if err != nil {
-				return false
-			}
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get working directory: %v", err)
+	}
 
-			// Get the current working directory (should be repository root)
-			cwd, err := os.Getwd()
-			if err != nil {
-				return false
-			}
+	expectedPath := filepath.Join(cwd, "main.go")
+	if absPath != expectedPath {
+		t.Fatalf("main.go not in repository root: got %s, expected %s", absPath, expectedPath)
+	}
 
-			// Verify main.go is directly in the repository root
-			expectedPath := filepath.Join(cwd, "main.go")
-			if absPath != expectedPath {
-				return false
-			}
+	content, err := os.ReadFile("main.go")
+	if err != nil {
+		t.Fatalf("Failed to read main.go: %v", err)
+	}
 
-			// Verify the file contains a main package declaration
-			content, err := os.ReadFile("main.go")
-			if err != nil {
-				return false
-			}
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "main.go", content, parser.PackageClauseOnly)
+	if err != nil {
+		t.Fatalf("Failed to parse main.go: %v", err)
+	}
 
-			// Parse the file to verify it's a valid Go file with main package
-			fset := token.NewFileSet()
-			file, err := parser.ParseFile(fset, "main.go", content, parser.PackageClauseOnly)
-			if err != nil {
-				return false
-			}
-
-			// Verify the package name is "main"
-			if file.Name.Name != "main" {
-				return false
-			}
-
-			return true
-		},
-		gen.IntRange(1, 100), // Run 100 iterations
-	))
-
-	properties.TestingRun(t, gopter.ConsoleReporter(false))
+	if file.Name.Name != "main" {
+		t.Fatalf("main.go has package %q, expected \"main\"", file.Name.Name)
+	}
 }
 
 // TestProperty16_MainPackageLocation_WithFunctionCheck tests that main.go
@@ -89,45 +66,33 @@ func TestProperty16_MainPackageLocation_WithFunctionCheck(t *testing.T) {
 	cleanup := chdirToRepoRoot(t)
 	defer cleanup()
 
-	properties := newProperties()
+	content, err := os.ReadFile("main.go")
+	if err != nil {
+		t.Fatalf("Failed to read main.go: %v", err)
+	}
 
-	properties.Property("main.go must contain a main function", prop.ForAll(
-		func(dummyInput int) bool {
-			// Read main.go
-			content, err := os.ReadFile("main.go")
-			if err != nil {
-				return false
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "main.go", content, parser.ParseComments)
+	if err != nil {
+		t.Fatalf("Failed to parse main.go: %v", err)
+	}
+
+	hasMainFunc := false
+	for _, decl := range file.Decls {
+		if funcDecl, ok := decl.(*ast.FuncDecl); ok {
+			if funcDecl.Name.Name == "main" {
+				hasMainFunc = true
+				break
 			}
+		}
+	}
 
-			// Parse the file to check for main function
-			fset := token.NewFileSet()
-			file, err := parser.ParseFile(fset, "main.go", content, parser.ParseComments)
-			if err != nil {
-				return false
-			}
-
-			// Look for main function
-			hasMainFunc := false
-			for _, decl := range file.Decls {
-				if funcDecl, ok := decl.(*ast.FuncDecl); ok {
-					if funcDecl.Name.Name == "main" {
-						hasMainFunc = true
-						break
-					}
-				}
-			}
-
-			// Alternative: check for "func main()" in the content
-			if !hasMainFunc {
-				hasMainFunc = strings.Contains(string(content), "func main()")
-			}
-
-			return hasMainFunc
-		},
-		gen.IntRange(1, 100), // Run 100 iterations
-	))
-
-	properties.TestingRun(t, gopter.ConsoleReporter(false))
+	if !hasMainFunc {
+		// Fallback: check string content
+		if !strings.Contains(string(content), "func main()") {
+			t.Fatal("main.go does not contain a main function")
+		}
+	}
 }
 
 // TestProperty17_LibraryCodeOrganization tests that library code is organized
@@ -137,56 +102,37 @@ func TestProperty17_LibraryCodeOrganization(t *testing.T) {
 	cleanup := chdirToRepoRoot(t)
 	defer cleanup()
 
-	properties := newProperties()
+	pkgInfo, err := os.Stat("pkg")
+	if err != nil {
+		t.Fatalf("pkg/ directory not found: %v", err)
+	}
 
-	properties.Property("library code must be organized under pkg/ directory", prop.ForAll(
-		func(dummyInput int) bool {
-			// Check if pkg/ directory exists
-			pkgInfo, err := os.Stat("pkg")
+	if !pkgInfo.IsDir() {
+		t.Fatal("pkg is not a directory")
+	}
+
+	entries, err := os.ReadDir("pkg")
+	if err != nil {
+		t.Fatalf("Failed to read pkg/ directory: %v", err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			pkgPath := filepath.Join("pkg", entry.Name())
+			pkgEntries, err := os.ReadDir(pkgPath)
 			if err != nil {
-				return false
+				continue
 			}
 
-			// Verify it's a directory
-			if !pkgInfo.IsDir() {
-				return false
-			}
-
-			// Check that pkg/ contains at least one subdirectory (package)
-			entries, err := os.ReadDir("pkg")
-			if err != nil {
-				return false
-			}
-
-			hasPackage := false
-			for _, entry := range entries {
-				if entry.IsDir() {
-					// Check if this directory contains Go files
-					pkgPath := filepath.Join("pkg", entry.Name())
-					pkgEntries, err := os.ReadDir(pkgPath)
-					if err != nil {
-						continue
-					}
-
-					for _, pkgEntry := range pkgEntries {
-						if !pkgEntry.IsDir() && strings.HasSuffix(pkgEntry.Name(), ".go") {
-							hasPackage = true
-							break
-						}
-					}
-
-					if hasPackage {
-						break
-					}
+			for _, pkgEntry := range pkgEntries {
+				if !pkgEntry.IsDir() && strings.HasSuffix(pkgEntry.Name(), ".go") {
+					return // Found at least one Go package
 				}
 			}
+		}
+	}
 
-			return hasPackage
-		},
-		gen.IntRange(1, 100), // Run 100 iterations
-	))
-
-	properties.TestingRun(t, gopter.ConsoleReporter(false))
+	t.Fatal("pkg/ directory does not contain any Go packages")
 }
 
 // TestProperty17_LibraryCodeOrganization_WithPackageValidation tests that
@@ -196,64 +142,51 @@ func TestProperty17_LibraryCodeOrganization_WithPackageValidation(t *testing.T) 
 	cleanup := chdirToRepoRoot(t)
 	defer cleanup()
 
-	properties := newProperties()
+	hasValidPackage := false
 
-	properties.Property("pkg/ directory must contain valid Go packages", prop.ForAll(
-		func(dummyInput int) bool {
-			// Walk through pkg/ directory
-			hasValidPackage := false
+	err := filepath.Walk("pkg", func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
 
-			err := filepath.Walk("pkg", func(path string, info os.FileInfo, err error) error {
-				if err != nil {
-					return err
-				}
+		if path == "pkg" {
+			return nil
+		}
 
-				// Skip the pkg directory itself
-				if path == "pkg" {
-					return nil
-				}
-
-				// Check if this is a directory
-				if info.IsDir() {
-					// Check if this directory contains Go files
-					entries, err := os.ReadDir(path)
-					if err != nil {
-						return nil
-					}
-
-					for _, entry := range entries {
-						if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".go") {
-							// Found a Go file, verify it's parseable
-							goFilePath := filepath.Join(path, entry.Name())
-							content, err := os.ReadFile(goFilePath)
-							if err != nil {
-								continue
-							}
-
-							// Parse the file to verify it's valid Go code
-							fset := token.NewFileSet()
-							_, err = parser.ParseFile(fset, goFilePath, content, parser.PackageClauseOnly)
-							if err == nil {
-								hasValidPackage = true
-								return filepath.SkipDir
-							}
-						}
-					}
-				}
-
-				return nil
-			})
-
+		if info.IsDir() {
+			entries, err := os.ReadDir(path)
 			if err != nil {
-				return false
+				return nil
 			}
 
-			return hasValidPackage
-		},
-		gen.IntRange(1, 100), // Run 100 iterations
-	))
+			for _, entry := range entries {
+				if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".go") {
+					goFilePath := filepath.Join(path, entry.Name())
+					content, err := os.ReadFile(goFilePath)
+					if err != nil {
+						continue
+					}
 
-	properties.TestingRun(t, gopter.ConsoleReporter(false))
+					fset := token.NewFileSet()
+					_, err = parser.ParseFile(fset, goFilePath, content, parser.PackageClauseOnly)
+					if err == nil {
+						hasValidPackage = true
+						return filepath.SkipDir
+					}
+				}
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		t.Fatalf("Failed to walk pkg/ directory: %v", err)
+	}
+
+	if !hasValidPackage {
+		t.Fatal("pkg/ directory does not contain any valid Go packages")
+	}
 }
 
 // TestProperty3_GoModuleValidity tests that the go.mod file exists in the
@@ -264,46 +197,34 @@ func TestProperty3_GoModuleValidity(t *testing.T) {
 	cleanup := chdirToRepoRoot(t)
 	defer cleanup()
 
-	properties := newProperties()
+	info, err := os.Stat("go.mod")
+	if err != nil {
+		t.Fatalf("go.mod not found: %v", err)
+	}
 
-	properties.Property("go.mod must exist, be valid, and contain Go version", prop.ForAll(
-		func(dummyInput int) bool {
-			// Check if go.mod exists in the repository root
-			info, err := os.Stat("go.mod")
-			if err != nil {
-				return false
-			}
+	if !info.Mode().IsRegular() {
+		t.Fatal("go.mod is not a regular file")
+	}
 
-			// Verify it's a regular file
-			if !info.Mode().IsRegular() {
-				return false
-			}
+	content, err := os.ReadFile("go.mod")
+	if err != nil {
+		t.Fatalf("Failed to read go.mod: %v", err)
+	}
 
-			// Read go.mod content
-			content, err := os.ReadFile("go.mod")
-			if err != nil {
-				return false
-			}
+	gomodText := string(content)
 
-			gomodText := string(content)
+	if !strings.Contains(gomodText, "module ") {
+		t.Fatal("go.mod missing module declaration")
+	}
 
-			// Check for module declaration
-			hasModule := strings.Contains(gomodText, "module ")
+	if !strings.Contains(gomodText, "go ") {
+		t.Fatal("go.mod missing Go version directive")
+	}
 
-			// Check for Go version directive
-			hasGoVersion := strings.Contains(gomodText, "go ")
-
-			// Verify go.mod is parseable by running go mod verify
-			cmd := exec.Command("go", "mod", "verify")
-			err = cmd.Run()
-			isValid := err == nil
-
-			return hasModule && hasGoVersion && isValid
-		},
-		gen.IntRange(1, 100), // Run 100 iterations
-	))
-
-	properties.TestingRun(t, gopter.ConsoleReporter(false))
+	cmd := exec.Command("go", "mod", "verify")
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("go mod verify failed: %v", err)
+	}
 }
 
 // TestProperty3_GoModuleValidity_WithVersionFormat tests that the Go version
@@ -313,28 +234,15 @@ func TestProperty3_GoModuleValidity_WithVersionFormat(t *testing.T) {
 	cleanup := chdirToRepoRoot(t)
 	defer cleanup()
 
-	properties := newProperties()
+	content, err := os.ReadFile("go.mod")
+	if err != nil {
+		t.Fatalf("Failed to read go.mod: %v", err)
+	}
 
-	properties.Property("go.mod must contain properly formatted Go version", prop.ForAll(
-		func(dummyInput int) bool {
-			content, err := os.ReadFile("go.mod")
-			if err != nil {
-				return false
-			}
-
-			gomodText := string(content)
-
-			// Check for Go version directive with proper format
-			// Format: "go X.Y" or "go X.Y.Z"
-			goVersionPattern := regexp.MustCompile(`(?m)^go\s+\d+\.\d+(\.\d+)?`)
-			hasValidGoVersion := goVersionPattern.MatchString(gomodText)
-
-			return hasValidGoVersion
-		},
-		gen.IntRange(1, 100), // Run 100 iterations
-	))
-
-	properties.TestingRun(t, gopter.ConsoleReporter(false))
+	goVersionPattern := regexp.MustCompile(`(?m)^go\s+\d+\.\d+(\.\d+)?`)
+	if !goVersionPattern.MatchString(string(content)) {
+		t.Fatal("go.mod does not contain properly formatted Go version")
+	}
 }
 
 // TestProperty19_ModuleNameConsistency tests that the module name in go.mod
@@ -344,47 +252,30 @@ func TestProperty19_ModuleNameConsistency(t *testing.T) {
 	cleanup := chdirToRepoRoot(t)
 	defer cleanup()
 
-	properties := newProperties()
+	content, err := os.ReadFile("go.mod")
+	if err != nil {
+		t.Fatalf("Failed to read go.mod: %v", err)
+	}
 
-	properties.Property("go.mod module name must follow Go naming conventions", prop.ForAll(
-		func(dummyInput int) bool {
-			content, err := os.ReadFile("go.mod")
-			if err != nil {
-				return false
-			}
+	modulePattern := regexp.MustCompile(`(?m)^module\s+([^\s]+)`)
+	matches := modulePattern.FindStringSubmatch(string(content))
+	if len(matches) < 2 {
+		t.Fatal("go.mod missing module declaration")
+	}
 
-			gomodText := string(content)
+	moduleName := matches[1]
 
-			// Extract module name
-			modulePattern := regexp.MustCompile(`(?m)^module\s+([^\s]+)`)
-			matches := modulePattern.FindStringSubmatch(gomodText)
-			if len(matches) < 2 {
-				return false
-			}
+	// Domain-based path pattern
+	domainPattern := regexp.MustCompile(`^[a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z0-9][-a-zA-Z0-9.]*(/[a-zA-Z0-9][-a-zA-Z0-9_]*)+$`)
+	isDomainBased := domainPattern.MatchString(moduleName)
 
-			moduleName := matches[1]
+	// Simple name pattern
+	simplePattern := regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]*$`)
+	isSimpleName := simplePattern.MatchString(moduleName)
 
-			// Check if module name follows conventions:
-			// 1. Domain-based path (e.g., github.com/user/repo)
-			// 2. Simple name (e.g., diffyml)
-
-			// Domain-based path pattern
-			domainPattern := regexp.MustCompile(`^[a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z0-9][-a-zA-Z0-9.]*(/[a-zA-Z0-9][-a-zA-Z0-9_]*)+$`)
-			isDomainBased := domainPattern.MatchString(moduleName)
-
-			// Simple name pattern (lowercase letters, numbers, hyphens, underscores)
-			simplePattern := regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]*$`)
-			isSimpleName := simplePattern.MatchString(moduleName)
-
-			// Module name must be non-empty and follow one of the conventions
-			isValid := len(moduleName) > 0 && (isDomainBased || isSimpleName)
-
-			return isValid
-		},
-		gen.IntRange(1, 100), // Run 100 iterations
-	))
-
-	properties.TestingRun(t, gopter.ConsoleReporter(false))
+	if !isDomainBased && !isSimpleName {
+		t.Fatalf("Module name %q does not follow Go naming conventions", moduleName)
+	}
 }
 
 // TestProperty19_ModuleNameConsistency_WithImportPath tests that the module
@@ -394,70 +285,35 @@ func TestProperty19_ModuleNameConsistency_WithImportPath(t *testing.T) {
 	cleanup := chdirToRepoRoot(t)
 	defer cleanup()
 
-	properties := newProperties()
+	content, err := os.ReadFile("go.mod")
+	if err != nil {
+		t.Fatalf("Failed to read go.mod: %v", err)
+	}
 
-	properties.Property("module name must be consistent with import paths", prop.ForAll(
-		func(dummyInput int) bool {
-			// Read go.mod to get module name
-			content, err := os.ReadFile("go.mod")
-			if err != nil {
-				return false
-			}
+	modulePattern := regexp.MustCompile(`(?m)^module\s+([^\s]+)`)
+	matches := modulePattern.FindStringSubmatch(string(content))
+	if len(matches) < 2 {
+		t.Fatal("go.mod missing module declaration")
+	}
 
-			gomodText := string(content)
+	moduleName := matches[1]
 
-			// Extract module name
-			modulePattern := regexp.MustCompile(`(?m)^module\s+([^\s]+)`)
-			matches := modulePattern.FindStringSubmatch(gomodText)
-			if len(matches) < 2 {
-				return false
-			}
+	mainContent, err := os.ReadFile("main.go")
+	if err != nil {
+		t.Fatalf("Failed to read main.go: %v", err)
+	}
 
-			moduleName := matches[1]
+	mainText := string(mainContent)
 
-			// Check if main.go imports packages using the module name
-			mainContent, err := os.ReadFile("main.go")
-			if err != nil {
-				return false
-			}
+	if !strings.Contains(mainText, "import") {
+		return // No imports, that's valid
+	}
 
-			mainText := string(mainContent)
-
-			// If the module has a domain-based name, check if imports use it
-			if strings.Contains(moduleName, "/") {
-				// For domain-based modules, imports should use the module name
-				// Example: module github.com/user/diffyml, import "github.com/user/diffyml/pkg/diffyml"
-				expectedImportPrefix := moduleName + "/"
-				hasConsistentImport := strings.Contains(mainText, `"`+expectedImportPrefix) ||
-					strings.Contains(mainText, `'`+expectedImportPrefix)
-
-				// If no imports found, that's also valid (might not import internal packages)
-				hasImports := strings.Contains(mainText, "import")
-				if !hasImports {
-					return true
-				}
-
-				return hasConsistentImport
-			}
-
-			// For simple module names, imports should use the module name as prefix
-			// Example: module github.com/szhekpisov/diffyml, import "github.com/szhekpisov/diffyml/pkg/diffyml"
-			expectedImportPrefix := moduleName + "/"
-			hasConsistentImport := strings.Contains(mainText, `"`+expectedImportPrefix) ||
-				strings.Contains(mainText, `'`+expectedImportPrefix)
-
-			// If no imports found, that's also valid
-			hasImports := strings.Contains(mainText, "import")
-			if !hasImports {
-				return true
-			}
-
-			return hasConsistentImport
-		},
-		gen.IntRange(1, 100), // Run 100 iterations
-	))
-
-	properties.TestingRun(t, gopter.ConsoleReporter(false))
+	expectedImportPrefix := moduleName + "/"
+	if !strings.Contains(mainText, `"`+expectedImportPrefix) &&
+		!strings.Contains(mainText, `'`+expectedImportPrefix) {
+		t.Fatalf("main.go does not import packages using module name %q", moduleName)
+	}
 }
 
 // TestProperty18_NoPrebuiltBinaries tests that the repository does not contain
@@ -467,80 +323,58 @@ func TestProperty18_NoPrebuiltBinaries(t *testing.T) {
 	cleanup := chdirToRepoRoot(t)
 	defer cleanup()
 
-	properties := newProperties()
+	excludeDirs := map[string]bool{
+		".git":         true,
+		".kiro":        true,
+		".claude":      true,
+		"node_modules": true,
+		"vendor":       true,
+	}
 
-	properties.Property("repository must not contain pre-built binaries", prop.ForAll(
-		func(dummyInput int) bool {
-			// List of directories to exclude from the check
-			excludeDirs := map[string]bool{
-				".git":         true,
-				".kiro":        true,
-				"node_modules": true,
-				"vendor":       true,
+	err := filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			for excludeDir := range excludeDirs {
+				if strings.Contains(path, excludeDir) {
+					return filepath.SkipDir
+				}
 			}
+			return nil
+		}
 
-			// Walk through the repository
-			foundBinary := false
-
-			err := filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
-				if err != nil {
-					return err
-				}
-
-				// Skip excluded directories
-				if info.IsDir() {
-					for excludeDir := range excludeDirs {
-						if strings.Contains(path, excludeDir) {
-							return filepath.SkipDir
-						}
-					}
-					return nil
-				}
-
-				// Check if the file is executable
-				if info.Mode()&0111 != 0 {
-					// Exclude script files (shell scripts, etc.)
-					if strings.HasSuffix(path, ".sh") ||
-						strings.HasSuffix(path, ".bash") ||
-						strings.HasSuffix(path, ".py") ||
-						strings.HasSuffix(path, ".rb") ||
-						strings.HasSuffix(path, ".pl") {
-						return nil
-					}
-
-					// Check if it's a binary file (not a text file)
-					content, err := os.ReadFile(path)
-					if err != nil {
-						return nil
-					}
-
-					// Binary files typically contain null bytes
-					// Text files (scripts) typically don't
-					if len(content) > 0 {
-						// Check for null bytes (indicator of binary file)
-						for _, b := range content[:minInt(len(content), 512)] {
-							if b == 0 {
-								foundBinary = true
-								return filepath.SkipAll
-							}
-						}
-					}
-				}
-
+		if info.Mode()&0111 != 0 {
+			// Exclude script files
+			if strings.HasSuffix(path, ".sh") ||
+				strings.HasSuffix(path, ".bash") ||
+				strings.HasSuffix(path, ".py") ||
+				strings.HasSuffix(path, ".rb") ||
+				strings.HasSuffix(path, ".pl") {
 				return nil
-			})
-
-			if err != nil {
-				return false
 			}
 
-			// Property passes if no binaries were found
-			return !foundBinary
-		},
-		gen.IntRange(1, 100), // Run 100 iterations
-	))
+			content, err := os.ReadFile(path)
+			if err != nil {
+				return nil
+			}
 
-	properties.TestingRun(t, gopter.ConsoleReporter(false))
+			if len(content) > 0 {
+				for _, b := range content[:minInt(len(content), 512)] {
+					if b == 0 {
+						t.Fatalf("Found pre-built binary: %s", path)
+					}
+				}
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		t.Fatalf("Failed to walk repository: %v", err)
+	}
 }
 
 // TestProperty18_NoPrebuiltBinaries_WithCommonNames tests that common binary
@@ -550,49 +384,33 @@ func TestProperty18_NoPrebuiltBinaries_WithCommonNames(t *testing.T) {
 	cleanup := chdirToRepoRoot(t)
 	defer cleanup()
 
-	properties := newProperties()
+	commonBinaryNames := []string{
+		"diffyml",
+		"diffyml.exe",
+		"diffyml_linux",
+		"diffyml_darwin",
+		"diffyml_windows",
+		"diffyml_test",
+		"diffyml_test.exe",
+	}
 
-	properties.Property("repository must not contain common binary file names", prop.ForAll(
-		func(dummyInput int) bool {
-			// Common binary names to check for
-			commonBinaryNames := []string{
-				"diffyml",
-				"diffyml.exe",
-				"diffyml_linux",
-				"diffyml_darwin",
-				"diffyml_windows",
-				"diffyml_test",
-				"diffyml_test.exe",
-			}
+	for _, binaryName := range commonBinaryNames {
+		if _, err := os.Stat(binaryName); err == nil {
+			t.Fatalf("Found pre-built binary in repository root: %s", binaryName)
+		}
+	}
 
-			// Check if any of these files exist in the repository root
+	buildDirs := []string{"bin", "build", "dist", "out"}
+	for _, dir := range buildDirs {
+		if info, err := os.Stat(dir); err == nil && info.IsDir() {
 			for _, binaryName := range commonBinaryNames {
-				if _, err := os.Stat(binaryName); err == nil {
-					// File exists - this is a violation
-					return false
+				binaryPath := filepath.Join(dir, binaryName)
+				if _, err := os.Stat(binaryPath); err == nil {
+					t.Fatalf("Found pre-built binary in %s: %s", dir, binaryName)
 				}
 			}
-
-			// Also check in common build directories
-			buildDirs := []string{"bin", "build", "dist", "out"}
-			for _, dir := range buildDirs {
-				if info, err := os.Stat(dir); err == nil && info.IsDir() {
-					for _, binaryName := range commonBinaryNames {
-						binaryPath := filepath.Join(dir, binaryName)
-						if _, err := os.Stat(binaryPath); err == nil {
-							// Binary found in build directory
-							return false
-						}
-					}
-				}
-			}
-
-			return true
-		},
-		gen.IntRange(1, 100), // Run 100 iterations
-	))
-
-	properties.TestingRun(t, gopter.ConsoleReporter(false))
+		}
+	}
 }
 
 // Helper function to get minimum of two integers

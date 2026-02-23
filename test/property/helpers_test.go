@@ -4,8 +4,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-
-	"github.com/leanovate/gopter"
 )
 
 // getRepoRoot returns the repository root directory by walking up from the
@@ -69,18 +67,4 @@ func chdirToRepoRoot(t *testing.T) func() {
 	return func() {
 		os.Chdir(origDir)
 	}
-}
-
-// newProperties returns tuned gopter settings for filesystem/content invariants.
-func newProperties() *gopter.Properties {
-	params := gopter.DefaultTestParameters()
-	params.MinSuccessfulTests = 25
-	return gopter.NewProperties(params)
-}
-
-// newHeavyProperties returns smaller settings for expensive shell-out checks.
-func newHeavyProperties() *gopter.Properties {
-	params := gopter.DefaultTestParameters()
-	params.MinSuccessfulTests = 5
-	return gopter.NewProperties(params)
 }

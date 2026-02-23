@@ -1,4 +1,4 @@
-module diffyml
+module github.com/szhekpisov/diffyml
 
 go 1.25.0
 

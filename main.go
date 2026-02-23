@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"diffyml/pkg/diffyml"
+	"github.com/szhekpisov/diffyml/pkg/diffyml"
 )
 
 // Version information - can be overridden at build time using ldflags

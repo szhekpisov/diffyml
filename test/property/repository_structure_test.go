@@ -441,7 +441,7 @@ func TestProperty19_ModuleNameConsistency_WithImportPath(t *testing.T) {
 			}
 
 			// For simple module names, imports should use the module name as prefix
-			// Example: module diffyml, import "diffyml/pkg/diffyml"
+			// Example: module github.com/szhekpisov/diffyml, import "github.com/szhekpisov/diffyml/pkg/diffyml"
 			expectedImportPrefix := moduleName + "/"
 			hasConsistentImport := strings.Contains(mainText, `"`+expectedImportPrefix) ||
 				strings.Contains(mainText, `'`+expectedImportPrefix)

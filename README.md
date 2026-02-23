@@ -17,6 +17,7 @@ Structural diff for YAML files. Understands YAML semantics and detects Kubernete
 - **Path filtering** — include/exclude paths with exact match or regex
 - **Remote files** — compare directly from HTTP/HTTPS URLs
 - **Certificate inspection** — inspects and compares embedded x509 certificates
+- **Directory comparison** — compare two directories of YAML files; works as `KUBECTL_EXTERNAL_DIFF`
 - **Chroot navigation** — focus comparison on a specific YAML subtree
 
 ## Installation
@@ -59,6 +60,10 @@ diffyml local.yaml https://example.com/remote.yaml
 
 # Use in CI — exit code 1 when differences found
 diffyml -s deployment-old.yaml deployment-new.yaml
+
+# Use as kubectl external diff provider
+export KUBECTL_EXTERNAL_DIFF="diffyml --omit-header --set-exit-code"
+kubectl diff -f manifests/
 ```
 
 ## Usage
@@ -88,6 +93,17 @@ diffyml manifests-v1.yaml manifests-v2.yaml
 
 # Disable Kubernetes detection
 diffyml --detect-kubernetes=false file1.yaml file2.yaml
+```
+
+### Directory Comparison
+
+diffyml accepts two directories as positional arguments. It discovers all `.yaml` and `.yml` files in each directory, matches them by filename, and shows aggregated differences.
+
+This makes diffyml a drop-in `KUBECTL_EXTERNAL_DIFF` provider — kubectl passes two temporary directories to the external diff tool:
+
+```bash
+export KUBECTL_EXTERNAL_DIFF="diffyml --omit-header --set-exit-code"
+kubectl diff -f manifests/
 ```
 
 ### Filtering

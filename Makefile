@@ -1,4 +1,9 @@
-.PHONY: coverage check-coverage bench bench-cpu bench-mem bench-compare govulncheck golangci-lint security test fmt lint vet ci
+.PHONY: build coverage check-coverage bench bench-cpu bench-mem bench-compare govulncheck golangci-lint security test fmt lint vet ci fixture
+
+BIN = /tmp/diffyml-dev
+
+build:
+	go build -o $(BIN) .
 
 coverage:
 	go test -coverprofile=coverage.out ./pkg/...
@@ -70,3 +75,22 @@ vet:
 	go vet ./...
 
 ci: fmt vet test check-coverage security
+
+fixture: build
+	@if [ -z "$(N)" ]; then echo "Usage: make fixture N=<number>  (e.g. make fixture N=1)"; exit 1; fi
+	@DIR=$$(printf "testdata/fixtures/%03d-*" $(N)); \
+	DIR=$$(echo $$DIR); \
+	if [ ! -d "$$DIR" ]; then \
+		DIR=$$(printf "testdata/fixtures/%d-*" $(N)); \
+		DIR=$$(echo $$DIR); \
+	fi; \
+	if [ ! -d "$$DIR" ]; then echo "Fixture $(N) not found"; exit 1; fi; \
+	PARAMS=""; \
+	if [ -f "$$DIR/params.cfg" ]; then PARAMS=$$(grep -v '^#' "$$DIR/params.cfg" | tr '\n' ' '); fi; \
+	echo "=== Running fixture: $$DIR ==="; \
+	if [ -d "$$DIR/dir1" ] && [ -d "$$DIR/dir2" ]; then \
+		eval $(BIN) --color off --set-exit-code $$PARAMS "$$DIR/dir1" "$$DIR/dir2"; \
+	else \
+		eval $(BIN) --color off --set-exit-code $$PARAMS "$$DIR/file1.yaml" "$$DIR/file2.yaml"; \
+	fi; \
+	RC=$$?; echo ""; echo "exit code: $$RC"

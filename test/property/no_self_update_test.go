@@ -5,10 +5,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/leanovate/gopter"
-	"github.com/leanovate/gopter/gen"
-	"github.com/leanovate/gopter/prop"
 )
 
 // TestProperty22_NoSelfUpdateFunctionality tests that the codebase does not
@@ -18,55 +14,41 @@ func TestProperty22_NoSelfUpdateFunctionality(t *testing.T) {
 	cleanup := chdirToRepoRoot(t)
 	defer cleanup()
 
-	properties := newProperties()
-
-	// Patterns that indicate self-update functionality
 	forbiddenPatterns := []string{
-		"self-update",       // Self-update functionality
-		"selfupdate",        // Self-update functionality (no hyphen)
-		"auto-update",       // Auto-update functionality
-		"autoupdate",        // Auto-update functionality (no hyphen)
-		"checkForUpdates",   // Update checking
-		"CheckForUpdates",   // Update checking (exported)
-		"check_for_updates", // Update checking (snake_case)
-		"downloadUpdate",    // Download updates
-		"DownloadUpdate",    // Download updates (exported)
+		"self-update",
+		"selfupdate",
+		"auto-update",
+		"autoupdate",
+		"checkForUpdates",
+		"CheckForUpdates",
+		"check_for_updates",
+		"downloadUpdate",
+		"DownloadUpdate",
 	}
 
-	properties.Property("codebase must not contain self-update patterns", prop.ForAll(
-		func(patternIndex int) bool {
-			pattern := forbiddenPatterns[patternIndex%len(forbiddenPatterns)]
+	goFiles, err := findGoSourceFiles(".")
+	if err != nil {
+		t.Fatalf("Failed to find Go source files: %v", err)
+	}
 
-			// Search all Go source files (excluding test files and vendor)
-			goFiles, err := findGoSourceFiles(".")
-			if err != nil {
-				return false
+	for _, file := range goFiles {
+		if strings.HasSuffix(file, "_test.go") ||
+			strings.Contains(file, "vendor/") ||
+			strings.Contains(file, "test/") {
+			continue
+		}
+
+		content, err := os.ReadFile(file)
+		if err != nil {
+			continue
+		}
+
+		for _, pattern := range forbiddenPatterns {
+			if strings.Contains(string(content), pattern) {
+				t.Fatalf("Found forbidden self-update pattern %q in %s", pattern, file)
 			}
-
-			for _, file := range goFiles {
-				// Skip test files and vendor directory
-				if strings.HasSuffix(file, "_test.go") ||
-					strings.Contains(file, "vendor/") ||
-					strings.Contains(file, "test/") {
-					continue
-				}
-
-				content, err := os.ReadFile(file)
-				if err != nil {
-					continue
-				}
-
-				if strings.Contains(string(content), pattern) {
-					return false
-				}
-			}
-
-			return true
-		},
-		gen.IntRange(0, 99), // Run 100 iterations
-	))
-
-	properties.TestingRun(t, gopter.ConsoleReporter(false))
+		}
+	}
 }
 
 // TestProperty22_NoSelfUpdateFunctionality_NoBinaryDownload tests that the codebase
@@ -76,56 +58,38 @@ func TestProperty22_NoSelfUpdateFunctionality_NoBinaryDownload(t *testing.T) {
 	cleanup := chdirToRepoRoot(t)
 	defer cleanup()
 
-	properties := newProperties()
-
-	// Patterns that indicate binary download/replacement
 	binaryPatterns := []string{
-		"os.Executable",   // Getting current executable path for replacement
-		"ioutil.TempFile", // Creating temp files (for download)
-		"os.Rename",       // Replacing binary
-		"io.Copy",         // Could be used for download
-		"downloadBinary",  // Download binary
-		"DownloadBinary",  // Download binary (exported)
-		"replaceBinary",   // Replace binary
-		"ReplaceBinary",   // Replace binary (exported)
-		"updateBinary",    // Update binary
-		"UpdateBinary",    // Update binary (exported)
+		"downloadBinary",
+		"DownloadBinary",
+		"replaceBinary",
+		"ReplaceBinary",
+		"updateBinary",
+		"UpdateBinary",
 	}
 
-	properties.Property("codebase must not contain binary download patterns", prop.ForAll(
-		func(patternIndex int) bool {
-			pattern := binaryPatterns[patternIndex%len(binaryPatterns)]
+	goFiles, err := findGoSourceFiles(".")
+	if err != nil {
+		t.Fatalf("Failed to find Go source files: %v", err)
+	}
 
-			// Search all Go source files (excluding test files and vendor)
-			goFiles, err := findGoSourceFiles(".")
-			if err != nil {
-				return false
+	for _, file := range goFiles {
+		if strings.HasSuffix(file, "_test.go") ||
+			strings.Contains(file, "vendor/") ||
+			strings.Contains(file, "test/") {
+			continue
+		}
+
+		content, err := os.ReadFile(file)
+		if err != nil {
+			continue
+		}
+
+		for _, pattern := range binaryPatterns {
+			if strings.Contains(string(content), pattern) {
+				t.Fatalf("Found forbidden binary download pattern %q in %s", pattern, file)
 			}
-
-			for _, file := range goFiles {
-				// Skip test files and vendor directory
-				if strings.HasSuffix(file, "_test.go") ||
-					strings.Contains(file, "vendor/") ||
-					strings.Contains(file, "test/") {
-					continue
-				}
-
-				content, err := os.ReadFile(file)
-				if err != nil {
-					continue
-				}
-
-				if strings.Contains(string(content), pattern) {
-					return false
-				}
-			}
-
-			return true
-		},
-		gen.IntRange(0, 99), // Run 100 iterations
-	))
-
-	properties.TestingRun(t, gopter.ConsoleReporter(false))
+		}
+	}
 }
 
 // findGoSourceFiles recursively finds all .go files in a directory.
@@ -137,12 +101,10 @@ func findGoSourceFiles(root string) ([]string, error) {
 			return nil // Skip files we can't access
 		}
 
-		// Skip .git directory
 		if info.IsDir() && info.Name() == ".git" {
 			return filepath.SkipDir
 		}
 
-		// Collect .go files
 		if !info.IsDir() && strings.HasSuffix(info.Name(), ".go") {
 			files = append(files, path)
 		}

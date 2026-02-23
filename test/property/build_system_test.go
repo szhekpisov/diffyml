@@ -6,10 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/leanovate/gopter"
-	"github.com/leanovate/gopter/gen"
-	"github.com/leanovate/gopter/prop"
 )
 
 // TestProperty2_BuildSystemSuccess tests that running `go build` completes
@@ -19,52 +15,28 @@ func TestProperty2_BuildSystemSuccess(t *testing.T) {
 	cleanup := chdirToRepoRoot(t)
 	defer cleanup()
 
-	properties := newHeavyProperties()
+	binaryName := "diffyml_build_test"
+	os.Remove(binaryName)
+	defer os.Remove(binaryName)
 
-	properties.Property("go build must complete successfully without errors", prop.ForAll(
-		func(dummyInput int) bool {
-			// Create a unique binary name for this test iteration
-			binaryName := "diffyml_build_test"
+	cmd := exec.Command("go", "build", "-o", binaryName)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("Build failed: %v\nOutput: %s", err, string(output))
+	}
 
-			// Clean up any existing binary
-			os.Remove(binaryName)
-			defer os.Remove(binaryName)
+	info, err := os.Stat(binaryName)
+	if err != nil {
+		t.Fatalf("Binary not found after build: %v", err)
+	}
 
-			// Run go build
-			cmd := exec.Command("go", "build", "-o", binaryName)
-			output, err := cmd.CombinedOutput()
+	if !info.Mode().IsRegular() {
+		t.Fatal("Binary is not a regular file")
+	}
 
-			// Build must succeed
-			if err != nil {
-				t.Logf("Build failed: %v\nOutput: %s", err, string(output))
-				return false
-			}
-
-			// Verify the binary was created
-			info, err := os.Stat(binaryName)
-			if err != nil {
-				t.Logf("Binary not found after build: %v", err)
-				return false
-			}
-
-			// Verify it's a regular file
-			if !info.Mode().IsRegular() {
-				t.Logf("Binary is not a regular file")
-				return false
-			}
-
-			// Verify it's executable
-			if info.Mode()&0111 == 0 {
-				t.Logf("Binary is not executable")
-				return false
-			}
-
-			return true
-		},
-		gen.IntRange(1, 100), // Run 100 iterations
-	))
-
-	properties.TestingRun(t, gopter.ConsoleReporter(false))
+	if info.Mode()&0111 == 0 {
+		t.Fatal("Binary is not executable")
+	}
 }
 
 // TestProperty2_BuildSystemSuccess_WithCleanEnvironment tests that the build
@@ -74,53 +46,33 @@ func TestProperty2_BuildSystemSuccess_WithCleanEnvironment(t *testing.T) {
 	cleanup := chdirToRepoRoot(t)
 	defer cleanup()
 
-	properties := newHeavyProperties()
+	binaryName := "diffyml_clean_build_test"
+	os.Remove(binaryName)
+	defer os.Remove(binaryName)
 
-	properties.Property("go build must succeed without additional dependencies", prop.ForAll(
-		func(dummyInput int) bool {
-			binaryName := "diffyml_clean_build_test"
+	if _, err := os.Stat("go.mod"); err != nil {
+		t.Fatalf("go.mod not found: %v", err)
+	}
 
-			// Clean up
-			os.Remove(binaryName)
-			defer os.Remove(binaryName)
+	cmd := exec.Command("go", "build", "-v", "-o", binaryName)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("Build failed: %v\nOutput: %s", err, string(output))
+	}
 
-			// Verify go.mod exists (required for build)
-			if _, err := os.Stat("go.mod"); err != nil {
-				t.Logf("go.mod not found: %v", err)
-				return false
-			}
+	outputStr := strings.ToLower(string(output))
+	if strings.Contains(outputStr, "error:") || strings.Contains(outputStr, "fatal:") {
+		t.Fatalf("Build output contains errors: %s", string(output))
+	}
 
-			// Run go build with verbose output
-			cmd := exec.Command("go", "build", "-v", "-o", binaryName)
-			output, err := cmd.CombinedOutput()
+	info, err := os.Stat(binaryName)
+	if err != nil {
+		t.Fatalf("Binary not found: %v", err)
+	}
 
-			if err != nil {
-				t.Logf("Build failed: %v\nOutput: %s", err, string(output))
-				return false
-			}
-
-			// Verify no error messages in output
-			outputStr := strings.ToLower(string(output))
-			hasErrors := strings.Contains(outputStr, "error:") ||
-				strings.Contains(outputStr, "fatal:")
-
-			if hasErrors {
-				t.Logf("Build output contains errors: %s", string(output))
-				return false
-			}
-
-			// Verify binary exists and is executable
-			info, err := os.Stat(binaryName)
-			if err != nil {
-				return false
-			}
-
-			return info.Mode().IsRegular() && info.Mode()&0111 != 0
-		},
-		gen.IntRange(1, 100), // Run 100 iterations
-	))
-
-	properties.TestingRun(t, gopter.ConsoleReporter(false))
+	if !info.Mode().IsRegular() || info.Mode()&0111 == 0 {
+		t.Fatal("Binary is not a regular executable file")
+	}
 }
 
 // TestProperty2_BuildSystemSuccess_WithLdflags tests that the build succeeds
@@ -130,55 +82,39 @@ func TestProperty2_BuildSystemSuccess_WithLdflags(t *testing.T) {
 	cleanup := chdirToRepoRoot(t)
 	defer cleanup()
 
-	properties := newHeavyProperties()
+	binaryName := "diffyml_ldflags_test"
+	os.Remove(binaryName)
+	defer os.Remove(binaryName)
 
-	properties.Property("go build with ldflags must succeed", prop.ForAll(
-		func(dummyInput int) bool {
-			binaryName := "diffyml_ldflags_test"
+	ldflags := "-X main.version=1.0.0 -X main.commit=test123 -X main.buildDate=2024-01-15"
+	cmd := exec.Command("go", "build", "-ldflags", ldflags, "-o", binaryName)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("Build with ldflags failed: %v\nOutput: %s", err, string(output))
+	}
 
-			// Clean up
-			os.Remove(binaryName)
-			defer os.Remove(binaryName)
+	info, err := os.Stat(binaryName)
+	if err != nil {
+		t.Fatalf("Binary not found: %v", err)
+	}
 
-			// Build with ldflags (as Homebrew would do)
-			ldflags := "-X main.version=1.0.0 -X main.commit=test123 -X main.buildDate=2024-01-15"
-			cmd := exec.Command("go", "build", "-ldflags", ldflags, "-o", binaryName)
-			output, err := cmd.CombinedOutput()
+	if !info.Mode().IsRegular() || info.Mode()&0111 == 0 {
+		t.Fatal("Binary is not a regular executable file")
+	}
 
-			if err != nil {
-				t.Logf("Build with ldflags failed: %v\nOutput: %s", err, string(output))
-				return false
-			}
+	versionCmd := exec.Command("./"+binaryName, "--version")
+	versionOutput, err := versionCmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("Version check failed: %v", err)
+	}
 
-			// Verify binary was created
-			info, err := os.Stat(binaryName)
-			if err != nil {
-				return false
-			}
-
-			// Verify it's executable
-			if !info.Mode().IsRegular() || info.Mode()&0111 == 0 {
-				return false
-			}
-
-			// Verify the binary runs and shows injected version
-			versionCmd := exec.Command("./"+binaryName, "--version")
-			versionOutput, err := versionCmd.CombinedOutput()
-			if err != nil {
-				t.Logf("Version check failed: %v", err)
-				return false
-			}
-
-			versionStr := string(versionOutput)
-			hasInjectedVersion := strings.Contains(versionStr, "1.0.0") &&
-				strings.Contains(versionStr, "test123")
-
-			return hasInjectedVersion
-		},
-		gen.IntRange(1, 100), // Run 100 iterations
-	))
-
-	properties.TestingRun(t, gopter.ConsoleReporter(false))
+	versionStr := string(versionOutput)
+	if !strings.Contains(versionStr, "1.0.0") {
+		t.Error("output missing injected version '1.0.0'")
+	}
+	if !strings.Contains(versionStr, "test123") {
+		t.Error("output missing injected commit 'test123'")
+	}
 }
 
 // TestProperty4_SingleBinaryOutput tests that a successful build produces
@@ -188,82 +124,53 @@ func TestProperty4_SingleBinaryOutput(t *testing.T) {
 	cleanup := chdirToRepoRoot(t)
 	defer cleanup()
 
-	properties := newHeavyProperties()
+	binaryName := "diffyml_single_output_test"
+	os.Remove(binaryName)
+	defer os.Remove(binaryName)
 
-	properties.Property("build must produce exactly one executable binary", prop.ForAll(
-		func(dummyInput int) bool {
-			binaryName := "diffyml_single_output_test"
+	beforeFiles, err := countFilesInDir(".")
+	if err != nil {
+		t.Fatalf("Failed to count files before build: %v", err)
+	}
 
-			// Clean up any existing files
-			os.Remove(binaryName)
-			defer os.Remove(binaryName)
+	cmd := exec.Command("go", "build", "-o", binaryName)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("Build failed: %v\nOutput: %s", err, string(output))
+	}
 
-			// Count files before build
-			beforeFiles, err := countFilesInDir(".")
-			if err != nil {
-				t.Logf("Failed to count files before build: %v", err)
-				return false
-			}
+	afterFiles, err := countFilesInDir(".")
+	if err != nil {
+		t.Fatalf("Failed to count files after build: %v", err)
+	}
 
-			// Run go build
-			cmd := exec.Command("go", "build", "-o", binaryName)
-			output, err := cmd.CombinedOutput()
-			if err != nil {
-				t.Logf("Build failed: %v\nOutput: %s", err, string(output))
-				return false
-			}
+	newFilesCount := afterFiles - beforeFiles
+	if newFilesCount != 1 {
+		t.Fatalf("Expected 1 new file, got %d", newFilesCount)
+	}
 
-			// Count files after build
-			afterFiles, err := countFilesInDir(".")
-			if err != nil {
-				t.Logf("Failed to count files after build: %v", err)
-				return false
-			}
+	info, err := os.Stat(binaryName)
+	if err != nil {
+		t.Fatalf("Binary not found: %v", err)
+	}
 
-			// Exactly one new file should be created
-			newFilesCount := afterFiles - beforeFiles
-			if newFilesCount != 1 {
-				t.Logf("Expected 1 new file, got %d", newFilesCount)
-				return false
-			}
+	if !info.Mode().IsRegular() {
+		t.Fatal("Output is not a regular file")
+	}
 
-			// Verify the binary exists with the expected name
-			info, err := os.Stat(binaryName)
-			if err != nil {
-				t.Logf("Binary not found: %v", err)
-				return false
-			}
+	if info.Mode()&0111 == 0 {
+		t.Fatal("Output is not executable")
+	}
 
-			// Verify it's a single regular file (not a directory)
-			if !info.Mode().IsRegular() {
-				t.Logf("Output is not a regular file")
-				return false
-			}
+	absPath, err := filepath.Abs(binaryName)
+	if err != nil {
+		t.Fatalf("Failed to get absolute path: %v", err)
+	}
 
-			// Verify it's executable
-			if info.Mode()&0111 == 0 {
-				t.Logf("Output is not executable")
-				return false
-			}
-
-			// Verify the binary name matches what we specified
-			absPath, err := filepath.Abs(binaryName)
-			if err != nil {
-				return false
-			}
-
-			expectedPath := filepath.Join(filepath.Dir(absPath), binaryName)
-			if absPath != expectedPath {
-				t.Logf("Binary path mismatch: got %s, expected %s", absPath, expectedPath)
-				return false
-			}
-
-			return true
-		},
-		gen.IntRange(1, 100), // Run 100 iterations
-	))
-
-	properties.TestingRun(t, gopter.ConsoleReporter(false))
+	expectedPath := filepath.Join(filepath.Dir(absPath), binaryName)
+	if absPath != expectedPath {
+		t.Fatalf("Binary path mismatch: got %s, expected %s", absPath, expectedPath)
+	}
 }
 
 // TestProperty4_SingleBinaryOutput_WithDefaultName tests that building without
@@ -273,41 +180,24 @@ func TestProperty4_SingleBinaryOutput_WithDefaultName(t *testing.T) {
 	cleanup := chdirToRepoRoot(t)
 	defer cleanup()
 
-	properties := newHeavyProperties()
+	defaultBinaryName := "diffyml"
+	os.Remove(defaultBinaryName)
+	defer os.Remove(defaultBinaryName)
 
-	properties.Property("build without -o flag must produce single binary with module name", prop.ForAll(
-		func(dummyInput int) bool {
-			// Default binary name is the module name (diffyml)
-			defaultBinaryName := "diffyml"
+	cmd := exec.Command("go", "build")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("Build failed: %v\nOutput: %s", err, string(output))
+	}
 
-			// Clean up
-			os.Remove(defaultBinaryName)
-			defer os.Remove(defaultBinaryName)
+	info, err := os.Stat(defaultBinaryName)
+	if err != nil {
+		t.Fatalf("Default binary not found: %v", err)
+	}
 
-			// Run go build without -o flag
-			cmd := exec.Command("go", "build")
-			output, err := cmd.CombinedOutput()
-			if err != nil {
-				t.Logf("Build failed: %v\nOutput: %s", err, string(output))
-				return false
-			}
-
-			// Verify the binary was created with the default name
-			info, err := os.Stat(defaultBinaryName)
-			if err != nil {
-				t.Logf("Default binary not found: %v", err)
-				return false
-			}
-
-			// Verify it's a regular executable file
-			isValid := info.Mode().IsRegular() && info.Mode()&0111 != 0
-
-			return isValid
-		},
-		gen.IntRange(1, 100), // Run 100 iterations
-	))
-
-	properties.TestingRun(t, gopter.ConsoleReporter(false))
+	if !info.Mode().IsRegular() || info.Mode()&0111 == 0 {
+		t.Fatal("Binary is not a regular executable file")
+	}
 }
 
 // TestProperty4_SingleBinaryOutput_NoExtraFiles tests that the build process
@@ -317,59 +207,35 @@ func TestProperty4_SingleBinaryOutput_NoExtraFiles(t *testing.T) {
 	cleanup := chdirToRepoRoot(t)
 	defer cleanup()
 
-	properties := newHeavyProperties()
+	binaryName := "diffyml_no_extra_files_test"
+	os.Remove(binaryName)
+	defer os.Remove(binaryName)
 
-	properties.Property("build must not create extra files beyond the binary", prop.ForAll(
-		func(dummyInput int) bool {
-			binaryName := "diffyml_no_extra_files_test"
+	beforeFiles, err := listFilesInDir(".")
+	if err != nil {
+		t.Fatalf("Failed to list files before build: %v", err)
+	}
 
-			// Clean up
-			os.Remove(binaryName)
-			defer os.Remove(binaryName)
+	cmd := exec.Command("go", "build", "-o", binaryName)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("Build failed: %v\nOutput: %s", err, string(output))
+	}
 
-			// Get list of files before build
-			beforeFiles, err := listFilesInDir(".")
-			if err != nil {
-				t.Logf("Failed to list files before build: %v", err)
-				return false
-			}
+	afterFiles, err := listFilesInDir(".")
+	if err != nil {
+		t.Fatalf("Failed to list files after build: %v", err)
+	}
 
-			// Run go build
-			cmd := exec.Command("go", "build", "-o", binaryName)
-			output, err := cmd.CombinedOutput()
-			if err != nil {
-				t.Logf("Build failed: %v\nOutput: %s", err, string(output))
-				return false
-			}
+	newFiles := findNewFiles(beforeFiles, afterFiles)
 
-			// Get list of files after build
-			afterFiles, err := listFilesInDir(".")
-			if err != nil {
-				t.Logf("Failed to list files after build: %v", err)
-				return false
-			}
+	if len(newFiles) != 1 {
+		t.Fatalf("Expected 1 new file, got %d: %v", len(newFiles), newFiles)
+	}
 
-			// Find new files
-			newFiles := findNewFiles(beforeFiles, afterFiles)
-
-			// Should have exactly one new file (the binary)
-			if len(newFiles) != 1 {
-				t.Logf("Expected 1 new file, got %d: %v", len(newFiles), newFiles)
-				return false
-			}
-
-			// The new file should be our binary
-			if newFiles[0] != binaryName {
-				t.Logf("New file is not the expected binary: got %s, expected %s", newFiles[0], binaryName)
-				return false
-			}
-
-			return true
-		},
-		gen.IntRange(1, 100), // Run 100 iterations
-	))
-
-	properties.TestingRun(t, gopter.ConsoleReporter(false))
+	if newFiles[0] != binaryName {
+		t.Fatalf("New file is not the expected binary: got %s, expected %s", newFiles[0], binaryName)
+	}
 }
 
 // TestProperty5_DependencyIntegrity tests that all dependencies have checksums
@@ -379,55 +245,34 @@ func TestProperty5_DependencyIntegrity(t *testing.T) {
 	cleanup := chdirToRepoRoot(t)
 	defer cleanup()
 
-	properties := newHeavyProperties()
+	goSumInfo, err := os.Stat("go.sum")
+	if err != nil {
+		t.Fatalf("go.sum not found: %v", err)
+	}
 
-	properties.Property("all dependencies must have checksums in go.sum", prop.ForAll(
-		func(dummyInput int) bool {
-			// Verify go.sum exists
-			goSumInfo, err := os.Stat("go.sum")
-			if err != nil {
-				t.Logf("go.sum not found: %v", err)
-				return false
-			}
+	if !goSumInfo.Mode().IsRegular() {
+		t.Fatal("go.sum is not a regular file")
+	}
 
-			// Verify it's a regular file
-			if !goSumInfo.Mode().IsRegular() {
-				t.Logf("go.sum is not a regular file")
-				return false
-			}
+	goSumContent, err := os.ReadFile("go.sum")
+	if err != nil {
+		t.Fatalf("Failed to read go.sum: %v", err)
+	}
 
-			// Read go.sum content
-			goSumContent, err := os.ReadFile("go.sum")
-			if err != nil {
-				t.Logf("Failed to read go.sum: %v", err)
-				return false
-			}
+	if len(goSumContent) == 0 {
+		t.Fatal("go.sum is empty")
+	}
 
-			// Verify go.sum is not empty
-			if len(goSumContent) == 0 {
-				t.Logf("go.sum is empty")
-				return false
-			}
+	cmd := exec.Command("go", "mod", "verify")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("go mod verify failed: %v\nOutput: %s", err, string(output))
+	}
 
-			// Run go mod verify to check dependency integrity
-			cmd := exec.Command("go", "mod", "verify")
-			output, err := cmd.CombinedOutput()
-			if err != nil {
-				t.Logf("go mod verify failed: %v\nOutput: %s", err, string(output))
-				return false
-			}
-
-			// Verify the output indicates all modules are verified
-			outputStr := string(output)
-			hasVerifiedMessage := strings.Contains(outputStr, "all modules verified") ||
-				strings.Contains(outputStr, "verified")
-
-			return hasVerifiedMessage
-		},
-		gen.IntRange(1, 100), // Run 100 iterations
-	))
-
-	properties.TestingRun(t, gopter.ConsoleReporter(false))
+	outputStr := string(output)
+	if !strings.Contains(outputStr, "all modules verified") && !strings.Contains(outputStr, "verified") {
+		t.Fatalf("go mod verify did not confirm verification: %s", outputStr)
+	}
 }
 
 // TestProperty5_DependencyIntegrity_WithGoModCheck tests that go.mod and go.sum
@@ -437,44 +282,26 @@ func TestProperty5_DependencyIntegrity_WithGoModCheck(t *testing.T) {
 	cleanup := chdirToRepoRoot(t)
 	defer cleanup()
 
-	properties := newHeavyProperties()
+	cmd := exec.Command("go", "mod", "tidy", "-v")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("go mod tidy failed: %v\nOutput: %s", err, string(output))
+	}
 
-	properties.Property("go.mod and go.sum must be in sync", prop.ForAll(
-		func(dummyInput int) bool {
-			// Run go mod tidy to check if files are in sync
-			// This command will fail if go.mod and go.sum are out of sync
-			cmd := exec.Command("go", "mod", "tidy", "-v")
-			output, err := cmd.CombinedOutput()
-			if err != nil {
-				t.Logf("go mod tidy failed: %v\nOutput: %s", err, string(output))
-				return false
-			}
+	goSumInfo, err := os.Stat("go.sum")
+	if err != nil {
+		t.Fatalf("go.sum not found after tidy: %v", err)
+	}
 
-			// After tidy, verify that go.sum still exists and is valid
-			goSumInfo, err := os.Stat("go.sum")
-			if err != nil {
-				t.Logf("go.sum not found after tidy: %v", err)
-				return false
-			}
+	if !goSumInfo.Mode().IsRegular() {
+		t.Fatal("go.sum is not a regular file after tidy")
+	}
 
-			if !goSumInfo.Mode().IsRegular() {
-				return false
-			}
-
-			// Verify go mod verify still passes
-			verifyCmd := exec.Command("go", "mod", "verify")
-			verifyOutput, err := verifyCmd.CombinedOutput()
-			if err != nil {
-				t.Logf("go mod verify failed after tidy: %v\nOutput: %s", err, string(verifyOutput))
-				return false
-			}
-
-			return true
-		},
-		gen.IntRange(1, 100), // Run 100 iterations
-	))
-
-	properties.TestingRun(t, gopter.ConsoleReporter(false))
+	verifyCmd := exec.Command("go", "mod", "verify")
+	verifyOutput, err := verifyCmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("go mod verify failed after tidy: %v\nOutput: %s", err, string(verifyOutput))
+	}
 }
 
 // TestProperty5_DependencyIntegrity_NoUnversionedDeps tests that all
@@ -484,81 +311,50 @@ func TestProperty5_DependencyIntegrity_NoUnversionedDeps(t *testing.T) {
 	cleanup := chdirToRepoRoot(t)
 	defer cleanup()
 
-	properties := newHeavyProperties()
+	goModContent, err := os.ReadFile("go.mod")
+	if err != nil {
+		t.Fatalf("Failed to read go.mod: %v", err)
+	}
 
-	properties.Property("all dependencies must have explicit versions", prop.ForAll(
-		func(dummyInput int) bool {
-			// Read go.mod
-			goModContent, err := os.ReadFile("go.mod")
-			if err != nil {
-				t.Logf("Failed to read go.mod: %v", err)
-				return false
+	lines := strings.Split(string(goModContent), "\n")
+
+	inRequireBlock := false
+	for _, line := range lines {
+		trimmedLine := strings.TrimSpace(line)
+
+		if strings.HasPrefix(trimmedLine, "require (") {
+			inRequireBlock = true
+			continue
+		}
+		if inRequireBlock && trimmedLine == ")" {
+			inRequireBlock = false
+			continue
+		}
+
+		if strings.HasPrefix(trimmedLine, "require ") || inRequireBlock {
+			if trimmedLine == "" || trimmedLine == ")" || strings.HasPrefix(trimmedLine, "//") {
+				continue
 			}
 
-			goModText := string(goModContent)
-			lines := strings.Split(goModText, "\n")
+			depLine := strings.TrimPrefix(trimmedLine, "require ")
+			if strings.HasSuffix(depLine, "(") {
+				continue
+			}
 
-			// Check each require line for version information
-			inRequireBlock := false
-			for _, line := range lines {
-				trimmedLine := strings.TrimSpace(line)
+			if depLine != "" && !strings.Contains(depLine, "//") {
+				parts := strings.Fields(depLine)
+				if len(parts) >= 2 {
+					version := parts[1]
+					hasValidVersion := strings.HasPrefix(version, "v") &&
+						(strings.Contains(version, ".") || strings.Contains(version, "-"))
 
-				// Track if we're in a require block
-				if strings.HasPrefix(trimmedLine, "require (") {
-					inRequireBlock = true
-					continue
-				}
-				if inRequireBlock && trimmedLine == ")" {
-					inRequireBlock = false
-					continue
-				}
-
-				// Check require lines
-				if strings.HasPrefix(trimmedLine, "require ") || inRequireBlock {
-					// Skip empty lines and closing parenthesis
-					if trimmedLine == "" || trimmedLine == ")" {
-						continue
-					}
-
-					// Skip comments
-					if strings.HasPrefix(trimmedLine, "//") {
-						continue
-					}
-
-					// Extract the dependency line
-					depLine := strings.TrimPrefix(trimmedLine, "require ")
-
-					// Skip if it's just the opening of a require block
-					if strings.HasSuffix(depLine, "(") {
-						continue
-					}
-
-					// Check if the line contains a version
-					// Valid versions start with 'v' followed by numbers
-					// or are pseudo-versions with timestamps
-					if depLine != "" && !strings.Contains(depLine, "//") {
-						parts := strings.Fields(depLine)
-						if len(parts) >= 2 {
-							version := parts[1]
-							// Check for valid version format
-							hasValidVersion := strings.HasPrefix(version, "v") &&
-								(strings.Contains(version, ".") || strings.Contains(version, "-"))
-
-							if !hasValidVersion {
-								t.Logf("Dependency without valid version: %s", depLine)
-								return false
-							}
-						}
+					if !hasValidVersion {
+						t.Fatalf("Dependency without valid version: %s", depLine)
 					}
 				}
 			}
-
-			return true
-		},
-		gen.IntRange(1, 100), // Run 100 iterations
-	))
-
-	properties.TestingRun(t, gopter.ConsoleReporter(false))
+		}
+	}
 }
 
 // TestProperty5_DependencyIntegrity_BuildWithVerify tests that building
@@ -568,42 +364,30 @@ func TestProperty5_DependencyIntegrity_BuildWithVerify(t *testing.T) {
 	cleanup := chdirToRepoRoot(t)
 	defer cleanup()
 
-	properties := newHeavyProperties()
+	verifyCmd := exec.Command("go", "mod", "verify")
+	verifyOutput, err := verifyCmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("go mod verify failed: %v\nOutput: %s", err, string(verifyOutput))
+	}
 
-	properties.Property("build must succeed after dependency verification", prop.ForAll(
-		func(dummyInput int) bool {
-			// First, verify dependencies
-			verifyCmd := exec.Command("go", "mod", "verify")
-			verifyOutput, err := verifyCmd.CombinedOutput()
-			if err != nil {
-				t.Logf("go mod verify failed: %v\nOutput: %s", err, string(verifyOutput))
-				return false
-			}
+	binaryName := "diffyml_verify_build_test"
+	os.Remove(binaryName)
+	defer os.Remove(binaryName)
 
-			// Then, build
-			binaryName := "diffyml_verify_build_test"
-			os.Remove(binaryName)
-			defer os.Remove(binaryName)
+	buildCmd := exec.Command("go", "build", "-o", binaryName)
+	buildOutput, err := buildCmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("Build failed after verify: %v\nOutput: %s", err, string(buildOutput))
+	}
 
-			buildCmd := exec.Command("go", "build", "-o", binaryName)
-			buildOutput, err := buildCmd.CombinedOutput()
-			if err != nil {
-				t.Logf("Build failed after verify: %v\nOutput: %s", err, string(buildOutput))
-				return false
-			}
+	info, err := os.Stat(binaryName)
+	if err != nil {
+		t.Fatalf("Binary not found: %v", err)
+	}
 
-			// Verify binary was created
-			info, err := os.Stat(binaryName)
-			if err != nil {
-				return false
-			}
-
-			return info.Mode().IsRegular() && info.Mode()&0111 != 0
-		},
-		gen.IntRange(1, 100), // Run 100 iterations
-	))
-
-	properties.TestingRun(t, gopter.ConsoleReporter(false))
+	if !info.Mode().IsRegular() || info.Mode()&0111 == 0 {
+		t.Fatal("Binary is not a regular executable file")
+	}
 }
 
 // Helper function to count files in a directory (non-recursive)

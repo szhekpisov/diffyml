@@ -1,7 +1,7 @@
 package diffyml_test
 
 import (
-	"diffyml/pkg/diffyml"
+	"github.com/szhekpisov/diffyml/pkg/diffyml"
 )
 
 // yml converts a YAML string to bytes for testing.

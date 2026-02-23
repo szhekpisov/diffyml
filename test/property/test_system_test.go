@@ -64,7 +64,7 @@ func TestProperty6_TestExecutionSuccess_PackageDiscovery(t *testing.T) {
 	outputStr := string(output)
 
 	// Verify the package was tested
-	hasPackageOutput := strings.Contains(outputStr, "diffyml/pkg/diffyml") ||
+	hasPackageOutput := strings.Contains(outputStr, "github.com/szhekpisov/diffyml/pkg/diffyml") ||
 		strings.Contains(outputStr, "ok")
 
 	if !hasPackageOutput {

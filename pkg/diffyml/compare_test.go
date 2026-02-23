@@ -23,7 +23,7 @@ package diffyml_test
 import (
 	"testing"
 
-	"diffyml/pkg/diffyml"
+	"github.com/szhekpisov/diffyml/pkg/diffyml"
 )
 
 func TestCompare(t *testing.T) {

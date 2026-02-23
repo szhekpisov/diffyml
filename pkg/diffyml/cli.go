@@ -437,6 +437,11 @@ type RunConfig struct {
 	FromContent []byte
 	// ToContent is optional pre-loaded content for 'to' file (for testing).
 	ToContent []byte
+	// FilePairs is optional in-memory file pairs for directory-mode testing.
+	// Key: filename; Value: [0]=from content, [1]=to content.
+	// nil content at [0] means file absent in from-dir.
+	// nil content at [1] means file absent in to-dir.
+	FilePairs map[string][2][]byte
 }
 
 // NewRunConfig creates a new RunConfig with default values.
@@ -463,6 +468,21 @@ func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
 	// Validate configuration (unless using pre-loaded content for testing)
 	if rc.FromContent == nil && rc.ToContent == nil {
 		if err := cfg.Validate(); err != nil {
+			fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
+			return NewExitResult(ExitCodeError, err)
+		}
+	}
+
+	// Directory detection (skip when test content is pre-loaded)
+	if rc.FromContent == nil && rc.ToContent == nil && rc.FilePairs == nil {
+		fromIsDir := IsDirectory(cfg.FromFile)
+		toIsDir := IsDirectory(cfg.ToFile)
+
+		if fromIsDir && toIsDir {
+			return runDirectory(cfg, rc, cfg.FromFile, cfg.ToFile)
+		}
+		if fromIsDir != toIsDir {
+			err := fmt.Errorf("both arguments must be the same type (both files or both directories)")
 			fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
 			return NewExitResult(ExitCodeError, err)
 		}

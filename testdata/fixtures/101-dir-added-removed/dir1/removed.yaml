@@ -1,0 +1,5 @@
+kind: ConfigMap
+metadata:
+  name: old-config
+data:
+  key: value

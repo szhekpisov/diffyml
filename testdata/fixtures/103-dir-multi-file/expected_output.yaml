@@ -1,6 +1,5 @@
 --- a/deployment.yaml
 +++ b/deployment.yaml
-
 spec.replicas
   ± value change
     - 1
@@ -8,7 +7,6 @@ spec.replicas
 
 --- a/ingress.yaml
 +++ /dev/null
-
 [0]
   + one list entry added:
     - <nil>
@@ -27,7 +25,6 @@ spec.replicas
 
 --- /dev/null
 +++ b/secret.yaml
-
 [0]
   + one list entry added:
     - apiVersion: v1
@@ -43,7 +40,6 @@ spec.replicas
 
 --- a/service.yaml
 +++ b/service.yaml
-
 spec.port
   ± value change
     - 80

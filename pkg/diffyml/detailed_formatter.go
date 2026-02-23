@@ -47,8 +47,6 @@ func (f *DetailedFormatter) Format(diffs []Difference, opts *FormatOptions) stri
 
 	if !opts.OmitHeader {
 		f.formatHeader(&sb, diffs, opts)
-	} else {
-		sb.WriteString("\n")
 	}
 
 	groups := f.groupByPath(diffs)

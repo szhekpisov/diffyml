@@ -153,8 +153,8 @@ func FormatFileHeader(filename string, pairType FilePairType, opts *FormatOption
 
 	if opts != nil && opts.Color {
 		return fmt.Sprintf("%s%s%s\n%s%s%s\n",
-			styleBold+colorYellow, fromLine, colorReset,
-			styleBold+colorYellow, toLine, colorReset)
+			styleBold+colorWhite, fromLine, colorReset,
+			styleBold+colorWhite, toLine, colorReset)
 	}
 	return fmt.Sprintf("%s\n%s\n", fromLine, toLine)
 }

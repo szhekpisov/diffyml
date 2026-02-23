@@ -454,12 +454,12 @@ func TestFormatFileHeader_BothExist_WithColor(t *testing.T) {
 	opts := &FormatOptions{Color: true}
 	header := FormatFileHeader("deploy.yaml", FilePairBothExist, opts)
 
-	// Should contain ANSI bold+yellow codes
+	// Should contain ANSI bold+white for both "---" and "+++"
 	if !strings.Contains(header, "\033[1m") {
 		t.Errorf("expected bold ANSI code in colored header, got: %q", header)
 	}
-	if !strings.Contains(header, "\033[33m") {
-		t.Errorf("expected yellow ANSI code in colored header, got: %q", header)
+	if !strings.Contains(header, "\033[37m") {
+		t.Errorf("expected white ANSI code in colored header, got: %q", header)
 	}
 	if !strings.Contains(header, "--- a/deploy.yaml") {
 		t.Errorf("expected '--- a/deploy.yaml' in header, got: %q", header)

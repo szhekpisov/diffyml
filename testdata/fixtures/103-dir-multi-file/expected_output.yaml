@@ -1,0 +1,51 @@
+--- a/deployment.yaml
++++ b/deployment.yaml
+
+spec.replicas
+  ± value change
+    - 1
+    + 3
+
+--- a/ingress.yaml
++++ /dev/null
+
+[0]
+  + one list entry added:
+    - <nil>
+
+  - one list entry removed:
+    - apiVersion: networking.k8s.io/v1
+      kind: Ingress
+      metadata:
+        name: myapp-ingress
+      spec:
+        defaultBackend:
+          service:
+            name: myapp
+            port:
+              number: 80
+
+--- /dev/null
++++ b/secret.yaml
+
+[0]
+  + one list entry added:
+    - apiVersion: v1
+      kind: Secret
+      metadata:
+        name: myapp-secret
+      type: Opaque
+      data:
+        token: YWJjMTIz
+
+  - one list entry removed:
+    - <nil>
+
+--- a/service.yaml
++++ b/service.yaml
+
+spec.port
+  ± value change
+    - 80
+    + 443
+

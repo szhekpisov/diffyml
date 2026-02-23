@@ -27,6 +27,12 @@ Structural diff for YAML files. Understands YAML semantics and detects Kubernete
 go install github.com/szhekpisov/diffyml@latest
 ```
 
+Make sure `$GOPATH/bin` is in your `PATH`:
+
+```bash
+export PATH="$(go env GOPATH)/bin:$PATH"
+```
+
 ### Homebrew
 
 Coming soon.

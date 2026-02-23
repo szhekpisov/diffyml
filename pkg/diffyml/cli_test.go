@@ -1488,8 +1488,8 @@ func TestRun_MixedTypes_DirAndFile_Error(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.WriteString("key: value\n")
-	f.Close()
+	_, _ = f.WriteString("key: value\n")
+	_ = f.Close()
 	defer os.Remove(f.Name())
 
 	cfg := NewCLIConfig()
@@ -1518,8 +1518,8 @@ func TestRun_MixedTypes_FileAndDir_Error(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.WriteString("key: value\n")
-	f.Close()
+	_, _ = f.WriteString("key: value\n")
+	_ = f.Close()
 	defer os.Remove(f.Name())
 
 	cfg := NewCLIConfig()

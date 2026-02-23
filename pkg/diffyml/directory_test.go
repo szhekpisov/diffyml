@@ -22,7 +22,7 @@ func TestIsDirectory_WithFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.Remove(f.Name())
-	f.Close()
+	_ = f.Close()
 
 	if IsDirectory(f.Name()) {
 		t.Errorf("expected IsDirectory(%q) to be false for a file", f.Name())

@@ -17,7 +17,7 @@ func IsDirectory(path string) bool {
 	if path == "" {
 		return false
 	}
-	info, err := os.Stat(path)
+	info, err := os.Stat(filepath.Clean(path)) //nolint:gosec // CLI tool intentionally accepts user-supplied paths
 	if err != nil {
 		return false
 	}

@@ -1,0 +1,9 @@
+--- a/deploy.yaml
++++ b/deploy.yaml
+Found one difference
+
+spec.replicas
+  ± value change
+    - 1
+    + 3
+

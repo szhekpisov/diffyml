@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 )
@@ -1419,6 +1420,176 @@ func TestRun_RemoteWithSwap(t *testing.T) {
 	output := stdout.String()
 	if !strings.Contains(output, "from_value") || !strings.Contains(output, "to_value") {
 		t.Errorf("expected output to contain swapped diff values, got: %s", output)
+	}
+}
+
+// --- Task 4: Wire directory mode into CLI entry point ---
+
+func TestRun_BothDirectories_DispatchesToDirectoryMode(t *testing.T) {
+	fromDir := t.TempDir()
+	toDir := t.TempDir()
+
+	createFile(t, fromDir, "deploy.yaml", "key: old\n")
+	createFile(t, toDir, "deploy.yaml", "key: new\n")
+
+	cfg := NewCLIConfig()
+	cfg.FromFile = fromDir
+	cfg.ToFile = toDir
+	cfg.SetExitCode = true
+	cfg.Color = "off"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+
+	result := Run(cfg, rc)
+	if result.Code != ExitCodeDifferences {
+		t.Errorf("expected exit 1 for directory diffs, got %d; stderr: %s", result.Code, stderr.String())
+	}
+	output := stdout.String()
+	if !strings.Contains(output, "--- a/deploy.yaml") {
+		t.Errorf("expected directory-mode file header in output, got: %q", output)
+	}
+}
+
+func TestRun_BothDirectories_NoDiffs_Exit0(t *testing.T) {
+	fromDir := t.TempDir()
+	toDir := t.TempDir()
+
+	createFile(t, fromDir, "deploy.yaml", "key: same\n")
+	createFile(t, toDir, "deploy.yaml", "key: same\n")
+
+	cfg := NewCLIConfig()
+	cfg.FromFile = fromDir
+	cfg.ToFile = toDir
+	cfg.SetExitCode = true
+	cfg.Color = "off"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+
+	result := Run(cfg, rc)
+	if result.Code != ExitCodeSuccess {
+		t.Errorf("expected exit 0 for identical directory content, got %d", result.Code)
+	}
+	if stdout.String() != "" {
+		t.Errorf("expected no output for identical content, got: %q", stdout.String())
+	}
+}
+
+func TestRun_MixedTypes_DirAndFile_Error(t *testing.T) {
+	dir := t.TempDir()
+
+	// Create a temporary file
+	f, err := os.CreateTemp("", "testfile-*.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.WriteString("key: value\n")
+	f.Close()
+	defer os.Remove(f.Name())
+
+	cfg := NewCLIConfig()
+	cfg.FromFile = dir
+	cfg.ToFile = f.Name()
+	cfg.Color = "off"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+
+	result := Run(cfg, rc)
+	if result.Code != ExitCodeError {
+		t.Errorf("expected exit 255 for mixed types, got %d", result.Code)
+	}
+	if !strings.Contains(stderr.String(), "both") || !strings.Contains(stderr.String(), "same type") {
+		t.Errorf("expected error mentioning both arguments must be same type, got: %q", stderr.String())
+	}
+}
+
+func TestRun_MixedTypes_FileAndDir_Error(t *testing.T) {
+	dir := t.TempDir()
+
+	f, err := os.CreateTemp("", "testfile-*.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.WriteString("key: value\n")
+	f.Close()
+	defer os.Remove(f.Name())
+
+	cfg := NewCLIConfig()
+	cfg.FromFile = f.Name()
+	cfg.ToFile = dir
+	cfg.Color = "off"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+
+	result := Run(cfg, rc)
+	if result.Code != ExitCodeError {
+		t.Errorf("expected exit 255 for mixed types, got %d", result.Code)
+	}
+}
+
+func TestRun_BothFiles_NoRegression(t *testing.T) {
+	// Existing file-mode behavior should be completely unchanged
+	yaml1 := "key: value1\n"
+	yaml2 := "key: value2\n"
+
+	cfg := NewCLIConfig()
+	cfg.SetExitCode = true
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FromContent = []byte(yaml1)
+	rc.ToContent = []byte(yaml2)
+
+	result := Run(cfg, rc)
+	if result.Code != ExitCodeDifferences {
+		t.Errorf("expected exit 1 for file diffs, got %d", result.Code)
+	}
+	// Should NOT have directory-mode file headers
+	output := stdout.String()
+	if strings.Contains(output, "--- a/") {
+		t.Errorf("expected no directory-mode headers in file mode, got: %q", output)
+	}
+}
+
+func TestRun_PreloadedContent_SkipsDirectoryDetection(t *testing.T) {
+	// When FromContent/ToContent are pre-loaded, directory detection should be skipped
+	// even if FromFile/ToFile happen to be directories
+	dir := t.TempDir()
+
+	cfg := NewCLIConfig()
+	cfg.FromFile = dir
+	cfg.ToFile = dir
+	cfg.SetExitCode = true
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FromContent = []byte("key: value1\n")
+	rc.ToContent = []byte("key: value2\n")
+
+	result := Run(cfg, rc)
+	// Should use file-mode with pre-loaded content, not directory mode
+	if result.Code != ExitCodeDifferences {
+		t.Errorf("expected exit 1 for preloaded content diffs, got %d", result.Code)
+	}
+	// No directory-mode headers
+	output := stdout.String()
+	if strings.Contains(output, "--- a/") {
+		t.Errorf("expected no directory-mode headers with preloaded content, got: %q", output)
 	}
 }
 

@@ -209,7 +209,7 @@ Benchmarked against 4 Go-based YAML diff tools using [hyperfine](https://github.
 | ~5K lines | **22.3 ms** | 173.8 ms | 27.9 ms | 984 ms | 1,370 ms | 6.2 ms |
 | ~50K lines | **152.3 ms** | 3,647 ms | 245.7 ms | — | — | 46.2 ms |
 
-Lowest memory footprint at every size (18.4 MB at 5K lines vs 21–326 MB for alternatives). See [performance.md](performance.md) for full methodology and results.
+Lowest memory footprint at every size (18.4 MB at 5K lines vs 21–326 MB for alternatives). See [PERFORMANCE.md](PERFORMANCE.md) for full methodology and results.
 
 <details>
 <summary>Reproduce benchmarks</summary>

@@ -1,0 +1,20 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
+kind: Kustomization
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: t8s-cluster
+    helm.sh/chart: t8s-cluster-7.0.1
+  name: cni
+  namespace: test
+spec:
+  interval: 5m
+  kubeConfig:
+    secretRef:
+      name: kubeconfig
+  path: /manifests
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: calico
+  targetNamespace: kube-system

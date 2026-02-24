@@ -290,6 +290,53 @@ func TestCLIConfig_UsageContainsFlags(t *testing.T) {
 	}
 }
 
+func TestCLIConfig_UsageAlignment(t *testing.T) {
+	cfg := NewCLIConfig()
+	usage := cfg.Usage()
+
+	const descColumn = 38
+
+	for _, line := range strings.Split(usage, "\n") {
+		// Skip non-flag lines (header, section breaks, empty lines)
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || !strings.HasPrefix(trimmed, "-") {
+			continue
+		}
+
+		// Find where the description starts: first lowercase letter after
+		// the flag/type tokens, preceded by at least two spaces.
+		descIdx := strings.Index(line, "  ")
+		if descIdx == -1 {
+			continue
+		}
+		// Walk past all the padding spaces to find the description start
+		for descIdx < len(line) && line[descIdx] == ' ' {
+			descIdx++
+		}
+		// Skip the flag token itself — we need the *second* run of 2+ spaces
+		// (the first run is the leading indent).
+		// Strategy: find two-or-more spaces that appear after position 6
+		// (past the short-flag column).
+		pos := 6
+		for pos < len(line)-1 {
+			if line[pos] == ' ' && line[pos+1] == ' ' {
+				// Found a gap — skip all spaces to reach the description
+				start := pos
+				for start < len(line) && line[start] == ' ' {
+					start++
+				}
+				if start < len(line) {
+					if start != descColumn {
+						t.Errorf("description not at column %d (got %d) in line: %s", descColumn, start, line)
+					}
+					break
+				}
+			}
+			pos++
+		}
+	}
+}
+
 // Tests for input validation (Task 5.2)
 
 func TestCLIConfig_Validate_ValidOutput(t *testing.T) {

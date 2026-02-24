@@ -1,6 +1,7 @@
 package diffyml
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -462,9 +463,9 @@ func TestGitHubFormatter_WorkflowCommandFormat(t *testing.T) {
 
 	output := f.Format(diffs, opts)
 
-	// GitHub Actions workflow command format: ::warning ::{message}
-	if !containsSubstr(output, "::warning ::") {
-		t.Errorf("expected GitHub Actions warning format, got: %s", output)
+	// GitHub Actions workflow command format: ::warning title=YAML Modified::{message}
+	if !containsSubstr(output, "::warning title=YAML Modified::") {
+		t.Errorf("expected GitHub Actions warning with title format, got: %s", output)
 	}
 	if !containsSubstr(output, "config.timeout") {
 		t.Errorf("expected path in output, got: %s", output)
@@ -548,6 +549,15 @@ func TestGitLabFormatter_CodeQualityJSON(t *testing.T) {
 	}
 	if !containsSubstr(output, "location") {
 		t.Errorf("expected 'location' field in JSON, got: %s", output)
+	}
+	if !containsSubstr(output, "check_name") {
+		t.Errorf("expected 'check_name' field in JSON, got: %s", output)
+	}
+	if !containsSubstr(output, `"lines"`) {
+		t.Errorf("expected 'lines' field in JSON, got: %s", output)
+	}
+	if !containsSubstr(output, `"begin"`) {
+		t.Errorf("expected 'begin' field in JSON, got: %s", output)
 	}
 }
 
@@ -696,5 +706,200 @@ func TestCompactFormatter_ColorCodes(t *testing.T) {
 	// Green color code for additions
 	if !containsSubstr(output, "\033[32m") {
 		t.Errorf("expected green color code for additions, got: %s", output)
+	}
+}
+
+func TestGitHubFormatter_DifferentiatedCommands(t *testing.T) {
+	f, _ := GetFormatter("github")
+	opts := DefaultFormatOptions()
+
+	tests := []struct {
+		name            string
+		diff            Difference
+		expectedCommand string
+		expectedTitle   string
+	}{
+		{
+			name:            "added uses notice",
+			diff:            Difference{Path: "key", Type: DiffAdded, To: "value"},
+			expectedCommand: "::notice",
+			expectedTitle:   "title=YAML Added",
+		},
+		{
+			name:            "removed uses error",
+			diff:            Difference{Path: "key", Type: DiffRemoved, From: "value"},
+			expectedCommand: "::error",
+			expectedTitle:   "title=YAML Removed",
+		},
+		{
+			name:            "modified uses warning",
+			diff:            Difference{Path: "key", Type: DiffModified, From: "old", To: "new"},
+			expectedCommand: "::warning",
+			expectedTitle:   "title=YAML Modified",
+		},
+		{
+			name:            "order changed uses notice",
+			diff:            Difference{Path: "list", Type: DiffOrderChanged},
+			expectedCommand: "::notice",
+			expectedTitle:   "title=YAML Order Changed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output := f.Format([]Difference{tt.diff}, opts)
+			if !containsSubstr(output, tt.expectedCommand) {
+				t.Errorf("expected command %q in output, got: %s", tt.expectedCommand, output)
+			}
+			if !containsSubstr(output, tt.expectedTitle) {
+				t.Errorf("expected title %q in output, got: %s", tt.expectedTitle, output)
+			}
+		})
+	}
+}
+
+func TestGitLabFormatter_RequiredFields(t *testing.T) {
+	f, _ := GetFormatter("gitlab")
+	opts := DefaultFormatOptions()
+
+	diffs := []Difference{
+		{Path: "config.key", Type: DiffAdded, To: "value"},
+	}
+
+	output := f.Format(diffs, opts)
+
+	requiredFields := []string{"description", "check_name", "fingerprint", "severity", "location", "path", "lines", "begin"}
+	for _, field := range requiredFields {
+		if !containsSubstr(output, field) {
+			t.Errorf("expected required field %q in GitLab output, got: %s", field, output)
+		}
+	}
+}
+
+func TestGitLabFormatter_SeverityMapping(t *testing.T) {
+	f, _ := GetFormatter("gitlab")
+	opts := DefaultFormatOptions()
+
+	tests := []struct {
+		name             string
+		diff             Difference
+		expectedSeverity string
+	}{
+		{
+			name:             "added is info",
+			diff:             Difference{Path: "key", Type: DiffAdded, To: "val"},
+			expectedSeverity: `"severity": "info"`,
+		},
+		{
+			name:             "removed is major",
+			diff:             Difference{Path: "key", Type: DiffRemoved, From: "val"},
+			expectedSeverity: `"severity": "major"`,
+		},
+		{
+			name:             "modified is major",
+			diff:             Difference{Path: "key", Type: DiffModified, From: "old", To: "new"},
+			expectedSeverity: `"severity": "major"`,
+		},
+		{
+			name:             "order changed is minor",
+			diff:             Difference{Path: "list", Type: DiffOrderChanged},
+			expectedSeverity: `"severity": "minor"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output := f.Format([]Difference{tt.diff}, opts)
+			if !containsSubstr(output, tt.expectedSeverity) {
+				t.Errorf("expected severity %q in output, got: %s", tt.expectedSeverity, output)
+			}
+		})
+	}
+}
+
+func TestGitLabFormatter_CheckNameMapping(t *testing.T) {
+	f, _ := GetFormatter("gitlab")
+	opts := DefaultFormatOptions()
+
+	tests := []struct {
+		name              string
+		diff              Difference
+		expectedCheckName string
+	}{
+		{
+			name:              "added check name",
+			diff:              Difference{Path: "key", Type: DiffAdded, To: "val"},
+			expectedCheckName: "diffyml/added",
+		},
+		{
+			name:              "removed check name",
+			diff:              Difference{Path: "key", Type: DiffRemoved, From: "val"},
+			expectedCheckName: "diffyml/removed",
+		},
+		{
+			name:              "modified check name",
+			diff:              Difference{Path: "key", Type: DiffModified, From: "old", To: "new"},
+			expectedCheckName: "diffyml/modified",
+		},
+		{
+			name:              "order changed check name",
+			diff:              Difference{Path: "list", Type: DiffOrderChanged},
+			expectedCheckName: "diffyml/order-changed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output := f.Format([]Difference{tt.diff}, opts)
+			if !containsSubstr(output, tt.expectedCheckName) {
+				t.Errorf("expected check_name %q in output, got: %s", tt.expectedCheckName, output)
+			}
+		})
+	}
+}
+
+func TestGitLabFormatter_UniqueFingerprints(t *testing.T) {
+	f, _ := GetFormatter("gitlab")
+	opts := DefaultFormatOptions()
+
+	diffs := []Difference{
+		{Path: "config.key", Type: DiffAdded, To: "value1"},
+		{Path: "config.key", Type: DiffRemoved, From: "value2"},
+	}
+
+	output := f.Format(diffs, opts)
+
+	// Extract fingerprints - count occurrences of "fingerprint" to ensure both are present
+	fpCount := strings.Count(output, "fingerprint")
+	if fpCount != 2 {
+		t.Fatalf("expected 2 fingerprint fields, got %d", fpCount)
+	}
+
+	// The two entries have different descriptions so fingerprints must differ.
+	// Split by fingerprint field and verify they're different values.
+	parts := strings.Split(output, `"fingerprint": "`)
+	if len(parts) < 3 {
+		t.Fatal("could not extract fingerprints from output")
+	}
+	fp1 := parts[1][:64] // SHA-256 hex is 64 chars
+	fp2 := parts[2][:64]
+	if fp1 == fp2 {
+		t.Errorf("fingerprints should be unique for different diffs, both got: %s", fp1)
+	}
+}
+
+func TestGitLabFormatter_FingerprintDeterministic(t *testing.T) {
+	f, _ := GetFormatter("gitlab")
+	opts := DefaultFormatOptions()
+
+	diffs := []Difference{
+		{Path: "config.key", Type: DiffModified, From: "old", To: "new"},
+	}
+
+	output1 := f.Format(diffs, opts)
+	output2 := f.Format(diffs, opts)
+
+	if output1 != output2 {
+		t.Errorf("fingerprint should be deterministic, got different outputs:\n%s\nvs\n%s", output1, output2)
 	}
 }

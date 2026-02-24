@@ -219,50 +219,50 @@ func (c *CLIConfig) Usage() string {
 	sb.WriteString("  diffyml [flags] <from> <to>\n\n")
 	sb.WriteString("Flags:\n")
 
-	// Core flags
-	sb.WriteString("  -o, --output string          specify output style: compact, brief, github, gitlab, gitea, detailed (default \"detailed\")\n")
-	sb.WriteString("  -c, --color string           specify color usage: on, off, or auto (default \"auto\")\n")
-	sb.WriteString("  -t, --truecolor string       specify true color usage: on, off, or auto (default \"auto\")\n")
-	sb.WriteString("  -w, --fixed-width int        disable terminal width detection and use provided fixed value (default -1)\n")
+	// Output options
+	sb.WriteString("  -o, --output string                 specify output style: compact, brief, github, gitlab, gitea, detailed (default \"detailed\")\n")
+	sb.WriteString("  -c, --color string                  specify color usage: on, off, or auto (default \"auto\")\n")
+	sb.WriteString("  -t, --truecolor string              specify true color usage: on, off, or auto (default \"auto\")\n")
+	sb.WriteString("  -w, --fixed-width int               disable terminal width detection and use provided fixed value (default -1)\n")
 	sb.WriteString("\n")
 
-	// Comparison flags
-	sb.WriteString("  -i, --ignore-order-changes   ignore order changes in lists\n")
-	sb.WriteString("      --ignore-whitespace-changes  ignore leading or trailing whitespace changes\n")
-	sb.WriteString("  -v, --ignore-value-changes   exclude changes in values\n")
-	sb.WriteString("      --detect-kubernetes      detect kubernetes entities (default true)\n")
-	sb.WriteString("      --detect-renames         enable detection for renames (default true)\n")
-	sb.WriteString("  -x, --no-cert-inspection     disable x509 certificate inspection\n")
-	sb.WriteString("      --swap                   swap 'from' and 'to' for comparison\n")
+	// Comparison options
+	sb.WriteString("  -i, --ignore-order-changes          ignore order changes in lists\n")
+	sb.WriteString("      --ignore-whitespace-changes     ignore leading or trailing whitespace changes\n")
+	sb.WriteString("  -v, --ignore-value-changes          exclude changes in values\n")
+	sb.WriteString("      --detect-kubernetes             detect kubernetes entities (default true)\n")
+	sb.WriteString("      --detect-renames                enable detection for renames (default true)\n")
+	sb.WriteString("  -x, --no-cert-inspection            disable x509 certificate inspection\n")
+	sb.WriteString("      --swap                          swap 'from' and 'to' for comparison\n")
 	sb.WriteString("\n")
 
-	// Filter flags
-	sb.WriteString("      --filter strings         filter reports to a subset of differences\n")
-	sb.WriteString("      --exclude strings        exclude reports from a set of differences\n")
-	sb.WriteString("      --filter-regexp strings  filter reports using regular expressions\n")
-	sb.WriteString("      --exclude-regexp strings exclude reports using regular expressions\n")
-	sb.WriteString("      --additional-identifier  use additional identifier in named entry lists\n")
+	// Filter options
+	sb.WriteString("      --filter strings                filter reports to a subset of differences\n")
+	sb.WriteString("      --exclude strings               exclude reports from a set of differences\n")
+	sb.WriteString("      --filter-regexp strings         filter reports using regular expressions\n")
+	sb.WriteString("      --exclude-regexp strings        exclude reports using regular expressions\n")
+	sb.WriteString("      --additional-identifier string  use additional identifier in named entry lists\n")
 	sb.WriteString("\n")
 
-	// Display flags
-	sb.WriteString("  -b, --omit-header            omit the diffyml summary header\n")
-	sb.WriteString("  -l, --no-table-style         do not place blocks next to each other\n")
-	sb.WriteString("  -g, --use-go-patch-style     use Go-Patch style paths in outputs\n")
+	// Display options
+	sb.WriteString("  -b, --omit-header                   omit the diffyml summary header\n")
+	sb.WriteString("  -l, --no-table-style                do not place blocks next to each other\n")
+	sb.WriteString("  -g, --use-go-patch-style            use Go-Patch style paths in outputs\n")
 	sb.WriteString("      --multi-line-context-lines int  multi-line context lines (default 4)\n")
 	sb.WriteString("      --minor-change-threshold float  minor change threshold (default 0.1)\n")
 	sb.WriteString("\n")
 
-	// Chroot flags
-	sb.WriteString("      --chroot string          change the root level of the input file\n")
-	sb.WriteString("      --chroot-of-from string  only change the root level of the from input file\n")
-	sb.WriteString("      --chroot-of-to string    only change the root level of the to input file\n")
-	sb.WriteString("      --chroot-list-to-documents  treat chroot list as set of documents\n")
+	// Chroot options
+	sb.WriteString("      --chroot string                 change the root level of the input file\n")
+	sb.WriteString("      --chroot-of-from string         only change the root level of the from input file\n")
+	sb.WriteString("      --chroot-of-to string           only change the root level of the to input file\n")
+	sb.WriteString("      --chroot-list-to-documents      treat chroot list as set of documents\n")
 	sb.WriteString("\n")
 
-	// Other flags
-	sb.WriteString("  -s, --set-exit-code          set program exit code based on differences\n")
-	sb.WriteString("  -h, --help                   show this help\n")
-	sb.WriteString("  -V, --version                show version information\n")
+	// Other options
+	sb.WriteString("  -s, --set-exit-code                 set program exit code based on differences\n")
+	sb.WriteString("  -h, --help                          show this help\n")
+	sb.WriteString("  -V, --version                       show version information\n")
 
 	return sb.String()
 }

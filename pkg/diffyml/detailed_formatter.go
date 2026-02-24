@@ -6,6 +6,7 @@ package diffyml
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -47,13 +48,12 @@ func (f *DetailedFormatter) Format(diffs []Difference, opts *FormatOptions) stri
 
 	if !opts.OmitHeader {
 		f.formatHeader(&sb, diffs, opts)
-	} else {
-		sb.WriteString("\n")
 	}
 
+	isMultiDoc := f.detectMultiDoc(diffs)
 	groups := f.groupByPath(diffs)
 	for _, group := range groups {
-		f.formatPathHeading(&sb, group.Path, opts)
+		f.formatPathHeading(&sb, group.Path, isMultiDoc, opts)
 		f.formatGroupDiffs(&sb, group, opts)
 	}
 
@@ -95,13 +95,19 @@ func (f *DetailedFormatter) groupByPath(diffs []Difference) []pathGroup {
 }
 
 // formatPathHeading renders the path line for a group of diffs.
-func (f *DetailedFormatter) formatPathHeading(sb *strings.Builder, path string, opts *FormatOptions) {
+func (f *DetailedFormatter) formatPathHeading(sb *strings.Builder, path string, isMultiDoc bool, opts *FormatOptions) {
 	heading := path
 	if path == "" {
 		if opts.UseGoPatchStyle {
 			heading = "/"
 		} else {
 			heading = "(root level)"
+		}
+	} else if idx, ok := parseBareDocIndex(path); ok {
+		if isMultiDoc {
+			heading = fmt.Sprintf("(document %d)", idx+1)
+		} else {
+			heading = "(document)"
 		}
 	} else if opts.UseGoPatchStyle {
 		heading = convertToGoPatchPath(path)
@@ -604,6 +610,34 @@ func (f *DetailedFormatter) writeDescriptorLine(sb *strings.Builder, text string
 		sb.WriteString(text)
 	}
 	sb.WriteString("\n")
+}
+
+// parseBareDocIndex extracts the index from a bare document index path like "[0]", "[1]".
+// Returns the index and true if the path is a bare document index, false otherwise.
+// Does NOT match paths like "items[0]" or "[0].spec".
+func parseBareDocIndex(path string) (int, bool) {
+	if !strings.HasPrefix(path, "[") || !strings.HasSuffix(path, "]") {
+		return 0, false
+	}
+	inner := path[1 : len(path)-1]
+	idx, err := strconv.Atoi(inner)
+	if err != nil {
+		return 0, false
+	}
+	return idx, true
+}
+
+// detectMultiDoc checks if diffs span multiple documents by examining DocumentIndex values.
+func (f *DetailedFormatter) detectMultiDoc(diffs []Difference) bool {
+	seen := -1
+	for _, d := range diffs {
+		if seen == -1 {
+			seen = d.DocumentIndex
+		} else if d.DocumentIndex != seen {
+			return true
+		}
+	}
+	return false
 }
 
 // Color helper methods for DetailedFormatter

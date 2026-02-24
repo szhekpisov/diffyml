@@ -1459,7 +1459,7 @@ func TestDetailedFormatter_DeeplyNestedStructure(t *testing.T) {
 
 	output := f.Format(diffs, opts)
 	// Should use YAML-style indentation, no pipe guides
-	expected := "\nroot.0\n  + one list entry added:\n    - level1:\n        nested:\n          deep: value\n\n"
+	expected := "root.0\n  + one list entry added:\n    - level1:\n        nested:\n          deep: value\n\n"
 	if output != expected {
 		t.Errorf("deeply nested structure mismatch.\nExpected:\n%s\nGot:\n%s", expected, output)
 	}
@@ -1714,7 +1714,7 @@ func TestDetailedFormatter_Snapshot_ScalarModification(t *testing.T) {
 	}
 
 	output := f.Format(diffs, opts)
-	expected := "\nconfig.timeout\n  ± value change\n    - 30\n    + 60\n\n"
+	expected := "config.timeout\n  ± value change\n    - 30\n    + 60\n\n"
 	if output != expected {
 		t.Errorf("snapshot mismatch for scalar modification.\nExpected:\n%s\nGot:\n%s", expected, output)
 	}
@@ -1730,7 +1730,7 @@ func TestDetailedFormatter_Snapshot_TypeChange(t *testing.T) {
 	}
 
 	output := f.Format(diffs, opts)
-	expected := "\nconfig.port\n  ± type change from int to string\n    - 8080\n    + 8080\n\n"
+	expected := "config.port\n  ± type change from int to string\n    - 8080\n    + 8080\n\n"
 	if output != expected {
 		t.Errorf("snapshot mismatch for type change.\nExpected:\n%s\nGot:\n%s", expected, output)
 	}
@@ -1746,7 +1746,7 @@ func TestDetailedFormatter_Snapshot_SingleListEntryAdded(t *testing.T) {
 	}
 
 	output := f.Format(diffs, opts)
-	expected := "\nitems.0\n  + one list entry added:\n    - newItem\n\n"
+	expected := "items.0\n  + one list entry added:\n    - newItem\n\n"
 	if output != expected {
 		t.Errorf("snapshot mismatch for list entry added.\nExpected:\n%s\nGot:\n%s", expected, output)
 	}
@@ -1762,7 +1762,7 @@ func TestDetailedFormatter_Snapshot_SingleMapEntryRemoved(t *testing.T) {
 	}
 
 	output := f.Format(diffs, opts)
-	expected := "\nconfig.oldKey\n  - one map entry removed:\n    oldKey: value\n\n"
+	expected := "config.oldKey\n  - one map entry removed:\n    oldKey: value\n\n"
 	if output != expected {
 		t.Errorf("snapshot mismatch for map entry removed.\nExpected:\n%s\nGot:\n%s", expected, output)
 	}
@@ -1780,7 +1780,7 @@ func TestDetailedFormatter_Snapshot_OrderChange(t *testing.T) {
 	}
 
 	output := f.Format(diffs, opts)
-	expected := "\nitems\n  ⇆ order changed\n    - a, b\n    + b, a\n\n"
+	expected := "items\n  ⇆ order changed\n    - a, b\n    + b, a\n\n"
 	if output != expected {
 		t.Errorf("snapshot mismatch for order change.\nExpected:\n%s\nGot:\n%s", expected, output)
 	}
@@ -1796,7 +1796,7 @@ func TestDetailedFormatter_Snapshot_WhitespaceChange(t *testing.T) {
 	}
 
 	output := f.Format(diffs, opts)
-	expected := "\nkey\n  ± whitespace only change\n    - a·b\n    + a··b\n\n"
+	expected := "key\n  ± whitespace only change\n    - a·b\n    + a··b\n\n"
 	if output != expected {
 		t.Errorf("snapshot mismatch for whitespace change.\nExpected:\n%s\nGot:\n%s", expected, output)
 	}
@@ -1812,7 +1812,7 @@ func TestDetailedFormatter_Snapshot_RootLevel(t *testing.T) {
 	}
 
 	output := f.Format(diffs, opts)
-	expected := "\n(root level)\n  ± value change\n    - old\n    + new\n\n"
+	expected := "(root level)\n  ± value change\n    - old\n    + new\n\n"
 	if output != expected {
 		t.Errorf("snapshot mismatch for root level.\nExpected:\n%s\nGot:\n%s", expected, output)
 	}
@@ -1829,7 +1829,7 @@ func TestDetailedFormatter_Snapshot_GoPatchRoot(t *testing.T) {
 	}
 
 	output := f.Format(diffs, opts)
-	expected := "\n/\n  ± value change\n    - old\n    + new\n\n"
+	expected := "/\n  ± value change\n    - old\n    + new\n\n"
 	if output != expected {
 		t.Errorf("snapshot mismatch for go-patch root.\nExpected:\n%s\nGot:\n%s", expected, output)
 	}
@@ -1850,7 +1850,7 @@ func TestDetailedFormatter_Snapshot_StructuredMapAdded(t *testing.T) {
 	}
 
 	output := f.Format(diffs, opts)
-	expected := "\nservices.0\n  + one list entry added:\n    - name: nginx\n      port: 80\n\n"
+	expected := "services.0\n  + one list entry added:\n    - name: nginx\n      port: 80\n\n"
 	if output != expected {
 		t.Errorf("snapshot mismatch for structured map added.\nExpected:\n%s\nGot:\n%s", expected, output)
 	}
@@ -1882,7 +1882,7 @@ func TestDetailedFormatter_Snapshot_MultiplePathGroups(t *testing.T) {
 	}
 
 	output := f.Format(diffs, opts)
-	expected := "\nalpha\n  ± value change\n    - a1\n    + a2\n\nbeta\n  ± value change\n    - b1\n    + b2\n\n"
+	expected := "alpha\n  ± value change\n    - a1\n    + a2\n\nbeta\n  ± value change\n    - b1\n    + b2\n\n"
 	if output != expected {
 		t.Errorf("snapshot mismatch for multiple path groups.\nExpected:\n%s\nGot:\n%s", expected, output)
 	}
@@ -2425,33 +2425,33 @@ func TestDetailedFormatter_Integration_NoRegressionSnapshots(t *testing.T) {
 		{
 			name:     "scalar modification",
 			diffs:    []Difference{{Path: "key", Type: DiffModified, From: "old", To: "new"}},
-			expected: "\nkey\n  ± value change\n    - old\n    + new\n\n",
+			expected: "key\n  ± value change\n    - old\n    + new\n\n",
 		},
 		{
 			name:     "type change",
 			diffs:    []Difference{{Path: "port", Type: DiffModified, From: 8080, To: "8080"}},
-			expected: "\nport\n  ± type change from int to string\n    - 8080\n    + 8080\n\n",
+			expected: "port\n  ± type change from int to string\n    - 8080\n    + 8080\n\n",
 		},
 		{
 			name:     "list entry added",
 			diffs:    []Difference{{Path: "items.0", Type: DiffAdded, To: "newItem"}},
-			expected: "\nitems.0\n  + one list entry added:\n    - newItem\n\n",
+			expected: "items.0\n  + one list entry added:\n    - newItem\n\n",
 		},
 		{
 			name:     "map entry removed",
 			diffs:    []Difference{{Path: "config.key", Type: DiffRemoved, From: "value"}},
-			expected: "\nconfig.key\n  - one map entry removed:\n    key: value\n\n",
+			expected: "config.key\n  - one map entry removed:\n    key: value\n\n",
 		},
 		{
 			name: "order change",
 			diffs: []Difference{{Path: "items", Type: DiffOrderChanged,
 				From: []interface{}{"a", "b"}, To: []interface{}{"b", "a"}}},
-			expected: "\nitems\n  ⇆ order changed\n    - a, b\n    + b, a\n\n",
+			expected: "items\n  ⇆ order changed\n    - a, b\n    + b, a\n\n",
 		},
 		{
 			name:     "whitespace change",
 			diffs:    []Difference{{Path: "key", Type: DiffModified, From: "a b", To: "a  b"}},
-			expected: "\nkey\n  ± whitespace only change\n    - a·b\n    + a··b\n\n",
+			expected: "key\n  ± whitespace only change\n    - a·b\n    + a··b\n\n",
 		},
 		{
 			name: "structured map added",
@@ -2462,7 +2462,7 @@ func TestDetailedFormatter_Integration_NoRegressionSnapshots(t *testing.T) {
 				om.Values["port"] = 80
 				return []Difference{{Path: "services.0", Type: DiffAdded, To: om}}
 			}(),
-			expected: "\nservices.0\n  + one list entry added:\n    - name: nginx\n      port: 80\n\n",
+			expected: "services.0\n  + one list entry added:\n    - name: nginx\n      port: 80\n\n",
 		},
 	}
 
@@ -2488,7 +2488,7 @@ func TestDetailedFormatter_MapEntryScalar_RendersKeyValue(t *testing.T) {
 	}
 
 	output := f.Format(diffs, opts)
-	expected := "\nconfig.verbose\n  + one map entry added:\n    verbose: true\n\n"
+	expected := "config.verbose\n  + one map entry added:\n    verbose: true\n\n"
 	if output != expected {
 		t.Errorf("map entry scalar should render as key: value.\nExpected:\n%s\nGot:\n%s", expected, output)
 	}
@@ -2509,7 +2509,7 @@ func TestDetailedFormatter_MapEntryStructured_RendersKeyWrapper(t *testing.T) {
 	}
 
 	output := f.Format(diffs, opts)
-	expected := "\nconfig.newKey\n  + one map entry added:\n    newKey:\n      host: localhost\n      port: 8080\n\n"
+	expected := "config.newKey\n  + one map entry added:\n    newKey:\n      host: localhost\n      port: 8080\n\n"
 	if output != expected {
 		t.Errorf("map entry structured should render key as YAML wrapper.\nExpected:\n%s\nGot:\n%s", expected, output)
 	}
@@ -2525,13 +2525,13 @@ func TestDetailedFormatter_ListEntry_StillUsesDashPrefix(t *testing.T) {
 	}
 
 	output := f.Format(diffs, opts)
-	expected := "\nitems.0\n  + one list entry added:\n    - hello\n\n"
+	expected := "items.0\n  + one list entry added:\n    - hello\n\n"
 	if output != expected {
 		t.Errorf("list entry should still use dash prefix.\nExpected:\n%s\nGot:\n%s", expected, output)
 	}
 }
 
-func TestDetailedFormatter_LeadingBlankLine_OmitHeader(t *testing.T) {
+func TestDetailedFormatter_NoLeadingBlankLine_OmitHeader(t *testing.T) {
 	f, _ := GetFormatter("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
@@ -2541,8 +2541,8 @@ func TestDetailedFormatter_LeadingBlankLine_OmitHeader(t *testing.T) {
 	}
 
 	output := f.Format(diffs, opts)
-	if !strings.HasPrefix(output, "\n") {
-		t.Errorf("output should start with blank line when OmitHeader is true, got: %q", output)
+	if strings.HasPrefix(output, "\n") {
+		t.Errorf("output should NOT start with blank line when OmitHeader is true, got: %q", output)
 	}
 }
 
@@ -2571,7 +2571,7 @@ func TestDetailedFormatter_TrailingSeparator_ValueChange(t *testing.T) {
 	}
 
 	output := f.Format(diffs, opts)
-	expected := "\nkey\n  ± value change\n    - old\n    + new\n\n"
+	expected := "key\n  ± value change\n    - old\n    + new\n\n"
 	if output != expected {
 		t.Errorf("value change should end with blank line separator.\nExpected:\n%s\nGot:\n%s", expected, output)
 	}
@@ -2587,7 +2587,7 @@ func TestDetailedFormatter_TrailingSeparator_EntryBatch(t *testing.T) {
 	}
 
 	output := f.Format(diffs, opts)
-	expected := "\nitems.0\n  + one list entry added:\n    - val\n\n"
+	expected := "items.0\n  + one list entry added:\n    - val\n\n"
 	if output != expected {
 		t.Errorf("entry batch should end with blank line separator.\nExpected:\n%s\nGot:\n%s", expected, output)
 	}
@@ -2605,7 +2605,7 @@ func TestDetailedFormatter_TrailingSeparator_OrderChange(t *testing.T) {
 	}
 
 	output := f.Format(diffs, opts)
-	expected := "\nitems\n  ⇆ order changed\n    - a, b\n    + b, a\n\n"
+	expected := "items\n  ⇆ order changed\n    - a, b\n    + b, a\n\n"
 	if output != expected {
 		t.Errorf("order change should end with blank line separator.\nExpected:\n%s\nGot:\n%s", expected, output)
 	}
@@ -2621,7 +2621,7 @@ func TestDetailedFormatter_TrailingSeparator_TypeChange(t *testing.T) {
 	}
 
 	output := f.Format(diffs, opts)
-	expected := "\nport\n  ± type change from int to string\n    - 8080\n    + 8080\n\n"
+	expected := "port\n  ± type change from int to string\n    - 8080\n    + 8080\n\n"
 	if output != expected {
 		t.Errorf("type change should end with blank line separator.\nExpected:\n%s\nGot:\n%s", expected, output)
 	}
@@ -2678,7 +2678,7 @@ func TestDetailedFormatter_Snapshot_FullComparison(t *testing.T) {
 	}
 
 	output := f.Format(diffs, opts)
-	expected := "\nconfig.timeout\n  ± value change\n    - 30\n    + 60\n\n" +
+	expected := "config.timeout\n  ± value change\n    - 30\n    + 60\n\n" +
 		"config.verbose\n  + one map entry added:\n    verbose: true\n\n" +
 		"services.0\n  + one list entry added:\n    - name: nginx\n      port: 80\n\n" +
 		"config.port\n  ± type change from int to string\n    - 8080\n    + 8080\n\n" +
@@ -2762,7 +2762,7 @@ func TestDetailedFormatter_OrderChange_Snapshot(t *testing.T) {
 	}
 
 	output := f.Format(diffs, opts)
-	expected := "\nitems\n  ⇆ order changed\n    - a, b\n    + b, a\n\n"
+	expected := "items\n  ⇆ order changed\n    - a, b\n    + b, a\n\n"
 	if output != expected {
 		t.Errorf("order change snapshot mismatch.\nExpected:\n%s\nGot:\n%s", expected, output)
 	}
@@ -2816,7 +2816,7 @@ func TestDetailedFormatter_ListEntry_MultipleMaps(t *testing.T) {
 	}
 
 	output := f.Format(diffs, opts)
-	expected := "\nitems.1\n  + two list entries added:\n    - name: second\n      id: 2\n    - name: third\n      id: 3\n\n"
+	expected := "items.1\n  + two list entries added:\n    - name: second\n      id: 2\n    - name: third\n      id: 3\n\n"
 	if output != expected {
 		t.Errorf("multiple maps mismatch.\nExpected:\n%s\nGot:\n%s", expected, output)
 	}
@@ -2842,7 +2842,7 @@ func TestDetailedFormatter_ListEntry_NestedMap(t *testing.T) {
 	}
 
 	output := f.Format(diffs, opts)
-	expected := "\nservices.0\n  + one list entry added:\n    - name: svc\n      config:\n        host: localhost\n        port: 8080\n\n"
+	expected := "services.0\n  + one list entry added:\n    - name: svc\n      config:\n        host: localhost\n        port: 8080\n\n"
 	if output != expected {
 		t.Errorf("nested map mismatch.\nExpected:\n%s\nGot:\n%s", expected, output)
 	}
@@ -2858,7 +2858,7 @@ func TestDetailedFormatter_ListEntry_ScalarUnchanged(t *testing.T) {
 	}
 
 	output := f.Format(diffs, opts)
-	expected := "\nitems.0\n  + one list entry added:\n    - hello\n\n"
+	expected := "items.0\n  + one list entry added:\n    - hello\n\n"
 	if output != expected {
 		t.Errorf("scalar list entry should still use '- value' format.\nExpected:\n%s\nGot:\n%s", expected, output)
 	}
@@ -2879,8 +2879,75 @@ func TestDetailedFormatter_ListEntry_Snapshot(t *testing.T) {
 	}
 
 	output := f.Format(diffs, opts)
-	expected := "\nservices.0\n  + one list entry added:\n    - name: nginx\n      port: 80\n\n"
+	expected := "services.0\n  + one list entry added:\n    - name: nginx\n      port: 80\n\n"
 	if output != expected {
 		t.Errorf("list entry snapshot mismatch.\nExpected:\n%s\nGot:\n%s", expected, output)
+	}
+}
+
+func TestDetailedFormatter_DocumentHeading(t *testing.T) {
+	f, _ := GetFormatter("detailed")
+	opts := DefaultFormatOptions()
+	opts.OmitHeader = true
+
+	t.Run("single doc replaces [0] with (document)", func(t *testing.T) {
+		diffs := []Difference{
+			{Path: "[0]", Type: DiffRemoved, From: "value", DocumentIndex: 0},
+		}
+		output := f.Format(diffs, opts)
+		if !strings.Contains(output, "(document)") {
+			t.Errorf("expected '(document)' in output, got: %q", output)
+		}
+		if strings.Contains(output, "[0]") {
+			t.Errorf("should not contain '[0]' in output, got: %q", output)
+		}
+	})
+
+	t.Run("multi doc replaces [0] with (document 1)", func(t *testing.T) {
+		diffs := []Difference{
+			{Path: "[0]", Type: DiffRemoved, From: "value1", DocumentIndex: 0},
+			{Path: "[1]", Type: DiffAdded, To: "value2", DocumentIndex: 1},
+		}
+		output := f.Format(diffs, opts)
+		if !strings.Contains(output, "(document 1)") {
+			t.Errorf("expected '(document 1)' in output, got: %q", output)
+		}
+		if !strings.Contains(output, "(document 2)") {
+			t.Errorf("expected '(document 2)' in output, got: %q", output)
+		}
+	})
+
+	t.Run("non-bare index paths are not transformed", func(t *testing.T) {
+		diffs := []Difference{
+			{Path: "items[0]", Type: DiffModified, From: "old", To: "new"},
+		}
+		output := f.Format(diffs, opts)
+		if !strings.Contains(output, "items[0]") {
+			t.Errorf("expected 'items[0]' preserved in output, got: %q", output)
+		}
+	})
+}
+
+func TestParseBareDocIndex(t *testing.T) {
+	tests := []struct {
+		path    string
+		wantIdx int
+		wantOk  bool
+	}{
+		{"[0]", 0, true},
+		{"[1]", 1, true},
+		{"[12]", 12, true},
+		{"items[0]", 0, false},
+		{"[0].spec", 0, false},
+		{"name", 0, false},
+		{"", 0, false},
+		{"[]", 0, false},
+		{"[abc]", 0, false},
+	}
+	for _, tt := range tests {
+		idx, ok := parseBareDocIndex(tt.path)
+		if ok != tt.wantOk || idx != tt.wantIdx {
+			t.Errorf("parseBareDocIndex(%q) = (%d, %v), want (%d, %v)", tt.path, idx, ok, tt.wantIdx, tt.wantOk)
+		}
 	}
 }

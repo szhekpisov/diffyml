@@ -1,6 +1,5 @@
 --- a/deployment.yaml
 +++ b/deployment.yaml
-
 spec.replicas
   ± value change
     - 1
@@ -8,11 +7,7 @@ spec.replicas
 
 --- a/ingress.yaml
 +++ /dev/null
-
-[0]
-  + one list entry added:
-    - <nil>
-
+(document)
   - one list entry removed:
     - apiVersion: networking.k8s.io/v1
       kind: Ingress
@@ -27,8 +22,7 @@ spec.replicas
 
 --- /dev/null
 +++ b/secret.yaml
-
-[0]
+(document)
   + one list entry added:
     - apiVersion: v1
       kind: Secret
@@ -38,12 +32,8 @@ spec.replicas
       data:
         token: YWJjMTIz
 
-  - one list entry removed:
-    - <nil>
-
 --- a/service.yaml
 +++ b/service.yaml
-
 spec.port
   ± value change
     - 80

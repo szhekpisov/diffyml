@@ -237,6 +237,9 @@ func compareK8sDocs(from, to []interface{}, opts *Options) []Difference {
 
 	// Report removed documents (in 'from' but not matched in 'to')
 	for _, fromIdx := range unmatchedFrom {
+		if from[fromIdx] == nil {
+			continue
+		}
 		pathPrefix := fmt.Sprintf("[%d]", fromIdx)
 		diffs = append(diffs, Difference{
 			Path:          cleanPath(pathPrefix),
@@ -249,6 +252,9 @@ func compareK8sDocs(from, to []interface{}, opts *Options) []Difference {
 
 	// Report added documents (in 'to' but not matched from 'from')
 	for _, toIdx := range unmatchedTo {
+		if to[toIdx] == nil {
+			continue
+		}
 		pathPrefix := fmt.Sprintf("[%d]", toIdx)
 		diffs = append(diffs, Difference{
 			Path:          cleanPath(pathPrefix),

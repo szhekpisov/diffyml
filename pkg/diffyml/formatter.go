@@ -6,6 +6,8 @@
 package diffyml
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"strings"
 )
@@ -361,22 +363,46 @@ func (f *BriefFormatter) Format(diffs []Difference, _ *FormatOptions) string {
 }
 
 // GitHubFormatter renders output compatible with GitHub Actions workflow commands.
+// Uses differentiated commands (notice/warning/error) and title parameter per diff type.
 type GitHubFormatter struct{}
+
+// gitHubCommand returns the workflow command and title for a diff type.
+func gitHubCommand(dt DiffType) (command, title string) {
+	switch dt {
+	case DiffAdded:
+		return "notice", "YAML Added"
+	case DiffRemoved:
+		return "error", "YAML Removed"
+	case DiffModified:
+		return "warning", "YAML Modified"
+	case DiffOrderChanged:
+		return "notice", "YAML Order Changed"
+	default:
+		return "warning", "YAML Diff"
+	}
+}
+
+// gitHubMessage returns the message body for a difference.
+func gitHubMessage(diff Difference) string {
+	switch diff.Type {
+	case DiffAdded:
+		return fmt.Sprintf("Added: %s = %v", diff.Path, diff.To)
+	case DiffRemoved:
+		return fmt.Sprintf("Removed: %s = %v", diff.Path, diff.From)
+	case DiffModified:
+		return fmt.Sprintf("Modified: %s changed from %v to %v", diff.Path, diff.From, diff.To)
+	case DiffOrderChanged:
+		return fmt.Sprintf("Order changed: %s", diff.Path)
+	default:
+		return fmt.Sprintf("Diff: %s", diff.Path)
+	}
+}
 
 // FormatSingle renders a single difference in GitHub Actions format.
 func (f *GitHubFormatter) FormatSingle(diff Difference, opts *FormatOptions) string {
-	var msg string
-	switch diff.Type {
-	case DiffAdded:
-		msg = fmt.Sprintf("Added: %s = %v", diff.Path, diff.To)
-	case DiffRemoved:
-		msg = fmt.Sprintf("Removed: %s = %v", diff.Path, diff.From)
-	case DiffModified:
-		msg = fmt.Sprintf("Modified: %s changed from %v to %v", diff.Path, diff.From, diff.To)
-	case DiffOrderChanged:
-		msg = fmt.Sprintf("Order changed: %s", diff.Path)
-	}
-	return fmt.Sprintf("::warning ::%s\n", msg)
+	cmd, title := gitHubCommand(diff.Type)
+	msg := gitHubMessage(diff)
+	return fmt.Sprintf("::%s title=%s::%s\n", cmd, title, msg)
 }
 
 // Format renders differences in GitHub Actions format.
@@ -387,40 +413,78 @@ func (f *GitHubFormatter) Format(diffs []Difference, _ *FormatOptions) string {
 
 	var sb strings.Builder
 	for _, diff := range diffs {
-		var msg string
-		switch diff.Type {
-		case DiffAdded:
-			msg = fmt.Sprintf("Added: %s = %v", diff.Path, diff.To)
-		case DiffRemoved:
-			msg = fmt.Sprintf("Removed: %s = %v", diff.Path, diff.From)
-		case DiffModified:
-			msg = fmt.Sprintf("Modified: %s changed from %v to %v", diff.Path, diff.From, diff.To)
-		case DiffOrderChanged:
-			msg = fmt.Sprintf("Order changed: %s", diff.Path)
-		}
-		fmt.Fprintf(&sb, "::warning ::%s\n", msg)
+		cmd, title := gitHubCommand(diff.Type)
+		msg := gitHubMessage(diff)
+		fmt.Fprintf(&sb, "::%s title=%s::%s\n", cmd, title, msg)
 	}
 	return sb.String()
 }
 
 // GitLabFormatter renders output compatible with GitLab CI Code Quality format.
+// Complies with the GitLab Code Quality specification: includes check_name,
+// location.lines.begin, unique SHA-256 fingerprints, and severity per diff type.
 type GitLabFormatter struct{}
+
+// gitLabSeverity returns the Code Quality severity for a diff type.
+func gitLabSeverity(dt DiffType) string {
+	switch dt {
+	case DiffAdded:
+		return "info"
+	case DiffRemoved:
+		return "major"
+	case DiffModified:
+		return "major"
+	case DiffOrderChanged:
+		return "minor"
+	default:
+		return "minor"
+	}
+}
+
+// gitLabCheckName returns the check_name for a diff type.
+func gitLabCheckName(dt DiffType) string {
+	switch dt {
+	case DiffAdded:
+		return "diffyml/added"
+	case DiffRemoved:
+		return "diffyml/removed"
+	case DiffModified:
+		return "diffyml/modified"
+	case DiffOrderChanged:
+		return "diffyml/order-changed"
+	default:
+		return "diffyml/unknown"
+	}
+}
+
+// gitLabFingerprint returns a unique SHA-256 fingerprint for a description string.
+func gitLabFingerprint(description string) string {
+	h := sha256.Sum256([]byte(description))
+	return hex.EncodeToString(h[:])
+}
+
+// gitLabDescription returns the description string for a difference.
+func gitLabDescription(diff Difference) string {
+	switch diff.Type {
+	case DiffAdded:
+		return fmt.Sprintf("Added: %s = %v", diff.Path, diff.To)
+	case DiffRemoved:
+		return fmt.Sprintf("Removed: %s = %v", diff.Path, diff.From)
+	case DiffModified:
+		return fmt.Sprintf("Modified: %s changed from %v to %v", diff.Path, diff.From, diff.To)
+	case DiffOrderChanged:
+		return fmt.Sprintf("Order changed: %s", diff.Path)
+	default:
+		return fmt.Sprintf("Diff: %s", diff.Path)
+	}
+}
 
 // FormatSingle renders a single difference in GitLab CI JSON format (without array wrapper).
 func (f *GitLabFormatter) FormatSingle(diff Difference, opts *FormatOptions) string {
-	var description string
-	switch diff.Type {
-	case DiffAdded:
-		description = fmt.Sprintf("Added: %s = %v", diff.Path, diff.To)
-	case DiffRemoved:
-		description = fmt.Sprintf("Removed: %s = %v", diff.Path, diff.From)
-	case DiffModified:
-		description = fmt.Sprintf("Modified: %s changed from %v to %v", diff.Path, diff.From, diff.To)
-	case DiffOrderChanged:
-		description = fmt.Sprintf("Order changed: %s", diff.Path)
-	}
-	return fmt.Sprintf(`{"description": %q, "fingerprint": %q, "severity": "minor", "location": {"path": %q}}`+"\n",
-		description, diff.Path, diff.Path)
+	desc := gitLabDescription(diff)
+	return fmt.Sprintf(
+		`{"description": %q, "check_name": %q, "fingerprint": %q, "severity": %q, "location": {"path": %q, "lines": {"begin": 1}}}`+"\n",
+		desc, gitLabCheckName(diff.Type), gitLabFingerprint(desc), gitLabSeverity(diff.Type), diff.Path)
 }
 
 // Format renders differences in GitLab CI format.
@@ -433,20 +497,10 @@ func (f *GitLabFormatter) Format(diffs []Difference, _ *FormatOptions) string {
 	sb.WriteString("[\n")
 
 	for i, diff := range diffs {
-		var description string
-		switch diff.Type {
-		case DiffAdded:
-			description = fmt.Sprintf("Added: %s = %v", diff.Path, diff.To)
-		case DiffRemoved:
-			description = fmt.Sprintf("Removed: %s = %v", diff.Path, diff.From)
-		case DiffModified:
-			description = fmt.Sprintf("Modified: %s changed from %v to %v", diff.Path, diff.From, diff.To)
-		case DiffOrderChanged:
-			description = fmt.Sprintf("Order changed: %s", diff.Path)
-		}
-
-		fmt.Fprintf(&sb, `  {"description": %q, "fingerprint": %q, "severity": "minor", "location": {"path": %q}}`,
-			description, diff.Path, diff.Path)
+		desc := gitLabDescription(diff)
+		fmt.Fprintf(&sb,
+			`  {"description": %q, "check_name": %q, "fingerprint": %q, "severity": %q, "location": {"path": %q, "lines": {"begin": 1}}}`,
+			desc, gitLabCheckName(diff.Type), gitLabFingerprint(desc), gitLabSeverity(diff.Type), diff.Path)
 
 		if i < len(diffs)-1 {
 			sb.WriteString(",")
@@ -459,7 +513,9 @@ func (f *GitLabFormatter) Format(diffs []Difference, _ *FormatOptions) string {
 }
 
 // GiteaFormatter renders output compatible with Gitea CI/CD.
-// Uses GitHub Actions compatible format.
+// Uses GitHub Actions compatible format. Note: Gitea Actions silently ignores
+// workflow command annotations (see gitea/gitea#23722), so annotations may not
+// appear in the Gitea UI. The output is still valid for log parsing.
 type GiteaFormatter struct{}
 
 // FormatSingle renders a single difference in Gitea CI format (GitHub Actions compatible).

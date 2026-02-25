@@ -144,8 +144,8 @@ diffyml -s before.yaml after.yaml || echo "Config drift detected"
 | Flag | Description |
 |------|-------------|
 | `-o, --output <style>` | Output style: `detailed`, `compact`, `brief`, `github`, `gitlab`, `gitea` (default `detailed`) |
-| `-c, --color <mode>` | Color usage: `on`, `off`, `auto` (default `auto`) |
-| `-t, --truecolor <mode>` | True color (24-bit): `on`, `off`, `auto` (default `auto`) |
+| `-c, --color <mode>` | Color usage: `always`, `never`, `auto` (default `auto`) |
+| `-t, --truecolor <mode>` | True color (24-bit): `always`, `never`, `auto` (default `auto`) |
 | `-w, --fixed-width <int>` | Fixed terminal width instead of auto-detection |
 
 **Comparison**

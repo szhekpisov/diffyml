@@ -120,17 +120,17 @@ func TestCLIConfig_ParseArgs_SetExitCode(t *testing.T) {
 	}
 }
 
-func TestCLIConfig_ParseArgs_ColorOn(t *testing.T) {
+func TestCLIConfig_ParseArgs_ColorAlways(t *testing.T) {
 	cfg := NewCLIConfig()
-	args := []string{"-c", "on", "from.yaml", "to.yaml"}
+	args := []string{"-c", "always", "from.yaml", "to.yaml"}
 
 	err := cfg.ParseArgs(args)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if cfg.Color != "on" {
-		t.Errorf("expected Color='on', got %q", cfg.Color)
+	if cfg.Color != "always" {
+		t.Errorf("expected Color='always', got %q", cfg.Color)
 	}
 }
 
@@ -1171,7 +1171,7 @@ func TestCLI_OutputFormat_CompactWithColor(t *testing.T) {
 
 	cfg := NewCLIConfig()
 	cfg.Output = "compact"
-	cfg.Color = "on"
+	cfg.Color = "always"
 
 	rc := NewRunConfig()
 	var stdout, stderr strings.Builder
@@ -1183,9 +1183,9 @@ func TestCLI_OutputFormat_CompactWithColor(t *testing.T) {
 	Run(cfg, rc)
 
 	output := stdout.String()
-	// Should contain ANSI color codes when color is forced on
+	// Should contain ANSI color codes when color is forced always
 	if !containsSubstr(output, "\033[") {
-		t.Error("expected ANSI color codes in output with color=on")
+		t.Error("expected ANSI color codes in output with color=always")
 	}
 }
 
@@ -1195,7 +1195,7 @@ func TestCLI_OutputFormat_CompactWithoutColor(t *testing.T) {
 
 	cfg := NewCLIConfig()
 	cfg.Output = "compact"
-	cfg.Color = "off"
+	cfg.Color = "never"
 
 	rc := NewRunConfig()
 	var stdout, stderr strings.Builder
@@ -1207,9 +1207,9 @@ func TestCLI_OutputFormat_CompactWithoutColor(t *testing.T) {
 	Run(cfg, rc)
 
 	output := stdout.String()
-	// Should NOT contain ANSI color codes when color is off
+	// Should NOT contain ANSI color codes when color is never
 	if containsSubstr(output, "\033[") {
-		t.Error("expected no ANSI color codes in output with color=off")
+		t.Error("expected no ANSI color codes in output with color=never")
 	}
 }
 
@@ -1485,7 +1485,7 @@ func TestRun_BothDirectories_DispatchesToDirectoryMode(t *testing.T) {
 	cfg.FromFile = fromDir
 	cfg.ToFile = toDir
 	cfg.SetExitCode = true
-	cfg.Color = "off"
+	cfg.Color = "never"
 
 	rc := NewRunConfig()
 	var stdout, stderr strings.Builder
@@ -1513,7 +1513,7 @@ func TestRun_BothDirectories_NoDiffs_Exit0(t *testing.T) {
 	cfg.FromFile = fromDir
 	cfg.ToFile = toDir
 	cfg.SetExitCode = true
-	cfg.Color = "off"
+	cfg.Color = "never"
 
 	rc := NewRunConfig()
 	var stdout, stderr strings.Builder
@@ -1544,7 +1544,7 @@ func TestRun_MixedTypes_DirAndFile_Error(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.FromFile = dir
 	cfg.ToFile = f.Name()
-	cfg.Color = "off"
+	cfg.Color = "never"
 
 	rc := NewRunConfig()
 	var stdout, stderr strings.Builder
@@ -1574,7 +1574,7 @@ func TestRun_MixedTypes_FileAndDir_Error(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.FromFile = f.Name()
 	cfg.ToFile = dir
-	cfg.Color = "off"
+	cfg.Color = "never"
 
 	rc := NewRunConfig()
 	var stdout, stderr strings.Builder

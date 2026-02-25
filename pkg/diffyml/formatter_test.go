@@ -243,31 +243,31 @@ func TestConvertToGoPatchPath(t *testing.T) {
 
 // Color configuration tests
 
-func TestColorMode_On(t *testing.T) {
-	mode := ColorModeOn
-	// ColorModeOn should always enable color
+func TestColorMode_Always(t *testing.T) {
+	mode := ColorModeAlways
+	// ColorModeAlways should always enable color
 	enabled := ResolveColorMode(mode, false)
 	if !enabled {
-		t.Error("ColorModeOn should enable color even when not a terminal")
+		t.Error("ColorModeAlways should enable color even when not a terminal")
 	}
 
 	enabled = ResolveColorMode(mode, true)
 	if !enabled {
-		t.Error("ColorModeOn should enable color when terminal")
+		t.Error("ColorModeAlways should enable color when terminal")
 	}
 }
 
-func TestColorMode_Off(t *testing.T) {
-	mode := ColorModeOff
-	// ColorModeOff should never enable color
+func TestColorMode_Never(t *testing.T) {
+	mode := ColorModeNever
+	// ColorModeNever should never enable color
 	enabled := ResolveColorMode(mode, true)
 	if enabled {
-		t.Error("ColorModeOff should disable color even when terminal")
+		t.Error("ColorModeNever should disable color even when terminal")
 	}
 
 	enabled = ResolveColorMode(mode, false)
 	if enabled {
-		t.Error("ColorModeOff should disable color when not a terminal")
+		t.Error("ColorModeNever should disable color when not a terminal")
 	}
 }
 
@@ -292,11 +292,11 @@ func TestParseColorMode_Valid(t *testing.T) {
 		input    string
 		expected ColorMode
 	}{
-		{"on", ColorModeOn},
-		{"ON", ColorModeOn},
-		{"On", ColorModeOn},
-		{"off", ColorModeOff},
-		{"OFF", ColorModeOff},
+		{"always", ColorModeAlways},
+		{"ALWAYS", ColorModeAlways},
+		{"Always", ColorModeAlways},
+		{"never", ColorModeNever},
+		{"NEVER", ColorModeNever},
 		{"auto", ColorModeAuto},
 		{"AUTO", ColorModeAuto},
 	}
@@ -382,7 +382,7 @@ func TestColorConfig_DisableColorForNonTerminal(t *testing.T) {
 }
 
 func TestColorConfig_TrueColor(t *testing.T) {
-	cfg := NewColorConfig(ColorModeOn, true, 0)
+	cfg := NewColorConfig(ColorModeAlways, true, 0)
 	cfg.SetIsTerminal(true)
 
 	if !cfg.ShouldUseTrueColor() {
@@ -391,7 +391,7 @@ func TestColorConfig_TrueColor(t *testing.T) {
 }
 
 func TestColorConfig_TrueColorDisabled(t *testing.T) {
-	cfg := NewColorConfig(ColorModeOn, false, 0)
+	cfg := NewColorConfig(ColorModeAlways, false, 0)
 	cfg.SetIsTerminal(true)
 
 	if cfg.ShouldUseTrueColor() {
@@ -400,7 +400,7 @@ func TestColorConfig_TrueColorDisabled(t *testing.T) {
 }
 
 func TestColorConfig_Width(t *testing.T) {
-	cfg := NewColorConfig(ColorModeOn, false, 100)
+	cfg := NewColorConfig(ColorModeAlways, false, 100)
 
 	width := cfg.GetWidth()
 	if width != 100 {
@@ -409,7 +409,7 @@ func TestColorConfig_Width(t *testing.T) {
 }
 
 func TestColorConfig_DefaultWidth(t *testing.T) {
-	cfg := NewColorConfig(ColorModeOn, false, 0)
+	cfg := NewColorConfig(ColorModeAlways, false, 0)
 
 	width := cfg.GetWidth()
 	if width <= 0 {

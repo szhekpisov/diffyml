@@ -508,7 +508,7 @@ func TestFormatFileHeader_EndsWithNewline(t *testing.T) {
 func TestRunDirectory_IdenticalFiles_Exit0(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.SetExitCode = true
-	cfg.Color = "off"
+	cfg.Color = "never"
 
 	rc := NewRunConfig()
 	var stdout, stderr strings.Builder
@@ -530,7 +530,7 @@ func TestRunDirectory_IdenticalFiles_Exit0(t *testing.T) {
 func TestRunDirectory_ModifiedFile_Exit1(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.SetExitCode = true
-	cfg.Color = "off"
+	cfg.Color = "never"
 
 	rc := NewRunConfig()
 	var stdout, stderr strings.Builder
@@ -556,7 +556,7 @@ func TestRunDirectory_ModifiedFile_Exit1(t *testing.T) {
 func TestRunDirectory_AddedFile(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.SetExitCode = true
-	cfg.Color = "off"
+	cfg.Color = "never"
 
 	rc := NewRunConfig()
 	var stdout, stderr strings.Builder
@@ -582,7 +582,7 @@ func TestRunDirectory_AddedFile(t *testing.T) {
 func TestRunDirectory_RemovedFile(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.SetExitCode = true
-	cfg.Color = "off"
+	cfg.Color = "never"
 
 	rc := NewRunConfig()
 	var stdout, stderr strings.Builder
@@ -608,7 +608,7 @@ func TestRunDirectory_RemovedFile(t *testing.T) {
 func TestRunDirectory_MixedFiles(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.SetExitCode = true
-	cfg.Color = "off"
+	cfg.Color = "never"
 
 	rc := NewRunConfig()
 	var stdout, stderr strings.Builder
@@ -643,7 +643,7 @@ func TestRunDirectory_MixedFiles(t *testing.T) {
 func TestRunDirectory_NoDiffs_NoSetExitCode_Exit0(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.SetExitCode = false
-	cfg.Color = "off"
+	cfg.Color = "never"
 
 	rc := NewRunConfig()
 	var stdout, stderr strings.Builder
@@ -663,7 +663,7 @@ func TestRunDirectory_NoDiffs_NoSetExitCode_Exit0(t *testing.T) {
 func TestRunDirectory_EmptyDirectories_Exit0(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.SetExitCode = true
-	cfg.Color = "off"
+	cfg.Color = "never"
 
 	rc := NewRunConfig()
 	var stdout, stderr strings.Builder
@@ -681,7 +681,7 @@ func TestRunDirectory_OmitHeader_SuppressesSummaryButKeepsFileHeaders(t *testing
 	cfg := NewCLIConfig()
 	cfg.SetExitCode = true
 	cfg.OmitHeader = true
-	cfg.Color = "off"
+	cfg.Color = "never"
 
 	rc := NewRunConfig()
 	var stdout, stderr strings.Builder
@@ -705,7 +705,7 @@ func TestRunDirectory_OmitHeader_SuppressesSummaryButKeepsFileHeaders(t *testing
 func TestRunDirectory_ParseError_ContinuesProcessing(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.SetExitCode = true
-	cfg.Color = "off"
+	cfg.Color = "never"
 
 	rc := NewRunConfig()
 	var stdout, stderr strings.Builder
@@ -734,7 +734,7 @@ func TestRunDirectory_ParseError_ContinuesProcessing(t *testing.T) {
 func TestRunDirectory_ParseError_OnlyErrors_Exit255(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.SetExitCode = true
-	cfg.Color = "off"
+	cfg.Color = "never"
 
 	rc := NewRunConfig()
 	var stdout, stderr strings.Builder
@@ -756,7 +756,7 @@ func TestRunDirectory_ParseError_OnlyErrors_Exit255(t *testing.T) {
 func TestRunDirectory_IgnoreOrderChanges(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.SetExitCode = true
-	cfg.Color = "off"
+	cfg.Color = "never"
 	cfg.IgnoreOrderChanges = true
 
 	rc := NewRunConfig()
@@ -782,7 +782,7 @@ func TestRunDirectory_IgnoreOrderChanges(t *testing.T) {
 func TestRunDirectory_FilterFlag(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.SetExitCode = true
-	cfg.Color = "off"
+	cfg.Color = "never"
 	cfg.Filter = []string{"config.a"}
 
 	rc := NewRunConfig()
@@ -812,7 +812,7 @@ func TestRunDirectory_FilterFlag(t *testing.T) {
 func TestRunDirectory_ExcludeFlag(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.SetExitCode = true
-	cfg.Color = "off"
+	cfg.Color = "never"
 	cfg.Exclude = []string{"config.secret"}
 
 	rc := NewRunConfig()
@@ -842,7 +842,7 @@ func TestRunDirectory_ExcludeFlag(t *testing.T) {
 func TestRunDirectory_OutputFormat_Compact(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.SetExitCode = true
-	cfg.Color = "off"
+	cfg.Color = "never"
 	cfg.Output = "compact"
 
 	rc := NewRunConfig()
@@ -867,7 +867,7 @@ func TestRunDirectory_OutputFormat_Compact(t *testing.T) {
 func TestRunDirectory_OutputFormat_Brief(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.SetExitCode = true
-	cfg.Color = "off"
+	cfg.Color = "never"
 	cfg.Output = "brief"
 
 	rc := NewRunConfig()
@@ -892,7 +892,7 @@ func TestRunDirectory_OutputFormat_Brief(t *testing.T) {
 func TestRunDirectory_OutputFormat_GitHub(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.SetExitCode = true
-	cfg.Color = "off"
+	cfg.Color = "never"
 	cfg.Output = "github"
 
 	rc := NewRunConfig()
@@ -917,7 +917,7 @@ func TestRunDirectory_OutputFormat_GitHub(t *testing.T) {
 func TestRunDirectory_SwapDirectories(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.SetExitCode = true
-	cfg.Color = "off"
+	cfg.Color = "never"
 	cfg.Swap = true
 	cfg.Output = "compact"
 
@@ -943,7 +943,7 @@ func TestRunDirectory_SwapDirectories(t *testing.T) {
 func TestRunDirectory_MultipleFilesWithFilter(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.SetExitCode = true
-	cfg.Color = "off"
+	cfg.Color = "never"
 	cfg.Filter = []string{"name"}
 
 	rc := NewRunConfig()
@@ -985,7 +985,7 @@ func TestRunDirectory_MultipleFilesWithFilter(t *testing.T) {
 func TestRunDirectory_ExcludeAllDiffs_Exit0(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.SetExitCode = true
-	cfg.Color = "off"
+	cfg.Color = "never"
 	cfg.Exclude = []string{"key"}
 
 	rc := NewRunConfig()
@@ -1008,7 +1008,7 @@ func TestRunDirectory_ExcludeAllDiffs_Exit0(t *testing.T) {
 func TestRunDirectory_GitLab_SingleJSONArray(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.SetExitCode = true
-	cfg.Color = "off"
+	cfg.Color = "never"
 	cfg.Output = "gitlab"
 
 	rc := NewRunConfig()
@@ -1039,7 +1039,7 @@ func TestRunDirectory_GitLab_SingleJSONArray(t *testing.T) {
 func TestRunDirectory_GitLab_NoFileHeaders(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.SetExitCode = true
-	cfg.Color = "off"
+	cfg.Color = "never"
 	cfg.Output = "gitlab"
 
 	rc := NewRunConfig()
@@ -1065,7 +1065,7 @@ func TestRunDirectory_GitLab_NoFileHeaders(t *testing.T) {
 func TestRunDirectory_GitLab_EmptyProducesEmptyArray(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.SetExitCode = true
-	cfg.Color = "off"
+	cfg.Color = "never"
 	cfg.Output = "gitlab"
 
 	rc := NewRunConfig()
@@ -1090,7 +1090,7 @@ func TestRunDirectory_GitLab_EmptyProducesEmptyArray(t *testing.T) {
 func TestRunDirectory_GitLab_EmptyDirectoriesProducesEmptyArray(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.SetExitCode = true
-	cfg.Color = "off"
+	cfg.Color = "never"
 	cfg.Output = "gitlab"
 
 	rc := NewRunConfig()
@@ -1113,7 +1113,7 @@ func TestRunDirectory_GitLab_EmptyDirectoriesProducesEmptyArray(t *testing.T) {
 func TestRunDirectory_GitLab_LocationPathIsFilePath(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.SetExitCode = true
-	cfg.Color = "off"
+	cfg.Color = "never"
 	cfg.Output = "gitlab"
 
 	rc := NewRunConfig()
@@ -1144,7 +1144,7 @@ func TestRunDirectory_GitLab_LocationPathIsFilePath(t *testing.T) {
 func TestRunDirectory_GitLab_DescriptionIncludesFilename(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.SetExitCode = true
-	cfg.Color = "off"
+	cfg.Color = "never"
 	cfg.Output = "gitlab"
 
 	rc := NewRunConfig()
@@ -1174,7 +1174,7 @@ func TestRunDirectory_GitLab_DescriptionIncludesFilename(t *testing.T) {
 func TestRunDirectory_GitLab_UniqueFingerprintsAcrossFiles(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.SetExitCode = true
-	cfg.Color = "off"
+	cfg.Color = "never"
 	cfg.Output = "gitlab"
 
 	rc := NewRunConfig()
@@ -1207,7 +1207,7 @@ func TestRunDirectory_GitLab_UniqueFingerprintsAcrossFiles(t *testing.T) {
 func TestRunDirectory_GitLab_StripsDotSlashFromPairName(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.SetExitCode = true
-	cfg.Color = "off"
+	cfg.Color = "never"
 	cfg.Output = "gitlab"
 
 	rc := NewRunConfig()
@@ -1235,7 +1235,7 @@ func TestRunDirectory_NonGitLab_StillHasFileHeaders(t *testing.T) {
 		t.Run(format, func(t *testing.T) {
 			cfg := NewCLIConfig()
 			cfg.SetExitCode = true
-			cfg.Color = "off"
+			cfg.Color = "never"
 			cfg.Output = format
 
 			rc := NewRunConfig()
@@ -1260,7 +1260,7 @@ func TestRunDirectory_GitLab_ExitCodePrecedence(t *testing.T) {
 	// When diffs exist alongside errors, diffs take precedence
 	cfg := NewCLIConfig()
 	cfg.SetExitCode = true
-	cfg.Color = "off"
+	cfg.Color = "never"
 	cfg.Output = "gitlab"
 
 	rc := NewRunConfig()
@@ -1282,7 +1282,7 @@ func TestRunDirectory_GitLab_ExitCodePrecedence(t *testing.T) {
 func TestRunDirectory_GitLab_OnlyErrors_Exit255(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.SetExitCode = true
-	cfg.Color = "off"
+	cfg.Color = "never"
 	cfg.Output = "gitlab"
 
 	rc := NewRunConfig()
@@ -1315,7 +1315,7 @@ func TestRunDirectory_NonGitLab_FileHeadersPresent(t *testing.T) {
 		t.Run(format, func(t *testing.T) {
 			cfg := NewCLIConfig()
 			cfg.SetExitCode = true
-			cfg.Color = "off"
+			cfg.Color = "never"
 			cfg.Output = format
 
 			rc := NewRunConfig()
@@ -1402,7 +1402,7 @@ func TestRunDirectory_NonGitLab_PerFileOutput(t *testing.T) {
 	// (not a single aggregated output) in directory mode.
 	cfg := NewCLIConfig()
 	cfg.SetExitCode = true
-	cfg.Color = "off"
+	cfg.Color = "never"
 	cfg.Output = "compact"
 
 	rc := NewRunConfig()
@@ -1436,7 +1436,7 @@ func TestRunDirectory_DetailedFormatter_FileHeadersInDirectoryMode(t *testing.T)
 	// Detailed formatter specifically should have file headers in directory mode.
 	cfg := NewCLIConfig()
 	cfg.SetExitCode = true
-	cfg.Color = "off"
+	cfg.Color = "never"
 	cfg.Output = "detailed"
 
 	rc := NewRunConfig()
@@ -1462,7 +1462,7 @@ func TestRunDirectory_DetailedFormatter_FileHeadersInDirectoryMode(t *testing.T)
 func TestRunDirectory_GitHub_StructuredOutput(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.SetExitCode = true
-	cfg.Color = "off"
+	cfg.Color = "never"
 	cfg.Output = "github"
 
 	rc := NewRunConfig()
@@ -1506,7 +1506,7 @@ func TestRunDirectory_GitHub_StructuredOutput(t *testing.T) {
 func TestRunDirectory_GitHub_EmptyProducesEmptyString(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.SetExitCode = true
-	cfg.Color = "off"
+	cfg.Color = "never"
 	cfg.Output = "github"
 
 	rc := NewRunConfig()
@@ -1531,7 +1531,7 @@ func TestRunDirectory_GitHub_EmptyProducesEmptyString(t *testing.T) {
 func TestRunDirectory_Gitea_StructuredOutput(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.SetExitCode = true
-	cfg.Color = "off"
+	cfg.Color = "never"
 	cfg.Output = "gitea"
 
 	rc := NewRunConfig()
@@ -1563,7 +1563,7 @@ func TestRunDirectory_Gitea_StructuredOutput(t *testing.T) {
 func TestRunDirectory_GitHub_StripsDotSlashFromPairName(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.SetExitCode = true
-	cfg.Color = "off"
+	cfg.Color = "never"
 	cfg.Output = "github"
 
 	rc := NewRunConfig()

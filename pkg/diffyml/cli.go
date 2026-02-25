@@ -23,8 +23,8 @@ type CLIConfig struct {
 
 	// Output options
 	Output    string // compact, brief, github, gitlab, gitea, detailed
-	Color     string // on, off, auto
-	TrueColor string // on, off, auto
+	Color     string // always, never, auto
+	TrueColor string // always, never, auto
 
 	// Display options
 	FixedWidth            int
@@ -88,9 +88,9 @@ func (c *CLIConfig) initFlags() {
 	c.fs.StringVar(&c.Output, "o", c.Output, "")
 	c.fs.StringVar(&c.Output, "output", c.Output, "specify the output style: compact, brief, github, gitlab, gitea, detailed")
 	c.fs.StringVar(&c.Color, "c", c.Color, "")
-	c.fs.StringVar(&c.Color, "color", c.Color, "specify color usage: on, off, or auto")
+	c.fs.StringVar(&c.Color, "color", c.Color, "specify color usage: always, never, or auto")
 	c.fs.StringVar(&c.TrueColor, "t", c.TrueColor, "")
-	c.fs.StringVar(&c.TrueColor, "truecolor", c.TrueColor, "specify true color usage: on, off, or auto")
+	c.fs.StringVar(&c.TrueColor, "truecolor", c.TrueColor, "specify true color usage: always, never, or auto")
 
 	// Display options
 	c.fs.IntVar(&c.FixedWidth, "w", c.FixedWidth, "")
@@ -222,8 +222,8 @@ func (c *CLIConfig) Usage() string {
 
 	// Output options
 	sb.WriteString("  -o, --output string                 specify output style: compact, brief, github, gitlab, gitea, detailed (default \"detailed\")\n")
-	sb.WriteString("  -c, --color string                  specify color usage: on, off, or auto (default \"auto\")\n")
-	sb.WriteString("  -t, --truecolor string              specify true color usage: on, off, or auto (default \"auto\")\n")
+	sb.WriteString("  -c, --color string                  specify color usage: always, never, or auto (default \"auto\")\n")
+	sb.WriteString("  -t, --truecolor string              specify true color usage: always, never, or auto (default \"auto\")\n")
 	sb.WriteString("  -w, --fixed-width int               disable terminal width detection and use provided fixed value (default -1)\n")
 	sb.WriteString("\n")
 
@@ -286,12 +286,12 @@ func (c *CLIConfig) Validate() error {
 
 	// Validate color mode
 	if _, err := ParseColorMode(c.Color); err != nil {
-		return fmt.Errorf("invalid color mode %q, valid modes: on, off, auto", c.Color)
+		return fmt.Errorf("invalid color mode %q, valid modes: always, never, auto", c.Color)
 	}
 
 	// Validate truecolor mode
 	if _, err := ParseColorMode(c.TrueColor); err != nil {
-		return fmt.Errorf("invalid truecolor mode %q, valid modes: on, off, auto", c.TrueColor)
+		return fmt.Errorf("invalid truecolor mode %q, valid modes: always, never, auto", c.TrueColor)
 	}
 
 	// Validate regex patterns
@@ -527,7 +527,7 @@ func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
 	// Apply color configuration
 	colorMode, _ := ParseColorMode(cfg.Color)
 	trueColorMode, _ := ParseColorMode(cfg.TrueColor)
-	colorCfg := NewColorConfig(colorMode, trueColorMode == ColorModeOn, cfg.FixedWidth)
+	colorCfg := NewColorConfig(colorMode, trueColorMode == ColorModeAlways, cfg.FixedWidth)
 	colorCfg.DetectTerminal()
 	colorCfg.ToFormatOptions(formatOpts)
 

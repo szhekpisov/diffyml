@@ -546,11 +546,7 @@ func (f *GitLabFormatter) Format(diffs []Difference, opts *FormatOptions) string
 
 // FormatAll renders all diff groups as a single JSON array for directory mode.
 // Implements StructuredFormatter interface.
-func (f *GitLabFormatter) FormatAll(groups []DiffGroup, opts *FormatOptions) string {
-	if opts == nil {
-		opts = DefaultFormatOptions()
-	}
-
+func (f *GitLabFormatter) FormatAll(groups []DiffGroup, _ *FormatOptions) string {
 	// Count total diffs for comma handling
 	total := 0
 	for _, g := range groups {

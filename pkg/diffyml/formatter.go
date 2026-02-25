@@ -36,6 +36,24 @@ type FormatOptions struct {
 	ContextLines int
 	// MinorChangeThreshold is the threshold for minor change detection.
 	MinorChangeThreshold float64
+	// FilePath is the source file path set by the CLI layer.
+	// Used by GitLabFormatter for location.path and fingerprint generation.
+	// Defaults to empty string (backward compatible).
+	FilePath string
+}
+
+// DiffGroup pairs differences from a single file with its path.
+// Used by StructuredFormatter.FormatAll for aggregated directory-mode output.
+type DiffGroup struct {
+	FilePath string       // Relative file path (e.g., "deploy.yaml")
+	Diffs    []Difference // Differences for this file
+}
+
+// StructuredFormatter is an opt-in interface for formatters that need
+// aggregated output across all files in directory mode.
+// Checked via type assertion in runDirectory.
+type StructuredFormatter interface {
+	FormatAll(groups []DiffGroup, opts *FormatOptions) string
 }
 
 // DefaultFormatOptions returns FormatOptions with default values.
@@ -323,10 +341,8 @@ func (f *BriefFormatter) FormatSingle(diff Difference, opts *FormatOptions) stri
 		return fmt.Sprintf("- %s\n", diff.Path)
 	case DiffModified:
 		return fmt.Sprintf("± %s\n", diff.Path)
-	case DiffOrderChanged:
+	default: // DiffOrderChanged
 		return fmt.Sprintf("⇆ %s\n", diff.Path)
-	default:
-		return fmt.Sprintf("? %s\n", diff.Path)
 	}
 }
 
@@ -375,10 +391,8 @@ func gitHubCommand(dt DiffType) (command, title string) {
 		return "error", "YAML Removed"
 	case DiffModified:
 		return "warning", "YAML Modified"
-	case DiffOrderChanged:
+	default: // DiffOrderChanged
 		return "notice", "YAML Order Changed"
-	default:
-		return "warning", "YAML Diff"
 	}
 }
 
@@ -391,10 +405,8 @@ func gitHubMessage(diff Difference) string {
 		return fmt.Sprintf("Removed: %s = %v", diff.Path, diff.From)
 	case DiffModified:
 		return fmt.Sprintf("Modified: %s changed from %v to %v", diff.Path, diff.From, diff.To)
-	case DiffOrderChanged:
+	default: // DiffOrderChanged
 		return fmt.Sprintf("Order changed: %s", diff.Path)
-	default:
-		return fmt.Sprintf("Diff: %s", diff.Path)
 	}
 }
 
@@ -430,13 +442,9 @@ func gitLabSeverity(dt DiffType) string {
 	switch dt {
 	case DiffAdded:
 		return "info"
-	case DiffRemoved:
+	case DiffRemoved, DiffModified:
 		return "major"
-	case DiffModified:
-		return "major"
-	case DiffOrderChanged:
-		return "minor"
-	default:
+	default: // DiffOrderChanged
 		return "minor"
 	}
 }
@@ -450,16 +458,20 @@ func gitLabCheckName(dt DiffType) string {
 		return "diffyml/removed"
 	case DiffModified:
 		return "diffyml/modified"
-	case DiffOrderChanged:
+	default: // DiffOrderChanged
 		return "diffyml/order-changed"
-	default:
-		return "diffyml/unknown"
 	}
 }
 
-// gitLabFingerprint returns a unique SHA-256 fingerprint for a description string.
-func gitLabFingerprint(description string) string {
-	h := sha256.Sum256([]byte(description))
+// gitLabFingerprint returns a unique SHA-256 fingerprint.
+// When filePath is non-empty, hashes filePath + ":" + description.
+// When filePath is empty, hashes only description (backward compat).
+func gitLabFingerprint(filePath, description string) string {
+	input := description
+	if filePath != "" {
+		input = filePath + ":" + description
+	}
+	h := sha256.Sum256([]byte(input))
 	return hex.EncodeToString(h[:])
 }
 
@@ -472,10 +484,8 @@ func gitLabDescription(diff Difference) string {
 		return fmt.Sprintf("Removed: %s = %v", diff.Path, diff.From)
 	case DiffModified:
 		return fmt.Sprintf("Modified: %s changed from %v to %v", diff.Path, diff.From, diff.To)
-	case DiffOrderChanged:
+	default: // DiffOrderChanged
 		return fmt.Sprintf("Order changed: %s", diff.Path)
-	default:
-		return fmt.Sprintf("Diff: %s", diff.Path)
 	}
 }
 
@@ -484,13 +494,17 @@ func (f *GitLabFormatter) FormatSingle(diff Difference, opts *FormatOptions) str
 	desc := gitLabDescription(diff)
 	return fmt.Sprintf(
 		`{"description": %q, "check_name": %q, "fingerprint": %q, "severity": %q, "location": {"path": %q, "lines": {"begin": 1}}}`+"\n",
-		desc, gitLabCheckName(diff.Type), gitLabFingerprint(desc), gitLabSeverity(diff.Type), diff.Path)
+		desc, gitLabCheckName(diff.Type), gitLabFingerprint("", desc), gitLabSeverity(diff.Type), diff.Path)
 }
 
 // Format renders differences in GitLab CI format.
-func (f *GitLabFormatter) Format(diffs []Difference, _ *FormatOptions) string {
+func (f *GitLabFormatter) Format(diffs []Difference, opts *FormatOptions) string {
 	if len(diffs) == 0 {
 		return "[]\n"
+	}
+
+	if opts == nil {
+		opts = DefaultFormatOptions()
 	}
 
 	var sb strings.Builder
@@ -498,14 +512,55 @@ func (f *GitLabFormatter) Format(diffs []Difference, _ *FormatOptions) string {
 
 	for i, diff := range diffs {
 		desc := gitLabDescription(diff)
+		locationPath := opts.FilePath
+		if locationPath == "" {
+			locationPath = diff.Path
+		}
 		fmt.Fprintf(&sb,
 			`  {"description": %q, "check_name": %q, "fingerprint": %q, "severity": %q, "location": {"path": %q, "lines": {"begin": 1}}}`,
-			desc, gitLabCheckName(diff.Type), gitLabFingerprint(desc), gitLabSeverity(diff.Type), diff.Path)
+			desc, gitLabCheckName(diff.Type), gitLabFingerprint(opts.FilePath, desc), gitLabSeverity(diff.Type), locationPath)
 
 		if i < len(diffs)-1 {
 			sb.WriteString(",")
 		}
 		sb.WriteString("\n")
+	}
+
+	sb.WriteString("]\n")
+	return sb.String()
+}
+
+// FormatAll renders all diff groups as a single JSON array for directory mode.
+// Implements StructuredFormatter interface.
+func (f *GitLabFormatter) FormatAll(groups []DiffGroup, _ *FormatOptions) string {
+	// Count total diffs for comma handling
+	total := 0
+	for _, g := range groups {
+		total += len(g.Diffs)
+	}
+
+	if total == 0 {
+		return "[]\n"
+	}
+
+	var sb strings.Builder
+	sb.WriteString("[\n")
+
+	idx := 0
+	for _, group := range groups {
+		for _, diff := range group.Diffs {
+			baseDesc := gitLabDescription(diff)
+			displayDesc := fmt.Sprintf("[%s] %s", group.FilePath, baseDesc)
+			fmt.Fprintf(&sb,
+				`  {"description": %q, "check_name": %q, "fingerprint": %q, "severity": %q, "location": {"path": %q, "lines": {"begin": 1}}}`,
+				displayDesc, gitLabCheckName(diff.Type), gitLabFingerprint(group.FilePath, baseDesc), gitLabSeverity(diff.Type), group.FilePath)
+
+			if idx < total-1 {
+				sb.WriteString(",")
+			}
+			sb.WriteString("\n")
+			idx++
+		}
 	}
 
 	sb.WriteString("]\n")

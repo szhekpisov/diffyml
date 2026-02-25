@@ -1,5 +1,7 @@
 name: Security & Static Analysis
 
+permissions: read-all
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true

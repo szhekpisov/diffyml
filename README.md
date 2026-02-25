@@ -7,6 +7,7 @@ Structural diff for YAML files. Understands YAML semantics and detects Kubernete
 [![Go Report Card](https://goreportcard.com/badge/github.com/szhekpisov/diffyml)](https://goreportcard.com/report/github.com/szhekpisov/diffyml)
 [![Security & Static Analysis](https://github.com/szhekpisov/diffyml/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/szhekpisov/diffyml/actions/workflows/security.yml)
 [![Benchmark](https://github.com/szhekpisov/diffyml/actions/workflows/benchmark.yml/badge.svg?branch=main)](https://github.com/szhekpisov/diffyml/actions/workflows/benchmark.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/szhekpisov/diffyml/badge)](https://scorecard.dev/viewer/?uri=github.com/szhekpisov/diffyml)
 
 ## Features
 

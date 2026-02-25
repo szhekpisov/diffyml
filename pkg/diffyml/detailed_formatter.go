@@ -45,6 +45,7 @@ func (f *DetailedFormatter) Format(diffs []Difference, opts *FormatOptions) stri
 	}
 
 	var sb strings.Builder
+	cl := newColumnLayout(opts)
 
 	if !opts.OmitHeader {
 		f.formatHeader(&sb, diffs, opts)
@@ -54,7 +55,7 @@ func (f *DetailedFormatter) Format(diffs []Difference, opts *FormatOptions) stri
 	groups := f.groupByPath(diffs)
 	for _, group := range groups {
 		f.formatPathHeading(&sb, group.Path, isMultiDoc, opts)
-		f.formatGroupDiffs(&sb, group, opts)
+		f.formatGroupDiffs(&sb, group, cl, opts)
 	}
 
 	return sb.String()
@@ -125,7 +126,8 @@ func (f *DetailedFormatter) formatPathHeading(sb *strings.Builder, path string, 
 
 // formatGroupDiffs renders all diffs within a path group.
 // Groups consecutive additions and removals for batched descriptors.
-func (f *DetailedFormatter) formatGroupDiffs(sb *strings.Builder, group pathGroup, opts *FormatOptions) {
+// cl is the column layout for table-style rendering (nil = vertical mode).
+func (f *DetailedFormatter) formatGroupDiffs(sb *strings.Builder, group pathGroup, cl *columnLayout, opts *FormatOptions) {
 	var added, removed []Difference
 	var others []Difference
 
@@ -140,16 +142,26 @@ func (f *DetailedFormatter) formatGroupDiffs(sb *strings.Builder, group pathGrou
 		}
 	}
 
-	if len(added) > 0 {
-		f.formatEntryBatch(sb, added, "added", opts)
-	}
-
-	if len(removed) > 0 {
-		f.formatEntryBatch(sb, removed, "removed", opts)
+	if cl != nil {
+		// Table mode: removed before added (standard diff convention, Req 5.4)
+		if len(removed) > 0 {
+			f.formatEntryBatchTable(sb, removed, "removed", cl, opts)
+		}
+		if len(added) > 0 {
+			f.formatEntryBatchTable(sb, added, "added", cl, opts)
+		}
+	} else {
+		// Vertical mode: preserve existing order (added before removed)
+		if len(added) > 0 {
+			f.formatEntryBatch(sb, added, "added", opts)
+		}
+		if len(removed) > 0 {
+			f.formatEntryBatch(sb, removed, "removed", opts)
+		}
 	}
 
 	for _, diff := range others {
-		f.formatChangeDescriptor(sb, diff, opts)
+		f.formatChangeDescriptor(sb, diff, cl, opts)
 	}
 }
 
@@ -190,6 +202,78 @@ func (f *DetailedFormatter) formatEntryBatch(sb *strings.Builder, diffs []Differ
 		}
 		f.renderEntryValue(sb, val, symbol, 4, diff.Path, isListEntry, opts)
 	}
+	sb.WriteString("\n")
+}
+
+// formatEntryBatchTable renders a group of additions or removals in side-by-side table style.
+// Removed entries appear in the left column; added entries appear in the right column.
+// Structured values are rendered to a buffer, split into lines, and fitted into columns.
+func (f *DetailedFormatter) formatEntryBatchTable(sb *strings.Builder, diffs []Difference, action string, cl *columnLayout, opts *FormatOptions) {
+	n := len(diffs)
+	isListEntry := isListEntryDiff(diffs[0])
+	entryType := "map"
+	if isListEntry {
+		entryType = "list"
+	}
+
+	countStr := formatCount(n)
+	noun := pluralize(n, entryType+" entry", entryType+" entries")
+	symbol := "+"
+	colorFn := f.colorAdded
+	if action == "removed" {
+		symbol = "-"
+		colorFn = f.colorRemoved
+	}
+
+	// Descriptor line (same as vertical mode)
+	if opts.Color {
+		sb.WriteString("  ")
+		sb.WriteString(colorFn(opts))
+		fmt.Fprintf(sb, "%s %s %s %s:", symbol, countStr, noun, action)
+		sb.WriteString(f.colorReset())
+		sb.WriteString("\n")
+	} else {
+		fmt.Fprintf(sb, "  %s %s %s %s:\n", symbol, countStr, noun, action)
+	}
+
+	// Determine column colors
+	var leftColor, rightColor string
+	if action == "removed" {
+		leftColor = f.colorRemoved(opts)
+	} else {
+		rightColor = f.colorAdded(opts)
+	}
+
+	// Render each entry value into a column
+	for _, diff := range diffs {
+		var val interface{}
+		if diff.To != nil {
+			val = diff.To
+		} else {
+			val = diff.From
+		}
+
+		// Render to buffer with plain text opts (no ANSI codes)
+		plainOpts := *opts
+		plainOpts.Color = false
+
+		var buf strings.Builder
+		f.renderEntryValue(&buf, val, symbol, 0, diff.Path, isListEntry, &plainOpts)
+
+		// Trim trailing newlines and split into lines
+		rendered := strings.TrimRight(buf.String(), "\n")
+		lines := strings.Split(rendered, "\n")
+
+		// Emit each line into the appropriate column
+		for _, line := range lines {
+			if action == "removed" {
+				cl.formatRow(sb, line, "", leftColor, rightColor, opts)
+			} else {
+				cl.formatRow(sb, "", line, leftColor, rightColor, opts)
+			}
+		}
+	}
+
 	sb.WriteString("\n")
 }
 
@@ -317,29 +401,39 @@ func (f *DetailedFormatter) renderMultilineValue(sb *strings.Builder, prefix, va
 }
 
 // formatChangeDescriptor renders the descriptor line for a single diff.
-func (f *DetailedFormatter) formatChangeDescriptor(sb *strings.Builder, diff Difference, opts *FormatOptions) {
+// cl is the column layout for table-style rendering (nil = vertical mode).
+func (f *DetailedFormatter) formatChangeDescriptor(sb *strings.Builder, diff Difference, cl *columnLayout, opts *FormatOptions) {
 	switch diff.Type {
 	case DiffModified:
-		f.formatModified(sb, diff, opts)
+		f.formatModified(sb, diff, cl, opts)
 	case DiffOrderChanged:
-		f.writeDescriptorLine(sb, "  ⇆ order changed", f.colorModified, opts)
-		if diff.From != nil {
-			f.writeColoredLine(sb, fmt.Sprintf("    - %s", formatCommaSeparated(diff.From)), f.colorRemoved(opts), opts)
+		if cl != nil {
+			f.formatOrderChangedTable(sb, diff, cl, opts)
+		} else {
+			f.writeDescriptorLine(sb, "  ⇆ order changed", f.colorModified, opts)
+			if diff.From != nil {
+				f.writeColoredLine(sb, fmt.Sprintf("    - %s", formatCommaSeparated(diff.From)), f.colorRemoved(opts), opts)
+			}
+			if diff.To != nil {
+				f.writeColoredLine(sb, fmt.Sprintf("    + %s", formatCommaSeparated(diff.To)), f.colorAdded(opts), opts)
+			}
+			sb.WriteString("\n")
 		}
-		if diff.To != nil {
-			f.writeColoredLine(sb, fmt.Sprintf("    + %s", formatCommaSeparated(diff.To)), f.colorAdded(opts), opts)
-		}
-		sb.WriteString("\n")
 	}
 }
 
 // formatModified renders a modification descriptor with type change, multiline, and whitespace detection.
-func (f *DetailedFormatter) formatModified(sb *strings.Builder, diff Difference, opts *FormatOptions) {
+// cl is the column layout for table-style rendering (nil = vertical mode).
+func (f *DetailedFormatter) formatModified(sb *strings.Builder, diff Difference, cl *columnLayout, opts *FormatOptions) {
 	fromType := yamlTypeName(diff.From)
 	toType := yamlTypeName(diff.To)
 
 	// Type change detection
 	if fromType != toType {
+		if cl != nil && !isComplexYAMLType(fromType) && !isComplexYAMLType(toType) {
+			f.formatTypeTable(sb, diff, fromType, toType, cl, opts)
+			return
+		}
 		if opts.Color {
 			f.writeDescriptorLine(sb, fmt.Sprintf("  ± type change from %s%s%s to %s%s%s",
 				styleItalic, fromType, styleItalicOff,
@@ -360,25 +454,100 @@ func (f *DetailedFormatter) formatModified(sb *strings.Builder, diff Difference,
 	if fromOk && toOk {
 		// Whitespace-only change detection
 		if isWhitespaceOnlyChange(fromStr, toStr) {
-			f.writeDescriptorLine(sb, "  ± whitespace only change", f.colorModified, opts)
-			f.writeColoredLine(sb, fmt.Sprintf("    - %s", visualizeWhitespace(fromStr)), f.colorRemoved(opts), opts)
-			f.writeColoredLine(sb, fmt.Sprintf("    + %s", visualizeWhitespace(toStr)), f.colorAdded(opts), opts)
-			sb.WriteString("\n")
+			if cl != nil {
+				f.formatWhitespaceTable(sb, fromStr, toStr, cl, opts)
+			} else {
+				f.writeDescriptorLine(sb, "  ± whitespace only change", f.colorModified, opts)
+				f.writeColoredLine(sb, fmt.Sprintf("    - %s", visualizeWhitespace(fromStr)), f.colorRemoved(opts), opts)
+				f.writeColoredLine(sb, fmt.Sprintf("    + %s", visualizeWhitespace(toStr)), f.colorAdded(opts), opts)
+				sb.WriteString("\n")
+			}
 			return
 		}
 
 		// Multiline detection
 		if strings.Contains(fromStr, "\n") || strings.Contains(toStr, "\n") {
-			f.formatMultilineDiff(sb, fromStr, toStr, opts)
+			if cl != nil {
+				f.formatMultilineTable(sb, fromStr, toStr, cl, opts)
+			} else {
+				f.formatMultilineDiff(sb, fromStr, toStr, opts)
+			}
 			return
 		}
 	}
 
 	// Default: scalar value change
+	if cl != nil {
+		f.formatScalarTable(sb, diff, cl, opts)
+	} else {
+		f.writeDescriptorLine(sb, "  ± value change", f.colorModified, opts)
+		f.writeColoredLine(sb, fmt.Sprintf("    - %v", formatDetailedValue(diff.From)), f.colorRemoved(opts), opts)
+		f.writeColoredLine(sb, fmt.Sprintf("    + %v", formatDetailedValue(diff.To)), f.colorAdded(opts), opts)
+		sb.WriteString("\n")
+	}
+}
+
+// formatScalarTable renders a scalar value modification in side-by-side table style.
+// Displays the descriptor line followed by one row with old (left) and new (right) values.
+func (f *DetailedFormatter) formatScalarTable(sb *strings.Builder, diff Difference, cl *columnLayout, opts *FormatOptions) {
 	f.writeDescriptorLine(sb, "  ± value change", f.colorModified, opts)
-	f.writeColoredLine(sb, fmt.Sprintf("    - %v", formatDetailedValue(diff.From)), f.colorRemoved(opts), opts)
-	f.writeColoredLine(sb, fmt.Sprintf("    + %v", formatDetailedValue(diff.To)), f.colorAdded(opts), opts)
+	cl.formatRow(sb,
+		formatDetailedValue(diff.From),
+		formatDetailedValue(diff.To),
+		f.colorRemoved(opts),
+		f.colorAdded(opts),
+		opts,
+	)
 	sb.WriteString("\n")
+}
+
+// formatTypeTable renders a type change in side-by-side table style.
+// Displays type labels with values: "typeName: value" in each column.
+func (f *DetailedFormatter) formatTypeTable(sb *strings.Builder, diff Difference, fromType, toType string, cl *columnLayout, opts *FormatOptions) {
+	if opts.Color {
+		f.writeDescriptorLine(sb, fmt.Sprintf("  ± type change from %s%s%s to %s%s%s",
+			styleItalic, fromType, styleItalicOff,
+			styleItalic, toType, styleItalicOff), f.colorModified, opts)
+	} else {
+		f.writeDescriptorLine(sb, fmt.Sprintf("  ± type change from %s to %s", fromType, toType), f.colorModified, opts)
+	}
+	left := fmt.Sprintf("%s: %v", fromType, formatDetailedValue(diff.From))
+	right := fmt.Sprintf("%s: %v", toType, formatDetailedValue(diff.To))
+	cl.formatRow(sb, left, right, f.colorRemoved(opts), f.colorAdded(opts), opts)
+	sb.WriteString("\n")
+}
+
+// formatWhitespaceTable renders a whitespace-only change in side-by-side table style.
+func (f *DetailedFormatter) formatWhitespaceTable(sb *strings.Builder, from, to string, cl *columnLayout, opts *FormatOptions) {
+	f.writeDescriptorLine(sb, "  ± whitespace only change", f.colorModified, opts)
+	cl.formatRow(sb,
+		visualizeWhitespace(from),
+		visualizeWhitespace(to),
+		f.colorRemoved(opts),
+		f.colorAdded(opts),
+		opts,
+	)
+	sb.WriteString("\n")
+}
+
+// formatOrderChangedTable renders an order change in side-by-side table style.
+func (f *DetailedFormatter) formatOrderChangedTable(sb *strings.Builder, diff Difference, cl *columnLayout, opts *FormatOptions) {
+	f.writeDescriptorLine(sb, "  ⇆ order changed", f.colorModified, opts)
+	left := ""
+	if diff.From != nil {
+		left = formatCommaSeparated(diff.From)
+	}
+	right := ""
+	if diff.To != nil {
+		right = formatCommaSeparated(diff.To)
+	}
+	cl.formatRow(sb, left, right, f.colorRemoved(opts), f.colorAdded(opts), opts)
+	sb.WriteString("\n")
+}
+
+// isComplexYAMLType returns true for map and list type names.
+func isComplexYAMLType(typeName string) bool {
+	return typeName == "map" || typeName == "list"
 }
 
 // formatMultilineDiff renders an inline line-by-line diff for multiline strings.
@@ -445,6 +614,105 @@ func (f *DetailedFormatter) formatMultilineDiff(sb *strings.Builder, from, to st
 			f.writeColoredLine(sb, fmt.Sprintf("    [%d %s unchanged]", collapsed, pluralize(collapsed, "line", "lines")), f.colorContext(opts), opts)
 		}
 	}
+	sb.WriteString("\n")
+}
+
+// formatMultilineTable renders a multiline text diff in side-by-side table style.
+// Uses paired-row accumulation: deleted lines go left, inserted lines go right,
+// paired one-to-one. Overflow lines render with an empty opposite column.
+func (f *DetailedFormatter) formatMultilineTable(sb *strings.Builder, from, to string, cl *columnLayout, opts *FormatOptions) {
+	fromLines := strings.Split(from, "\n")
+	toLines := strings.Split(to, "\n")
+	ops := computeLineDiff(fromLines, toLines)
+
+	// Count additions and deletions for descriptor
+	additions := 0
+	deletions := 0
+	for _, op := range ops {
+		switch op.Type {
+		case editInsert:
+			additions++
+		case editDelete:
+			deletions++
+		}
+	}
+
+	descriptor := fmt.Sprintf("  ± value change in multiline text (%s %s, %s %s)",
+		formatCount(additions), pluralize(additions, "insert", "inserts"),
+		formatCount(deletions), pluralize(deletions, "deletion", "deletions"))
+	f.writeDescriptorLine(sb, descriptor, f.colorModified, opts)
+
+	// Context collapsing setup
+	contextLines := opts.ContextLines
+	if contextLines < 0 {
+		contextLines = 4
+	}
+
+	// Phase 1: Mark which ops are near a change
+	nearChange := make([]bool, len(ops))
+	for i, op := range ops {
+		if op.Type != editKeep {
+			for j := max(0, i-contextLines); j <= min(len(ops)-1, i+contextLines); j++ {
+				nearChange[j] = true
+			}
+		}
+	}
+
+	// Phase 2: Render with paired-row accumulation
+	var deleteBuf, insertBuf []string
+
+	flushBuffers := func() {
+		paired := min(len(deleteBuf), len(insertBuf))
+		for k := 0; k < paired; k++ {
+			cl.formatRow(sb, deleteBuf[k], insertBuf[k], f.colorRemoved(opts), f.colorAdded(opts), opts)
+		}
+		for k := paired; k < len(deleteBuf); k++ {
+			cl.formatRow(sb, deleteBuf[k], "", f.colorRemoved(opts), "", opts)
+		}
+		for k := paired; k < len(insertBuf); k++ {
+			cl.formatRow(sb, "", insertBuf[k], "", f.colorAdded(opts), opts)
+		}
+		deleteBuf = deleteBuf[:0]
+		insertBuf = insertBuf[:0]
+	}
+
+	i := 0
+	for i < len(ops) {
+		op := ops[i]
+
+		if op.Type == editDelete {
+			deleteBuf = append(deleteBuf, op.Line)
+			i++
+			continue
+		}
+
+		if op.Type == editInsert {
+			insertBuf = append(insertBuf, op.Line)
+			i++
+			continue
+		}
+
+		// editKeep — flush pending hunk before rendering context
+		flushBuffers()
+
+		if nearChange[i] {
+			cl.formatContextRow(sb, op.Line, f.colorContext(opts), opts)
+			i++
+		} else {
+			collapsed := 0
+			for i < len(ops) && ops[i].Type == editKeep && !nearChange[i] {
+				collapsed++
+				i++
+			}
+			cl.formatAnnotationRow(sb,
+				fmt.Sprintf("[%d %s unchanged]", collapsed, pluralize(collapsed, "line", "lines")),
+				f.colorContext(opts), opts)
+		}
+	}
+
+	// Flush any trailing hunk
+	flushBuffers()
+
 	sb.WriteString("\n")
 }
 

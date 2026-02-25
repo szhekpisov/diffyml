@@ -1,6 +1,7 @@
 package diffyml
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 )
@@ -128,6 +129,34 @@ func TestFormatOptions_Defaults(t *testing.T) {
 	}
 	if opts.MinorChangeThreshold != 0.1 {
 		t.Errorf("expected default MinorChangeThreshold 0.1, got %f", opts.MinorChangeThreshold)
+	}
+	if opts.FilePath != "" {
+		t.Errorf("expected default FilePath to be empty, got %q", opts.FilePath)
+	}
+}
+
+func TestDiffGroup_Construction(t *testing.T) {
+	diffs := []Difference{
+		{Path: "config.host", Type: DiffModified, From: "old", To: "new"},
+	}
+	group := DiffGroup{
+		FilePath: "deploy.yaml",
+		Diffs:    diffs,
+	}
+	if group.FilePath != "deploy.yaml" {
+		t.Errorf("expected FilePath %q, got %q", "deploy.yaml", group.FilePath)
+	}
+	if len(group.Diffs) != 1 {
+		t.Errorf("expected 1 diff, got %d", len(group.Diffs))
+	}
+}
+
+func TestStructuredFormatter_InterfaceCompile(t *testing.T) {
+	// Verify StructuredFormatter interface can be used in type assertions.
+	var f Formatter = &GitLabFormatter{}
+	_, ok := f.(StructuredFormatter)
+	if !ok {
+		t.Fatal("GitLabFormatter should implement StructuredFormatter")
 	}
 }
 
@@ -902,4 +931,505 @@ func TestGitLabFormatter_FingerprintDeterministic(t *testing.T) {
 	if output1 != output2 {
 		t.Errorf("fingerprint should be deterministic, got different outputs:\n%s\nvs\n%s", output1, output2)
 	}
+}
+
+// Task 2.1 Tests: GitLab formatter with file paths
+
+func TestGitLabFormatter_LocationPathUsesFilePath(t *testing.T) {
+	f := &GitLabFormatter{}
+	opts := DefaultFormatOptions()
+	opts.FilePath = "deploy.yaml"
+
+	diffs := []Difference{
+		{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"},
+	}
+
+	output := f.Format(diffs, opts)
+
+	// location.path should be the file path, not the YAML key path
+	if !strings.Contains(output, `"path": "deploy.yaml"`) {
+		t.Errorf("expected location.path to be file path 'deploy.yaml', got: %s", output)
+	}
+	// Should NOT contain config.host as the path
+	if strings.Contains(output, `"path": "config.host"`) {
+		t.Errorf("location.path should not be YAML key path, got: %s", output)
+	}
+}
+
+func TestGitLabFormatter_LocationPathFallback(t *testing.T) {
+	f := &GitLabFormatter{}
+	opts := DefaultFormatOptions()
+	// FilePath is empty — should fall back to diff.Path
+
+	diffs := []Difference{
+		{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"},
+	}
+
+	output := f.Format(diffs, opts)
+
+	// When FilePath is empty, location.path should fall back to diff.Path
+	if !strings.Contains(output, `"path": "config.host"`) {
+		t.Errorf("expected location.path fallback to YAML key path, got: %s", output)
+	}
+}
+
+func TestGitLabFormatter_FingerprintIncludesFilePath(t *testing.T) {
+	f := &GitLabFormatter{}
+
+	diffs := []Difference{
+		{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"},
+	}
+
+	opts1 := DefaultFormatOptions()
+	opts1.FilePath = "file1.yaml"
+	output1 := f.Format(diffs, opts1)
+
+	opts2 := DefaultFormatOptions()
+	opts2.FilePath = "file2.yaml"
+	output2 := f.Format(diffs, opts2)
+
+	// Extract fingerprints
+	fp1 := extractFingerprint(t, output1)
+	fp2 := extractFingerprint(t, output2)
+
+	// Same YAML change in different files must have different fingerprints
+	if fp1 == fp2 {
+		t.Errorf("fingerprints should differ for same change in different files, both got: %s", fp1)
+	}
+}
+
+func TestGitLabFormatter_FingerprintUnchangedWhenNoFilePath(t *testing.T) {
+	f := &GitLabFormatter{}
+	opts := DefaultFormatOptions()
+	// FilePath is empty
+
+	diffs := []Difference{
+		{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"},
+	}
+
+	output := f.Format(diffs, opts)
+	fp := extractFingerprint(t, output)
+
+	// Should match the old fingerprint formula: sha256(description)
+	desc := gitLabDescription(diffs[0])
+	expectedFP := gitLabFingerprint("", desc)
+	if fp != expectedFP {
+		t.Errorf("fingerprint with empty FilePath should match legacy formula\ngot:  %s\nwant: %s", fp, expectedFP)
+	}
+}
+
+func TestGitLabFormatter_DescriptionContainsYAMLPath(t *testing.T) {
+	f := &GitLabFormatter{}
+	opts := DefaultFormatOptions()
+	opts.FilePath = "deploy.yaml"
+
+	diffs := []Difference{
+		{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"},
+		{Path: "config.port", Type: DiffAdded, To: 8080},
+		{Path: "config.old", Type: DiffRemoved, From: "value"},
+		{Path: "items", Type: DiffOrderChanged},
+	}
+
+	output := f.Format(diffs, opts)
+
+	// All YAML paths should appear in descriptions
+	for _, d := range diffs {
+		if !strings.Contains(output, d.Path) {
+			t.Errorf("expected YAML path %q in description, got: %s", d.Path, output)
+		}
+	}
+}
+
+func TestGitLabFormatter_ValidJSON_WithFilePath(t *testing.T) {
+	f := &GitLabFormatter{}
+	opts := DefaultFormatOptions()
+	opts.FilePath = "deploy.yaml"
+
+	diffs := []Difference{
+		{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"},
+		{Path: "config.port", Type: DiffAdded, To: 8080},
+	}
+
+	output := f.Format(diffs, opts)
+
+	var result []map[string]interface{}
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output is not valid JSON: %v\noutput: %s", err, output)
+	}
+	if len(result) != 2 {
+		t.Errorf("expected 2 entries, got %d", len(result))
+	}
+}
+
+func TestGitLabFormatter_NoBOM(t *testing.T) {
+	f := &GitLabFormatter{}
+	opts := DefaultFormatOptions()
+	opts.FilePath = "deploy.yaml"
+
+	diffs := []Difference{
+		{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"},
+	}
+
+	output := f.Format(diffs, opts)
+
+	// UTF-8 BOM is 0xEF 0xBB 0xBF
+	if len(output) >= 3 && output[0] == 0xEF && output[1] == 0xBB && output[2] == 0xBF {
+		t.Error("output should not contain BOM")
+	}
+}
+
+// Task 2.2 Tests: FormatAll for directory mode
+
+func TestGitLabFormatter_FormatAll_SingleArray(t *testing.T) {
+	f := &GitLabFormatter{}
+	opts := DefaultFormatOptions()
+
+	groups := []DiffGroup{
+		{
+			FilePath: "deploy.yaml",
+			Diffs: []Difference{
+				{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"},
+			},
+		},
+		{
+			FilePath: "service.yaml",
+			Diffs: []Difference{
+				{Path: "service.port", Type: DiffAdded, To: 8080},
+			},
+		},
+	}
+
+	output := f.FormatAll(groups, opts)
+
+	var result []map[string]interface{}
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("FormatAll output is not valid JSON: %v\noutput: %s", err, output)
+	}
+	if len(result) != 2 {
+		t.Errorf("expected 2 entries in single array, got %d", len(result))
+	}
+}
+
+func TestGitLabFormatter_FormatAll_EmptyGroups(t *testing.T) {
+	f := &GitLabFormatter{}
+	opts := DefaultFormatOptions()
+
+	output := f.FormatAll([]DiffGroup{}, opts)
+
+	if output != "[]\n" {
+		t.Errorf("expected empty JSON array for no groups, got: %q", output)
+	}
+}
+
+func TestGitLabFormatter_FormatAll_DescriptionIncludesFilename(t *testing.T) {
+	f := &GitLabFormatter{}
+	opts := DefaultFormatOptions()
+
+	groups := []DiffGroup{
+		{
+			FilePath: "deploy.yaml",
+			Diffs: []Difference{
+				{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"},
+			},
+		},
+	}
+
+	output := f.FormatAll(groups, opts)
+
+	// Description should include filename prefix
+	if !strings.Contains(output, "deploy.yaml") {
+		t.Errorf("expected filename 'deploy.yaml' in description, got: %s", output)
+	}
+	// And still contain YAML path
+	if !strings.Contains(output, "config.host") {
+		t.Errorf("expected YAML path 'config.host' in description, got: %s", output)
+	}
+}
+
+func TestGitLabFormatter_FormatAll_LocationPath(t *testing.T) {
+	f := &GitLabFormatter{}
+	opts := DefaultFormatOptions()
+
+	groups := []DiffGroup{
+		{
+			FilePath: "deploy.yaml",
+			Diffs: []Difference{
+				{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"},
+			},
+		},
+	}
+
+	output := f.FormatAll(groups, opts)
+
+	// location.path should be the file path from the group
+	if !strings.Contains(output, `"path": "deploy.yaml"`) {
+		t.Errorf("expected location.path 'deploy.yaml', got: %s", output)
+	}
+}
+
+func TestGitLabFormatter_FormatAll_UniqueFingerprintsAcrossFiles(t *testing.T) {
+	f := &GitLabFormatter{}
+	opts := DefaultFormatOptions()
+
+	// Same YAML change in two different files
+	groups := []DiffGroup{
+		{
+			FilePath: "file1.yaml",
+			Diffs: []Difference{
+				{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"},
+			},
+		},
+		{
+			FilePath: "file2.yaml",
+			Diffs: []Difference{
+				{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"},
+			},
+		},
+	}
+
+	output := f.FormatAll(groups, opts)
+
+	var result []map[string]interface{}
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("FormatAll output is not valid JSON: %v", err)
+	}
+
+	fp1 := result[0]["fingerprint"].(string)
+	fp2 := result[1]["fingerprint"].(string)
+
+	if fp1 == fp2 {
+		t.Errorf("fingerprints should differ for same change in different files, both got: %s", fp1)
+	}
+}
+
+func TestGitLabFormatter_FormatAll_ValidJSON(t *testing.T) {
+	f := &GitLabFormatter{}
+	opts := DefaultFormatOptions()
+
+	groups := []DiffGroup{
+		{
+			FilePath: "deploy.yaml",
+			Diffs: []Difference{
+				{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"},
+				{Path: "config.port", Type: DiffAdded, To: 8080},
+			},
+		},
+		{
+			FilePath: "service.yaml",
+			Diffs: []Difference{
+				{Path: "service.name", Type: DiffRemoved, From: "old-svc"},
+			},
+		},
+	}
+
+	output := f.FormatAll(groups, opts)
+
+	var result []map[string]interface{}
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("FormatAll output is not valid JSON: %v\noutput: %s", err, output)
+	}
+	if len(result) != 3 {
+		t.Errorf("expected 3 total entries, got %d", len(result))
+	}
+}
+
+func TestGitLabFormatter_ImplementsStructuredFormatter(t *testing.T) {
+	var f Formatter = &GitLabFormatter{}
+	sf, ok := f.(StructuredFormatter)
+	if !ok {
+		t.Fatal("GitLabFormatter should implement StructuredFormatter")
+	}
+
+	// Verify the interface works with empty groups
+	output := sf.FormatAll([]DiffGroup{}, DefaultFormatOptions())
+	if output != "[]\n" {
+		t.Errorf("expected empty array, got: %q", output)
+	}
+}
+
+// --- Task 4.1: Regression and backward compatibility validation ---
+
+func TestGitLabFormatter_BackwardCompat_EmptyFilePath(t *testing.T) {
+	// When FilePath is empty, the formatter should behave identically to
+	// pre-feature behavior: location.path falls back to diff.Path,
+	// fingerprints are computed from description only.
+	f := &GitLabFormatter{}
+	opts := DefaultFormatOptions()
+	// FilePath is empty (zero value)
+
+	diffs := []Difference{
+		{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"},
+		{Path: "config.port", Type: DiffAdded, To: 8080},
+		{Path: "config.old", Type: DiffRemoved, From: "value"},
+		{Path: "items", Type: DiffOrderChanged},
+	}
+
+	output := f.Format(diffs, opts)
+
+	// Parse as JSON to verify structural validity
+	var result []map[string]interface{}
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output is not valid JSON: %v\noutput: %s", err, output)
+	}
+	if len(result) != 4 {
+		t.Errorf("expected 4 entries, got %d", len(result))
+	}
+
+	// Verify location.path falls back to diff.Path (YAML key path)
+	for i, entry := range result {
+		location := entry["location"].(map[string]interface{})
+		path := location["path"].(string)
+		if path != diffs[i].Path {
+			t.Errorf("entry %d: expected location.path=%q (fallback to diff.Path), got %q", i, diffs[i].Path, path)
+		}
+	}
+
+	// Verify fingerprints match the legacy formula: sha256(description only)
+	for i, entry := range result {
+		fp := entry["fingerprint"].(string)
+		desc := gitLabDescription(diffs[i])
+		expectedFP := gitLabFingerprint("", desc)
+		if fp != expectedFP {
+			t.Errorf("entry %d: fingerprint mismatch with legacy formula\ngot:  %s\nwant: %s", i, fp, expectedFP)
+		}
+	}
+}
+
+func TestGitLabFormatter_BackwardCompat_FingerprintStability(t *testing.T) {
+	// Fingerprints with empty FilePath must be deterministic and match
+	// the exact pre-change formula: sha256(description).
+	// This guards against accidental changes to the hash input format.
+	diff := Difference{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"}
+	desc := gitLabDescription(diff)
+
+	// Compute expected fingerprint manually
+	expectedFP := gitLabFingerprint("", desc)
+
+	// Verify through the formatter
+	f := &GitLabFormatter{}
+	opts := DefaultFormatOptions()
+	output := f.Format([]Difference{diff}, opts)
+
+	fp := extractFingerprint(t, output)
+	if fp != expectedFP {
+		t.Errorf("fingerprint should match legacy formula\ngot:  %s\nwant: %s", fp, expectedFP)
+	}
+
+	// Run again to verify determinism
+	output2 := f.Format([]Difference{diff}, opts)
+	fp2 := extractFingerprint(t, output2)
+	if fp != fp2 {
+		t.Errorf("fingerprint should be deterministic across calls\ncall1: %s\ncall2: %s", fp, fp2)
+	}
+}
+
+func TestGitLabFormatter_BackwardCompat_AllDiffTypes_ValidJSON(t *testing.T) {
+	// Verify that all diff types produce valid JSON with all required fields
+	// when FilePath is empty (backward compat mode).
+	f := &GitLabFormatter{}
+	opts := DefaultFormatOptions()
+
+	allDiffs := []Difference{
+		{Path: "added.key", Type: DiffAdded, To: "value"},
+		{Path: "removed.key", Type: DiffRemoved, From: "value"},
+		{Path: "modified.key", Type: DiffModified, From: "old", To: "new"},
+		{Path: "order.key", Type: DiffOrderChanged},
+	}
+
+	output := f.Format(allDiffs, opts)
+
+	var result []map[string]interface{}
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output is not valid JSON: %v\noutput: %s", err, output)
+	}
+
+	requiredFields := []string{"description", "check_name", "fingerprint", "severity", "location"}
+	for i, entry := range result {
+		for _, field := range requiredFields {
+			if _, ok := entry[field]; !ok {
+				t.Errorf("entry %d: missing required field %q", i, field)
+			}
+		}
+		// Verify location has path and lines.begin
+		location := entry["location"].(map[string]interface{})
+		if _, ok := location["path"]; !ok {
+			t.Errorf("entry %d: location missing 'path'", i)
+		}
+		lines := location["lines"].(map[string]interface{})
+		if begin, ok := lines["begin"]; !ok {
+			t.Errorf("entry %d: location.lines missing 'begin'", i)
+		} else if begin.(float64) != 1 {
+			t.Errorf("entry %d: expected lines.begin=1, got %v", i, begin)
+		}
+	}
+}
+
+func TestGitLabFormatter_BackwardCompat_NilOptions(t *testing.T) {
+	// Verify formatter handles nil options without panic (backward compat).
+	f := &GitLabFormatter{}
+
+	diffs := []Difference{
+		{Path: "key", Type: DiffModified, From: "old", To: "new"},
+	}
+
+	output := f.Format(diffs, nil)
+
+	var result []map[string]interface{}
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output with nil opts is not valid JSON: %v\noutput: %s", err, output)
+	}
+	if len(result) != 1 {
+		t.Errorf("expected 1 entry, got %d", len(result))
+	}
+}
+
+func TestGitLabFormatter_BackwardCompat_EmptyDiffs(t *testing.T) {
+	// Verify empty diffs produce valid empty JSON array.
+	f := &GitLabFormatter{}
+	opts := DefaultFormatOptions()
+
+	output := f.Format([]Difference{}, opts)
+
+	var result []interface{}
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("empty diffs output is not valid JSON: %v\noutput: %s", err, output)
+	}
+	if len(result) != 0 {
+		t.Errorf("expected empty array, got %d entries", len(result))
+	}
+}
+
+func TestGitLabFormatter_BackwardCompat_SpecialCharsInValues(t *testing.T) {
+	// Verify JSON escaping works for values with special characters.
+	f := &GitLabFormatter{}
+	opts := DefaultFormatOptions()
+
+	diffs := []Difference{
+		{Path: "config.msg", Type: DiffModified, From: `line1\nline2`, To: `"quoted value"`},
+		{Path: "config.tab", Type: DiffModified, From: "no\ttab", To: "has\ttab"},
+	}
+
+	output := f.Format(diffs, opts)
+
+	var result []map[string]interface{}
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output with special chars is not valid JSON: %v\noutput: %s", err, output)
+	}
+	if len(result) != 2 {
+		t.Errorf("expected 2 entries, got %d", len(result))
+	}
+}
+
+// extractFingerprint extracts the first fingerprint value from GitLab JSON output.
+func extractFingerprint(t *testing.T, output string) string {
+	t.Helper()
+	parts := strings.Split(output, `"fingerprint": "`)
+	if len(parts) < 2 {
+		t.Fatalf("could not extract fingerprint from output: %s", output)
+	}
+	end := strings.Index(parts[1], `"`)
+	if end < 0 {
+		t.Fatalf("could not find end of fingerprint in output: %s", output)
+	}
+	return parts[1][:end]
 }

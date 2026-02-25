@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 )
 
 // IsDirectory reports whether path is an existing directory.
@@ -231,8 +232,14 @@ func runDirectory(cfg *CLIConfig, rc *RunConfig, fromDir, toDir string) *ExitRes
 	colorCfg.DetectTerminal()
 	colorCfg.ToFormatOptions(formatOpts)
 
+	// Check if formatter supports structured (aggregated) output
+	sf, isStructured := formatter.(StructuredFormatter)
+
 	hasDiffs := false
 	hasErrors := false
+
+	// For structured formatters, collect all diff groups
+	var groups []DiffGroup
 
 	for _, pair := range pairs {
 		var fromContent, toContent []byte
@@ -307,13 +314,28 @@ func runDirectory(cfg *CLIConfig, rc *RunConfig, fromDir, toDir string) *ExitRes
 
 		hasDiffs = true
 
-		// Format file header (always shown, even with --omit-header)
-		header := FormatFileHeader(pair.Name, pair.Type, formatOpts)
-		fmt.Fprint(rc.Stdout, header)
+		if isStructured {
+			// Collect diffs into groups for aggregated output
+			filePath := strings.TrimPrefix(pair.Name, "./")
+			groups = append(groups, DiffGroup{
+				FilePath: filePath,
+				Diffs:    diffs,
+			})
+		} else {
+			// Non-structured: per-file header + format
+			header := FormatFileHeader(pair.Name, pair.Type, formatOpts)
+			fmt.Fprint(rc.Stdout, header)
 
-		// Format and output diffs
-		output := formatter.Format(diffs, formatOpts)
+			output := formatter.Format(diffs, formatOpts)
+			fmt.Fprint(rc.Stdout, output)
+		}
+	}
+
+	// For structured formatters, always write output (even when empty)
+	if isStructured {
+		output := sf.FormatAll(groups, formatOpts)
 		fmt.Fprint(rc.Stdout, output)
+		hasDiffs = len(groups) > 0
 	}
 
 	// Compute aggregated exit code (directory-specific precedence)

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -546,6 +547,9 @@ func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
 		return NewExitResult(ExitCodeError, err)
 	}
 
+	// Set file path for formatters that use it (e.g., GitLab)
+	formatOpts.FilePath = normalizeFilePath(cfg.ToFile, rc.Stderr)
+
 	// Format and output
 	output := formatter.Format(diffs, formatOpts)
 	fmt.Fprint(rc.Stdout, output)
@@ -553,4 +557,32 @@ func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
 	// Determine exit code
 	exitCode := DetermineExitCode(cfg.SetExitCode, len(diffs), nil)
 	return NewExitResult(exitCode, nil)
+}
+
+// normalizeFilePath converts a file path to a clean relative path.
+// Strips "./" prefix, converts absolute paths to relative from CWD.
+// Falls back to the original path if relative conversion fails or
+// produces a parent-traversing path (".."). Emits a warning to stderr
+// if the fallback results in an absolute path.
+func normalizeFilePath(path string, stderr io.Writer) string {
+	if path == "" {
+		return ""
+	}
+
+	if filepath.IsAbs(path) {
+		cwd, err := os.Getwd()
+		if err == nil {
+			rel, err := filepath.Rel(cwd, path)
+			if err == nil && !strings.HasPrefix(rel, "..") {
+				return strings.TrimPrefix(rel, "./")
+			}
+		}
+		// Fallback: absolute path couldn't be made relative
+		if stderr != nil {
+			fmt.Fprintf(stderr, "Warning: could not determine relative path for %s, using absolute path\n", path)
+		}
+		return path
+	}
+
+	return strings.TrimPrefix(path, "./")
 }

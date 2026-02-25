@@ -1,10 +1,12 @@
 package diffyml
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -1671,5 +1673,126 @@ func TestRun_RemoteWithFilters(t *testing.T) {
 	}
 	if strings.Contains(output, "db.host") {
 		t.Errorf("expected output to NOT contain 'db.host' (filtered), got: %s", output)
+	}
+}
+
+// --- Task 3.1: File path normalization in single-file mode ---
+
+func TestRun_GitLab_SetsFilePathFromToFile(t *testing.T) {
+	yaml1 := "key: value1\n"
+	yaml2 := "key: value2\n"
+
+	cfg := NewCLIConfig()
+	cfg.Output = "gitlab"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FromContent = []byte(yaml1)
+	rc.ToContent = []byte(yaml2)
+	cfg.ToFile = "deploy.yaml"
+
+	Run(cfg, rc)
+
+	output := stdout.String()
+	// location.path should be the file path, not the YAML key path
+	if !strings.Contains(output, `"path": "deploy.yaml"`) {
+		t.Errorf("expected location.path 'deploy.yaml' in output, got: %s", output)
+	}
+}
+
+func TestRun_GitLab_StripsDotSlashPrefix(t *testing.T) {
+	yaml1 := "key: value1\n"
+	yaml2 := "key: value2\n"
+
+	cfg := NewCLIConfig()
+	cfg.Output = "gitlab"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FromContent = []byte(yaml1)
+	rc.ToContent = []byte(yaml2)
+	cfg.ToFile = "./deploy.yaml"
+
+	Run(cfg, rc)
+
+	output := stdout.String()
+	// Should strip ./ prefix
+	if !strings.Contains(output, `"path": "deploy.yaml"`) {
+		t.Errorf("expected ./ prefix stripped from path, got: %s", output)
+	}
+	if strings.Contains(output, `"path": "./deploy.yaml"`) {
+		t.Errorf("expected ./ prefix to be stripped, got: %s", output)
+	}
+}
+
+func TestRun_GitLab_ConvertsAbsoluteToRelative(t *testing.T) {
+	yaml1 := "key: value1\n"
+	yaml2 := "key: value2\n"
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := NewCLIConfig()
+	cfg.Output = "gitlab"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FromContent = []byte(yaml1)
+	rc.ToContent = []byte(yaml2)
+	cfg.ToFile = filepath.Join(cwd, "deploy.yaml")
+
+	Run(cfg, rc)
+
+	output := stdout.String()
+	// Should be relative path, not absolute
+	if !strings.Contains(output, `"path": "deploy.yaml"`) {
+		t.Errorf("expected absolute path converted to relative, got: %s", output)
+	}
+}
+
+func TestRun_GitLab_FallbackOnParentTraversingPath(t *testing.T) {
+	yaml1 := "key: value1\n"
+	yaml2 := "key: value2\n"
+
+	cfg := NewCLIConfig()
+	cfg.Output = "gitlab"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FromContent = []byte(yaml1)
+	rc.ToContent = []byte(yaml2)
+	// Use an absolute path that's outside CWD, which will produce ../..
+	cfg.ToFile = "/tmp/outside/deploy.yaml"
+
+	Run(cfg, rc)
+
+	output := stdout.String()
+	// Parse the JSON to verify it's valid and has a path
+	var result []map[string]interface{}
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output is not valid JSON: %v\noutput: %s", err, output)
+	}
+	if len(result) == 0 {
+		t.Fatal("expected at least one result")
+	}
+	location := result[0]["location"].(map[string]interface{})
+	path := location["path"].(string)
+	// Path should either be the original or converted — but never empty
+	if path == "" {
+		t.Error("location.path should not be empty")
+	}
+	// Should warn on stderr if absolute path used
+	if strings.HasPrefix(path, "/") && !strings.Contains(stderr.String(), "Warning") {
+		t.Errorf("expected warning on stderr when using absolute path, stderr: %q", stderr.String())
 	}
 }

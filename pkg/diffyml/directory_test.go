@@ -1,6 +1,7 @@
 package diffyml
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -999,6 +1000,459 @@ func TestRunDirectory_ExcludeAllDiffs_Exit0(t *testing.T) {
 	// All diffs excluded → exit 0
 	if result.Code != ExitCodeSuccess {
 		t.Errorf("expected exit 0 when all diffs excluded, got %d", result.Code)
+	}
+}
+
+// --- Task 3.2: Structured formatter in directory mode ---
+
+func TestRunDirectory_GitLab_SingleJSONArray(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.SetExitCode = true
+	cfg.Color = "off"
+	cfg.Output = "gitlab"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FilePairs = map[string][2][]byte{
+		"deploy.yaml":  {[]byte("key: old\n"), []byte("key: new\n")},
+		"service.yaml": {[]byte("port: 80\n"), []byte("port: 443\n")},
+	}
+
+	result := runDirectory(cfg, rc, "", "")
+	if result.Code != ExitCodeDifferences {
+		t.Errorf("expected exit 1, got %d", result.Code)
+	}
+
+	output := stdout.String()
+	// Must be a single valid JSON array
+	var findings []map[string]interface{}
+	if err := json.Unmarshal([]byte(output), &findings); err != nil {
+		t.Fatalf("output is not valid JSON array: %v\noutput: %s", err, output)
+	}
+	if len(findings) != 2 {
+		t.Errorf("expected 2 findings in single array, got %d", len(findings))
+	}
+}
+
+func TestRunDirectory_GitLab_NoFileHeaders(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.SetExitCode = true
+	cfg.Color = "off"
+	cfg.Output = "gitlab"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FilePairs = map[string][2][]byte{
+		"deploy.yaml": {[]byte("key: old\n"), []byte("key: new\n")},
+	}
+
+	runDirectory(cfg, rc, "", "")
+
+	output := stdout.String()
+	// Should NOT contain unified-diff-style headers
+	if strings.Contains(output, "--- a/") {
+		t.Errorf("expected no file headers for GitLab format, got: %s", output)
+	}
+	if strings.Contains(output, "+++ b/") {
+		t.Errorf("expected no file headers for GitLab format, got: %s", output)
+	}
+}
+
+func TestRunDirectory_GitLab_EmptyProducesEmptyArray(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.SetExitCode = true
+	cfg.Color = "off"
+	cfg.Output = "gitlab"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FilePairs = map[string][2][]byte{
+		"deploy.yaml": {[]byte("key: same\n"), []byte("key: same\n")},
+	}
+
+	result := runDirectory(cfg, rc, "", "")
+	if result.Code != ExitCodeSuccess {
+		t.Errorf("expected exit 0, got %d", result.Code)
+	}
+
+	output := stdout.String()
+	if strings.TrimSpace(output) != "[]" {
+		t.Errorf("expected empty JSON array for no diffs, got: %q", output)
+	}
+}
+
+func TestRunDirectory_GitLab_EmptyDirectoriesProducesEmptyArray(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.SetExitCode = true
+	cfg.Color = "off"
+	cfg.Output = "gitlab"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FilePairs = map[string][2][]byte{}
+
+	result := runDirectory(cfg, rc, "", "")
+	if result.Code != ExitCodeSuccess {
+		t.Errorf("expected exit 0, got %d", result.Code)
+	}
+
+	output := stdout.String()
+	if strings.TrimSpace(output) != "[]" {
+		t.Errorf("expected empty JSON array for empty directories, got: %q", output)
+	}
+}
+
+func TestRunDirectory_GitLab_LocationPathIsFilePath(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.SetExitCode = true
+	cfg.Color = "off"
+	cfg.Output = "gitlab"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FilePairs = map[string][2][]byte{
+		"deploy.yaml": {[]byte("key: old\n"), []byte("key: new\n")},
+	}
+
+	runDirectory(cfg, rc, "", "")
+
+	output := stdout.String()
+	var findings []map[string]interface{}
+	if err := json.Unmarshal([]byte(output), &findings); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+	if len(findings) != 1 {
+		t.Fatalf("expected 1 finding, got %d", len(findings))
+	}
+	location := findings[0]["location"].(map[string]interface{})
+	path := location["path"].(string)
+	if path != "deploy.yaml" {
+		t.Errorf("expected location.path 'deploy.yaml', got %q", path)
+	}
+}
+
+func TestRunDirectory_GitLab_DescriptionIncludesFilename(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.SetExitCode = true
+	cfg.Color = "off"
+	cfg.Output = "gitlab"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FilePairs = map[string][2][]byte{
+		"deploy.yaml": {[]byte("key: old\n"), []byte("key: new\n")},
+	}
+
+	runDirectory(cfg, rc, "", "")
+
+	output := stdout.String()
+	var findings []map[string]interface{}
+	if err := json.Unmarshal([]byte(output), &findings); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+	desc := findings[0]["description"].(string)
+	if !strings.Contains(desc, "deploy.yaml") {
+		t.Errorf("expected filename in description, got: %s", desc)
+	}
+	if !strings.Contains(desc, "key") {
+		t.Errorf("expected YAML path in description, got: %s", desc)
+	}
+}
+
+func TestRunDirectory_GitLab_UniqueFingerprintsAcrossFiles(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.SetExitCode = true
+	cfg.Color = "off"
+	cfg.Output = "gitlab"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	// Same change in two different files
+	rc.FilePairs = map[string][2][]byte{
+		"file1.yaml": {[]byte("key: old\n"), []byte("key: new\n")},
+		"file2.yaml": {[]byte("key: old\n"), []byte("key: new\n")},
+	}
+
+	runDirectory(cfg, rc, "", "")
+
+	output := stdout.String()
+	var findings []map[string]interface{}
+	if err := json.Unmarshal([]byte(output), &findings); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+	if len(findings) != 2 {
+		t.Fatalf("expected 2 findings, got %d", len(findings))
+	}
+	fp1 := findings[0]["fingerprint"].(string)
+	fp2 := findings[1]["fingerprint"].(string)
+	if fp1 == fp2 {
+		t.Errorf("fingerprints should be unique across files, both got: %s", fp1)
+	}
+}
+
+func TestRunDirectory_GitLab_StripsDotSlashFromPairName(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.SetExitCode = true
+	cfg.Color = "off"
+	cfg.Output = "gitlab"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FilePairs = map[string][2][]byte{
+		"./deploy.yaml": {[]byte("key: old\n"), []byte("key: new\n")},
+	}
+
+	runDirectory(cfg, rc, "", "")
+
+	output := stdout.String()
+	// Should not contain ./ prefix in the output
+	if strings.Contains(output, `"./deploy.yaml"`) {
+		t.Errorf("expected ./ prefix stripped, got: %s", output)
+	}
+}
+
+func TestRunDirectory_NonGitLab_StillHasFileHeaders(t *testing.T) {
+	// Non-GitLab formatters should continue to get per-file headers
+	formatters := []string{"compact", "brief", "github", "gitea"}
+
+	for _, format := range formatters {
+		t.Run(format, func(t *testing.T) {
+			cfg := NewCLIConfig()
+			cfg.SetExitCode = true
+			cfg.Color = "off"
+			cfg.Output = format
+
+			rc := NewRunConfig()
+			var stdout, stderr strings.Builder
+			rc.Stdout = &stdout
+			rc.Stderr = &stderr
+			rc.FilePairs = map[string][2][]byte{
+				"deploy.yaml": {[]byte("key: old\n"), []byte("key: new\n")},
+			}
+
+			runDirectory(cfg, rc, "", "")
+
+			output := stdout.String()
+			if !strings.Contains(output, "--- a/deploy.yaml") {
+				t.Errorf("expected file header for %s format, got: %q", format, output)
+			}
+		})
+	}
+}
+
+func TestRunDirectory_GitLab_ExitCodePrecedence(t *testing.T) {
+	// When diffs exist alongside errors, diffs take precedence
+	cfg := NewCLIConfig()
+	cfg.SetExitCode = true
+	cfg.Color = "off"
+	cfg.Output = "gitlab"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FilePairs = map[string][2][]byte{
+		"bad.yaml":  {[]byte("key: old\n"), []byte(":\nbad yaml [[[")},
+		"good.yaml": {[]byte("a: 1\n"), []byte("a: 2\n")},
+	}
+
+	result := runDirectory(cfg, rc, "", "")
+	// good.yaml has diffs → exit 1 (diffs take precedence)
+	if result.Code != ExitCodeDifferences {
+		t.Errorf("expected exit 1 (diffs found), got %d", result.Code)
+	}
+}
+
+func TestRunDirectory_GitLab_OnlyErrors_Exit255(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.SetExitCode = true
+	cfg.Color = "off"
+	cfg.Output = "gitlab"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FilePairs = map[string][2][]byte{
+		"bad.yaml": {[]byte("key: old\n"), []byte(":\nbad yaml [[[")},
+	}
+
+	result := runDirectory(cfg, rc, "", "")
+	// Only errors, no diffs → exit 255
+	if result.Code != ExitCodeError {
+		t.Errorf("expected exit 255 (only errors), got %d", result.Code)
+	}
+	// Should still output empty array
+	output := stdout.String()
+	if strings.TrimSpace(output) != "[]" {
+		t.Errorf("expected empty JSON array when only errors, got: %q", output)
+	}
+}
+
+// --- Task 4.2: Verify other formatters are unaffected in directory mode ---
+
+func TestRunDirectory_NonGitLab_FileHeadersPresent(t *testing.T) {
+	// All non-GitLab formatters must receive per-file headers in directory mode.
+	formatters := []string{"compact", "brief", "github", "gitea", "detailed"}
+
+	for _, format := range formatters {
+		t.Run(format, func(t *testing.T) {
+			cfg := NewCLIConfig()
+			cfg.SetExitCode = true
+			cfg.Color = "off"
+			cfg.Output = format
+
+			rc := NewRunConfig()
+			var stdout, stderr strings.Builder
+			rc.Stdout = &stdout
+			rc.Stderr = &stderr
+			rc.FilePairs = map[string][2][]byte{
+				"deploy.yaml":  {[]byte("key: old\n"), []byte("key: new\n")},
+				"service.yaml": {[]byte("port: 80\n"), []byte("port: 443\n")},
+			}
+
+			runDirectory(cfg, rc, "", "")
+
+			output := stdout.String()
+			// Both file headers should be present
+			if !strings.Contains(output, "--- a/deploy.yaml") {
+				t.Errorf("[%s] expected '--- a/deploy.yaml' header, got: %q", format, output)
+			}
+			if !strings.Contains(output, "+++ b/deploy.yaml") {
+				t.Errorf("[%s] expected '+++ b/deploy.yaml' header, got: %q", format, output)
+			}
+			if !strings.Contains(output, "--- a/service.yaml") {
+				t.Errorf("[%s] expected '--- a/service.yaml' header, got: %q", format, output)
+			}
+			if !strings.Contains(output, "+++ b/service.yaml") {
+				t.Errorf("[%s] expected '+++ b/service.yaml' header, got: %q", format, output)
+			}
+		})
+	}
+}
+
+func TestRunDirectory_NonGitLab_NotStructuredFormatter(t *testing.T) {
+	// Verify that non-GitLab formatters do NOT implement StructuredFormatter.
+	nonStructured := []string{"compact", "brief", "github", "gitea", "detailed"}
+
+	for _, name := range nonStructured {
+		t.Run(name, func(t *testing.T) {
+			f, err := GetFormatter(name)
+			if err != nil {
+				t.Fatalf("failed to get formatter: %v", err)
+			}
+			if _, ok := f.(StructuredFormatter); ok {
+				t.Errorf("formatter %q should NOT implement StructuredFormatter", name)
+			}
+		})
+	}
+}
+
+func TestFormatter_FilePathFieldIgnoredByNonGitLab(t *testing.T) {
+	// Setting FilePath on FormatOptions should not change the output
+	// of non-GitLab formatters.
+	nonGitLab := []string{"compact", "brief", "github", "gitea", "detailed"}
+
+	diffs := []Difference{
+		{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"},
+		{Path: "config.port", Type: DiffAdded, To: 8080},
+	}
+
+	for _, name := range nonGitLab {
+		t.Run(name, func(t *testing.T) {
+			f, err := GetFormatter(name)
+			if err != nil {
+				t.Fatalf("failed to get formatter: %v", err)
+			}
+
+			optsWithout := DefaultFormatOptions()
+			outputWithout := f.Format(diffs, optsWithout)
+
+			optsWith := DefaultFormatOptions()
+			optsWith.FilePath = "deploy.yaml"
+			outputWith := f.Format(diffs, optsWith)
+
+			if outputWithout != outputWith {
+				t.Errorf("formatter %q output changed when FilePath is set\nwithout: %q\nwith:    %q",
+					name, outputWithout, outputWith)
+			}
+		})
+	}
+}
+
+func TestRunDirectory_NonGitLab_PerFileOutput(t *testing.T) {
+	// Verify that non-GitLab formatters produce per-file formatted output
+	// (not a single aggregated output) in directory mode.
+	cfg := NewCLIConfig()
+	cfg.SetExitCode = true
+	cfg.Color = "off"
+	cfg.Output = "compact"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FilePairs = map[string][2][]byte{
+		"a.yaml": {[]byte("key: old1\n"), []byte("key: new1\n")},
+		"b.yaml": {[]byte("key: old2\n"), []byte("key: new2\n")},
+	}
+
+	runDirectory(cfg, rc, "", "")
+
+	output := stdout.String()
+	// Each file's output should be preceded by its header
+	aHeaderIdx := strings.Index(output, "--- a/a.yaml")
+	bHeaderIdx := strings.Index(output, "--- a/b.yaml")
+	if aHeaderIdx < 0 {
+		t.Fatalf("missing header for a.yaml")
+	}
+	if bHeaderIdx < 0 {
+		t.Fatalf("missing header for b.yaml")
+	}
+	// a.yaml header should come before b.yaml header (alphabetical)
+	if aHeaderIdx >= bHeaderIdx {
+		t.Errorf("expected a.yaml header before b.yaml header, got indices: a=%d, b=%d", aHeaderIdx, bHeaderIdx)
+	}
+}
+
+func TestRunDirectory_DetailedFormatter_FileHeadersInDirectoryMode(t *testing.T) {
+	// Detailed formatter specifically should have file headers in directory mode.
+	cfg := NewCLIConfig()
+	cfg.SetExitCode = true
+	cfg.Color = "off"
+	cfg.Output = "detailed"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FilePairs = map[string][2][]byte{
+		"config.yaml": {[]byte("app:\n  name: old\n"), []byte("app:\n  name: new\n")},
+	}
+
+	result := runDirectory(cfg, rc, "", "")
+	if result.Code != ExitCodeDifferences {
+		t.Errorf("expected exit 1, got %d", result.Code)
+	}
+	output := stdout.String()
+	if !strings.Contains(output, "--- a/config.yaml") {
+		t.Errorf("expected file header for detailed format, got: %q", output)
 	}
 }
 

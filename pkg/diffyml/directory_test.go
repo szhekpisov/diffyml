@@ -1228,8 +1228,8 @@ func TestRunDirectory_GitLab_StripsDotSlashFromPairName(t *testing.T) {
 }
 
 func TestRunDirectory_NonGitLab_StillHasFileHeaders(t *testing.T) {
-	// Non-GitLab formatters should continue to get per-file headers
-	formatters := []string{"compact", "brief", "github", "gitea"}
+	// Non-structured formatters should continue to get per-file headers
+	formatters := []string{"compact", "brief"}
 
 	for _, format := range formatters {
 		t.Run(format, func(t *testing.T) {
@@ -1308,8 +1308,8 @@ func TestRunDirectory_GitLab_OnlyErrors_Exit255(t *testing.T) {
 // --- Task 4.2: Verify other formatters are unaffected in directory mode ---
 
 func TestRunDirectory_NonGitLab_FileHeadersPresent(t *testing.T) {
-	// All non-GitLab formatters must receive per-file headers in directory mode.
-	formatters := []string{"compact", "brief", "github", "gitea", "detailed"}
+	// All non-structured formatters must receive per-file headers in directory mode.
+	formatters := []string{"compact", "brief", "detailed"}
 
 	for _, format := range formatters {
 		t.Run(format, func(t *testing.T) {
@@ -1348,8 +1348,8 @@ func TestRunDirectory_NonGitLab_FileHeadersPresent(t *testing.T) {
 }
 
 func TestRunDirectory_NonGitLab_NotStructuredFormatter(t *testing.T) {
-	// Verify that non-GitLab formatters do NOT implement StructuredFormatter.
-	nonStructured := []string{"compact", "brief", "github", "gitea", "detailed"}
+	// Verify that non-structured formatters do NOT implement StructuredFormatter.
+	nonStructured := []string{"compact", "brief", "detailed"}
 
 	for _, name := range nonStructured {
 		t.Run(name, func(t *testing.T) {
@@ -1366,8 +1366,9 @@ func TestRunDirectory_NonGitLab_NotStructuredFormatter(t *testing.T) {
 
 func TestFormatter_FilePathFieldIgnoredByNonGitLab(t *testing.T) {
 	// Setting FilePath on FormatOptions should not change the output
-	// of non-GitLab formatters.
-	nonGitLab := []string{"compact", "brief", "github", "gitea", "detailed"}
+	// of formatters that do not use file-aware annotations.
+	// GitHub and Gitea formatters intentionally use FilePath for file= parameter.
+	nonGitLab := []string{"compact", "brief", "detailed"}
 
 	diffs := []Difference{
 		{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"},
@@ -1453,6 +1454,134 @@ func TestRunDirectory_DetailedFormatter_FileHeadersInDirectoryMode(t *testing.T)
 	output := stdout.String()
 	if !strings.Contains(output, "--- a/config.yaml") {
 		t.Errorf("expected file header for detailed format, got: %q", output)
+	}
+}
+
+// --- Task 3.1/3.2: GitHub/Gitea structured formatter in directory mode ---
+
+func TestRunDirectory_GitHub_StructuredOutput(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.SetExitCode = true
+	cfg.Color = "off"
+	cfg.Output = "github"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FilePairs = map[string][2][]byte{
+		"deploy.yaml":  {[]byte("key: old\n"), []byte("key: new\n")},
+		"service.yaml": {[]byte("port: 80\n"), []byte("port: 443\n")},
+	}
+
+	result := runDirectory(cfg, rc, "", "")
+	if result.Code != ExitCodeDifferences {
+		t.Errorf("expected exit 1, got %d", result.Code)
+	}
+
+	output := stdout.String()
+
+	// Should NOT have unified-diff file headers (structured mode)
+	if strings.Contains(output, "--- a/") {
+		t.Errorf("expected no file headers for GitHub structured format, got: %s", output)
+	}
+	if strings.Contains(output, "+++ b/") {
+		t.Errorf("expected no file headers for GitHub structured format, got: %s", output)
+	}
+
+	// Should include file= parameter with correct file names
+	if !strings.Contains(output, "file=deploy.yaml") {
+		t.Errorf("expected file=deploy.yaml in output, got: %s", output)
+	}
+	if !strings.Contains(output, "file=service.yaml") {
+		t.Errorf("expected file=service.yaml in output, got: %s", output)
+	}
+
+	// Should have ::warning commands
+	if !strings.Contains(output, "::warning") {
+		t.Errorf("expected ::warning in output, got: %s", output)
+	}
+}
+
+func TestRunDirectory_GitHub_EmptyProducesEmptyString(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.SetExitCode = true
+	cfg.Color = "off"
+	cfg.Output = "github"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FilePairs = map[string][2][]byte{
+		"deploy.yaml": {[]byte("key: same\n"), []byte("key: same\n")},
+	}
+
+	result := runDirectory(cfg, rc, "", "")
+	if result.Code != ExitCodeSuccess {
+		t.Errorf("expected exit 0, got %d", result.Code)
+	}
+
+	output := stdout.String()
+	if output != "" {
+		t.Errorf("expected empty output for no diffs, got: %q", output)
+	}
+}
+
+func TestRunDirectory_Gitea_StructuredOutput(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.SetExitCode = true
+	cfg.Color = "off"
+	cfg.Output = "gitea"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FilePairs = map[string][2][]byte{
+		"deploy.yaml": {[]byte("key: old\n"), []byte("key: new\n")},
+	}
+
+	result := runDirectory(cfg, rc, "", "")
+	if result.Code != ExitCodeDifferences {
+		t.Errorf("expected exit 1, got %d", result.Code)
+	}
+
+	output := stdout.String()
+
+	// Should NOT have unified-diff file headers
+	if strings.Contains(output, "--- a/") {
+		t.Errorf("expected no file headers for Gitea structured format, got: %s", output)
+	}
+
+	// Should include file= parameter
+	if !strings.Contains(output, "file=deploy.yaml") {
+		t.Errorf("expected file=deploy.yaml in output, got: %s", output)
+	}
+}
+
+func TestRunDirectory_GitHub_StripsDotSlashFromPairName(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.SetExitCode = true
+	cfg.Color = "off"
+	cfg.Output = "github"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FilePairs = map[string][2][]byte{
+		"./deploy.yaml": {[]byte("key: old\n"), []byte("key: new\n")},
+	}
+
+	runDirectory(cfg, rc, "", "")
+
+	output := stdout.String()
+	if strings.Contains(output, "file=./deploy.yaml") {
+		t.Errorf("expected ./ prefix stripped from file parameter, got: %s", output)
+	}
+	if !strings.Contains(output, "file=deploy.yaml") {
+		t.Errorf("expected file=deploy.yaml (without ./), got: %s", output)
 	}
 }
 

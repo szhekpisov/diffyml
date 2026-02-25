@@ -67,6 +67,34 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  update-changelog:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Generate changelog
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --output CHANGELOG.md
+
+      - name: Commit and push changelog
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          if git diff --cached --quiet; then
+            echo "No changelog changes to commit"
+            exit 0
+          fi
+          git commit -m "docs: update CHANGELOG.md for ${TAG}"
+          git push
+
   update-tap:
     needs: release
     runs-on: ubuntu-latest

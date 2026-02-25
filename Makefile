@@ -1,4 +1,4 @@
-.PHONY: build coverage check-coverage bench bench-cpu bench-mem bench-compare govulncheck golangci-lint security test fmt lint vet ci fixture
+.PHONY: build coverage check-coverage bench bench-cpu bench-mem bench-compare govulncheck golangci-lint security test fmt lint vet ci fixture changelog
 
 BIN = /tmp/diffyml-dev
 
@@ -73,6 +73,9 @@ lint: golangci-lint
 
 vet:
 	go vet ./...
+
+changelog:
+	git cliff --output CHANGELOG.md
 
 ci: fmt vet test check-coverage security
 

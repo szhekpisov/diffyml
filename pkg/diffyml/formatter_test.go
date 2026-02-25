@@ -1420,6 +1420,153 @@ func TestGitLabFormatter_BackwardCompat_SpecialCharsInValues(t *testing.T) {
 	}
 }
 
+// FormatSingle tests
+
+func TestFormatSingle_AllFormatters(t *testing.T) {
+	diffs := []Difference{
+		{Path: "key.added", Type: DiffAdded, To: "value"},
+		{Path: "key.removed", Type: DiffRemoved, From: "value"},
+		{Path: "key.modified", Type: DiffModified, From: "old", To: "new"},
+		{Path: "key.order", Type: DiffOrderChanged},
+	}
+	opts := DefaultFormatOptions()
+
+	type singleFormatter interface {
+		FormatSingle(diff Difference, opts *FormatOptions) string
+	}
+
+	formatters := map[string]singleFormatter{
+		"compact": &CompactFormatter{},
+		"brief":   &BriefFormatter{},
+		"github":  &GitHubFormatter{},
+		"gitlab":  &GitLabFormatter{},
+		"gitea":   &GiteaFormatter{},
+	}
+
+	for name, f := range formatters {
+		for _, diff := range diffs {
+			t.Run(name+"/"+diff.Path, func(t *testing.T) {
+				output := f.FormatSingle(diff, opts)
+				if output == "" {
+					t.Errorf("%s.FormatSingle returned empty for %s", name, diff.Path)
+				}
+			})
+		}
+	}
+}
+
+func TestCompactFormatter_FormatSingle_NilOpts(t *testing.T) {
+	f := &CompactFormatter{}
+	diff := Difference{Path: "key", Type: DiffAdded, To: "value"}
+
+	output := f.FormatSingle(diff, nil)
+	if output == "" {
+		t.Error("FormatSingle with nil opts should produce output")
+	}
+}
+
+// NoTableStyle tests
+
+func TestCompactFormatter_NoTableStyle(t *testing.T) {
+	f := &CompactFormatter{}
+
+	diffs := []Difference{
+		{Path: "key.a", Type: DiffAdded, To: "new"},
+		{Path: "key.r", Type: DiffRemoved, From: "old"},
+		{Path: "key.m", Type: DiffModified, From: "old", To: "new"},
+		{Path: "key.o", Type: DiffOrderChanged},
+	}
+
+	// Test without color
+	opts := DefaultFormatOptions()
+	opts.NoTableStyle = true
+	output := f.Format(diffs, opts)
+	if !strings.Contains(output, "  + new") {
+		t.Errorf("expected added value in output, got: %s", output)
+	}
+	if !strings.Contains(output, "  - old") {
+		t.Errorf("expected removed value in output, got: %s", output)
+	}
+
+	// Test with color to cover color branches in formatValuesSingleRow
+	opts.Color = true
+	colorOutput := f.Format(diffs, opts)
+	if !strings.Contains(colorOutput, colorGreen) {
+		t.Errorf("expected green color code in output, got: %s", colorOutput)
+	}
+	if !strings.Contains(colorOutput, colorRed) {
+		t.Errorf("expected red color code in output, got: %s", colorOutput)
+	}
+}
+
+// Inline format with color for all diff types
+
+func TestCompactFormatter_InlineColor(t *testing.T) {
+	f := &CompactFormatter{}
+	opts := DefaultFormatOptions()
+	opts.Color = true
+
+	diffs := []Difference{
+		{Path: "key.a", Type: DiffAdded, To: "new"},
+		{Path: "key.r", Type: DiffRemoved, From: "old"},
+		{Path: "key.m", Type: DiffModified, From: "old", To: "new"},
+		{Path: "key.o", Type: DiffOrderChanged},
+	}
+
+	output := f.Format(diffs, opts)
+	if !strings.Contains(output, colorGreen) {
+		t.Errorf("expected green color in output, got: %s", output)
+	}
+	if !strings.Contains(output, colorRed) {
+		t.Errorf("expected red color in output, got: %s", output)
+	}
+	if !strings.Contains(output, colorYellow) {
+		t.Errorf("expected yellow color in output, got: %s", output)
+	}
+}
+
+// DiffOrderChanged compact indicator test
+
+func TestCompactFormatter_OrderChangedIndicator(t *testing.T) {
+	f, _ := GetFormatter("compact")
+	opts := DefaultFormatOptions()
+
+	diffs := []Difference{
+		{Path: "list.items", Type: DiffOrderChanged},
+	}
+	output := f.Format(diffs, opts)
+	if !strings.Contains(output, "⇆") {
+		t.Errorf("expected '⇆' indicator for order changed, got: %s", output)
+	}
+	if !strings.Contains(output, "(order changed)") {
+		t.Errorf("expected '(order changed)' in output, got: %s", output)
+	}
+}
+
+func TestCompactFormatter_GoPatchStylePath(t *testing.T) {
+	f := &CompactFormatter{}
+	opts := DefaultFormatOptions()
+	opts.UseGoPatchStyle = true
+
+	diff := Difference{Path: "config.items[0].name", Type: DiffModified, From: "old", To: "new"}
+	output := f.FormatSingle(diff, opts)
+	if !strings.Contains(output, "/config/items/0/name") {
+		t.Errorf("expected Go-Patch style path, got: %s", output)
+	}
+}
+
+func TestFormatValue_Nil(t *testing.T) {
+	f := &CompactFormatter{}
+	opts := DefaultFormatOptions()
+
+	// Modified diff with nil From value exercises formatValue(nil, opts)
+	diff := Difference{Path: "key", Type: DiffModified, From: nil, To: "new"}
+	output := f.FormatSingle(diff, opts)
+	if !strings.Contains(output, "<nil>") {
+		t.Errorf("expected <nil> for nil value, got: %s", output)
+	}
+}
+
 // extractFingerprint extracts the first fingerprint value from GitLab JSON output.
 func extractFingerprint(t *testing.T, output string) string {
 	t.Helper()

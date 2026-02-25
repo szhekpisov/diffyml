@@ -341,10 +341,8 @@ func (f *BriefFormatter) FormatSingle(diff Difference, opts *FormatOptions) stri
 		return fmt.Sprintf("- %s\n", diff.Path)
 	case DiffModified:
 		return fmt.Sprintf("± %s\n", diff.Path)
-	case DiffOrderChanged:
+	default: // DiffOrderChanged
 		return fmt.Sprintf("⇆ %s\n", diff.Path)
-	default:
-		return fmt.Sprintf("? %s\n", diff.Path)
 	}
 }
 
@@ -393,10 +391,8 @@ func gitHubCommand(dt DiffType) (command, title string) {
 		return "error", "YAML Removed"
 	case DiffModified:
 		return "warning", "YAML Modified"
-	case DiffOrderChanged:
+	default: // DiffOrderChanged
 		return "notice", "YAML Order Changed"
-	default:
-		return "warning", "YAML Diff"
 	}
 }
 
@@ -409,10 +405,8 @@ func gitHubMessage(diff Difference) string {
 		return fmt.Sprintf("Removed: %s = %v", diff.Path, diff.From)
 	case DiffModified:
 		return fmt.Sprintf("Modified: %s changed from %v to %v", diff.Path, diff.From, diff.To)
-	case DiffOrderChanged:
+	default: // DiffOrderChanged
 		return fmt.Sprintf("Order changed: %s", diff.Path)
-	default:
-		return fmt.Sprintf("Diff: %s", diff.Path)
 	}
 }
 
@@ -448,13 +442,9 @@ func gitLabSeverity(dt DiffType) string {
 	switch dt {
 	case DiffAdded:
 		return "info"
-	case DiffRemoved:
+	case DiffRemoved, DiffModified:
 		return "major"
-	case DiffModified:
-		return "major"
-	case DiffOrderChanged:
-		return "minor"
-	default:
+	default: // DiffOrderChanged
 		return "minor"
 	}
 }
@@ -468,10 +458,8 @@ func gitLabCheckName(dt DiffType) string {
 		return "diffyml/removed"
 	case DiffModified:
 		return "diffyml/modified"
-	case DiffOrderChanged:
+	default: // DiffOrderChanged
 		return "diffyml/order-changed"
-	default:
-		return "diffyml/unknown"
 	}
 }
 
@@ -496,10 +484,8 @@ func gitLabDescription(diff Difference) string {
 		return fmt.Sprintf("Removed: %s = %v", diff.Path, diff.From)
 	case DiffModified:
 		return fmt.Sprintf("Modified: %s changed from %v to %v", diff.Path, diff.From, diff.To)
-	case DiffOrderChanged:
+	default: // DiffOrderChanged
 		return fmt.Sprintf("Order changed: %s", diff.Path)
-	default:
-		return fmt.Sprintf("Diff: %s", diff.Path)
 	}
 }
 

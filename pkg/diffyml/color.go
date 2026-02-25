@@ -17,10 +17,10 @@ type ColorMode int
 const (
 	// ColorModeAuto automatically detects terminal capability.
 	ColorModeAuto ColorMode = iota
-	// ColorModeOn always enables color output.
-	ColorModeOn
-	// ColorModeOff always disables color output.
-	ColorModeOff
+	// ColorModeAlways always enables color output.
+	ColorModeAlways
+	// ColorModeNever always disables color output.
+	ColorModeNever
 )
 
 // Default terminal width when auto-detection is not possible.
@@ -29,27 +29,27 @@ const defaultTerminalWidth = 80
 // Minimum terminal width to enforce.
 const minTerminalWidth = 40
 
-// ParseColorMode parses a color mode string (on, off, auto).
+// ParseColorMode parses a color mode string (always, never, auto).
 // Empty string defaults to auto.
 func ParseColorMode(s string) (ColorMode, error) {
 	switch strings.ToLower(s) {
 	case "", "auto":
 		return ColorModeAuto, nil
-	case "on":
-		return ColorModeOn, nil
-	case "off":
-		return ColorModeOff, nil
+	case "always":
+		return ColorModeAlways, nil
+	case "never":
+		return ColorModeNever, nil
 	default:
-		return ColorModeAuto, fmt.Errorf("invalid color mode %q, valid modes: on, off, auto", s)
+		return ColorModeAuto, fmt.Errorf("invalid color mode %q, valid modes: always, never, auto", s)
 	}
 }
 
 // ResolveColorMode determines if color should be enabled based on mode and terminal state.
 func ResolveColorMode(mode ColorMode, isTerminal bool) bool {
 	switch mode {
-	case ColorModeOn:
+	case ColorModeAlways:
 		return true
-	case ColorModeOff:
+	case ColorModeNever:
 		return false
 	case ColorModeAuto:
 		return isTerminal

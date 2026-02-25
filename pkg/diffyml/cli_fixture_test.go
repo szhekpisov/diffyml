@@ -84,7 +84,7 @@ func runFixture(t *testing.T, dir string) {
 	}
 
 	// Force runner invariants after ParseArgs (so params.cfg cannot override)
-	cfg.Color = "off"
+	cfg.Color = "never"
 	cfg.SetExitCode = true
 
 	rc := NewRunConfig()
@@ -154,7 +154,7 @@ func runDirectoryFixture(t *testing.T, dir string) {
 	}
 
 	// Force runner invariants
-	cfg.Color = "off"
+	cfg.Color = "never"
 	cfg.SetExitCode = true
 
 	rc := NewRunConfig()

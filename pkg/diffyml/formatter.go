@@ -410,6 +410,10 @@ func gitHubMessage(diff Difference) string {
 	}
 }
 
+// gitHubAnnotationLimit is the maximum number of annotations per command type
+// per step, as enforced by GitHub Actions.
+const gitHubAnnotationLimit = 10
+
 // FormatSingle renders a single difference in GitHub Actions format.
 func (f *GitHubFormatter) FormatSingle(diff Difference, opts *FormatOptions) string {
 	cmd, title := gitHubCommand(diff.Type)
@@ -418,17 +422,82 @@ func (f *GitHubFormatter) FormatSingle(diff Difference, opts *FormatOptions) str
 }
 
 // Format renders differences in GitHub Actions format.
-func (f *GitHubFormatter) Format(diffs []Difference, _ *FormatOptions) string {
+// When opts.FilePath is non-empty: ::<cmd> file=<path>,title=<title>::<message>
+// When opts.FilePath is empty:     ::<cmd> title=<title>::<message>
+// Tracks per-type counts; truncates at 10 per command type.
+// Appends summary annotation per truncated type.
+func (f *GitHubFormatter) Format(diffs []Difference, opts *FormatOptions) string {
 	if len(diffs) == 0 {
 		return ""
 	}
 
+	filePath := ""
+	if opts != nil {
+		filePath = opts.FilePath
+	}
+
 	var sb strings.Builder
+	counts := map[string]int{}
+	omitted := map[string]int{}
+
 	for _, diff := range diffs {
 		cmd, title := gitHubCommand(diff.Type)
 		msg := gitHubMessage(diff)
-		fmt.Fprintf(&sb, "::%s title=%s::%s\n", cmd, title, msg)
+		if counts[cmd] < gitHubAnnotationLimit {
+			gitHubWriteCommand(&sb, cmd, title, msg, filePath)
+			counts[cmd]++
+		} else {
+			omitted[cmd]++
+		}
 	}
+
+	gitHubWriteSummaries(&sb, omitted)
+	return sb.String()
+}
+
+// gitHubWriteCommand writes a single GitHub Actions workflow command to the builder.
+func gitHubWriteCommand(sb *strings.Builder, cmd, title, msg, filePath string) {
+	if filePath != "" {
+		fmt.Fprintf(sb, "::%s file=%s,title=%s::%s\n", cmd, filePath, title, msg)
+	} else {
+		fmt.Fprintf(sb, "::%s title=%s::%s\n", cmd, title, msg)
+	}
+}
+
+// gitHubWriteSummaries appends summary annotations for each truncated command type.
+// Summary annotations do not include the file= parameter and do not count toward the limit.
+func gitHubWriteSummaries(sb *strings.Builder, omitted map[string]int) {
+	for _, cmd := range []string{"notice", "warning", "error"} {
+		if n := omitted[cmd]; n > 0 {
+			fmt.Fprintf(sb, "::%s title=diffyml::%d additional %s annotations omitted due to GitHub Actions limit\n", cmd, n, cmd)
+		}
+	}
+}
+
+// FormatAll produces GitHub Actions workflow commands for multiple file groups.
+// Each diff uses file=<group.FilePath> for file-specific annotations.
+// Annotation limits (10 per type) apply across ALL groups combined.
+// Summary annotations omit the file= parameter.
+// Returns empty string when all groups have zero diffs.
+func (f *GitHubFormatter) FormatAll(groups []DiffGroup, opts *FormatOptions) string {
+	var sb strings.Builder
+	counts := map[string]int{}
+	omitted := map[string]int{}
+
+	for _, group := range groups {
+		for _, diff := range group.Diffs {
+			cmd, title := gitHubCommand(diff.Type)
+			msg := gitHubMessage(diff)
+			if counts[cmd] < gitHubAnnotationLimit {
+				gitHubWriteCommand(&sb, cmd, title, msg, group.FilePath)
+				counts[cmd]++
+			} else {
+				omitted[cmd]++
+			}
+		}
+	}
+
+	gitHubWriteSummaries(&sb, omitted)
 	return sb.String()
 }
 
@@ -585,4 +654,10 @@ func (f *GiteaFormatter) Format(diffs []Difference, opts *FormatOptions) string 
 	// Gitea uses GitHub Actions compatible format
 	gh := &GitHubFormatter{}
 	return gh.Format(diffs, opts)
+}
+
+// FormatAll delegates to GitHubFormatter for directory mode support.
+func (f *GiteaFormatter) FormatAll(groups []DiffGroup, opts *FormatOptions) string {
+	gh := &GitHubFormatter{}
+	return gh.FormatAll(groups, opts)
 }

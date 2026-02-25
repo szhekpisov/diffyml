@@ -2,6 +2,7 @@ package diffyml
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -787,6 +788,241 @@ func TestGitHubFormatter_DifferentiatedCommands(t *testing.T) {
 	}
 }
 
+func TestGitHubFormatter_FileParameter(t *testing.T) {
+	f, _ := GetFormatter("github")
+	opts := DefaultFormatOptions()
+	opts.FilePath = "deploy.yaml"
+
+	diffs := []Difference{
+		{Path: "config.timeout", Type: DiffModified, From: "30", To: "60"},
+	}
+
+	output := f.Format(diffs, opts)
+
+	// Must include file=deploy.yaml parameter
+	if !containsSubstr(output, "file=deploy.yaml") {
+		t.Errorf("expected file=deploy.yaml in output, got: %s", output)
+	}
+	// Must follow format: ::command file=path,title=title::message
+	expected := "::warning file=deploy.yaml,title=YAML Modified::Modified: config.timeout changed from 30 to 60\n"
+	if output != expected {
+		t.Errorf("expected:\n%s\ngot:\n%s", expected, output)
+	}
+}
+
+func TestGitHubFormatter_NoFileParameter(t *testing.T) {
+	f, _ := GetFormatter("github")
+	opts := DefaultFormatOptions()
+	// FilePath is empty — backward compatible
+
+	diffs := []Difference{
+		{Path: "config.timeout", Type: DiffModified, From: "30", To: "60"},
+	}
+
+	output := f.Format(diffs, opts)
+
+	// Must NOT include file= parameter
+	if containsSubstr(output, "file=") {
+		t.Errorf("expected no file= parameter when FilePath is empty, got: %s", output)
+	}
+	// Must follow format: ::command title=title::message
+	expected := "::warning title=YAML Modified::Modified: config.timeout changed from 30 to 60\n"
+	if output != expected {
+		t.Errorf("expected:\n%s\ngot:\n%s", expected, output)
+	}
+}
+
+func TestGitHubFormatter_FileParameterAllDiffTypes(t *testing.T) {
+	f, _ := GetFormatter("github")
+	opts := DefaultFormatOptions()
+	opts.FilePath = "service.yaml"
+
+	tests := []struct {
+		name     string
+		diff     Difference
+		expected string
+	}{
+		{
+			name:     "added with file",
+			diff:     Difference{Path: "key", Type: DiffAdded, To: "value"},
+			expected: "::notice file=service.yaml,title=YAML Added::Added: key = value\n",
+		},
+		{
+			name:     "removed with file",
+			diff:     Difference{Path: "key", Type: DiffRemoved, From: "value"},
+			expected: "::error file=service.yaml,title=YAML Removed::Removed: key = value\n",
+		},
+		{
+			name:     "modified with file",
+			diff:     Difference{Path: "key", Type: DiffModified, From: "old", To: "new"},
+			expected: "::warning file=service.yaml,title=YAML Modified::Modified: key changed from old to new\n",
+		},
+		{
+			name:     "order changed with file",
+			diff:     Difference{Path: "list", Type: DiffOrderChanged},
+			expected: "::notice file=service.yaml,title=YAML Order Changed::Order changed: list\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output := f.Format([]Difference{tt.diff}, opts)
+			if output != tt.expected {
+				t.Errorf("expected:\n%s\ngot:\n%s", tt.expected, output)
+			}
+		})
+	}
+}
+
+func TestGitHubFormatter_AnnotationLimitTruncation(t *testing.T) {
+	f, _ := GetFormatter("github")
+	opts := DefaultFormatOptions()
+
+	// Generate 13 warning diffs (DiffModified → ::warning)
+	var diffs []Difference
+	for i := 0; i < 13; i++ {
+		diffs = append(diffs, Difference{
+			Path: fmt.Sprintf("key%d", i),
+			Type: DiffModified,
+			From: "old",
+			To:   "new",
+		})
+	}
+
+	output := f.Format(diffs, opts)
+	lines := strings.Split(strings.TrimRight(output, "\n"), "\n")
+
+	// Should have 10 warning commands + 1 summary = 11 lines
+	if len(lines) != 11 {
+		t.Fatalf("expected 11 lines (10 warnings + 1 summary), got %d:\n%s", len(lines), output)
+	}
+
+	// First 10 lines should be ::warning commands
+	for i := 0; i < 10; i++ {
+		if !strings.HasPrefix(lines[i], "::warning ") {
+			t.Errorf("line %d should be ::warning, got: %s", i, lines[i])
+		}
+	}
+
+	// Last line should be summary
+	expectedSummary := "::warning title=diffyml::3 additional warning annotations omitted due to GitHub Actions limit"
+	if lines[10] != expectedSummary {
+		t.Errorf("expected summary:\n%s\ngot:\n%s", expectedSummary, lines[10])
+	}
+}
+
+func TestGitHubFormatter_AnnotationLimitNotTriggered(t *testing.T) {
+	f, _ := GetFormatter("github")
+	opts := DefaultFormatOptions()
+
+	// Generate exactly 10 warning diffs — should not trigger summary
+	var diffs []Difference
+	for i := 0; i < 10; i++ {
+		diffs = append(diffs, Difference{
+			Path: fmt.Sprintf("key%d", i),
+			Type: DiffModified,
+			From: "old",
+			To:   "new",
+		})
+	}
+
+	output := f.Format(diffs, opts)
+	lines := strings.Split(strings.TrimRight(output, "\n"), "\n")
+
+	// Should have exactly 10 lines, no summary
+	if len(lines) != 10 {
+		t.Fatalf("expected 10 lines (no summary), got %d:\n%s", len(lines), output)
+	}
+
+	if containsSubstr(output, "omitted due to GitHub Actions limit") {
+		t.Errorf("summary should not appear when at or below limit, got: %s", output)
+	}
+}
+
+func TestGitHubFormatter_AnnotationLimitMixedNotice(t *testing.T) {
+	f, _ := GetFormatter("github")
+	opts := DefaultFormatOptions()
+
+	// DiffAdded and DiffOrderChanged both map to ::notice — they share the budget
+	var diffs []Difference
+	for i := 0; i < 7; i++ {
+		diffs = append(diffs, Difference{
+			Path: fmt.Sprintf("added%d", i),
+			Type: DiffAdded,
+			To:   "val",
+		})
+	}
+	for i := 0; i < 5; i++ {
+		diffs = append(diffs, Difference{
+			Path: fmt.Sprintf("order%d", i),
+			Type: DiffOrderChanged,
+		})
+	}
+
+	output := f.Format(diffs, opts)
+	lines := strings.Split(strings.TrimRight(output, "\n"), "\n")
+
+	// 7 added + 3 order changed (budget exhausted at 10) + 1 summary = 11 lines
+	if len(lines) != 11 {
+		t.Fatalf("expected 11 lines (10 notices + 1 summary), got %d:\n%s", len(lines), output)
+	}
+
+	// Count notice commands (should be exactly 10)
+	noticeCount := 0
+	for _, line := range lines[:len(lines)-1] {
+		if strings.HasPrefix(line, "::notice ") {
+			noticeCount++
+		}
+	}
+	if noticeCount != 10 {
+		t.Errorf("expected 10 notice annotations, got %d", noticeCount)
+	}
+
+	expectedSummary := "::notice title=diffyml::2 additional notice annotations omitted due to GitHub Actions limit"
+	lastLine := lines[len(lines)-1]
+	if lastLine != expectedSummary {
+		t.Errorf("expected summary:\n%s\ngot:\n%s", expectedSummary, lastLine)
+	}
+}
+
+func TestGitHubFormatter_AnnotationLimitMultipleTypes(t *testing.T) {
+	f, _ := GetFormatter("github")
+	opts := DefaultFormatOptions()
+
+	// 12 notices (DiffAdded) + 11 warnings (DiffModified) + 3 errors (DiffRemoved)
+	var diffs []Difference
+	for i := 0; i < 12; i++ {
+		diffs = append(diffs, Difference{Path: fmt.Sprintf("a%d", i), Type: DiffAdded, To: "v"})
+	}
+	for i := 0; i < 11; i++ {
+		diffs = append(diffs, Difference{Path: fmt.Sprintf("m%d", i), Type: DiffModified, From: "o", To: "n"})
+	}
+	for i := 0; i < 3; i++ {
+		diffs = append(diffs, Difference{Path: fmt.Sprintf("r%d", i), Type: DiffRemoved, From: "v"})
+	}
+
+	output := f.Format(diffs, opts)
+
+	// 10 notices + 10 warnings + 3 errors + 2 summaries (notice, warning) = 25 lines
+	lines := strings.Split(strings.TrimRight(output, "\n"), "\n")
+	if len(lines) != 25 {
+		t.Fatalf("expected 25 lines, got %d:\n%s", len(lines), output)
+	}
+
+	// No summary for error (only 3, under limit)
+	if containsSubstr(output, "additional error annotations") {
+		t.Errorf("should not have error summary when under limit")
+	}
+
+	// Summary for notice and warning
+	if !containsSubstr(output, "2 additional notice annotations omitted") {
+		t.Errorf("expected notice summary, got:\n%s", output)
+	}
+	if !containsSubstr(output, "1 additional warning annotations omitted") {
+		t.Errorf("expected warning summary, got:\n%s", output)
+	}
+}
+
 func TestGitLabFormatter_RequiredFields(t *testing.T) {
 	f, _ := GetFormatter("gitlab")
 	opts := DefaultFormatOptions()
@@ -1565,6 +1801,159 @@ func TestFormatValue_Nil(t *testing.T) {
 	if !strings.Contains(output, "<nil>") {
 		t.Errorf("expected <nil> for nil value, got: %s", output)
 	}
+}
+
+// --- Task 3.1 / 3.2: GitHubFormatter FormatAll tests ---
+
+func TestGitHubFormatter_ImplementsStructuredFormatter(t *testing.T) {
+	var f Formatter = &GitHubFormatter{}
+	sf, ok := f.(StructuredFormatter)
+	if !ok {
+		t.Fatal("GitHubFormatter should implement StructuredFormatter")
+	}
+
+	// Verify the interface works with empty groups
+	output := sf.FormatAll([]DiffGroup{}, DefaultFormatOptions())
+	if output != "" {
+		t.Errorf("expected empty string for empty groups, got: %q", output)
+	}
+}
+
+func TestGitHubFormatter_FormatAll(t *testing.T) {
+	f := &GitHubFormatter{}
+	opts := DefaultFormatOptions()
+
+	groups := []DiffGroup{
+		{
+			FilePath: "deploy.yaml",
+			Diffs: []Difference{
+				{Path: "key", Type: DiffModified, From: "old", To: "new"},
+			},
+		},
+		{
+			FilePath: "service.yaml",
+			Diffs: []Difference{
+				{Path: "port", Type: DiffAdded, To: 8080},
+			},
+		},
+	}
+
+	output := f.FormatAll(groups, opts)
+	lines := strings.Split(strings.TrimRight(output, "\n"), "\n")
+
+	if len(lines) != 2 {
+		t.Fatalf("expected 2 lines, got %d:\n%s", len(lines), output)
+	}
+
+	expected0 := "::warning file=deploy.yaml,title=YAML Modified::Modified: key changed from old to new"
+	expected1 := "::notice file=service.yaml,title=YAML Added::Added: port = 8080"
+
+	if lines[0] != expected0 {
+		t.Errorf("line 0:\n  expected: %s\n  got:      %s", expected0, lines[0])
+	}
+	if lines[1] != expected1 {
+		t.Errorf("line 1:\n  expected: %s\n  got:      %s", expected1, lines[1])
+	}
+}
+
+func TestGitHubFormatter_FormatAllEmpty(t *testing.T) {
+	f := &GitHubFormatter{}
+	opts := DefaultFormatOptions()
+
+	// Empty groups slice
+	output := f.FormatAll([]DiffGroup{}, opts)
+	if output != "" {
+		t.Errorf("expected empty string for empty groups, got: %q", output)
+	}
+
+	// Groups with zero diffs
+	output = f.FormatAll([]DiffGroup{
+		{FilePath: "deploy.yaml", Diffs: []Difference{}},
+		{FilePath: "service.yaml", Diffs: []Difference{}},
+	}, opts)
+	if output != "" {
+		t.Errorf("expected empty string when all groups have zero diffs, got: %q", output)
+	}
+}
+
+func TestGitHubFormatter_FormatAll_AnnotationLimitsAcrossGroups(t *testing.T) {
+	f := &GitHubFormatter{}
+	opts := DefaultFormatOptions()
+
+	// Spread 13 warnings across 3 files — limit applies across ALL groups
+	groups := []DiffGroup{
+		{FilePath: "a.yaml", Diffs: makeDiffs(DiffModified, 5)},
+		{FilePath: "b.yaml", Diffs: makeDiffs(DiffModified, 5)},
+		{FilePath: "c.yaml", Diffs: makeDiffs(DiffModified, 3)},
+	}
+
+	output := f.FormatAll(groups, opts)
+	lines := strings.Split(strings.TrimRight(output, "\n"), "\n")
+
+	// 10 warnings + 1 summary = 11 lines
+	if len(lines) != 11 {
+		t.Fatalf("expected 11 lines (10 warnings + 1 summary), got %d:\n%s", len(lines), output)
+	}
+
+	// Summary should NOT include file= parameter
+	lastLine := lines[10]
+	expectedSummary := "::warning title=diffyml::3 additional warning annotations omitted due to GitHub Actions limit"
+	if lastLine != expectedSummary {
+		t.Errorf("expected summary:\n%s\ngot:\n%s", expectedSummary, lastLine)
+	}
+	if containsSubstr(lastLine, "file=") {
+		t.Errorf("summary annotation should not include file= parameter, got: %s", lastLine)
+	}
+}
+
+func TestGiteaFormatter_FormatAll(t *testing.T) {
+	giteaF := &GiteaFormatter{}
+	githubF := &GitHubFormatter{}
+	opts := DefaultFormatOptions()
+
+	groups := []DiffGroup{
+		{
+			FilePath: "deploy.yaml",
+			Diffs: []Difference{
+				{Path: "key", Type: DiffModified, From: "old", To: "new"},
+			},
+		},
+		{
+			FilePath: "service.yaml",
+			Diffs: []Difference{
+				{Path: "port", Type: DiffAdded, To: 8080},
+			},
+		},
+	}
+
+	giteaOutput := giteaF.FormatAll(groups, opts)
+	githubOutput := githubF.FormatAll(groups, opts)
+
+	if giteaOutput != githubOutput {
+		t.Errorf("Gitea FormatAll should match GitHub FormatAll\nGitea:  %s\nGitHub: %s", giteaOutput, githubOutput)
+	}
+}
+
+func TestGiteaFormatter_ImplementsStructuredFormatter(t *testing.T) {
+	var f Formatter = &GiteaFormatter{}
+	_, ok := f.(StructuredFormatter)
+	if !ok {
+		t.Fatal("GiteaFormatter should implement StructuredFormatter")
+	}
+}
+
+// makeDiffs generates n Difference entries of the given type.
+func makeDiffs(dt DiffType, n int) []Difference {
+	diffs := make([]Difference, n)
+	for i := range diffs {
+		diffs[i] = Difference{
+			Path: fmt.Sprintf("key%d", i),
+			Type: dt,
+			From: "old",
+			To:   "new",
+		}
+	}
+	return diffs
 }
 
 // extractFingerprint extracts the first fingerprint value from GitLab JSON output.

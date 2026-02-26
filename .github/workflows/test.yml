@@ -25,6 +25,22 @@ jobs:
       - name: Run tests
         run: go test ./...
 
+  fuzz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6
+        with:
+          go-version: "1.25.7"
+
+      - name: Run fuzz tests
+        run: |
+          for target in FuzzCompare FuzzCompareWithOptions FuzzParseWithOrder FuzzDocumentParser; do
+            echo "=== Fuzzing $target for 30s ==="
+            go test -fuzz="^${target}$" -fuzztime=30s -run='^$' ./pkg/diffyml/
+          done
+
   coverage:
     runs-on: ubuntu-latest
     steps:

@@ -51,6 +51,12 @@ func ParseWithOrder(content []byte) ([]interface{}, error) {
 // nodeToInterface converts a yaml.Node tree into Go values,
 // using *OrderedMap for mapping nodes to preserve key order.
 func nodeToInterface(node *yaml.Node) interface{} {
+	return nodeToInterfaceWithCycleDetection(node, make(map[*yaml.Node]bool))
+}
+
+// nodeToInterfaceWithCycleDetection is the recursive implementation of nodeToInterface.
+// The seen set tracks alias targets to detect cycles (e.g. an anchor referencing itself).
+func nodeToInterfaceWithCycleDetection(node *yaml.Node, seen map[*yaml.Node]bool) interface{} {
 	if node == nil {
 		return nil
 	}
@@ -60,7 +66,7 @@ func nodeToInterface(node *yaml.Node) interface{} {
 		if len(node.Content) == 0 {
 			return nil
 		}
-		return nodeToInterface(node.Content[0])
+		return nodeToInterfaceWithCycleDetection(node.Content[0], seen)
 	}
 
 	switch node.Kind {
@@ -70,7 +76,7 @@ func nodeToInterface(node *yaml.Node) interface{} {
 			key := node.Content[i].Value
 			if key == "<<" {
 				// YAML merge key: merge the referenced map's entries
-				merged := nodeToInterface(node.Content[i+1])
+				merged := nodeToInterfaceWithCycleDetection(node.Content[i+1], seen)
 				if mergedMap, ok := merged.(*OrderedMap); ok {
 					for _, mk := range mergedMap.Keys {
 						if _, exists := om.Values[mk]; !exists {
@@ -81,7 +87,7 @@ func nodeToInterface(node *yaml.Node) interface{} {
 				}
 				continue
 			}
-			val := nodeToInterface(node.Content[i+1])
+			val := nodeToInterfaceWithCycleDetection(node.Content[i+1], seen)
 			om.Keys = append(om.Keys, key)
 			om.Values[key] = val
 		}
@@ -90,7 +96,7 @@ func nodeToInterface(node *yaml.Node) interface{} {
 	case yaml.SequenceNode:
 		list := make([]interface{}, 0, len(node.Content))
 		for _, child := range node.Content {
-			list = append(list, nodeToInterface(child))
+			list = append(list, nodeToInterfaceWithCycleDetection(child, seen))
 		}
 		return list
 
@@ -98,7 +104,13 @@ func nodeToInterface(node *yaml.Node) interface{} {
 		return resolveScalar(node)
 
 	case yaml.AliasNode:
-		return nodeToInterface(node.Alias)
+		if seen[node.Alias] {
+			return nil // break cycle
+		}
+		seen[node.Alias] = true
+		result := nodeToInterfaceWithCycleDetection(node.Alias, seen)
+		delete(seen, node.Alias)
+		return result
 
 	default:
 		return nil

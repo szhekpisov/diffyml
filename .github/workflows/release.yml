@@ -5,7 +5,8 @@ on:
     tags:
       - "v*.*.*"
 
-permissions: read-all
+permissions:
+  contents: read
 
 jobs:
   verify:
@@ -21,10 +22,13 @@ jobs:
           echo "Tag '${TAG}' is valid semver"
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6
         with:
           go-version: "1.25.7"
+          cache: false
 
       - name: Run tests
         run: go test ./...
@@ -55,10 +59,12 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6
         with:
           go-version: "1.25.7"
+          cache: false
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@ec59f474b9834571250b370d4735c50f8e2d1e29
@@ -78,6 +84,7 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Generate changelog
         uses: orhun/git-cliff-action@c93ef52f3d0ddcdcc9bd5447d98d458a11cd4f72 # v4
@@ -86,10 +93,13 @@ jobs:
           args: --output CHANGELOG.md
 
       - name: Commit and push changelog
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           TAG="${GITHUB_REF_NAME}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git add CHANGELOG.md
           if git diff --cached --quiet; then
             echo "No changelog changes to commit"
@@ -105,6 +115,8 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
 
       - name: Extract version
         id: version
@@ -116,8 +128,9 @@ jobs:
 
       - name: Download source tarball and compute SHA256
         id: checksum
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
         run: |
-          TAG="${{ steps.version.outputs.tag }}"
           curl -sL -o source.tar.gz "https://github.com/szhekpisov/diffyml/archive/refs/tags/${TAG}.tar.gz"
           SHA256=$(sha256sum source.tar.gz | awk '{print $1}')
           echo "sha256=${SHA256}" >> "$GITHUB_OUTPUT"
@@ -129,9 +142,10 @@ jobs:
           git clone "https://x-access-token:${{ secrets.HOMEBREW_TAP_TOKEN }}@github.com/szhekpisov/homebrew-diffyml.git" tap
 
       - name: Generate formula from template
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          SHA256: ${{ steps.checksum.outputs.sha256 }}
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          SHA256="${{ steps.checksum.outputs.sha256 }}"
           mkdir -p tap/Formula
           sed -e "s/VERSION/${VERSION}/g" -e "s/SHA256/${SHA256}/g" homebrew/diffyml.rb.template > tap/Formula/diffyml.rb
           echo "Generated formula:"
@@ -141,8 +155,9 @@ jobs:
         run: ruby -c tap/Formula/diffyml.rb
 
       - name: Commit and push
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
           cd tap
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"

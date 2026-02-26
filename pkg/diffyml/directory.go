@@ -5,6 +5,7 @@
 package diffyml
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -235,11 +236,20 @@ func runDirectory(cfg *CLIConfig, rc *RunConfig, fromDir, toDir string) *ExitRes
 	// Check if formatter supports structured (aggregated) output
 	sf, isStructured := formatter.(StructuredFormatter)
 
+	isBriefSummary := cfg.Output == "brief" && cfg.Summary
+
 	hasDiffs := false
 	hasErrors := false
 
 	// For structured formatters, collect all diff groups
 	var groups []DiffGroup
+
+	// For non-structured summary: collect entries to invoke summarizer after all files
+	type summaryEntry struct {
+		Group    DiffGroup
+		PairType FilePairType
+	}
+	var summaryEntries []summaryEntry
 
 	for _, pair := range pairs {
 		var fromContent, toContent []byte
@@ -322,12 +332,22 @@ func runDirectory(cfg *CLIConfig, rc *RunConfig, fromDir, toDir string) *ExitRes
 				Diffs:    diffs,
 			})
 		} else {
-			// Non-structured: per-file header + format
-			header := FormatFileHeader(pair.Name, pair.Type, formatOpts)
-			fmt.Fprint(rc.Stdout, header)
+			// Collect for summary if needed
+			if cfg.Summary {
+				summaryEntries = append(summaryEntries, summaryEntry{
+					Group:    DiffGroup{FilePath: pair.Name, Diffs: diffs},
+					PairType: pair.Type,
+				})
+			}
 
-			output := formatter.Format(diffs, formatOpts)
-			fmt.Fprint(rc.Stdout, output)
+			// Non-structured: per-file header + format (skip for brief+summary)
+			if !isBriefSummary {
+				header := FormatFileHeader(pair.Name, pair.Type, formatOpts)
+				fmt.Fprint(rc.Stdout, header)
+
+				output := formatter.Format(diffs, formatOpts)
+				fmt.Fprint(rc.Stdout, output)
+			}
 		}
 	}
 
@@ -336,6 +356,45 @@ func runDirectory(cfg *CLIConfig, rc *RunConfig, fromDir, toDir string) *ExitRes
 		output := sf.FormatAll(groups, formatOpts)
 		fmt.Fprint(rc.Stdout, output)
 		hasDiffs = len(groups) > 0
+	}
+
+	// AI Summary for structured formatters
+	if isStructured && cfg.Summary && len(groups) > 0 {
+		summarizer := NewSummarizer(cfg.SummaryModel)
+		if rc.SummaryAPIURL != "" {
+			summarizer.apiURL = rc.SummaryAPIURL
+		}
+		summary, summaryErr := summarizer.Summarize(context.Background(), groups)
+		if summaryErr != nil {
+			fmt.Fprintf(rc.Stderr, "Warning: AI summary unavailable: %v\n", summaryErr)
+		} else {
+			fmt.Fprint(rc.Stdout, formatSummaryOutput(summary, formatOpts))
+		}
+	}
+
+	// AI Summary for non-structured formatters
+	if !isStructured && cfg.Summary && len(summaryEntries) > 0 {
+		summaryGroups := make([]DiffGroup, len(summaryEntries))
+		for i, e := range summaryEntries {
+			summaryGroups[i] = e.Group
+		}
+		summarizer := NewSummarizer(cfg.SummaryModel)
+		if rc.SummaryAPIURL != "" {
+			summarizer.apiURL = rc.SummaryAPIURL
+		}
+		summary, summaryErr := summarizer.Summarize(context.Background(), summaryGroups)
+		if summaryErr != nil {
+			if isBriefSummary {
+				// Fallback: show brief output for all files since AI summary failed
+				for _, e := range summaryEntries {
+					fmt.Fprint(rc.Stdout, FormatFileHeader(e.Group.FilePath, e.PairType, formatOpts))
+					fmt.Fprint(rc.Stdout, formatter.Format(e.Group.Diffs, formatOpts))
+				}
+			}
+			fmt.Fprintf(rc.Stderr, "Warning: AI summary unavailable: %v\n", summaryErr)
+		} else {
+			fmt.Fprint(rc.Stdout, formatSummaryOutput(summary, formatOpts))
+		}
 	}
 
 	// Compute aggregated exit code (directory-specific precedence)

@@ -6,6 +6,7 @@
 package diffyml
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -55,6 +56,10 @@ type CLIConfig struct {
 	ChrootFrom            string
 	ChrootTo              string
 	ChrootListToDocuments bool
+
+	// AI Summary options
+	Summary      bool   // --summary / -S: enable AI summary
+	SummaryModel string // --summary-model: Anthropic model override
 
 	// Exit code behavior
 	SetExitCode bool
@@ -143,6 +148,11 @@ func (c *CLIConfig) initFlags() {
 	c.fs.StringVar(&c.ChrootFrom, "chroot-of-from", c.ChrootFrom, "only change the root level of the from input file")
 	c.fs.StringVar(&c.ChrootTo, "chroot-of-to", c.ChrootTo, "only change the root level of the to input file")
 	c.fs.BoolVar(&c.ChrootListToDocuments, "chroot-list-to-documents", c.ChrootListToDocuments, "treat chroot list as set of documents")
+
+	// AI Summary options
+	c.fs.BoolVar(&c.Summary, "S", c.Summary, "")
+	c.fs.BoolVar(&c.Summary, "summary", c.Summary, "enable AI-powered summary of differences")
+	c.fs.StringVar(&c.SummaryModel, "summary-model", c.SummaryModel, "specify Anthropic model for summary")
 
 	// Exit code behavior
 	c.fs.BoolVar(&c.SetExitCode, "s", c.SetExitCode, "")
@@ -260,6 +270,11 @@ func (c *CLIConfig) Usage() string {
 	sb.WriteString("      --chroot-list-to-documents      treat chroot list as set of documents\n")
 	sb.WriteString("\n")
 
+	// AI Summary options
+	sb.WriteString("  -S, --summary                       enable AI-powered summary of differences\n")
+	sb.WriteString("      --summary-model string          specify Anthropic model for summary\n")
+	sb.WriteString("\n")
+
 	// Other options
 	sb.WriteString("  -s, --set-exit-code                 set program exit code based on differences\n")
 	sb.WriteString("  -h, --help                          show this help\n")
@@ -300,6 +315,11 @@ func (c *CLIConfig) Validate() error {
 	}
 	if err := ValidateRegexPatterns(c.ExcludeRegexp, "exclude-regexp"); err != nil {
 		return err
+	}
+
+	// Validate AI summary configuration
+	if c.Summary && os.Getenv("ANTHROPIC_API_KEY") == "" {
+		return fmt.Errorf("--summary requires ANTHROPIC_API_KEY environment variable to be set")
 	}
 
 	return nil
@@ -443,6 +463,8 @@ type RunConfig struct {
 	// nil content at [0] means file absent in from-dir.
 	// nil content at [1] means file absent in to-dir.
 	FilePairs map[string][2][]byte
+	// SummaryAPIURL overrides the Anthropic API URL (for testing).
+	SummaryAPIURL string
 }
 
 // NewRunConfig creates a new RunConfig with default values.
@@ -550,9 +572,36 @@ func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
 	// Set file path for formatters that use it (e.g., GitLab)
 	formatOpts.FilePath = normalizeFilePath(cfg.ToFile, rc.Stderr)
 
+	// For brief + summary: defer output until we know if the API call succeeds
+	isBriefSummary := cfg.Output == "brief" && cfg.Summary
+
 	// Format and output
-	output := formatter.Format(diffs, formatOpts)
-	fmt.Fprint(rc.Stdout, output)
+	if !isBriefSummary {
+		output := formatter.Format(diffs, formatOpts)
+		fmt.Fprint(rc.Stdout, output)
+	}
+
+	// AI Summary
+	if cfg.Summary && len(diffs) > 0 {
+		summarizer := NewSummarizer(cfg.SummaryModel)
+		if rc.SummaryAPIURL != "" {
+			summarizer.apiURL = rc.SummaryAPIURL
+		}
+		groups := []DiffGroup{{FilePath: normalizeFilePath(cfg.ToFile, rc.Stderr), Diffs: diffs}}
+		summary, err := summarizer.Summarize(context.Background(), groups)
+		if err != nil {
+			if isBriefSummary {
+				// Fallback: show brief output since AI summary failed
+				fmt.Fprint(rc.Stdout, formatter.Format(diffs, formatOpts))
+			}
+			fmt.Fprintf(rc.Stderr, "Warning: AI summary unavailable: %v\n", err)
+		} else {
+			fmt.Fprint(rc.Stdout, formatSummaryOutput(summary, formatOpts))
+		}
+	} else if isBriefSummary {
+		// No diffs but brief+summary: write standard brief output
+		fmt.Fprint(rc.Stdout, formatter.Format(diffs, formatOpts))
+	}
 
 	// Determine exit code
 	exitCode := DetermineExitCode(cfg.SetExitCode, len(diffs), nil)

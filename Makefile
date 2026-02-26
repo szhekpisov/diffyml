@@ -1,4 +1,4 @@
-.PHONY: build coverage check-coverage bench bench-cpu bench-mem bench-compare govulncheck golangci-lint security test fmt lint vet ci fixture changelog
+.PHONY: build coverage check-coverage bench bench-cpu bench-mem bench-compare govulncheck golangci-lint security test fmt lint vet ci fixture changelog fuzz fuzz-long
 
 BIN = /tmp/diffyml-dev
 
@@ -76,6 +76,18 @@ vet:
 
 changelog:
 	git cliff --output CHANGELOG.md
+
+fuzz:
+	@for target in FuzzCompare FuzzCompareWithOptions FuzzParseWithOrder FuzzDocumentParser; do \
+		echo "=== Fuzzing $$target for 30s ==="; \
+		go test -fuzz="^$${target}$$" -fuzztime=30s -run='^$$' ./pkg/diffyml/; \
+	done
+
+fuzz-long:
+	@for target in FuzzCompare FuzzCompareWithOptions FuzzParseWithOrder FuzzDocumentParser; do \
+		echo "=== Fuzzing $$target for 5m ==="; \
+		go test -fuzz="^$${target}$$" -fuzztime=5m -run='^$$' ./pkg/diffyml/; \
+	done
 
 ci: fmt vet test check-coverage security
 

@@ -2,5 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: myapp
+  labels:
+    version: "2.0"
+    environment: production
 spec:
   replicas: 3

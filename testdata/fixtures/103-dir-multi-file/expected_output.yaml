@@ -1,5 +1,26 @@
+--- a/configmap.yaml
++++ b/configmap.yaml
+data.app.properties
+  ± value change in multiline text (two inserts, two deletions)
+    environment=production  environment=staging
+    log_level=info          log_level=debug
+    max_connections=100
+    
+
+data.debug.mode
+  ± whitespace only change
+    true·  true
+
 --- a/deployment.yaml
 +++ b/deployment.yaml
+metadata.labels.version
+  ± type change from int to string
+    int: 2  string: 2.0
+
+metadata.labels.environment
+  + one map entry added:
+    environment: production
+
 spec.replicas
   ± value change
     - 1
@@ -34,6 +55,10 @@ spec.replicas
 
 --- a/service.yaml
 +++ b/service.yaml
+metadata.labels.tier
+  - one map entry removed:
+    tier: frontend
+
 spec.port
   ± value change
     - 80

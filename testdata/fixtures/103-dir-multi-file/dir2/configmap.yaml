@@ -4,5 +4,7 @@ metadata:
   name: myapp-config
 data:
   app.properties: |
-    environment=production
-    log_level=info
+    environment=staging
+    log_level=debug
+    max_connections=100
+  debug.mode: "true"

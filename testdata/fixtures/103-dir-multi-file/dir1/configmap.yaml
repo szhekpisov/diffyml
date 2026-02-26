@@ -6,3 +6,5 @@ data:
   app.properties: |
     environment=production
     log_level=info
+    max_connections=100
+  debug.mode: "true "

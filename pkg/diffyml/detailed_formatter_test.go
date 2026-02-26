@@ -3049,24 +3049,15 @@ func TestDetailedFormatter_ScalarTable_SideBySide(t *testing.T) {
 
 	output := f.Format(diffs, opts)
 
-	// In table mode (default), scalar modification should show old and new side-by-side
-	// with arrow separator between them
-	if !strings.Contains(output, "30") {
-		t.Errorf("expected old value '30' in output, got: %q", output)
-	}
-	if !strings.Contains(output, "60") {
-		t.Errorf("expected new value '60' in output, got: %q", output)
-	}
-	// Descriptor line should still be present
+	// Scalar modifications always use vertical format
 	if !strings.Contains(output, "± value change") {
 		t.Errorf("expected descriptor '± value change' in output, got: %q", output)
 	}
-	// Old "- " / "+ " vertical format should NOT be present in table mode
-	if strings.Contains(output, "    - 30") {
-		t.Errorf("table mode should not use vertical '    - 30' format, got: %q", output)
+	if !strings.Contains(output, "    - 30") {
+		t.Errorf("expected vertical '    - 30' format, got: %q", output)
 	}
-	if strings.Contains(output, "    + 60") {
-		t.Errorf("table mode should not use vertical '    + 60' format, got: %q", output)
+	if !strings.Contains(output, "    + 60") {
+		t.Errorf("expected vertical '    + 60' format, got: %q", output)
 	}
 }
 
@@ -3084,13 +3075,13 @@ func TestDetailedFormatter_ScalarTable_WithColor(t *testing.T) {
 	redColor := GetDetailedColorCode(DiffRemoved, false)
 	greenColor := GetDetailedColorCode(DiffAdded, false)
 
-	// Left (old) value should be wrapped in red
-	if !strings.Contains(output, redColor+"8080") {
-		t.Errorf("expected red-colored '8080' in output, got: %q", output)
+	// Old value line should be wrapped in red
+	if !strings.Contains(output, redColor+"    - 8080") {
+		t.Errorf("expected red-colored vertical '    - 8080' in output, got: %q", output)
 	}
-	// Right (new) value should be wrapped in green
-	if !strings.Contains(output, greenColor+"9090") {
-		t.Errorf("expected green-colored '9090' in output, got: %q", output)
+	// New value line should be wrapped in green
+	if !strings.Contains(output, greenColor+"    + 9090") {
+		t.Errorf("expected green-colored vertical '    + 9090' in output, got: %q", output)
 	}
 }
 
@@ -3105,33 +3096,18 @@ func TestDetailedFormatter_ScalarTable_NoTableStyleFallback(t *testing.T) {
 
 	output := f.Format(diffs, opts)
 
-	// With --no-table-style, should use vertical format
+	// Scalar changes always use vertical format regardless of NoTableStyle
 	if !strings.Contains(output, "    - 30") {
-		t.Errorf("expected vertical format '    - 30' when NoTableStyle=true, got: %q", output)
+		t.Errorf("expected vertical format '    - 30', got: %q", output)
 	}
 	if !strings.Contains(output, "    + 60") {
-		t.Errorf("expected vertical format '    + 60' when NoTableStyle=true, got: %q", output)
-	}
-	// Side-by-side data rows should NOT appear in vertical mode
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
-		if left, right, ok := parseSideBySideRow(line); ok && right != "" {
-			if left == "30" && right == "60" {
-				t.Errorf("NoTableStyle should not produce side-by-side rows, got line: %q", line)
-			}
-		}
+		t.Errorf("expected vertical format '    + 60', got: %q", output)
 	}
 }
 
 func TestDetailedFormatter_ScalarTable_NarrowTerminalFallback(t *testing.T) {
 	f := &DetailedFormatter{}
 	opts := DefaultFormatOptions()
-	// Width 20 gets clamped to 40 by GetTerminalWidth, but let's use Width that
-	// still produces a valid layout. To test truly narrow: we use NoTableStyle instead.
-	// Actually, at width 40, columnLayout is still valid (leftWidth=16 >= 12).
-	// The narrow fallback triggers when leftWidth < minTableColumnWidth (12).
-	// With GetTerminalWidth minimum of 40, this can't happen with current constants.
-	// This test verifies that at minimum width (40), table mode still works.
 	opts.Width = 40
 
 	diffs := []Difference{
@@ -3140,9 +3116,12 @@ func TestDetailedFormatter_ScalarTable_NarrowTerminalFallback(t *testing.T) {
 
 	output := f.Format(diffs, opts)
 
-	// At width 40, table mode should still be active
-	if !hasSideBySideRow(output) {
-		t.Errorf("expected table mode at width 40, got: %q", output)
+	// Scalar changes always use vertical format regardless of width
+	if !strings.Contains(output, "    - old") {
+		t.Errorf("expected vertical '    - old', got: %q", output)
+	}
+	if !strings.Contains(output, "    + new") {
+		t.Errorf("expected vertical '    + new', got: %q", output)
 	}
 }
 
@@ -3156,12 +3135,12 @@ func TestDetailedFormatter_ScalarTable_IntegerValues(t *testing.T) {
 
 	output := f.Format(diffs, opts)
 
-	// Integer values should render side-by-side in table mode
-	if !strings.Contains(output, "3") {
-		t.Errorf("expected old value '3' in output, got: %q", output)
+	// Integer values should render in vertical format
+	if !strings.Contains(output, "    - 3") {
+		t.Errorf("expected vertical '    - 3', got: %q", output)
 	}
-	if !strings.Contains(output, "5") {
-		t.Errorf("expected new value '5' in output, got: %q", output)
+	if !strings.Contains(output, "    + 5") {
+		t.Errorf("expected vertical '    + 5', got: %q", output)
 	}
 }
 
@@ -3175,11 +3154,11 @@ func TestDetailedFormatter_ScalarTable_BoolValues(t *testing.T) {
 
 	output := f.Format(diffs, opts)
 
-	if !strings.Contains(output, "true") {
-		t.Errorf("expected 'true' in output, got: %q", output)
+	if !strings.Contains(output, "    - true") {
+		t.Errorf("expected vertical '    - true', got: %q", output)
 	}
-	if !strings.Contains(output, "false") {
-		t.Errorf("expected 'false' in output, got: %q", output)
+	if !strings.Contains(output, "    + false") {
+		t.Errorf("expected vertical '    + false', got: %q", output)
 	}
 }
 
@@ -3194,7 +3173,7 @@ func TestDetailedFormatter_ScalarTable_PreservesVerticalWhenDisabled(t *testing.
 
 	output := f.Format(diffs, opts)
 
-	// Vertical mode should use "- old" / "+ new" format
+	// Scalar changes always use vertical format
 	if !strings.Contains(output, "    - alpha") {
 		t.Errorf("expected vertical '    - alpha', got: %q", output)
 	}
@@ -3214,19 +3193,19 @@ func TestDetailedFormatter_ScalarTable_FixedWidth(t *testing.T) {
 
 	output := f.Format(diffs, opts)
 
-	// At width 60, table mode should be active
-	if !strings.Contains(output, "old_value") {
-		t.Errorf("expected 'old_value' in output, got: %q", output)
+	// Scalar changes always use vertical format regardless of width
+	if !strings.Contains(output, "    - old_value") {
+		t.Errorf("expected vertical '    - old_value', got: %q", output)
 	}
-	if !strings.Contains(output, "new_value") {
-		t.Errorf("expected 'new_value' in output, got: %q", output)
+	if !strings.Contains(output, "    + new_value") {
+		t.Errorf("expected vertical '    + new_value', got: %q", output)
 	}
 }
 
-func TestDetailedFormatter_ScalarTable_LongValuesTruncated(t *testing.T) {
+func TestDetailedFormatter_ScalarTable_LongValues(t *testing.T) {
 	f := &DetailedFormatter{}
 	opts := DefaultFormatOptions()
-	opts.Width = 60 // Smaller width to force truncation
+	opts.Width = 60
 
 	longOld := strings.Repeat("a", 100)
 	longNew := strings.Repeat("b", 100)
@@ -3237,9 +3216,12 @@ func TestDetailedFormatter_ScalarTable_LongValuesTruncated(t *testing.T) {
 
 	output := f.Format(diffs, opts)
 
-	// Values should be truncated with ellipsis
-	if !strings.Contains(output, "…") {
-		t.Errorf("expected ellipsis for truncated values, got: %q", output)
+	// Vertical format shows full values (no truncation needed)
+	if !strings.Contains(output, "    - "+longOld) {
+		t.Errorf("expected full old value in vertical format, got: %q", output)
+	}
+	if !strings.Contains(output, "    + "+longNew) {
+		t.Errorf("expected full new value in vertical format, got: %q", output)
 	}
 }
 
@@ -3253,9 +3235,12 @@ func TestDetailedFormatter_ScalarTable_NilToValue(t *testing.T) {
 
 	output := f.Format(diffs, opts)
 
-	// nil renders as "<nil>" in formatDetailedValue
+	// nil → string is a type change (null to string), rendered in table style
+	if !strings.Contains(output, "type change from null to string") {
+		t.Errorf("expected type change descriptor, got: %q", output)
+	}
 	if !strings.Contains(output, "<nil>") {
-		t.Errorf("expected '<nil>' for nil from value, got: %q", output)
+		t.Errorf("expected '<nil>' for null value, got: %q", output)
 	}
 	if !strings.Contains(output, "new") {
 		t.Errorf("expected 'new' in output, got: %q", output)
@@ -4332,9 +4317,9 @@ func TestDetailedFormatter_TableFlag_OmitHeader_ScalarChange(t *testing.T) {
 	if strings.Contains(output, "Found") {
 		t.Errorf("expected no header with OmitHeader, got: %q", output)
 	}
-	// Table rendering should still be active
-	if !strings.Contains(output, "30") || !strings.Contains(output, "60") {
-		t.Errorf("expected old/new values in table output, got: %q", output)
+	// Scalar values should be present in vertical format
+	if !strings.Contains(output, "    - 30") || !strings.Contains(output, "    + 60") {
+		t.Errorf("expected vertical scalar values, got: %q", output)
 	}
 }
 
@@ -4582,16 +4567,14 @@ func TestDetailedFormatter_TableFlag_FixedWidth_ColumnWidths(t *testing.T) {
 	opts.Width = 100
 	opts.OmitHeader = true
 
+	// Use a type change to test table-style column widths (scalars are always vertical)
 	diffs := []Difference{
-		{Path: "key", Type: DiffModified, From: "old", To: "new"},
+		{Path: "key", Type: DiffModified, From: 42, To: "42"},
 	}
 
 	output := f.Format(diffs, opts)
 
-	// At width 100: available=100-4-3=93, leftWidth=46, rightWidth=47
-	// Table should be active and use wider columns
-
-	// Verify the row width is consistent with fixed width
+	// Verify table row with side-by-side format for type change
 	lines := strings.Split(output, "\n")
 	for _, line := range lines {
 		if _, right, ok := parseSideBySideRow(line); ok && right != "" {
@@ -4609,14 +4592,15 @@ func TestDetailedFormatter_TableFlag_FixedWidth_Truncation(t *testing.T) {
 	opts.Width = 50
 	opts.OmitHeader = true
 
+	// Use a type change to test table-style truncation (scalars are always vertical)
 	longValue := strings.Repeat("x", 100)
 	diffs := []Difference{
-		{Path: "key", Type: DiffModified, From: longValue, To: longValue},
+		{Path: "key", Type: DiffModified, From: 0, To: longValue},
 	}
 
 	output := f.Format(diffs, opts)
 
-	// At narrow width, long values should be truncated
+	// At narrow width, type change table values should be truncated
 	if !strings.Contains(output, "…") {
 		t.Errorf("expected truncation ellipsis at narrow fixed width, got: %q", output)
 	}
@@ -4829,7 +4813,7 @@ func TestDetailedFormatter_TableFlag_AllFlagsCombined(t *testing.T) {
 	if !strings.Contains(output, trueColorYellow) {
 		t.Errorf("expected true color yellow, got: %q", output)
 	}
-	// Table rendering (arrow separator)
+	// Scalar changes use vertical format
 }
 
 // 6.1: Verify whitespace and order changes work with flags

@@ -497,25 +497,10 @@ func (f *DetailedFormatter) formatModified(sb *strings.Builder, diff Difference,
 		}
 	}
 
-	// Default: scalar value change
-	if cl != nil {
-		f.formatScalarTable(sb, diff, cl, opts)
-	} else {
-		f.writeDescriptorLine(sb, "  ± value change", f.colorModified, opts)
-		f.writeColoredLine(sb, fmt.Sprintf("    - %v", formatDetailedValue(diff.From)), f.colorRemoved(opts), opts)
-		f.writeColoredLine(sb, fmt.Sprintf("    + %v", formatDetailedValue(diff.To)), f.colorAdded(opts), opts)
-		sb.WriteString("\n")
-	}
-}
-
-// formatScalarTable renders a scalar value modification in side-by-side table style.
-// Displays the descriptor line followed by one row with old (left) and new (right) values.
-func (f *DetailedFormatter) formatScalarTable(sb *strings.Builder, diff Difference, cl *columnLayout, opts *FormatOptions) {
+	// Default: scalar value change (always vertical)
 	f.writeDescriptorLine(sb, "  ± value change", f.colorModified, opts)
-	left := formatDetailedValue(diff.From)
-	right := formatDetailedValue(diff.To)
-	leftW, rightW := cl.computeWidths([]string{left}, []string{right})
-	cl.formatRow(sb, left, right, f.colorRemoved(opts), f.colorAdded(opts), leftW, rightW, opts)
+	f.writeColoredLine(sb, fmt.Sprintf("    - %v", formatDetailedValue(diff.From)), f.colorRemoved(opts), opts)
+	f.writeColoredLine(sb, fmt.Sprintf("    + %v", formatDetailedValue(diff.To)), f.colorAdded(opts), opts)
 	sb.WriteString("\n")
 }
 

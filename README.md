@@ -20,6 +20,7 @@ Structural diff for YAML files. Understands YAML semantics and detects Kubernete
 - **Certificate inspection** — inspects and compares embedded x509 certificates
 - **Directory comparison** — compare two directories of YAML files; works as `KUBECTL_EXTERNAL_DIFF`
 - **Chroot navigation** — focus comparison on a specific YAML subtree
+- ⭐ **AI-powered summaries** ⭐ — natural language summaries of changes via Anthropic API
 
 ## Installation
 
@@ -134,6 +135,25 @@ Use `-s` / `--set-exit-code` to set the exit code based on differences:
 diffyml -s before.yaml after.yaml || echo "Config drift detected"
 ```
 
+### AI Summary
+
+Generate a natural language summary of changes using the Anthropic API:
+
+```bash
+export ANTHROPIC_API_KEY="sk-ant-..."
+
+# Append AI summary after the diff output
+diffyml --summary old.yaml new.yaml
+
+# Use with brief format — replaces brief output with AI summary
+diffyml --summary -o brief old.yaml new.yaml
+
+# Use a different model
+diffyml --summary --summary-model claude-sonnet-4-5-20250514 old.yaml new.yaml
+```
+
+The summary is appended after the standard diff output. If the API call fails, a warning is printed to stderr and the diff output is preserved. The exit code is never affected by summary success or failure.
+
 ### All Flags
 
 <details>
@@ -188,6 +208,13 @@ diffyml -s before.yaml after.yaml || echo "Config drift detected"
 | `--chroot-of-from <path>` | Change root level for the from file only |
 | `--chroot-of-to <path>` | Change root level for the to file only |
 | `--chroot-list-to-documents` | Treat chroot list as separate documents |
+
+**AI Summary**
+
+| Flag | Description |
+|------|-------------|
+| `-S, --summary` | Generate AI-powered natural language summary (requires `ANTHROPIC_API_KEY`) |
+| `--summary-model <model>` | Model for AI summary (default `claude-haiku-4-5-20251001`) |
 
 **Other**
 

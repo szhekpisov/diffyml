@@ -2,6 +2,9 @@ package diffyml
 
 import (
 	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -1591,5 +1594,468 @@ func createFile(t *testing.T, dir, name, content string) {
 	path := filepath.Join(dir, name)
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// --- Task 3.2: Wire summarizer into directory comparison mode ---
+
+func TestRunDirectory_WithSummary_NonStructured(t *testing.T) {
+	t.Setenv("ANTHROPIC_API_KEY", "test-key")
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		fmt.Fprint(w, `{"content":[{"type":"text","text":"Multiple files were modified."}]}`)
+	}))
+	defer server.Close()
+
+	cfg := NewCLIConfig()
+	cfg.Output = "compact"
+	cfg.Summary = true
+	cfg.Color = "never"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FilePairs = map[string][2][]byte{
+		"deploy.yaml":  {[]byte("key: old\n"), []byte("key: new\n")},
+		"service.yaml": {[]byte("port: 80\n"), []byte("port: 443\n")},
+	}
+	rc.SummaryAPIURL = server.URL
+
+	result := runDirectory(cfg, rc, "", "")
+	if result.Err != nil {
+		t.Fatalf("unexpected error: %v", result.Err)
+	}
+
+	output := stdout.String()
+	// Should have per-file diff output
+	if !strings.Contains(output, "deploy.yaml") {
+		t.Error("expected deploy.yaml in output")
+	}
+	// Should have AI summary
+	if !strings.Contains(output, "AI Summary:") {
+		t.Errorf("expected AI Summary header, got: %s", output)
+	}
+	if !strings.Contains(output, "Multiple files were modified.") {
+		t.Errorf("expected summary text, got: %s", output)
+	}
+}
+
+func TestRunDirectory_WithSummary_Structured(t *testing.T) {
+	t.Setenv("ANTHROPIC_API_KEY", "test-key")
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		fmt.Fprint(w, `{"content":[{"type":"text","text":"Structured summary."}]}`)
+	}))
+	defer server.Close()
+
+	cfg := NewCLIConfig()
+	cfg.Output = "github"
+	cfg.Summary = true
+	cfg.Color = "never"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FilePairs = map[string][2][]byte{
+		"deploy.yaml": {[]byte("key: old\n"), []byte("key: new\n")},
+	}
+	rc.SummaryAPIURL = server.URL
+
+	result := runDirectory(cfg, rc, "", "")
+	if result.Err != nil {
+		t.Fatalf("unexpected error: %v", result.Err)
+	}
+
+	output := stdout.String()
+	if !strings.Contains(output, "AI Summary:") {
+		t.Errorf("expected AI Summary header for structured formatter, got: %s", output)
+	}
+}
+
+func TestRunDirectory_WithSummary_NoDiffs_NoAPICall(t *testing.T) {
+	t.Setenv("ANTHROPIC_API_KEY", "test-key")
+
+	apiCalled := false
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		apiCalled = true
+	}))
+	defer server.Close()
+
+	cfg := NewCLIConfig()
+	cfg.Output = "compact"
+	cfg.Summary = true
+	cfg.Color = "never"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FilePairs = map[string][2][]byte{
+		"deploy.yaml": {[]byte("key: same\n"), []byte("key: same\n")},
+	}
+	rc.SummaryAPIURL = server.URL
+
+	runDirectory(cfg, rc, "", "")
+
+	if apiCalled {
+		t.Error("API should not be called when no files have differences")
+	}
+}
+
+func TestRunDirectory_WithSummary_APIFailure_Warning(t *testing.T) {
+	t.Setenv("ANTHROPIC_API_KEY", "test-key")
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(500)
+		fmt.Fprint(w, `{"type":"error","error":{"type":"api_error","message":"internal error"}}`)
+	}))
+	defer server.Close()
+
+	cfg := NewCLIConfig()
+	cfg.Output = "compact"
+	cfg.Summary = true
+	cfg.Color = "never"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FilePairs = map[string][2][]byte{
+		"deploy.yaml": {[]byte("key: old\n"), []byte("key: new\n")},
+	}
+	rc.SummaryAPIURL = server.URL
+
+	result := runDirectory(cfg, rc, "", "")
+
+	// Exit code should not be affected
+	if result.Code == ExitCodeError {
+		t.Errorf("expected exit code to not be error, got %d", result.Code)
+	}
+	// Warning on stderr
+	if !strings.Contains(stderr.String(), "Warning") {
+		t.Errorf("expected warning on stderr, got: %s", stderr.String())
+	}
+	// Standard output should still be present
+	if !strings.Contains(stdout.String(), "deploy.yaml") {
+		t.Error("expected standard directory output despite API failure")
+	}
+}
+
+func TestRunDirectory_BriefSummary_ReplacesOutput(t *testing.T) {
+	t.Setenv("ANTHROPIC_API_KEY", "test-key")
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		fmt.Fprint(w, `{"content":[{"type":"text","text":"Directory changes summary."}]}`)
+	}))
+	defer server.Close()
+
+	cfg := NewCLIConfig()
+	cfg.Output = "brief"
+	cfg.Summary = true
+	cfg.Color = "never"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FilePairs = map[string][2][]byte{
+		"deploy.yaml": {[]byte("key: old\n"), []byte("key: new\n")},
+	}
+	rc.SummaryAPIURL = server.URL
+
+	runDirectory(cfg, rc, "", "")
+
+	output := stdout.String()
+	// Should have AI summary
+	if !strings.Contains(output, "AI Summary:") {
+		t.Errorf("expected AI Summary header, got: %s", output)
+	}
+	// Should NOT have brief format markers (per-file)
+	if strings.Contains(output, "±") {
+		t.Errorf("expected brief output suppressed, but found '±' in: %s", output)
+	}
+}
+
+func TestRunDirectory_BriefSummary_FallbackOnAPIFailure(t *testing.T) {
+	t.Setenv("ANTHROPIC_API_KEY", "test-key")
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(500)
+		fmt.Fprint(w, `{"type":"error","error":{"type":"api_error","message":"fail"}}`)
+	}))
+	defer server.Close()
+
+	cfg := NewCLIConfig()
+	cfg.Output = "brief"
+	cfg.Summary = true
+	cfg.Color = "never"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FilePairs = map[string][2][]byte{
+		"deploy.yaml": {[]byte("key: old\n"), []byte("key: new\n")},
+	}
+	rc.SummaryAPIURL = server.URL
+
+	runDirectory(cfg, rc, "", "")
+
+	output := stdout.String()
+	// Should fall back to brief output
+	if !strings.Contains(output, "deploy.yaml") {
+		t.Errorf("expected brief fallback output with file header, got: %s", output)
+	}
+	// Warning on stderr
+	if !strings.Contains(stderr.String(), "Warning") {
+		t.Errorf("expected warning on stderr, got: %s", stderr.String())
+	}
+}
+
+func TestRunDirectory_WithSummary_PreservesExitCode(t *testing.T) {
+	t.Setenv("ANTHROPIC_API_KEY", "test-key")
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		fmt.Fprint(w, `{"content":[{"type":"text","text":"Summary."}]}`)
+	}))
+	defer server.Close()
+
+	cfg := NewCLIConfig()
+	cfg.Output = "compact"
+	cfg.Summary = true
+	cfg.SetExitCode = true
+	cfg.Color = "never"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FilePairs = map[string][2][]byte{
+		"deploy.yaml": {[]byte("key: old\n"), []byte("key: new\n")},
+	}
+	rc.SummaryAPIURL = server.URL
+
+	result := runDirectory(cfg, rc, "", "")
+	if result.Code != ExitCodeDifferences {
+		t.Errorf("expected exit code %d with --set-exit-code, got %d", ExitCodeDifferences, result.Code)
+	}
+}
+
+// --- Task 4.2: End-to-end integration tests for summary in directory mode ---
+
+func TestRunDirectory_WithoutSummary_NoAPICall(t *testing.T) {
+	apiCalled := false
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		apiCalled = true
+	}))
+	defer server.Close()
+
+	cfg := NewCLIConfig()
+	cfg.Output = "compact"
+	cfg.Summary = false
+	cfg.Color = "never"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FilePairs = map[string][2][]byte{
+		"deploy.yaml": {[]byte("key: old\n"), []byte("key: new\n")},
+	}
+	rc.SummaryAPIURL = server.URL
+
+	runDirectory(cfg, rc, "", "")
+
+	if apiCalled {
+		t.Error("API should not be called when --summary is not set in directory mode")
+	}
+	// Standard output should still be present
+	if !strings.Contains(stdout.String(), "deploy.yaml") {
+		t.Error("expected standard directory output")
+	}
+}
+
+func TestRunDirectory_WithSummary_GitLab_AppendsSummary(t *testing.T) {
+	t.Setenv("ANTHROPIC_API_KEY", "test-key")
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		fmt.Fprint(w, `{"content":[{"type":"text","text":"GitLab structured summary."}]}`)
+	}))
+	defer server.Close()
+
+	cfg := NewCLIConfig()
+	cfg.Output = "gitlab"
+	cfg.Summary = true
+	cfg.Color = "never"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FilePairs = map[string][2][]byte{
+		"deploy.yaml":  {[]byte("key: old\n"), []byte("key: new\n")},
+		"service.yaml": {[]byte("port: 80\n"), []byte("port: 443\n")},
+	}
+	rc.SummaryAPIURL = server.URL
+
+	result := runDirectory(cfg, rc, "", "")
+	if result.Err != nil {
+		t.Fatalf("unexpected error: %v", result.Err)
+	}
+
+	output := stdout.String()
+	// GitLab JSON output should be valid
+	var findings []map[string]interface{}
+	// The output may contain both the JSON array and the AI summary
+	// Split at the AI Summary header
+	jsonEnd := strings.Index(output, "\nAI Summary:")
+	jsonPart := output
+	if jsonEnd > 0 {
+		jsonPart = output[:jsonEnd]
+	}
+	if err := json.Unmarshal([]byte(strings.TrimSpace(jsonPart)), &findings); err != nil {
+		t.Fatalf("output JSON is not valid: %v\noutput: %s", err, output)
+	}
+	if len(findings) != 2 {
+		t.Errorf("expected 2 findings, got %d", len(findings))
+	}
+	// Should contain AI summary
+	if !strings.Contains(output, "AI Summary:") {
+		t.Errorf("expected AI Summary header, got: %s", output)
+	}
+	if !strings.Contains(output, "GitLab structured summary.") {
+		t.Errorf("expected summary text, got: %s", output)
+	}
+}
+
+func TestRunDirectory_WithSummary_APIFailure_PreservesExitCodeWithSetExitCode(t *testing.T) {
+	t.Setenv("ANTHROPIC_API_KEY", "test-key")
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(500)
+		fmt.Fprint(w, `{"type":"error","error":{"type":"api_error","message":"fail"}}`)
+	}))
+	defer server.Close()
+
+	cfg := NewCLIConfig()
+	cfg.Output = "compact"
+	cfg.Summary = true
+	cfg.SetExitCode = true
+	cfg.Color = "never"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FilePairs = map[string][2][]byte{
+		"deploy.yaml": {[]byte("key: old\n"), []byte("key: new\n")},
+	}
+	rc.SummaryAPIURL = server.URL
+
+	result := runDirectory(cfg, rc, "", "")
+	// Exit code should be 1 (differences), not 255 (error) despite API failure
+	if result.Code != ExitCodeDifferences {
+		t.Errorf("expected exit code %d with --set-exit-code and API failure, got %d",
+			ExitCodeDifferences, result.Code)
+	}
+	// Warning should be on stderr
+	if !strings.Contains(stderr.String(), "Warning") {
+		t.Errorf("expected warning on stderr, got: %s", stderr.String())
+	}
+	// Standard diff output should still be present
+	if !strings.Contains(stdout.String(), "deploy.yaml") {
+		t.Error("expected standard diff output despite API failure")
+	}
+}
+
+func TestRunDirectory_WithSummary_MultipleFiles_SingleSummary(t *testing.T) {
+	t.Setenv("ANTHROPIC_API_KEY", "test-key")
+
+	var promptContent string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Messages []struct {
+				Content string `json:"content"`
+			} `json:"messages"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		if len(req.Messages) > 0 {
+			promptContent = req.Messages[0].Content
+		}
+		w.WriteHeader(200)
+		fmt.Fprint(w, `{"content":[{"type":"text","text":"Multi-file summary."}]}`)
+	}))
+	defer server.Close()
+
+	cfg := NewCLIConfig()
+	cfg.Output = "compact"
+	cfg.Summary = true
+	cfg.Color = "never"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FilePairs = map[string][2][]byte{
+		"deploy.yaml":  {[]byte("replicas: 1\n"), []byte("replicas: 3\n")},
+		"service.yaml": {[]byte("port: 80\n"), []byte("port: 443\n")},
+	}
+	rc.SummaryAPIURL = server.URL
+
+	runDirectory(cfg, rc, "", "")
+
+	// Both files should be mentioned in the prompt
+	if !strings.Contains(promptContent, "deploy.yaml") {
+		t.Errorf("expected deploy.yaml in prompt, got: %s", promptContent)
+	}
+	if !strings.Contains(promptContent, "service.yaml") {
+		t.Errorf("expected service.yaml in prompt, got: %s", promptContent)
+	}
+	// Only one summary section in output
+	output := stdout.String()
+	summaryCount := strings.Count(output, "AI Summary:")
+	if summaryCount != 1 {
+		t.Errorf("expected exactly 1 AI Summary header, got %d in: %s", summaryCount, output)
+	}
+}
+
+func TestRunDirectory_WithSummary_Gitea_AppendsSummary(t *testing.T) {
+	t.Setenv("ANTHROPIC_API_KEY", "test-key")
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		fmt.Fprint(w, `{"content":[{"type":"text","text":"Gitea summary."}]}`)
+	}))
+	defer server.Close()
+
+	cfg := NewCLIConfig()
+	cfg.Output = "gitea"
+	cfg.Summary = true
+	cfg.Color = "never"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FilePairs = map[string][2][]byte{
+		"deploy.yaml": {[]byte("key: old\n"), []byte("key: new\n")},
+	}
+	rc.SummaryAPIURL = server.URL
+
+	runDirectory(cfg, rc, "", "")
+
+	output := stdout.String()
+	if !strings.Contains(output, "AI Summary:") {
+		t.Errorf("expected AI Summary header for Gitea format, got: %s", output)
+	}
+	if !strings.Contains(output, "Gitea summary.") {
+		t.Errorf("expected summary text, got: %s", output)
 	}
 }

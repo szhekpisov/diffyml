@@ -2,5 +2,16 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: myapp
+  labels:
+    version: "2.0"
+    environment: production
+    team: backend
 spec:
   replicas: 3
+  containers:
+    - name: app
+      image: nginx:latest
+    - name: sidecar
+      image: envoy
+    - name: monitor
+      image: prometheus

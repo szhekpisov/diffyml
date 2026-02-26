@@ -1,4 +1,4 @@
-<!-- PR title must follow: feat: / bug: / doc: / chore: description -->
+<!-- PR title must follow: feat: / bug: / doc: / chore: / test: description -->
 
 ## What
 
@@ -14,7 +14,7 @@
 
 ## Checklist
 
-- [ ] PR title follows convention (`feat:`, `bug:`, `doc:`, `chore:`)
+- [ ] PR title follows convention (`feat:`, `bug:`, `doc:`, `chore:`, `test:`)
 - [ ] `make ci` passes locally
 - [ ] New/changed behavior covered by tests
 - [ ] Coverage thresholds met (parser 100%, ordered_map 100%, kubernetes 95%)

@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.1.0] - 2026-02-26
 
 ### Added
 
@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GitLab Code Quality output compliance (#10) ([#10](https://github.com/szhekpisov/diffyml/pull/10))
 - File-aware GitHub Actions annotations with directory mode and limits (#11) ([#11](https://github.com/szhekpisov/diffyml/pull/11))
 - Add OpenSSF Scorecard workflow and badge (#12) ([#12](https://github.com/szhekpisov/diffyml/pull/12))
+- Add automatic CHANGELOG.md generation with git-cliff (#14) ([#14](https://github.com/szhekpisov/diffyml/pull/14))
+- Rename --color values from on/off to GNU-standard always/never (#13) ([#13](https://github.com/szhekpisov/diffyml/pull/13))
 
 ### Fixed
 
@@ -31,6 +33,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add GOPATH/bin PATH hint to Go Install section (#3) ([#3](https://github.com/szhekpisov/diffyml/pull/3))
 - Cleanup (#6) ([#6](https://github.com/szhekpisov/diffyml/pull/6))
 
-[Unreleased]: https://github.com/szhekpisov/diffyml/compare/v1.0.0...HEAD
+[1.1.0]: https://github.com/szhekpisov/diffyml/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/szhekpisov/diffyml/releases/tag/v1.0.0
 

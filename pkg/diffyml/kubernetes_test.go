@@ -57,6 +57,46 @@ func TestIsKubernetesResource_NotK8s_MissingKind(t *testing.T) {
 	}
 }
 
+func TestIsKubernetesResource_GenerateName(t *testing.T) {
+	doc := map[string]interface{}{
+		"apiVersion": "batch/v1",
+		"kind":       "Job",
+		"metadata": map[string]interface{}{
+			"generateName": "my-job-",
+		},
+	}
+	if !IsKubernetesResource(doc) {
+		t.Error("expected resource with generateName to be detected as Kubernetes resource")
+	}
+}
+
+func TestIsKubernetesResource_GenerateName_OrderedMap(t *testing.T) {
+	meta := NewOrderedMap()
+	meta.Keys = append(meta.Keys, "generateName")
+	meta.Values["generateName"] = "my-job-"
+
+	doc := NewOrderedMap()
+	doc.Keys = append(doc.Keys, "apiVersion", "kind", "metadata")
+	doc.Values["apiVersion"] = "batch/v1"
+	doc.Values["kind"] = "Job"
+	doc.Values["metadata"] = meta
+
+	if !IsKubernetesResource(doc) {
+		t.Error("expected OrderedMap resource with generateName to be detected as Kubernetes resource")
+	}
+}
+
+func TestIsKubernetesResource_NoNameNorGenerateName(t *testing.T) {
+	doc := map[string]interface{}{
+		"apiVersion": "v1",
+		"kind":       "ConfigMap",
+		"metadata":   map[string]interface{}{"labels": map[string]interface{}{"app": "test"}},
+	}
+	if IsKubernetesResource(doc) {
+		t.Error("expected resource with neither name nor generateName to NOT be detected as K8s")
+	}
+}
+
 func TestIsKubernetesResource_NotK8s_MissingMetadata(t *testing.T) {
 	doc := map[string]interface{}{
 		"apiVersion": "v1",
@@ -510,5 +550,138 @@ func TestCanMatchByIdentifierWithAdditional_OrderedMapWithId(t *testing.T) {
 	list := []interface{}{om}
 	if !CanMatchByIdentifierWithAdditional(list, nil) {
 		t.Error("expected OrderedMap with 'id' field to be matchable")
+	}
+}
+
+func TestGetK8sResourceIdentifier_GenerateName(t *testing.T) {
+	doc := map[string]interface{}{
+		"apiVersion": "batch/v1",
+		"kind":       "Job",
+		"metadata": map[string]interface{}{
+			"generateName": "my-job-",
+		},
+	}
+	id := GetK8sResourceIdentifier(doc)
+	expected := "batch/v1:Job:my-job-"
+	if id != expected {
+		t.Errorf("expected identifier %q, got %q", expected, id)
+	}
+}
+
+func TestGetK8sResourceIdentifier_NameOverGenerateName(t *testing.T) {
+	doc := map[string]interface{}{
+		"apiVersion": "batch/v1",
+		"kind":       "Job",
+		"metadata": map[string]interface{}{
+			"name":         "my-job-abc123",
+			"generateName": "my-job-",
+		},
+	}
+	id := GetK8sResourceIdentifier(doc)
+	expected := "batch/v1:Job:my-job-abc123"
+	if id != expected {
+		t.Errorf("expected name to take priority, got %q", id)
+	}
+}
+
+func TestMatchK8sDocuments_GenerateName(t *testing.T) {
+	mkDoc := func(genName string) map[string]interface{} {
+		return map[string]interface{}{
+			"apiVersion": "batch/v1",
+			"kind":       "Job",
+			"metadata":   map[string]interface{}{"generateName": genName},
+		}
+	}
+
+	fromDocs := []interface{}{mkDoc("job-a-"), mkDoc("job-b-")}
+	toDocs := []interface{}{mkDoc("job-b-"), mkDoc("job-a-")}
+
+	matched, unmatchedFrom, unmatchedTo := matchK8sDocuments(fromDocs, toDocs)
+
+	if len(matched) != 2 {
+		t.Errorf("expected 2 matches, got %d", len(matched))
+	}
+	if len(unmatchedFrom) != 0 {
+		t.Errorf("expected 0 unmatched from, got %d", len(unmatchedFrom))
+	}
+	if len(unmatchedTo) != 0 {
+		t.Errorf("expected 0 unmatched to, got %d", len(unmatchedTo))
+	}
+	// job-a- is at index 0 in from and index 1 in to
+	if matched[0] != 1 {
+		t.Errorf("expected from[0] to match to[1], got to[%d]", matched[0])
+	}
+	// job-b- is at index 1 in from and index 0 in to
+	if matched[1] != 0 {
+		t.Errorf("expected from[1] to match to[0], got to[%d]", matched[1])
+	}
+}
+
+func TestCompare_K8sMultiDoc_GenerateNameMatch(t *testing.T) {
+	from := `---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: hook-a-
+spec:
+  template:
+    spec:
+      containers:
+      - name: hook
+        image: alpine:3.18
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: hook-b-
+spec:
+  template:
+    spec:
+      containers:
+      - name: hook
+        image: alpine:3.19
+`
+	to := `---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: hook-b-
+spec:
+  template:
+    spec:
+      containers:
+      - name: hook
+        image: alpine:3.20
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: hook-a-
+spec:
+  template:
+    spec:
+      containers:
+      - name: hook
+        image: alpine:3.18
+`
+	opts := &Options{DetectKubernetes: true}
+	diffs, err := Compare([]byte(from), []byte(to), opts)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// hook-a- should match across reorder (no diffs)
+	// hook-b- should show image change: alpine:3.19 -> alpine:3.20
+	hasImageChange := false
+	for _, d := range diffs {
+		if d.Type == DiffModified && d.From == "alpine:3.19" && d.To == "alpine:3.20" {
+			hasImageChange = true
+		}
+	}
+	if !hasImageChange {
+		t.Error("expected hook-b- image modification to be detected")
+	}
+	if len(diffs) != 1 {
+		t.Errorf("expected exactly 1 diff (image change), got %d", len(diffs))
 	}
 }

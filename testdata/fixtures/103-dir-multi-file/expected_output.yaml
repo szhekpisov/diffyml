@@ -2,24 +2,29 @@
 +++ b/configmap.yaml
 data.app.properties
   ± value change in multiline text (two inserts, two deletions)
-    environment=production  environment=staging
-    log_level=info          log_level=debug
-    max_connections=100
-    
+    - environment=production
+    - log_level=info
+    + environment=staging
+    + log_level=debug
+      max_connections=100
+      
 
 data.debug.mode
   ± whitespace only change
-    true·  true
+    - true·
+    + true
 
 data.verbose
   ± type change from string to bool
-    string: false  bool: false
+    - false
+    + false
 
 --- a/deployment.yaml
 +++ b/deployment.yaml
 metadata.labels.version
   ± type change from int to string
-    int: 2  string: 2.0
+    - 2
+    + 2.0
 
 metadata.labels.environment
   + one map entry added:

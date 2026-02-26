@@ -41,6 +41,16 @@ func TestNodeToInterface_EdgeCases(t *testing.T) {
 		}
 	})
 
+	t.Run("alias node cycle detection", func(t *testing.T) {
+		// Self-referencing alias: should return nil instead of infinite recursion.
+		alias := &yaml.Node{Kind: yaml.AliasNode}
+		alias.Alias = alias
+		got := nodeToInterface(alias)
+		if got != nil {
+			t.Errorf("expected nil for cyclic alias, got %v", got)
+		}
+	})
+
 	t.Run("unknown kind", func(t *testing.T) {
 		node := &yaml.Node{
 			Kind: 0, // invalid/unknown kind

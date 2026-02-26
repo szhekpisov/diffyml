@@ -2,9 +2,9 @@ Found two differences
 
 apiVersion
   ± value change
-    kustomize.toolkit.fluxcd.io/v1beta2  → kustomize.toolkit.fluxcd.io/v1
+    kustomize.toolkit.fluxcd.io/v1beta2  kustomize.toolkit.fluxcd.io/v1
 
 metadata.labels.helm.sh/chart
   ± value change
-    t8s-cluster-7.0.1                    → t8s-cluster-8.3.2
+    t8s-cluster-7.0.1  t8s-cluster-8.3.2
 

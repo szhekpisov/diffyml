@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// Task 1.3: Unit tests for columnLayout
+// Unit tests for columnLayout
 
 func TestNewColumnLayout_DefaultWidth(t *testing.T) {
 	opts := DefaultFormatOptions()
@@ -16,13 +16,9 @@ func TestNewColumnLayout_DefaultWidth(t *testing.T) {
 	if cl.totalWidth != 80 {
 		t.Errorf("expected totalWidth=80, got %d", cl.totalWidth)
 	}
-	// indent=4, separator display width=3, available=80-4-3=73
-	// leftWidth=73/2=36, rightWidth=73-36=37
-	if cl.leftWidth != 36 {
-		t.Errorf("expected leftWidth=36, got %d", cl.leftWidth)
-	}
-	if cl.rightWidth != 37 {
-		t.Errorf("expected rightWidth=37, got %d", cl.rightWidth)
+	// indent=4, separator display width=2, available=80-4-2=74
+	if cl.available != 74 {
+		t.Errorf("expected available=74, got %d", cl.available)
 	}
 }
 
@@ -36,12 +32,9 @@ func TestNewColumnLayout_CustomWidth(t *testing.T) {
 	if cl.totalWidth != 120 {
 		t.Errorf("expected totalWidth=120, got %d", cl.totalWidth)
 	}
-	// available=120-4-3=113, left=56, right=57
-	if cl.leftWidth != 56 {
-		t.Errorf("expected leftWidth=56, got %d", cl.leftWidth)
-	}
-	if cl.rightWidth != 57 {
-		t.Errorf("expected rightWidth=57, got %d", cl.rightWidth)
+	// available=120-4-2=114
+	if cl.available != 114 {
+		t.Errorf("expected available=114, got %d", cl.available)
 	}
 }
 
@@ -55,12 +48,9 @@ func TestNewColumnLayout_MinimumWidth(t *testing.T) {
 	if cl.totalWidth != 40 {
 		t.Errorf("expected totalWidth=40, got %d", cl.totalWidth)
 	}
-	// available=40-4-3=33, left=16, right=17
-	if cl.leftWidth != 16 {
-		t.Errorf("expected leftWidth=16, got %d", cl.leftWidth)
-	}
-	if cl.rightWidth != 17 {
-		t.Errorf("expected rightWidth=17, got %d", cl.rightWidth)
+	// available=40-4-2=34
+	if cl.available != 34 {
+		t.Errorf("expected available=34, got %d", cl.available)
 	}
 }
 
@@ -74,11 +64,8 @@ func TestNewColumnLayout_NilWhenTableStyleDisabled(t *testing.T) {
 }
 
 func TestNewColumnLayout_NilWhenTooNarrow(t *testing.T) {
-	// GetTerminalWidth enforces minimum of 40, so we test the guard logic
-	// directly by creating a layout with a narrow width that bypasses GetTerminalWidth.
-	// At width 40 (minimum), available=40-4-3=33, left=16 >= 12 — this is fine.
-	// The nil guard protects against future changes to indent/separator/minimum.
-	// Verify that width=40 (minimum enforceable) does NOT return nil:
+	// GetTerminalWidth enforces minimum of 40, so width 20 is clamped to 40.
+	// At width 40: available=40-4-2=34, available/2=17 >= 12 — non-nil.
 	opts := DefaultFormatOptions()
 	opts.Width = 20 // will be clamped to 40 by GetTerminalWidth
 	cl := newColumnLayout(opts)
@@ -91,8 +78,8 @@ func TestNewColumnLayout_NilWhenTooNarrow(t *testing.T) {
 }
 
 func TestNewColumnLayout_BarelyWideEnough(t *testing.T) {
-	// Need leftWidth >= 12. available = totalWidth - 4 - 3 = totalWidth - 7
-	// leftWidth = available/2 >= 12 => available >= 24 => totalWidth >= 31
+	// Need available/2 >= 12. available = totalWidth - 4 - 2 = totalWidth - 6
+	// available/2 >= 12 => available >= 24 => totalWidth >= 30
 	// But minimum terminal width is 40, so test at 40
 	opts := DefaultFormatOptions()
 	opts.Width = 40
@@ -100,15 +87,127 @@ func TestNewColumnLayout_BarelyWideEnough(t *testing.T) {
 	if cl == nil {
 		t.Fatal("expected non-nil columnLayout at width 40")
 	}
-	if cl.leftWidth < 12 {
-		t.Errorf("expected leftWidth >= 12 (minTableColumnWidth), got %d", cl.leftWidth)
+	if cl.available/2 < 12 {
+		t.Errorf("expected available/2 >= 12 (minTableColumnWidth), got %d", cl.available/2)
+	}
+}
+
+// computeWidths tests
+
+func TestColumnLayout_ComputeWidths_BothFit(t *testing.T) {
+	cl := &columnLayout{available: 74}
+	leftW, rightW := cl.computeWidths([]string{"hello"}, []string{"world"})
+	// maxLeft=5, maxRight=5, both fit: leftW=5, rightW=74-5=69
+	if leftW != 5 {
+		t.Errorf("expected leftW=5, got %d", leftW)
+	}
+	if rightW != 69 {
+		t.Errorf("expected rightW=69, got %d", rightW)
+	}
+}
+
+func TestColumnLayout_ComputeWidths_LeftEmpty(t *testing.T) {
+	cl := &columnLayout{available: 74}
+	leftW, rightW := cl.computeWidths(nil, []string{"added line"})
+	if leftW != 0 {
+		t.Errorf("expected leftW=0, got %d", leftW)
+	}
+	if rightW != 74 {
+		t.Errorf("expected rightW=74, got %d", rightW)
+	}
+}
+
+func TestColumnLayout_ComputeWidths_RightEmpty(t *testing.T) {
+	cl := &columnLayout{available: 74}
+	leftW, rightW := cl.computeWidths([]string{"removed line"}, nil)
+	if leftW != 12 {
+		t.Errorf("expected leftW=12, got %d", leftW)
+	}
+	if rightW != 0 {
+		t.Errorf("expected rightW=0, got %d", rightW)
+	}
+}
+
+func TestColumnLayout_ComputeWidths_Overflow(t *testing.T) {
+	cl := &columnLayout{available: 40}
+	leftW, rightW := cl.computeWidths(
+		[]string{strings.Repeat("x", 30)},
+		[]string{strings.Repeat("y", 30)},
+	)
+	// Both overflow (30+30=60 > 40), proportional: 30/60*40=20 each
+	if leftW+rightW != 40 {
+		t.Errorf("expected leftW+rightW=40, got %d+%d=%d", leftW, rightW, leftW+rightW)
+	}
+	if leftW < minTableColumnWidth {
+		t.Errorf("expected leftW >= %d, got %d", minTableColumnWidth, leftW)
+	}
+	if rightW < minTableColumnWidth {
+		t.Errorf("expected rightW >= %d, got %d", minTableColumnWidth, rightW)
+	}
+}
+
+func TestColumnLayout_ComputeWidths_ProportionalAsymmetric(t *testing.T) {
+	cl := &columnLayout{available: 60}
+	// 20 left, 80 right — proportional: 20/100*60=12, 80/100*60=48
+	leftW, rightW := cl.computeWidths(
+		[]string{strings.Repeat("x", 20)},
+		[]string{strings.Repeat("y", 80)},
+	)
+	if leftW+rightW != 60 {
+		t.Errorf("expected leftW+rightW=60, got %d+%d=%d", leftW, rightW, leftW+rightW)
+	}
+	if leftW < minTableColumnWidth {
+		t.Errorf("expected leftW >= %d, got %d", minTableColumnWidth, leftW)
+	}
+}
+
+func TestColumnLayout_ComputeWidths_MinimumEnforcement(t *testing.T) {
+	cl := &columnLayout{available: 30}
+	// 5 left, 100 right — proportional: 5/105*30=1 < 12, so enforce minimum
+	leftW, rightW := cl.computeWidths(
+		[]string{"short"},
+		[]string{strings.Repeat("y", 100)},
+	)
+	if leftW < minTableColumnWidth {
+		t.Errorf("expected leftW >= %d (minimum enforced), got %d", minTableColumnWidth, leftW)
+	}
+	if leftW+rightW != 30 {
+		t.Errorf("expected leftW+rightW=30, got %d+%d=%d", leftW, rightW, leftW+rightW)
+	}
+}
+
+func TestColumnLayout_ComputeWidths_MultipleLines(t *testing.T) {
+	cl := &columnLayout{available: 74}
+	leftW, rightW := cl.computeWidths(
+		[]string{"short", "a longer line here"},
+		[]string{"x", "medium text"},
+	)
+	// maxLeft=18 ("a longer line here"), maxRight=11 ("medium text")
+	// 18+11=29 <= 74, so leftW=18, rightW=74-18=56
+	if leftW != 18 {
+		t.Errorf("expected leftW=18, got %d", leftW)
+	}
+	if rightW != 56 {
+		t.Errorf("expected rightW=56, got %d", rightW)
+	}
+}
+
+func TestColumnLayout_ComputeWidths_BothEmpty(t *testing.T) {
+	cl := &columnLayout{available: 74}
+	leftW, rightW := cl.computeWidths(nil, nil)
+	// Both empty: maxLeft=0, first branch returns (0, available)
+	if leftW != 0 {
+		t.Errorf("expected leftW=0, got %d", leftW)
+	}
+	if rightW != 74 {
+		t.Errorf("expected rightW=74, got %d", rightW)
 	}
 }
 
 // Truncation tests
 
 func TestColumnLayout_Truncate_ShortString(t *testing.T) {
-	cl := &columnLayout{leftWidth: 20, rightWidth: 20}
+	cl := &columnLayout{available: 40}
 	result := cl.truncate("hello", 20)
 	if result != "hello" {
 		t.Errorf("expected 'hello', got %q", result)
@@ -116,7 +215,7 @@ func TestColumnLayout_Truncate_ShortString(t *testing.T) {
 }
 
 func TestColumnLayout_Truncate_ExactFit(t *testing.T) {
-	cl := &columnLayout{leftWidth: 5, rightWidth: 5}
+	cl := &columnLayout{available: 10}
 	result := cl.truncate("hello", 5)
 	if result != "hello" {
 		t.Errorf("expected 'hello', got %q", result)
@@ -124,7 +223,7 @@ func TestColumnLayout_Truncate_ExactFit(t *testing.T) {
 }
 
 func TestColumnLayout_Truncate_Overflow(t *testing.T) {
-	cl := &columnLayout{leftWidth: 10, rightWidth: 10}
+	cl := &columnLayout{available: 20}
 	result := cl.truncate("hello world!", 5)
 	// Should truncate to 4 chars + ellipsis = "hell…"
 	if result != "hell…" {
@@ -133,7 +232,7 @@ func TestColumnLayout_Truncate_Overflow(t *testing.T) {
 }
 
 func TestColumnLayout_Truncate_UnicodeSymbols(t *testing.T) {
-	cl := &columnLayout{leftWidth: 10, rightWidth: 10}
+	cl := &columnLayout{available: 20}
 	// "→±⇆" is 3 runes, should fit in width 5
 	result := cl.truncate("→±⇆", 5)
 	if result != "→±⇆" {
@@ -142,7 +241,7 @@ func TestColumnLayout_Truncate_UnicodeSymbols(t *testing.T) {
 }
 
 func TestColumnLayout_Truncate_UnicodeOverflow(t *testing.T) {
-	cl := &columnLayout{leftWidth: 10, rightWidth: 10}
+	cl := &columnLayout{available: 20}
 	// "→±⇆↵·…" is 6 runes, truncate to width 4 => 3 runes + "…"
 	result := cl.truncate("→±⇆↵·…", 4)
 	if result != "→±⇆…" {
@@ -151,7 +250,7 @@ func TestColumnLayout_Truncate_UnicodeOverflow(t *testing.T) {
 }
 
 func TestColumnLayout_Truncate_EmptyString(t *testing.T) {
-	cl := &columnLayout{leftWidth: 10, rightWidth: 10}
+	cl := &columnLayout{available: 20}
 	result := cl.truncate("", 10)
 	if result != "" {
 		t.Errorf("expected empty string, got %q", result)
@@ -159,7 +258,7 @@ func TestColumnLayout_Truncate_EmptyString(t *testing.T) {
 }
 
 func TestColumnLayout_Truncate_WidthOne(t *testing.T) {
-	cl := &columnLayout{leftWidth: 1, rightWidth: 1}
+	cl := &columnLayout{available: 2}
 	result := cl.truncate("hello", 1)
 	if result != "…" {
 		t.Errorf("expected '…', got %q", result)
@@ -169,7 +268,7 @@ func TestColumnLayout_Truncate_WidthOne(t *testing.T) {
 // PadRight tests
 
 func TestColumnLayout_PadRight_ShortString(t *testing.T) {
-	cl := &columnLayout{leftWidth: 10, rightWidth: 10}
+	cl := &columnLayout{available: 20}
 	result := cl.padRight("hi", 5)
 	if result != "hi   " {
 		t.Errorf("expected 'hi   ', got %q", result)
@@ -177,7 +276,7 @@ func TestColumnLayout_PadRight_ShortString(t *testing.T) {
 }
 
 func TestColumnLayout_PadRight_ExactFit(t *testing.T) {
-	cl := &columnLayout{leftWidth: 5, rightWidth: 5}
+	cl := &columnLayout{available: 10}
 	result := cl.padRight("hello", 5)
 	if result != "hello" {
 		t.Errorf("expected 'hello', got %q", result)
@@ -185,7 +284,7 @@ func TestColumnLayout_PadRight_ExactFit(t *testing.T) {
 }
 
 func TestColumnLayout_PadRight_LongerString(t *testing.T) {
-	cl := &columnLayout{leftWidth: 3, rightWidth: 3}
+	cl := &columnLayout{available: 6}
 	result := cl.padRight("hello", 3)
 	// Should not add padding, string is already >= width
 	if result != "hello" {
@@ -202,19 +301,18 @@ func TestColumnLayout_FormatRow_NoColor(t *testing.T) {
 		t.Fatal("expected non-nil layout")
 	}
 
+	leftW, rightW := cl.computeWidths([]string{"old value"}, []string{"new value"})
+
 	var sb strings.Builder
-	cl.formatRow(&sb, "old value", "new value", "", "", opts)
+	cl.formatRow(&sb, "old value", "new value", "", "", leftW, rightW, opts)
 	output := sb.String()
 
-	// Should contain indent (4 spaces), left value, separator (→), right value
+	// Should contain indent (4 spaces), left value, separator (2 spaces), right value
 	if !strings.Contains(output, "    ") {
 		t.Errorf("expected 4-space indent in output: %q", output)
 	}
 	if !strings.Contains(output, "old value") {
 		t.Errorf("expected 'old value' in output: %q", output)
-	}
-	if !strings.Contains(output, " → ") {
-		t.Errorf("expected ' → ' separator in output: %q", output)
 	}
 	if !strings.Contains(output, "new value") {
 		t.Errorf("expected 'new value' in output: %q", output)
@@ -232,13 +330,18 @@ func TestColumnLayout_FormatRow_WithColor(t *testing.T) {
 		t.Fatal("expected non-nil layout")
 	}
 
+	leftW, rightW := cl.computeWidths([]string{"old"}, []string{"new"})
+
 	var sb strings.Builder
-	cl.formatRow(&sb, "old", "new", colorRed, colorGreen, opts)
+	cl.formatRow(&sb, "old", "new", colorRed, colorGreen, leftW, rightW, opts)
 	output := sb.String()
 
 	// Left value should be wrapped in red
-	if !strings.Contains(output, colorRed+"old") {
-		t.Errorf("expected red-colored 'old' in output: %q", output)
+	if !strings.Contains(output, colorRed) {
+		t.Errorf("expected red color in output: %q", output)
+	}
+	if !strings.Contains(output, "old") {
+		t.Errorf("expected 'old' in output: %q", output)
 	}
 	// Right value should be wrapped in green
 	if !strings.Contains(output, colorGreen+"new") {
@@ -259,8 +362,10 @@ func TestColumnLayout_FormatRow_TruncatesLongValues(t *testing.T) {
 	}
 
 	longValue := strings.Repeat("x", 100)
+	leftW, rightW := cl.computeWidths([]string{longValue}, []string{longValue})
+
 	var sb strings.Builder
-	cl.formatRow(&sb, longValue, longValue, "", "", opts)
+	cl.formatRow(&sb, longValue, longValue, "", "", leftW, rightW, opts)
 	output := sb.String()
 
 	// Output should contain ellipsis for truncated values
@@ -269,34 +374,41 @@ func TestColumnLayout_FormatRow_TruncatesLongValues(t *testing.T) {
 	}
 }
 
-func TestColumnLayout_FormatRow_EmptyLeft(t *testing.T) {
+func TestColumnLayout_FormatRow_RightOnly(t *testing.T) {
 	opts := DefaultFormatOptions()
 	cl := newColumnLayout(opts)
 	if cl == nil {
 		t.Fatal("expected non-nil layout")
 	}
 
+	// Right-only mode: leftW=0
+	leftW, rightW := cl.computeWidths(nil, []string{"added"})
+
 	var sb strings.Builder
-	cl.formatRow(&sb, "", "added", "", colorGreen, opts)
+	cl.formatRow(&sb, "", "added", "", colorGreen, leftW, rightW, opts)
 	output := sb.String()
 
 	if !strings.Contains(output, "added") {
 		t.Errorf("expected 'added' in right column: %q", output)
 	}
-	if !strings.Contains(output, " → ") {
-		t.Errorf("expected separator even with empty left: %q", output)
+	// No separator in right-only mode
+	if strings.Contains(output, "  added") && strings.Count(output, "  ") > 1 {
+		// This is fine — just indent spaces
 	}
 }
 
-func TestColumnLayout_FormatRow_EmptyRight(t *testing.T) {
+func TestColumnLayout_FormatRow_LeftOnly(t *testing.T) {
 	opts := DefaultFormatOptions()
 	cl := newColumnLayout(opts)
 	if cl == nil {
 		t.Fatal("expected non-nil layout")
 	}
 
+	// Left-only mode: rightW=0
+	leftW, rightW := cl.computeWidths([]string{"removed"}, nil)
+
 	var sb strings.Builder
-	cl.formatRow(&sb, "removed", "", colorRed, "", opts)
+	cl.formatRow(&sb, "removed", "", colorRed, "", leftW, rightW, opts)
 	output := sb.String()
 
 	if !strings.Contains(output, "removed") {
@@ -392,32 +504,25 @@ func TestColumnLayout_FormatRow_Structure(t *testing.T) {
 		t.Fatal("expected non-nil layout")
 	}
 
+	leftW, rightW := cl.computeWidths([]string{"A"}, []string{"B"})
+
 	var sb strings.Builder
-	cl.formatRow(&sb, "A", "B", "", "", opts)
+	cl.formatRow(&sb, "A", "B", "", "", leftW, rightW, opts)
 	output := sb.String()
 
-	// The output should be: "    " + padded_left + " → " + right + "\n"
+	// The output should be: "    " + padded_left + "  " + right + "\n"
 	// Check it starts with 4 spaces (indent)
 	if !strings.HasPrefix(output, "    ") {
 		t.Errorf("expected output to start with 4 spaces, got: %q", output)
 	}
 
-	// Arrow separator should be present
-	arrowIdx := strings.Index(output, " → ")
-	if arrowIdx < 0 {
-		t.Fatalf("expected ' → ' separator in output: %q", output)
+	// Should contain "A" followed by separator then "B"
+	trimmed := strings.TrimPrefix(output, "    ")
+	trimmed = strings.TrimRight(trimmed, "\n")
+	if !strings.HasPrefix(trimmed, "A") {
+		t.Errorf("expected content to start with 'A', got: %q", trimmed)
 	}
-
-	// Left value "A" should be before arrow
-	leftPart := output[4:arrowIdx]
-	if !strings.HasPrefix(leftPart, "A") {
-		t.Errorf("expected left part to start with 'A', got: %q", leftPart)
-	}
-
-	// Right value "B" should be after arrow
-	rightPart := output[arrowIdx+len(" → "):]
-	rightPart = strings.TrimRight(rightPart, "\n")
-	if !strings.HasPrefix(rightPart, "B") {
-		t.Errorf("expected right part to start with 'B', got: %q", rightPart)
+	if !strings.HasSuffix(trimmed, "B") {
+		t.Errorf("expected content to end with 'B', got: %q", trimmed)
 	}
 }

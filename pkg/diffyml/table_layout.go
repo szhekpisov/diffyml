@@ -14,12 +14,10 @@ import (
 const minTableColumnWidth = 12
 
 // separatorDisplay is the visual separator between left and right columns.
-const separatorDisplay = " → "
+const separatorDisplay = "  "
 
 // separatorDisplayWidth is the display width of the separator in terminal columns.
-// Note: len(" → ") returns 5 bytes because → is U+2192 (3 bytes in UTF-8),
-// but it occupies only 1 terminal column. Display width = space + arrow + space = 3.
-const separatorDisplayWidth = 3
+const separatorDisplayWidth = 2
 
 // tableIndent is the number of spaces for left indentation in table rows.
 const tableIndent = 4
@@ -28,9 +26,8 @@ const tableIndent = 4
 type columnLayout struct {
 	totalWidth int    // Total available terminal width
 	indent     int    // Left indentation (spaces)
-	separator  string // Visual separator between columns (e.g., " → ")
-	leftWidth  int    // Computed left column width
-	rightWidth int    // Computed right column width
+	separator  string // Visual separator between columns
+	available  int    // Usable width for content (totalWidth - indent - separatorDisplayWidth)
 }
 
 // newColumnLayout creates a column layout from format options.
@@ -42,10 +39,8 @@ func newColumnLayout(opts *FormatOptions) *columnLayout {
 
 	totalWidth := GetTerminalWidth(opts.Width)
 	available := totalWidth - tableIndent - separatorDisplayWidth
-	leftWidth := available / 2
-	rightWidth := available - leftWidth
 
-	if leftWidth < minTableColumnWidth {
+	if available/2 < minTableColumnWidth {
 		return nil
 	}
 
@@ -53,9 +48,51 @@ func newColumnLayout(opts *FormatOptions) *columnLayout {
 		totalWidth: totalWidth,
 		indent:     tableIndent,
 		separator:  separatorDisplay,
-		leftWidth:  leftWidth,
-		rightWidth: rightWidth,
+		available:  available,
 	}
+}
+
+// computeWidths calculates adaptive left and right column widths
+// based on the actual content of the lines to be rendered.
+func (cl *columnLayout) computeWidths(leftLines, rightLines []string) (leftW, rightW int) {
+	maxLeft := 0
+	for _, line := range leftLines {
+		if n := utf8.RuneCountInString(line); n > maxLeft {
+			maxLeft = n
+		}
+	}
+	maxRight := 0
+	for _, line := range rightLines {
+		if n := utf8.RuneCountInString(line); n > maxRight {
+			maxRight = n
+		}
+	}
+
+	// One side empty
+	if maxLeft == 0 {
+		return 0, cl.available
+	}
+	if maxRight == 0 {
+		return maxLeft, 0
+	}
+
+	// Both fit
+	if maxLeft+maxRight <= cl.available {
+		return maxLeft, cl.available - maxLeft
+	}
+
+	// Overflow: proportional allocation with minimum enforcement
+	total := maxLeft + maxRight
+	leftW = cl.available * maxLeft / total
+	if leftW < minTableColumnWidth {
+		leftW = minTableColumnWidth
+	}
+	rightW = cl.available - leftW
+	if rightW < minTableColumnWidth {
+		rightW = minTableColumnWidth
+		leftW = cl.available - rightW
+	}
+	return leftW, rightW
 }
 
 // truncate truncates a plain-text string to fit within the given column width.
@@ -93,38 +130,56 @@ func (cl *columnLayout) padRight(s string, width int) string {
 	return s + strings.Repeat(" ", width-runeCount)
 }
 
-// formatRow renders a single side-by-side row with left value, separator, and right value.
-// Color codes are applied after truncation and padding to prevent width miscalculation.
-func (cl *columnLayout) formatRow(sb *strings.Builder, left, right, leftColor, rightColor string, opts *FormatOptions) {
-	// Truncate plain text first
-	left = cl.truncate(left, cl.leftWidth)
-	right = cl.truncate(right, cl.rightWidth)
-
-	// Pad left column to fixed width for alignment
-	left = cl.padRight(left, cl.leftWidth)
-
-	// Write indent
+// formatRow renders a single side-by-side row with adaptive column widths.
+// leftW and rightW are the computed column widths from computeWidths.
+// Three rendering modes:
+//   - Both sides (leftW > 0 && rightW > 0): indent + padRight(left, leftW) + separator + right
+//   - Left only (rightW == 0): indent + left (no padding, no separator)
+//   - Right only (leftW == 0): indent + right (no separator)
+func (cl *columnLayout) formatRow(sb *strings.Builder, left, right, leftColor, rightColor string, leftW, rightW int, opts *FormatOptions) {
 	sb.WriteString(strings.Repeat(" ", cl.indent))
 
-	// Write left value with optional color
-	if opts.Color && leftColor != "" {
-		sb.WriteString(leftColor)
-		sb.WriteString(left)
-		sb.WriteString(colorReset)
-	} else {
-		sb.WriteString(left)
-	}
+	if leftW > 0 && rightW > 0 {
+		// Both sides
+		left = cl.truncate(left, leftW)
+		right = cl.truncate(right, rightW)
+		left = cl.padRight(left, leftW)
 
-	// Write separator
-	sb.WriteString(cl.separator)
-
-	// Write right value with optional color
-	if opts.Color && rightColor != "" {
-		sb.WriteString(rightColor)
-		sb.WriteString(right)
-		sb.WriteString(colorReset)
+		if opts.Color && leftColor != "" {
+			sb.WriteString(leftColor)
+			sb.WriteString(left)
+			sb.WriteString(colorReset)
+		} else {
+			sb.WriteString(left)
+		}
+		sb.WriteString(cl.separator)
+		if opts.Color && rightColor != "" {
+			sb.WriteString(rightColor)
+			sb.WriteString(right)
+			sb.WriteString(colorReset)
+		} else {
+			sb.WriteString(right)
+		}
+	} else if rightW == 0 {
+		// Left only — no padding, no separator
+		left = cl.truncate(left, leftW)
+		if opts.Color && leftColor != "" {
+			sb.WriteString(leftColor)
+			sb.WriteString(left)
+			sb.WriteString(colorReset)
+		} else {
+			sb.WriteString(left)
+		}
 	} else {
-		sb.WriteString(right)
+		// Right only — no separator
+		right = cl.truncate(right, rightW)
+		if opts.Color && rightColor != "" {
+			sb.WriteString(rightColor)
+			sb.WriteString(right)
+			sb.WriteString(colorReset)
+		} else {
+			sb.WriteString(right)
+		}
 	}
 
 	sb.WriteString("\n")

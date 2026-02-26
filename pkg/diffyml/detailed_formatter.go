@@ -244,7 +244,11 @@ func (f *DetailedFormatter) formatEntryBatchTable(sb *strings.Builder, diffs []D
 		rightColor = f.colorAdded(opts)
 	}
 
-	// Render each entry value into a column
+	// Pre-render all entries to collect lines for width computation
+	plainOpts := *opts
+	plainOpts.Color = false
+
+	var allLines []string
 	for _, diff := range diffs {
 		var val interface{}
 		if diff.To != nil {
@@ -253,23 +257,40 @@ func (f *DetailedFormatter) formatEntryBatchTable(sb *strings.Builder, diffs []D
 			val = diff.From
 		}
 
-		// Render to buffer with plain text opts (no ANSI codes)
-		plainOpts := *opts
-		plainOpts.Color = false
+		var buf strings.Builder
+		f.renderEntryValue(&buf, val, symbol, 0, diff.Path, isListEntry, &plainOpts)
+		rendered := strings.TrimRight(buf.String(), "\n")
+		lines := strings.Split(rendered, "\n")
+		allLines = append(allLines, lines...)
+	}
+
+	// Compute adaptive widths: one-sided (removed = left, added = right)
+	var leftW, rightW int
+	if action == "removed" {
+		leftW, rightW = cl.computeWidths(allLines, nil)
+	} else {
+		leftW, rightW = cl.computeWidths(nil, allLines)
+	}
+
+	// Re-render and emit each entry line into the appropriate column
+	for _, diff := range diffs {
+		var val interface{}
+		if diff.To != nil {
+			val = diff.To
+		} else {
+			val = diff.From
+		}
 
 		var buf strings.Builder
 		f.renderEntryValue(&buf, val, symbol, 0, diff.Path, isListEntry, &plainOpts)
-
-		// Trim trailing newlines and split into lines
 		rendered := strings.TrimRight(buf.String(), "\n")
 		lines := strings.Split(rendered, "\n")
 
-		// Emit each line into the appropriate column
 		for _, line := range lines {
 			if action == "removed" {
-				cl.formatRow(sb, line, "", leftColor, rightColor, opts)
+				cl.formatRow(sb, line, "", leftColor, rightColor, leftW, rightW, opts)
 			} else {
-				cl.formatRow(sb, "", line, leftColor, rightColor, opts)
+				cl.formatRow(sb, "", line, leftColor, rightColor, leftW, rightW, opts)
 			}
 		}
 	}
@@ -491,13 +512,10 @@ func (f *DetailedFormatter) formatModified(sb *strings.Builder, diff Difference,
 // Displays the descriptor line followed by one row with old (left) and new (right) values.
 func (f *DetailedFormatter) formatScalarTable(sb *strings.Builder, diff Difference, cl *columnLayout, opts *FormatOptions) {
 	f.writeDescriptorLine(sb, "  ± value change", f.colorModified, opts)
-	cl.formatRow(sb,
-		formatDetailedValue(diff.From),
-		formatDetailedValue(diff.To),
-		f.colorRemoved(opts),
-		f.colorAdded(opts),
-		opts,
-	)
+	left := formatDetailedValue(diff.From)
+	right := formatDetailedValue(diff.To)
+	leftW, rightW := cl.computeWidths([]string{left}, []string{right})
+	cl.formatRow(sb, left, right, f.colorRemoved(opts), f.colorAdded(opts), leftW, rightW, opts)
 	sb.WriteString("\n")
 }
 
@@ -513,20 +531,18 @@ func (f *DetailedFormatter) formatTypeTable(sb *strings.Builder, diff Difference
 	}
 	left := fmt.Sprintf("%s: %v", fromType, formatDetailedValue(diff.From))
 	right := fmt.Sprintf("%s: %v", toType, formatDetailedValue(diff.To))
-	cl.formatRow(sb, left, right, f.colorRemoved(opts), f.colorAdded(opts), opts)
+	leftW, rightW := cl.computeWidths([]string{left}, []string{right})
+	cl.formatRow(sb, left, right, f.colorRemoved(opts), f.colorAdded(opts), leftW, rightW, opts)
 	sb.WriteString("\n")
 }
 
 // formatWhitespaceTable renders a whitespace-only change in side-by-side table style.
 func (f *DetailedFormatter) formatWhitespaceTable(sb *strings.Builder, from, to string, cl *columnLayout, opts *FormatOptions) {
 	f.writeDescriptorLine(sb, "  ± whitespace only change", f.colorModified, opts)
-	cl.formatRow(sb,
-		visualizeWhitespace(from),
-		visualizeWhitespace(to),
-		f.colorRemoved(opts),
-		f.colorAdded(opts),
-		opts,
-	)
+	left := visualizeWhitespace(from)
+	right := visualizeWhitespace(to)
+	leftW, rightW := cl.computeWidths([]string{left}, []string{right})
+	cl.formatRow(sb, left, right, f.colorRemoved(opts), f.colorAdded(opts), leftW, rightW, opts)
 	sb.WriteString("\n")
 }
 
@@ -541,7 +557,8 @@ func (f *DetailedFormatter) formatOrderChangedTable(sb *strings.Builder, diff Di
 	if diff.To != nil {
 		right = formatCommaSeparated(diff.To)
 	}
-	cl.formatRow(sb, left, right, f.colorRemoved(opts), f.colorAdded(opts), opts)
+	leftW, rightW := cl.computeWidths([]string{left}, []string{right})
+	cl.formatRow(sb, left, right, f.colorRemoved(opts), f.colorAdded(opts), leftW, rightW, opts)
 	sb.WriteString("\n")
 }
 
@@ -625,15 +642,18 @@ func (f *DetailedFormatter) formatMultilineTable(sb *strings.Builder, from, to s
 	toLines := strings.Split(to, "\n")
 	ops := computeLineDiff(fromLines, toLines)
 
-	// Count additions and deletions for descriptor
+	// Count additions and deletions for descriptor; collect lines for width computation
 	additions := 0
 	deletions := 0
+	var leftLines, rightLines []string
 	for _, op := range ops {
 		switch op.Type {
 		case editInsert:
 			additions++
+			rightLines = append(rightLines, op.Line)
 		case editDelete:
 			deletions++
+			leftLines = append(leftLines, op.Line)
 		}
 	}
 
@@ -641,6 +661,9 @@ func (f *DetailedFormatter) formatMultilineTable(sb *strings.Builder, from, to s
 		formatCount(additions), pluralize(additions, "insert", "inserts"),
 		formatCount(deletions), pluralize(deletions, "deletion", "deletions"))
 	f.writeDescriptorLine(sb, descriptor, f.colorModified, opts)
+
+	// Compute adaptive column widths once for all rows
+	leftW, rightW := cl.computeWidths(leftLines, rightLines)
 
 	// Context collapsing setup
 	contextLines := opts.ContextLines
@@ -664,13 +687,13 @@ func (f *DetailedFormatter) formatMultilineTable(sb *strings.Builder, from, to s
 	flushBuffers := func() {
 		paired := min(len(deleteBuf), len(insertBuf))
 		for k := 0; k < paired; k++ {
-			cl.formatRow(sb, deleteBuf[k], insertBuf[k], f.colorRemoved(opts), f.colorAdded(opts), opts)
+			cl.formatRow(sb, deleteBuf[k], insertBuf[k], f.colorRemoved(opts), f.colorAdded(opts), leftW, rightW, opts)
 		}
 		for k := paired; k < len(deleteBuf); k++ {
-			cl.formatRow(sb, deleteBuf[k], "", f.colorRemoved(opts), "", opts)
+			cl.formatRow(sb, deleteBuf[k], "", f.colorRemoved(opts), "", leftW, rightW, opts)
 		}
 		for k := paired; k < len(insertBuf); k++ {
-			cl.formatRow(sb, "", insertBuf[k], "", f.colorAdded(opts), opts)
+			cl.formatRow(sb, "", insertBuf[k], "", f.colorAdded(opts), leftW, rightW, opts)
 		}
 		deleteBuf = deleteBuf[:0]
 		insertBuf = insertBuf[:0]

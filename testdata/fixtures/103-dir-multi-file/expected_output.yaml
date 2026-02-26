@@ -11,6 +11,10 @@ data.debug.mode
   ± whitespace only change
     true·  true
 
+data.verbose
+  ± type change from string to bool
+    string: false  bool: false
+
 --- a/deployment.yaml
 +++ b/deployment.yaml
 metadata.labels.version
@@ -21,10 +25,26 @@ metadata.labels.environment
   + one map entry added:
     environment: production
 
+metadata.labels.team
+  + one map entry added:
+    team: backend
+
 spec.replicas
   ± value change
     - 1
     + 3
+
+spec.containers
+  + two list entries added:
+    - name: sidecar
+      image: envoy
+    - name: monitor
+      image: prometheus
+
+spec.containers.app.image
+  ± value change
+    - nginx
+    + nginx:latest
 
 --- a/ingress.yaml
 +++ /dev/null
@@ -59,8 +79,17 @@ metadata.labels.tier
   - one map entry removed:
     tier: frontend
 
+metadata.labels.version
+  - one map entry removed:
+    version: 1
+
 spec.port
   ± value change
     - 80
     + 443
+
+spec.tags
+  - two list entries removed:
+    - name: production
+    - name: canary
 

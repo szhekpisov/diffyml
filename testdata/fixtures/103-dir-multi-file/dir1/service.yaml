@@ -5,5 +5,10 @@ metadata:
   labels:
     app: myapp
     tier: frontend
+    version: "1"
 spec:
   port: 80
+  tags:
+    - name: stable
+    - name: production
+    - name: canary

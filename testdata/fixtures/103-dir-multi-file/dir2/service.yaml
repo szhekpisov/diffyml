@@ -6,3 +6,5 @@ metadata:
     app: myapp
 spec:
   port: 443
+  tags:
+    - name: stable

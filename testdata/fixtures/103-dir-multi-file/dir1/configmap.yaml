@@ -8,3 +8,4 @@ data:
     log_level=info
     max_connections=100
   debug.mode: "true "
+  verbose: "false"

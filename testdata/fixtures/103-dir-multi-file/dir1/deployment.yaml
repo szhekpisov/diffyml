@@ -6,3 +6,6 @@ metadata:
     version: 2
 spec:
   replicas: 1
+  containers:
+    - name: app
+      image: nginx

@@ -1,7 +1,7 @@
 // kubernetes.go - Kubernetes resource detection and matching.
 //
 // Detects K8s resources by checking for apiVersion, kind, and metadata fields.
-// Matches resources across documents using apiVersion + kind + metadata.name.
+// Matches resources across documents using apiVersion + kind + metadata.name (or generateName).
 // Key functions: IsKubernetesResource(), GetK8sIdentifier().
 package diffyml
 
@@ -52,9 +52,10 @@ func IsKubernetesResource(doc interface{}) bool {
 		return false
 	}
 
-	// Check for name in metadata
-	metaName, ok := getVal(metadata, "name")
-	if !ok || metaName == nil {
+	// Check for name or generateName in metadata
+	metaName, hasName := getVal(metadata, "name")
+	metaGenName, hasGenName := getVal(metadata, "generateName")
+	if (!hasName || metaName == nil) && (!hasGenName || metaGenName == nil) {
 		return false
 	}
 
@@ -83,7 +84,11 @@ func GetK8sResourceIdentifier(doc interface{}) string {
 	apiVersion := getVal(doc, "apiVersion").(string)
 	kind := getVal(doc, "kind").(string)
 	metadata := getVal(doc, "metadata")
-	name := fmt.Sprintf("%v", getVal(metadata, "name"))
+	nameVal := getVal(metadata, "name")
+	if nameVal == nil {
+		nameVal = getVal(metadata, "generateName")
+	}
+	name := fmt.Sprintf("%v", nameVal)
 
 	if namespace := getVal(metadata, "namespace"); namespace != nil {
 		return fmt.Sprintf("%s:%s:%v/%s", apiVersion, kind, namespace, name)

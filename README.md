@@ -246,7 +246,7 @@ Every push and PR is checked by:
   [misspell](https://github.com/client9/misspell),
   [staticcheck](https://staticcheck.dev/) (all checks except style conventions)
 
-Core packages enforce 95–100% test coverage thresholds in CI.
+Core packages enforce 95–100% test coverage thresholds in CI. [Mutation testing](https://github.com/go-gremlins/gremlins) validates that tests catch real bugs, not just exercise code paths.
 
 ## Performance
 
@@ -310,12 +310,14 @@ make ci             # full CI pipeline locally (fmt + vet + test + coverage + se
 make bench          # run benchmarks
 make bench-compare  # compare against alternative tools
 make coverage       # generate HTML coverage report
+make mutation       # run mutation testing (requires gremlins)
 ```
 
 **CI pipelines** (run on every push and PR):
 - **Tests** — unit tests + coverage thresholds
 - **Security & Static Analysis** — govulncheck + golangci-lint (also runs weekly)
 - **Benchmark** — performance regression tracking
+- **Mutation Testing** — test quality validation via [gremlins](https://github.com/go-gremlins/gremlins)
 
 </details>
 

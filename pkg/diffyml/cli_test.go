@@ -199,6 +199,70 @@ func TestCLIConfig_ParseArgs_Swap(t *testing.T) {
 	}
 }
 
+func TestCLIConfig_ParseArgs_FlagsAfterPositionalArgs(t *testing.T) {
+	cfg := NewCLIConfig()
+	// Simulates kubectl's KUBECTL_EXTERNAL_DIFF arg order: dirs first, flags after
+	args := []string{"from.yaml", "to.yaml", "--set-exit-code", "--omit-header", "--color", "never"}
+
+	err := cfg.ParseArgs(args)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.FromFile != "from.yaml" {
+		t.Errorf("expected FromFile='from.yaml', got %q", cfg.FromFile)
+	}
+	if cfg.ToFile != "to.yaml" {
+		t.Errorf("expected ToFile='to.yaml', got %q", cfg.ToFile)
+	}
+	if !cfg.SetExitCode {
+		t.Error("expected SetExitCode=true")
+	}
+	if !cfg.OmitHeader {
+		t.Error("expected OmitHeader=true")
+	}
+	if cfg.Color != "never" {
+		t.Errorf("expected Color='never', got %q", cfg.Color)
+	}
+}
+
+func TestCLIConfig_ParseArgs_FlagsMixedWithPositionalArgs(t *testing.T) {
+	cfg := NewCLIConfig()
+	args := []string{"--omit-header", "from.yaml", "to.yaml", "--set-exit-code"}
+
+	err := cfg.ParseArgs(args)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.FromFile != "from.yaml" {
+		t.Errorf("expected FromFile='from.yaml', got %q", cfg.FromFile)
+	}
+	if !cfg.OmitHeader {
+		t.Error("expected OmitHeader=true")
+	}
+	if !cfg.SetExitCode {
+		t.Error("expected SetExitCode=true")
+	}
+}
+
+func TestCLIConfig_ParseArgs_DoubleDashTerminator(t *testing.T) {
+	cfg := NewCLIConfig()
+	args := []string{"--set-exit-code", "--", "from.yaml", "to.yaml"}
+
+	err := cfg.ParseArgs(args)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.FromFile != "from.yaml" {
+		t.Errorf("expected FromFile='from.yaml', got %q", cfg.FromFile)
+	}
+	if !cfg.SetExitCode {
+		t.Error("expected SetExitCode=true")
+	}
+}
+
 func TestCLIConfig_ToCompareOptions(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.IgnoreOrderChanges = true

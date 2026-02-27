@@ -165,8 +165,14 @@ func (c *CLIConfig) initFlags() {
 
 // ParseArgs parses command-line arguments.
 // Expects at least two non-flag arguments: <from> and <to> files.
+//
+// Supports interspersed flags and positional arguments (e.g.
+// "dir1 dir2 --set-exit-code") because kubectl places
+// KUBECTL_EXTERNAL_DIFF flags after the directory paths.
 func (c *CLIConfig) ParseArgs(args []string) error {
-	if err := c.fs.Parse(args); err != nil {
+	reordered := reorderArgs(args, c.fs)
+
+	if err := c.fs.Parse(reordered); err != nil {
 		return err
 	}
 
@@ -181,6 +187,58 @@ func (c *CLIConfig) ParseArgs(args []string) error {
 	c.ToFile = remaining[1]
 
 	return nil
+}
+
+// isBoolFlag returns true if the flag is a boolean flag.
+func isBoolFlag(f *flag.Flag) bool {
+	// BoolVar flags have zero value "false".
+	// This matches how Go's flag package internally identifies bool flags.
+	bf, ok := f.Value.(interface{ IsBoolFlag() bool })
+	return ok && bf.IsBoolFlag()
+}
+
+// reorderArgs moves flag arguments before positional arguments so that
+// Go's flag package (which stops at the first non-flag arg) can parse
+// all flags. Positional arguments preserve their relative order.
+func reorderArgs(args []string, fs *flag.FlagSet) []string {
+	var flags, positional []string
+
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+
+		if arg == "--" {
+			positional = append(positional, args[i:]...)
+			break
+		}
+
+		if !strings.HasPrefix(arg, "-") {
+			positional = append(positional, arg)
+			continue
+		}
+
+		// Extract flag name: strip leading dashes, remove =value.
+		name := strings.TrimLeft(arg, "-")
+		if eqIdx := strings.IndexByte(name, '='); eqIdx >= 0 {
+			name = name[:eqIdx]
+		}
+
+		f := fs.Lookup(name)
+		if f == nil {
+			// Unknown flag — keep as positional so fs.Parse reports the error.
+			positional = append(positional, arg)
+			continue
+		}
+
+		flags = append(flags, arg)
+
+		// If this is a non-bool flag without "=" form, consume next arg as value.
+		if !strings.Contains(arg, "=") && !isBoolFlag(f) && i+1 < len(args) {
+			i++
+			flags = append(flags, args[i])
+		}
+	}
+
+	return append(flags, positional...)
 }
 
 // ToCompareOptions converts CLI config to comparison Options.

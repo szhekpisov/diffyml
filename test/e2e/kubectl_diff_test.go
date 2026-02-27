@@ -125,68 +125,81 @@ func TestKubectlDiffWithDiffyml(t *testing.T) {
 		t.Fatalf("failed to write kubeconfig: %v", err)
 	}
 
-	env := append(os.Environ(),
-		"KUBECONFIG="+kubeconfigPath,
-		fmt.Sprintf("KUBECTL_EXTERNAL_DIFF=%s --omit-header --set-exit-code --color never", diffymlBin),
-	)
+	baseEnv := append(os.Environ(), "KUBECONFIG="+kubeconfigPath)
 
 	// Apply base manifest
 	applyCmd := exec.Command("kubectl", "apply", "-f", "-")
-	applyCmd.Env = env
+	applyCmd.Env = baseEnv
 	applyCmd.Stdin = strings.NewReader(baseManifest)
 	if out, err := applyCmd.CombinedOutput(); err != nil {
 		t.Fatalf("kubectl apply failed: %v\n%s", err, out)
 	}
 
 	// Wait for the resource to exist in the API server
-	waitForResource(t, env)
+	waitForResource(t, baseEnv)
 
-	// Run kubectl diff with modified manifest
-	diffCmd := exec.Command("kubectl", "diff", "-f", "-")
-	diffCmd.Env = env
-	diffCmd.Stdin = strings.NewReader(modifiedManifest)
-	var stdout, stderr strings.Builder
-	diffCmd.Stdout = &stdout
-	diffCmd.Stderr = &stderr
+	// runKubectlDiff runs kubectl diff with the given KUBECTL_EXTERNAL_DIFF value
+	// and returns stdout, stderr, and exit code.
+	runKubectlDiff := func(t *testing.T, externalDiff string) (stdout, stderr string, exitCode int) {
+		t.Helper()
+		env := append(baseEnv, "KUBECTL_EXTERNAL_DIFF="+externalDiff)
+		diffCmd := exec.Command("kubectl", "diff", "-f", "-")
+		diffCmd.Env = env
+		diffCmd.Stdin = strings.NewReader(modifiedManifest)
+		var outBuf, errBuf strings.Builder
+		diffCmd.Stdout = &outBuf
+		diffCmd.Stderr = &errBuf
 
-	err = diffCmd.Run()
-
-	// kubectl diff exits 1 when differences are found (propagated from external diff tool)
-	exitCode := 0
-	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			exitCode = exitErr.ExitCode()
-		} else {
-			t.Fatalf("kubectl diff failed unexpectedly: %v\nstderr: %s", err, stderr.String())
+		err := diffCmd.Run()
+		if err != nil {
+			if exitErr, ok := err.(*exec.ExitError); ok {
+				exitCode = exitErr.ExitCode()
+			} else {
+				t.Fatalf("kubectl diff failed unexpectedly: %v\nstderr: %s", err, errBuf.String())
+			}
 		}
-	}
 
-	t.Logf("kubectl diff exit code: %d", exitCode)
-	t.Logf("stdout:\n%s", stdout.String())
-	if stderr.Len() > 0 {
-		t.Logf("stderr:\n%s", stderr.String())
-	}
-
-	// Assert: exit code is 0 or 1
-	// kubectl diff returns 1 when differences are found with the built-in diff,
-	// but may return 0 when using KUBECTL_EXTERNAL_DIFF depending on kubectl version.
-	// Exit code >= 2 indicates an error.
-	if exitCode >= 2 {
-		t.Errorf("expected exit code 0 or 1, got %d (indicates an error)", exitCode)
-	}
-
-	// Assert: stdout is non-empty
-	output := stdout.String()
-	if output == "" {
-		t.Fatal("expected non-empty stdout from kubectl diff")
-	}
-
-	// Assert: output contains expected diff fragments
-	for _, fragment := range []string{"spec.replicas", "image", "nginx:latest"} {
-		if !strings.Contains(output, fragment) {
-			t.Errorf("expected output to contain %q, got:\n%s", fragment, output)
+		t.Logf("kubectl diff exit code: %d", exitCode)
+		t.Logf("stdout:\n%s", outBuf.String())
+		if errBuf.Len() > 0 {
+			t.Logf("stderr:\n%s", errBuf.String())
 		}
+		return outBuf.String(), errBuf.String(), exitCode
 	}
+
+	t.Run("WithFlags", func(t *testing.T) {
+		externalDiff := fmt.Sprintf("%s --omit-header --set-exit-code --color never", diffymlBin)
+		output, _, exitCode := runKubectlDiff(t, externalDiff)
+
+		if exitCode != 1 {
+			t.Errorf("expected exit code 1 (differences found), got %d", exitCode)
+		}
+		if output == "" {
+			t.Fatal("expected non-empty stdout from kubectl diff")
+		}
+		for _, fragment := range []string{"spec.replicas", "image", "nginx:latest"} {
+			if !strings.Contains(output, fragment) {
+				t.Errorf("expected output to contain %q, got:\n%s", fragment, output)
+			}
+		}
+	})
+
+	t.Run("NoFlags", func(t *testing.T) {
+		output, _, exitCode := runKubectlDiff(t, diffymlBin)
+
+		// Without --set-exit-code, diffyml returns 0; kubectl propagates that.
+		if exitCode != 0 {
+			t.Errorf("expected exit code 0 (no --set-exit-code), got %d", exitCode)
+		}
+		if output == "" {
+			t.Fatal("expected non-empty stdout from kubectl diff")
+		}
+		for _, fragment := range []string{"spec.replicas", "image", "nginx:latest"} {
+			if !strings.Contains(output, fragment) {
+				t.Errorf("expected output to contain %q, got:\n%s", fragment, output)
+			}
+		}
+	})
 }
 
 // waitForResource polls until the Deployment exists in the API server.

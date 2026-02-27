@@ -1371,3 +1371,50 @@ func TestCompare_SortFallbackBehaviors(t *testing.T) {
 		t.Errorf("expected second diff 'root.deep.nested', got %q", diffs[1].Path)
 	}
 }
+
+func TestCompare_RootAddBeforeRootModify(t *testing.T) {
+	// A root-level addition must be sorted before a root-level modification,
+	// even when document order would place the modification first.
+	from := yml(`z_modified: old`)
+	to := yml(`a_added: new
+z_modified: changed`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if len(diffs) != 2 {
+		t.Fatalf("expected 2 diffs, got %d", len(diffs))
+	}
+	// Root-level addition must come before root-level modification
+	if diffs[0].Type != diffyml.DiffAdded || diffs[0].Path != "a_added" {
+		t.Errorf("expected first diff to be added 'a_added', got type=%v path=%q",
+			diffs[0].Type, diffs[0].Path)
+	}
+	if diffs[1].Type != diffyml.DiffModified || diffs[1].Path != "z_modified" {
+		t.Errorf("expected second diff to be modified 'z_modified', got type=%v path=%q",
+			diffs[1].Type, diffs[1].Path)
+	}
+}
+
+func TestCompare_HeterogeneousListReorder(t *testing.T) {
+	// Heterogeneous list items (single distinct keys) should be compared unordered,
+	// so reordering them should produce no diffs.
+	from := yml(`rules:
+  - namespaceSelector: ns1
+  - ipBlock: 10.0.0.0/8`)
+	to := yml(`rules:
+  - ipBlock: 10.0.0.0/8
+  - namespaceSelector: ns1`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if len(diffs) != 0 {
+		t.Errorf("expected 0 diffs for reordered heterogeneous list, got %d", len(diffs))
+		for _, d := range diffs {
+			t.Logf("  diff: type=%v path=%q", d.Type, d.Path)
+		}
+	}
+}

@@ -263,6 +263,35 @@ func TestCLIConfig_ParseArgs_DoubleDashTerminator(t *testing.T) {
 	}
 }
 
+func TestCLIConfig_ParseArgs_EqualsForm(t *testing.T) {
+	cfg := NewCLIConfig()
+	args := []string{"from.yaml", "to.yaml", "--color=never", "--output=compact"}
+
+	err := cfg.ParseArgs(args)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.Color != "never" {
+		t.Errorf("expected Color='never', got %q", cfg.Color)
+	}
+	if cfg.Output != "compact" {
+		t.Errorf("expected Output='compact', got %q", cfg.Output)
+	}
+}
+
+func TestCLIConfig_ParseArgs_UnknownFlagAfterPositional(t *testing.T) {
+	cfg := NewCLIConfig()
+	// Unknown flags are passed through as positional args by reorderArgs,
+	// then fs.Parse reports the error.
+	args := []string{"--unknown-flag", "from.yaml", "to.yaml"}
+
+	err := cfg.ParseArgs(args)
+	if err == nil {
+		t.Fatal("expected error for unknown flag, got nil")
+	}
+}
+
 func TestCLIConfig_ToCompareOptions(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.IgnoreOrderChanges = true

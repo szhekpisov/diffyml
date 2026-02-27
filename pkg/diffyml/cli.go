@@ -41,6 +41,7 @@ type CLIConfig struct {
 	IgnoreValueChanges      bool
 	DetectKubernetes        bool
 	DetectRenames           bool
+	IgnoreApiVersion        bool
 	NoCertInspection        bool
 	Swap                    bool
 	AdditionalIdentifiers   []string
@@ -117,6 +118,7 @@ func (c *CLIConfig) initFlags() {
 	c.fs.BoolVar(&c.IgnoreValueChanges, "ignore-value-changes", c.IgnoreValueChanges, "exclude changes in values")
 	c.fs.BoolVar(&c.DetectKubernetes, "detect-kubernetes", c.DetectKubernetes, "detect kubernetes entities")
 	c.fs.BoolVar(&c.DetectRenames, "detect-renames", c.DetectRenames, "enable detection for renames")
+	c.fs.BoolVar(&c.IgnoreApiVersion, "ignore-api-version", c.IgnoreApiVersion, "ignore apiVersion when matching Kubernetes resources")
 	c.fs.BoolVar(&c.NoCertInspection, "x", c.NoCertInspection, "")
 	c.fs.BoolVar(&c.NoCertInspection, "no-cert-inspection", c.NoCertInspection, "disable x509 certificate inspection")
 	c.fs.BoolVar(&c.Swap, "swap", c.Swap, "swap 'from' and 'to' for comparison")
@@ -189,6 +191,7 @@ func (c *CLIConfig) ToCompareOptions() *Options {
 		IgnoreValueChanges:      c.IgnoreValueChanges,
 		DetectKubernetes:        c.DetectKubernetes,
 		DetectRenames:           c.DetectRenames,
+		IgnoreApiVersion:        c.IgnoreApiVersion,
 		AdditionalIdentifiers:   c.AdditionalIdentifiers,
 		NoCertInspection:        c.NoCertInspection,
 		Swap:                    c.Swap,
@@ -243,6 +246,7 @@ func (c *CLIConfig) Usage() string {
 	sb.WriteString("  -v, --ignore-value-changes          exclude changes in values\n")
 	sb.WriteString("      --detect-kubernetes             detect kubernetes entities (default true)\n")
 	sb.WriteString("      --detect-renames                enable detection for renames (default true)\n")
+	sb.WriteString("      --ignore-api-version            ignore apiVersion when matching Kubernetes resources\n")
 	sb.WriteString("  -x, --no-cert-inspection            disable x509 certificate inspection\n")
 	sb.WriteString("      --swap                          swap 'from' and 'to' for comparison\n")
 	sb.WriteString("\n")

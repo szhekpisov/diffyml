@@ -47,6 +47,8 @@ type Options struct {
 	DetectKubernetes bool
 	// DetectRenames enables document-level rename detection for Kubernetes resources.
 	DetectRenames bool
+	// IgnoreApiVersion omits apiVersion from K8s resource identifiers when matching.
+	IgnoreApiVersion bool
 	// AdditionalIdentifiers specifies additional fields to use as identifiers in named entry lists.
 	AdditionalIdentifiers []string
 	// NoCertInspection disables x509 certificate inspection, comparing as raw text.

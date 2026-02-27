@@ -1,0 +1,18 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: diffyml-e2e-test
+  namespace: default
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: diffyml-e2e-test
+  template:
+    metadata:
+      labels:
+        app: diffyml-e2e-test
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:latest

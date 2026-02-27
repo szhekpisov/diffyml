@@ -14,12 +14,13 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          if [[ ! "$PR_TITLE" =~ ^(feat|bug|doc|chore|test):\ .+ ]]; then
-            echo "::error::PR title must start with: feat: / bug: / doc: / chore: / test:"
+          if [[ ! "$PR_TITLE" =~ ^(feat|bug|fix|doc|chore|test):\ .+ ]]; then
+            echo "::error::PR title must start with: feat: / bug: / fix: / doc: / chore: / test:"
             echo ""
             echo "Examples:"
             echo "  feat: add remote URL support"
             echo "  bug: fix K8s resource matching for namespaced resources"
+            echo "  fix: correct YAML indentation in multi-doc output"
             echo "  doc: update contributing guidelines"
             echo "  chore: bump gopkg.in/yaml.v3 to v3.1.0"
             echo "  test: add fixture for directory comparison"

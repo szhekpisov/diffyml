@@ -51,24 +51,23 @@ func TestIsDirectory_WithURL(t *testing.T) {
 	}
 }
 
-// --- Task 1.2: DiscoverYAMLFiles tests ---
+// --- Task 1.2: DiscoverFiles tests ---
 
-func TestDiscoverYAMLFiles_MixedFileTypes(t *testing.T) {
+func TestDiscoverFiles_AllRegularFiles(t *testing.T) {
 	dir := t.TempDir()
 
-	// Create YAML files
+	// Create various files — all should be discovered
 	createFile(t, dir, "deploy.yaml", "key: value")
 	createFile(t, dir, "service.yml", "key: value")
-	// Create non-YAML files (should be skipped)
 	createFile(t, dir, "readme.txt", "hello")
 	createFile(t, dir, "config.json", "{}")
 
-	files, err := DiscoverYAMLFiles(dir)
+	files, err := DiscoverFiles(dir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	expected := []string{"deploy.yaml", "service.yml"}
+	expected := []string{"config.json", "deploy.yaml", "readme.txt", "service.yml"}
 	if len(files) != len(expected) {
 		t.Fatalf("expected %d files, got %d: %v", len(expected), len(files), files)
 	}
@@ -79,10 +78,10 @@ func TestDiscoverYAMLFiles_MixedFileTypes(t *testing.T) {
 	}
 }
 
-func TestDiscoverYAMLFiles_EmptyDirectory(t *testing.T) {
+func TestDiscoverFiles_EmptyDirectory(t *testing.T) {
 	dir := t.TempDir()
 
-	files, err := DiscoverYAMLFiles(dir)
+	files, err := DiscoverFiles(dir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -92,14 +91,14 @@ func TestDiscoverYAMLFiles_EmptyDirectory(t *testing.T) {
 	}
 }
 
-func TestDiscoverYAMLFiles_AlphabeticalOrder(t *testing.T) {
+func TestDiscoverFiles_AlphabeticalOrder(t *testing.T) {
 	dir := t.TempDir()
 
 	createFile(t, dir, "z-config.yaml", "a: 1")
 	createFile(t, dir, "a-deploy.yaml", "b: 2")
 	createFile(t, dir, "m-service.yml", "c: 3")
 
-	files, err := DiscoverYAMLFiles(dir)
+	files, err := DiscoverFiles(dir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -115,17 +114,17 @@ func TestDiscoverYAMLFiles_AlphabeticalOrder(t *testing.T) {
 	}
 }
 
-func TestDiscoverYAMLFiles_SkipsSubdirectories(t *testing.T) {
+func TestDiscoverFiles_SkipsSubdirectories(t *testing.T) {
 	dir := t.TempDir()
 
 	createFile(t, dir, "top.yaml", "key: value")
-	// Create a subdirectory with a YAML-like name
-	subdir := filepath.Join(dir, "nested.yaml")
+	// Create a subdirectory — should be skipped
+	subdir := filepath.Join(dir, "nested")
 	if err := os.Mkdir(subdir, 0o755); err != nil {
 		t.Fatal(err)
 	}
 
-	files, err := DiscoverYAMLFiles(dir)
+	files, err := DiscoverFiles(dir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -135,18 +134,18 @@ func TestDiscoverYAMLFiles_SkipsSubdirectories(t *testing.T) {
 	}
 }
 
-func TestDiscoverYAMLFiles_NonExistentDirectory(t *testing.T) {
-	_, err := DiscoverYAMLFiles("/nonexistent/path")
+func TestDiscoverFiles_NonExistentDirectory(t *testing.T) {
+	_, err := DiscoverFiles("/nonexistent/path")
 	if err == nil {
 		t.Error("expected error for non-existent directory")
 	}
 }
 
-func TestDiscoverYAMLFiles_ReturnsBaseNamesOnly(t *testing.T) {
+func TestDiscoverFiles_ReturnsBaseNamesOnly(t *testing.T) {
 	dir := t.TempDir()
 	createFile(t, dir, "deploy.yaml", "key: value")
 
-	files, err := DiscoverYAMLFiles(dir)
+	files, err := DiscoverFiles(dir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -160,21 +159,20 @@ func TestDiscoverYAMLFiles_ReturnsBaseNamesOnly(t *testing.T) {
 	}
 }
 
-func TestDiscoverYAMLFiles_OnlyYamlAndYmlExtensions(t *testing.T) {
+func TestDiscoverFiles_ExtensionlessKubectlFiles(t *testing.T) {
 	dir := t.TempDir()
 
-	createFile(t, dir, "good.yaml", "a: 1")
-	createFile(t, dir, "good.yml", "b: 2")
-	createFile(t, dir, "bad.YAML", "c: 3")  // uppercase - should be skipped
-	createFile(t, dir, "bad.YML", "d: 4")   // uppercase - should be skipped
-	createFile(t, dir, "bad.yamlx", "e: 5") // wrong extension
+	// Simulate kubectl temp file naming (no .yaml/.yml extension)
+	createFile(t, dir, "apps.v1.Deployment.default.nginx", "apiVersion: apps/v1\nkind: Deployment")
+	createFile(t, dir, "v1.Service.default.nginx", "apiVersion: v1\nkind: Service")
+	createFile(t, dir, "regular.yaml", "key: value")
 
-	files, err := DiscoverYAMLFiles(dir)
+	files, err := DiscoverFiles(dir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	expected := []string{"good.yaml", "good.yml"}
+	expected := []string{"apps.v1.Deployment.default.nginx", "regular.yaml", "v1.Service.default.nginx"}
 	if len(files) != len(expected) {
 		t.Fatalf("expected %d files, got %d: %v", len(expected), len(files), files)
 	}

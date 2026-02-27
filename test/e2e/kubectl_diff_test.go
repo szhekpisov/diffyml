@@ -94,8 +94,8 @@ func TestKubectlDiffWithDiffyml(t *testing.T) {
 
 	buildCmd := exec.Command("go", "build", "-o", diffymlBin, ".")
 	buildCmd.Dir = projectRoot
-	if out, err := buildCmd.CombinedOutput(); err != nil {
-		t.Fatalf("failed to build diffyml: %v\n%s", err, out)
+	if out, buildErr := buildCmd.CombinedOutput(); buildErr != nil {
+		t.Fatalf("failed to build diffyml: %v\n%s", buildErr, out)
 	}
 
 	// Create kind cluster with unique name
@@ -103,14 +103,14 @@ func TestKubectlDiffWithDiffyml(t *testing.T) {
 	t.Logf("Creating kind cluster %s...", clusterName)
 
 	createCmd := exec.Command("kind", "create", "cluster", "--name", clusterName, "--wait", "60s")
-	if out, err := createCmd.CombinedOutput(); err != nil {
-		t.Fatalf("failed to create kind cluster: %v\n%s", err, out)
+	if out, createErr := createCmd.CombinedOutput(); createErr != nil {
+		t.Fatalf("failed to create kind cluster: %v\n%s", createErr, out)
 	}
 	t.Cleanup(func() {
 		t.Logf("Deleting kind cluster %s...", clusterName)
 		deleteCmd := exec.Command("kind", "delete", "cluster", "--name", clusterName)
-		if out, err := deleteCmd.CombinedOutput(); err != nil {
-			t.Logf("warning: failed to delete kind cluster: %v\n%s", err, out)
+		if out, deleteErr := deleteCmd.CombinedOutput(); deleteErr != nil {
+			t.Logf("warning: failed to delete kind cluster: %v\n%s", deleteErr, out)
 		}
 	})
 
@@ -142,7 +142,9 @@ func TestKubectlDiffWithDiffyml(t *testing.T) {
 	// and returns stdout, stderr, and exit code.
 	runKubectlDiff := func(t *testing.T, externalDiff string) (stdout, stderr string, exitCode int) {
 		t.Helper()
-		env := append(baseEnv, "KUBECTL_EXTERNAL_DIFF="+externalDiff)
+		env := make([]string, len(baseEnv)+1)
+		copy(env, baseEnv)
+		env[len(baseEnv)] = "KUBECTL_EXTERNAL_DIFF=" + externalDiff
 		diffCmd := exec.Command("kubectl", "diff", "-f", "-")
 		diffCmd.Env = env
 		diffCmd.Stdin = strings.NewReader(modifiedManifest)

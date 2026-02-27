@@ -1969,3 +1969,172 @@ func extractFingerprint(t *testing.T, output string) string {
 	}
 	return parts[1][:end]
 }
+
+// --- OrderedMap.String() tests ---
+
+func TestOrderedMap_String(t *testing.T) {
+	om := NewOrderedMap()
+	om.Keys = append(om.Keys, "name", "image")
+	om.Values["name"] = "web"
+	om.Values["image"] = "nginx:1.21"
+
+	result := om.String()
+	expected := "{name: web, image: nginx:1.21}"
+	if result != expected {
+		t.Errorf("OrderedMap.String() = %q, want %q", result, expected)
+	}
+}
+
+func TestOrderedMap_String_Nested(t *testing.T) {
+	inner := NewOrderedMap()
+	inner.Keys = append(inner.Keys, "port")
+	inner.Values["port"] = 80
+
+	outer := NewOrderedMap()
+	outer.Keys = append(outer.Keys, "name", "spec")
+	outer.Values["name"] = "web"
+	outer.Values["spec"] = inner
+
+	result := fmt.Sprintf("%v", outer)
+	expected := "{name: web, spec: {port: 80}}"
+	if result != expected {
+		t.Errorf("fmt.Sprintf(%%v, nested OrderedMap) = %q, want %q", result, expected)
+	}
+}
+
+func TestOrderedMap_String_Empty(t *testing.T) {
+	om := NewOrderedMap()
+	result := om.String()
+	expected := "{}"
+	if result != expected {
+		t.Errorf("OrderedMap.String() empty = %q, want %q", result, expected)
+	}
+}
+
+func TestOrderedMap_String_PreservesKeyOrder(t *testing.T) {
+	om := NewOrderedMap()
+	om.Keys = append(om.Keys, "z", "a", "m")
+	om.Values["z"] = 1
+	om.Values["a"] = 2
+	om.Values["m"] = 3
+
+	result := om.String()
+	expected := "{z: 1, a: 2, m: 3}"
+	if result != expected {
+		t.Errorf("OrderedMap.String() order = %q, want %q", result, expected)
+	}
+}
+
+// --- Integration: no &{ leak in formatters ---
+
+func TestCompactFormatter_NoRawStructOutput(t *testing.T) {
+	om := NewOrderedMap()
+	om.Keys = append(om.Keys, "name", "image")
+	om.Values["name"] = "web"
+	om.Values["image"] = "nginx:1.21"
+
+	f := &CompactFormatter{}
+	opts := DefaultFormatOptions()
+
+	diffs := []Difference{
+		{Path: "containers[0]", Type: DiffAdded, To: om},
+		{Path: "containers[0]", Type: DiffRemoved, From: om},
+		{Path: "containers[0]", Type: DiffModified, From: om, To: om},
+	}
+
+	output := f.Format(diffs, opts)
+	if strings.Contains(output, "&{") {
+		t.Errorf("compact output contains raw struct &{ — got:\n%s", output)
+	}
+	if !strings.Contains(output, "{name: web, image: nginx:1.21}") {
+		t.Errorf("expected inline YAML in compact output, got:\n%s", output)
+	}
+}
+
+func TestGitHubFormatter_NoRawStructOutput(t *testing.T) {
+	om := NewOrderedMap()
+	om.Keys = append(om.Keys, "name", "image")
+	om.Values["name"] = "web"
+	om.Values["image"] = "nginx:1.21"
+
+	f := &GitHubFormatter{}
+	opts := DefaultFormatOptions()
+
+	diffs := []Difference{
+		{Path: "containers[0]", Type: DiffAdded, To: om},
+		{Path: "containers[0]", Type: DiffRemoved, From: om},
+		{Path: "containers[0]", Type: DiffModified, From: om, To: om},
+	}
+
+	output := f.Format(diffs, opts)
+	if strings.Contains(output, "&{") {
+		t.Errorf("github output contains raw struct &{ — got:\n%s", output)
+	}
+	if !strings.Contains(output, "{name: web, image: nginx:1.21}") {
+		t.Errorf("expected inline YAML in github output, got:\n%s", output)
+	}
+}
+
+func TestGitLabFormatter_NoRawStructOutput(t *testing.T) {
+	om := NewOrderedMap()
+	om.Keys = append(om.Keys, "name", "image")
+	om.Values["name"] = "web"
+	om.Values["image"] = "nginx:1.21"
+
+	f := &GitLabFormatter{}
+	opts := DefaultFormatOptions()
+
+	diffs := []Difference{
+		{Path: "containers[0]", Type: DiffAdded, To: om},
+		{Path: "containers[0]", Type: DiffRemoved, From: om},
+		{Path: "containers[0]", Type: DiffModified, From: om, To: om},
+	}
+
+	output := f.Format(diffs, opts)
+	if strings.Contains(output, "&{") {
+		t.Errorf("gitlab output contains raw struct &{ — got:\n%s", output)
+	}
+	if !strings.Contains(output, "{name: web, image: nginx:1.21}") {
+		t.Errorf("expected inline YAML in gitlab output, got:\n%s", output)
+	}
+}
+
+func TestGiteaFormatter_NoRawStructOutput(t *testing.T) {
+	om := NewOrderedMap()
+	om.Keys = append(om.Keys, "name", "image")
+	om.Values["name"] = "web"
+	om.Values["image"] = "nginx:1.21"
+
+	f := &GiteaFormatter{}
+	opts := DefaultFormatOptions()
+
+	diffs := []Difference{
+		{Path: "containers[0]", Type: DiffAdded, To: om},
+	}
+
+	output := f.Format(diffs, opts)
+	if strings.Contains(output, "&{") {
+		t.Errorf("gitea output contains raw struct &{ — got:\n%s", output)
+	}
+}
+
+func TestCompactFormatter_NoTableStyle_NoRawStructOutput(t *testing.T) {
+	om := NewOrderedMap()
+	om.Keys = append(om.Keys, "name")
+	om.Values["name"] = "web"
+
+	f := &CompactFormatter{}
+	opts := DefaultFormatOptions()
+	opts.NoTableStyle = true
+
+	diffs := []Difference{
+		{Path: "containers[0]", Type: DiffAdded, To: om},
+		{Path: "containers[0]", Type: DiffRemoved, From: om},
+		{Path: "containers[0]", Type: DiffModified, From: om, To: om},
+	}
+
+	output := f.Format(diffs, opts)
+	if strings.Contains(output, "&{") {
+		t.Errorf("compact NoTableStyle output contains raw struct &{ — got:\n%s", output)
+	}
+}

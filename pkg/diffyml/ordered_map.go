@@ -8,7 +8,9 @@ package diffyml
 
 import (
 	"bytes"
+	"fmt"
 	"io"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -25,6 +27,16 @@ func NewOrderedMap() *OrderedMap {
 		Keys:   nil,
 		Values: make(map[string]interface{}),
 	}
+}
+
+// String implements fmt.Stringer so that %v produces readable inline YAML
+// instead of Go's default struct representation.
+func (m *OrderedMap) String() string {
+	parts := make([]string, 0, len(m.Keys))
+	for _, key := range m.Keys {
+		parts = append(parts, fmt.Sprintf("%s: %v", key, m.Values[key]))
+	}
+	return "{" + strings.Join(parts, ", ") + "}"
 }
 
 // ParseWithOrder parses YAML content into documents using OrderedMap for mappings

@@ -2951,3 +2951,115 @@ func TestParseBareDocIndex(t *testing.T) {
 		}
 	}
 }
+
+// --- formatDetailedValue with complex types ---
+
+func TestFormatDetailedValue_OrderedMap(t *testing.T) {
+	om := NewOrderedMap()
+	om.Keys = append(om.Keys, "name", "image")
+	om.Values["name"] = "web"
+	om.Values["image"] = "nginx:1.21"
+
+	result := formatDetailedValue(om)
+	expected := "{name: web, image: nginx:1.21}"
+	if result != expected {
+		t.Errorf("formatDetailedValue(OrderedMap) = %q, want %q", result, expected)
+	}
+}
+
+func TestFormatDetailedValue_Nil(t *testing.T) {
+	result := formatDetailedValue(nil)
+	if result != "<nil>" {
+		t.Errorf("formatDetailedValue(nil) = %q, want %q", result, "<nil>")
+	}
+}
+
+func TestFormatDetailedValue_Scalar(t *testing.T) {
+	result := formatDetailedValue("hello")
+	if result != "hello" {
+		t.Errorf("formatDetailedValue(string) = %q, want %q", result, "hello")
+	}
+}
+
+func TestFormatDetailedValue_Slice(t *testing.T) {
+	s := []interface{}{"a", "b"}
+	result := formatDetailedValue(s)
+	expected := "[a b]"
+	if result != expected {
+		t.Errorf("formatDetailedValue(slice) = %q, want %q", result, expected)
+	}
+}
+
+func TestDetailedFormatter_NoRawStructOutput(t *testing.T) {
+	om := NewOrderedMap()
+	om.Keys = append(om.Keys, "name", "image")
+	om.Values["name"] = "web"
+	om.Values["image"] = "nginx:1.21"
+
+	f := &DetailedFormatter{}
+	opts := DefaultFormatOptions()
+
+	diffs := []Difference{
+		{Path: "containers[0]", Type: DiffAdded, To: om},
+		{Path: "containers[1]", Type: DiffRemoved, From: om},
+	}
+
+	output := f.Format(diffs, opts)
+	if strings.Contains(output, "&{") {
+		t.Errorf("detailed output contains raw struct &{ — got:\n%s", output)
+	}
+}
+
+func TestDetailedFormatter_ModifiedWithOrderedMap(t *testing.T) {
+	old := NewOrderedMap()
+	old.Keys = append(old.Keys, "replicas")
+	old.Values["replicas"] = 1
+
+	new := NewOrderedMap()
+	new.Keys = append(new.Keys, "replicas")
+	new.Values["replicas"] = 3
+
+	f := &DetailedFormatter{}
+	opts := DefaultFormatOptions()
+
+	diffs := []Difference{
+		{Path: "spec", Type: DiffModified, From: old, To: new},
+	}
+
+	output := f.Format(diffs, opts)
+	if strings.Contains(output, "&{") {
+		t.Errorf("detailed modified output contains raw struct &{ — got:\n%s", output)
+	}
+}
+
+func TestDetailedFormatter_NestedListOfMaps(t *testing.T) {
+	item1 := NewOrderedMap()
+	item1.Keys = append(item1.Keys, "name", "image")
+	item1.Values["name"] = "web"
+	item1.Values["image"] = "nginx"
+
+	item2 := NewOrderedMap()
+	item2.Keys = append(item2.Keys, "name", "image")
+	item2.Values["name"] = "api"
+	item2.Values["image"] = "node"
+
+	list := []interface{}{item1, item2}
+
+	f := &DetailedFormatter{}
+	opts := DefaultFormatOptions()
+
+	diffs := []Difference{
+		{Path: "containers[0]", Type: DiffAdded, To: list},
+	}
+
+	output := f.Format(diffs, opts)
+	if strings.Contains(output, "&{") {
+		t.Errorf("detailed nested list output contains raw struct &{ — got:\n%s", output)
+	}
+	if !strings.Contains(output, "name: web") {
+		t.Errorf("expected 'name: web' in unfolded output, got:\n%s", output)
+	}
+	if !strings.Contains(output, "name: api") {
+		t.Errorf("expected 'name: api' in unfolded output, got:\n%s", output)
+	}
+}

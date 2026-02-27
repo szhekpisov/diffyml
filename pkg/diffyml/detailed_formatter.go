@@ -241,10 +241,38 @@ func (f *DetailedFormatter) renderEntryValue(sb *strings.Builder, val interface{
 		}
 	case []interface{}:
 		for _, item := range v {
-			f.writeColoredLine(sb, fmt.Sprintf("%s- %v", pad, formatDetailedValue(item)), colorCode, opts)
+			f.renderListItem(sb, item, indent, colorCode, opts)
 		}
 	default:
 		f.writeColoredLine(sb, fmt.Sprintf("%s- %v", pad, formatDetailedValue(val)), colorCode, opts)
+	}
+}
+
+// renderListItem renders a single list item. Maps unfold into block YAML with "- " prefix;
+// scalars render as "- value".
+func (f *DetailedFormatter) renderListItem(sb *strings.Builder, item interface{}, indent int, colorCode string, opts *FormatOptions) {
+	pad := strings.Repeat(" ", indent)
+	switch m := item.(type) {
+	case *OrderedMap:
+		for i, key := range m.Keys {
+			if i == 0 {
+				f.renderFirstKeyValueYAML(sb, key, m.Values[key], indent, colorCode, opts)
+			} else {
+				f.renderKeyValueYAML(sb, key, m.Values[key], indent+2, colorCode, opts)
+			}
+		}
+	case map[string]interface{}:
+		first := true
+		for key, value := range m {
+			if first {
+				f.renderFirstKeyValueYAML(sb, key, value, indent, colorCode, opts)
+				first = false
+			} else {
+				f.renderKeyValueYAML(sb, key, value, indent+2, colorCode, opts)
+			}
+		}
+	default:
+		f.writeColoredLine(sb, fmt.Sprintf("%s- %v", pad, formatDetailedValue(item)), colorCode, opts)
 	}
 }
 
@@ -266,7 +294,7 @@ func (f *DetailedFormatter) renderKeyValueYAML(sb *strings.Builder, key string, 
 	case []interface{}:
 		f.writeColoredLine(sb, fmt.Sprintf("%s%s:", pad, key), colorCode, opts)
 		for _, item := range v {
-			f.writeColoredLine(sb, fmt.Sprintf("%s  - %v", pad, formatDetailedValue(item)), colorCode, opts)
+			f.renderListItem(sb, item, indent+2, colorCode, opts)
 		}
 	default:
 		if str, ok := val.(string); ok && strings.Contains(str, "\n") {
@@ -296,7 +324,7 @@ func (f *DetailedFormatter) renderFirstKeyValueYAML(sb *strings.Builder, key str
 	case []interface{}:
 		f.writeColoredLine(sb, fmt.Sprintf("%s- %s:", pad, key), colorCode, opts)
 		for _, item := range v {
-			f.writeColoredLine(sb, fmt.Sprintf("%s    - %v", pad, formatDetailedValue(item)), colorCode, opts)
+			f.renderListItem(sb, item, indent+4, colorCode, opts)
 		}
 	default:
 		if str, ok := val.(string); ok && strings.Contains(str, "\n") {

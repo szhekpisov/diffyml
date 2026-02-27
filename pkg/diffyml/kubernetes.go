@@ -63,8 +63,9 @@ func IsKubernetesResource(doc interface{}) bool {
 }
 
 // GetK8sResourceIdentifier returns a unique identifier for a Kubernetes resource.
-// Format: "apiVersion:kind:namespace/name" or "apiVersion:kind:name" if no namespace.
-func GetK8sResourceIdentifier(doc interface{}) string {
+// When ignoreApiVersion is false: "apiVersion:kind:namespace/name" or "apiVersion:kind:name".
+// When ignoreApiVersion is true: "kind:namespace/name" or "kind:name".
+func GetK8sResourceIdentifier(doc interface{}, ignoreApiVersion bool) string {
 	if !IsKubernetesResource(doc) {
 		return ""
 	}
@@ -89,6 +90,13 @@ func GetK8sResourceIdentifier(doc interface{}) string {
 		nameVal = getVal(metadata, "generateName")
 	}
 	name := fmt.Sprintf("%v", nameVal)
+
+	if ignoreApiVersion {
+		if namespace := getVal(metadata, "namespace"); namespace != nil {
+			return fmt.Sprintf("%s:%v/%s", kind, namespace, name)
+		}
+		return fmt.Sprintf("%s:%s", kind, name)
+	}
 
 	if namespace := getVal(metadata, "namespace"); namespace != nil {
 		return fmt.Sprintf("%s:%s:%v/%s", apiVersion, kind, namespace, name)
@@ -179,22 +187,25 @@ func isComparableIdentifier(id interface{}) bool {
 
 // matchK8sDocuments matches Kubernetes documents from two slices by their identifiers.
 // Returns a map from 'from' index to 'to' index, and lists of unmatched indices.
-func matchK8sDocuments(from, to []interface{}) (matched map[int]int, unmatchedFrom, unmatchedTo []int) {
+func matchK8sDocuments(from, to []interface{}, opts *Options) (matched map[int]int, unmatchedFrom, unmatchedTo []int) {
 	matched = make(map[int]int)
+	ignoreApiVersion := opts != nil && opts.IgnoreApiVersion
 
 	// Build index of 'to' documents by K8s identifier
 	toIndex := make(map[string]int)
 	toMatched := make([]bool, len(to))
 
 	for i, doc := range to {
-		if id := GetK8sResourceIdentifier(doc); id != "" {
-			toIndex[id] = i
+		if id := GetK8sResourceIdentifier(doc, ignoreApiVersion); id != "" {
+			if _, exists := toIndex[id]; !exists {
+				toIndex[id] = i
+			}
 		}
 	}
 
 	// Match 'from' documents to 'to' documents
 	for i, doc := range from {
-		id := GetK8sResourceIdentifier(doc)
+		id := GetK8sResourceIdentifier(doc, ignoreApiVersion)
 		if id != "" {
 			if toIdx, ok := toIndex[id]; ok {
 				matched[i] = toIdx
@@ -219,7 +230,7 @@ func matchK8sDocuments(from, to []interface{}) (matched map[int]int, unmatchedFr
 func compareK8sDocs(from, to []interface{}, opts *Options) []Difference {
 	var diffs []Difference
 
-	matched, unmatchedFrom, unmatchedTo := matchK8sDocuments(from, to)
+	matched, unmatchedFrom, unmatchedTo := matchK8sDocuments(from, to, opts)
 
 	// Compare matched documents
 	for fromIdx, toIdx := range matched {

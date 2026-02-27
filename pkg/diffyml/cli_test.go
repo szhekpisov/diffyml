@@ -39,6 +39,9 @@ func TestCLIConfig_Defaults(t *testing.T) {
 	if cfg.MultiLineContextLines != 4 {
 		t.Errorf("expected default MultiLineContextLines=4, got %d", cfg.MultiLineContextLines)
 	}
+	if cfg.IgnoreApiVersion {
+		t.Error("expected default IgnoreApiVersion=false")
+	}
 }
 
 func TestCLIConfig_ParseArgs_TwoFiles(t *testing.T) {
@@ -2521,5 +2524,46 @@ func TestRun_WithSummary_BriefNoDiffs_StandardOutput(t *testing.T) {
 	// Standard brief output should be shown (no diffs, so formatter handles it)
 	if strings.Contains(stdout.String(), "AI Summary:") {
 		t.Error("should not show AI Summary when there are no diffs")
+	}
+}
+
+func TestCLIConfig_ParseArgs_IgnoreApiVersion(t *testing.T) {
+	cfg := NewCLIConfig()
+	args := []string{"--ignore-api-version", "from.yaml", "to.yaml"}
+
+	err := cfg.ParseArgs(args)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !cfg.IgnoreApiVersion {
+		t.Error("expected IgnoreApiVersion=true after parsing --ignore-api-version")
+	}
+}
+
+func TestCLIConfig_ToCompareOptions_IgnoreApiVersion(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.IgnoreApiVersion = true
+
+	opts := cfg.ToCompareOptions()
+	if !opts.IgnoreApiVersion {
+		t.Error("expected Options.IgnoreApiVersion=true when CLIConfig.IgnoreApiVersion=true")
+	}
+}
+
+func TestCLIConfig_ToCompareOptions_IgnoreApiVersion_Default(t *testing.T) {
+	cfg := NewCLIConfig()
+
+	opts := cfg.ToCompareOptions()
+	if opts.IgnoreApiVersion {
+		t.Error("expected Options.IgnoreApiVersion=false by default")
+	}
+}
+
+func TestCLIConfig_Usage_IncludesIgnoreApiVersion(t *testing.T) {
+	cfg := NewCLIConfig()
+	usage := cfg.Usage()
+
+	if !strings.Contains(usage, "--ignore-api-version") {
+		t.Error("expected usage output to contain --ignore-api-version flag")
 	}
 }

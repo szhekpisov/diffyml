@@ -1969,3 +1969,53 @@ func extractFingerprint(t *testing.T, output string) string {
 	}
 	return parts[1][:end]
 }
+
+// --- Mutation testing: formatter.go compact header counts ---
+
+func TestCompactFormatter_HeaderCounts(t *testing.T) {
+	diffs := []Difference{
+		{Path: "a", Type: DiffAdded, To: "x"},
+		{Path: "b", Type: DiffAdded, To: "y"},
+		{Path: "c", Type: DiffRemoved, From: "z"},
+		{Path: "d", Type: DiffModified, From: "old", To: "new"},
+	}
+
+	f := &CompactFormatter{}
+	opts := &FormatOptions{Color: false}
+	output := f.Format(diffs, opts)
+
+	// Use exact format to distinguish "N category" from "-N category" (INCREMENT_DECREMENT mutation)
+	if !strings.Contains(output, "(2 added,") {
+		t.Errorf("expected '(2 added,' in header, got: %s", output)
+	}
+	if !strings.Contains(output, " 1 removed,") {
+		t.Errorf("expected ' 1 removed,' in header, got: %s", output)
+	}
+	if !strings.Contains(output, " 1 modified)") {
+		t.Errorf("expected ' 1 modified)' in header, got: %s", output)
+	}
+}
+
+// --- Mutation testing: formatter.go brief formatter zero categories ---
+
+func TestBriefFormatter_ZeroCategories(t *testing.T) {
+	// Only-added diffs → output should have no "removed" or "modified"
+	diffs := []Difference{
+		{Path: "a", Type: DiffAdded, To: "x"},
+		{Path: "b", Type: DiffAdded, To: "y"},
+	}
+
+	f := &BriefFormatter{}
+	output := f.Format(diffs, nil)
+
+	// Check exact string to catch INCREMENT_DECREMENT mutations (-2 vs 2)
+	if !strings.HasPrefix(output, "2 added") {
+		t.Errorf("expected output starting with '2 added', got: %s", output)
+	}
+	if strings.Contains(output, "removed") {
+		t.Errorf("output should not contain 'removed' when there are none, got: %s", output)
+	}
+	if strings.Contains(output, "modified") {
+		t.Errorf("output should not contain 'modified' when there are none, got: %s", output)
+	}
+}

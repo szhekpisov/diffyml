@@ -198,6 +198,25 @@ func TestLoadContent_RemoteError(t *testing.T) {
 	}
 }
 
+// --- Mutation testing: remote.go ---
+
+func TestFetchURL_HTTP300Rejected(t *testing.T) {
+	// remote.go:52 — HTTP 300 (not in 200-299 range) should be rejected
+	// If >= 300 mutated to > 300, status 300 would slip through
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(300)
+	}))
+	defer server.Close()
+
+	_, err := fetchURL(server.URL)
+	if err == nil {
+		t.Fatal("fetchURL with HTTP 300 should return error")
+	}
+	if !strings.Contains(err.Error(), "300") {
+		t.Errorf("error should contain status code 300, got: %v", err)
+	}
+}
+
 // writeTestFile is a helper to create test files.
 func writeTestFile(path string, content []byte) error {
 	return os.WriteFile(path, content, 0600)

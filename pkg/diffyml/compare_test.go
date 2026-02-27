@@ -21,6 +21,7 @@
 package diffyml_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/szhekpisov/diffyml/pkg/diffyml"
@@ -1162,5 +1163,211 @@ func TestCompare_MixedIdentifierAndNonIdentifier_ReportsRemoval(t *testing.T) {
 	}
 	if diffs[0].Path != "items.1" {
 		t.Fatalf("expected diff path items.1, got %q", diffs[0].Path)
+	}
+}
+
+// --- Mutation testing: comparator.go ---
+
+func TestCompare_MultiDoc_From1To2(t *testing.T) {
+	from := yml(`name: single`)
+	to := yml(`name: first
+---
+name: second`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	// Should have at least 1 diff (the added second document)
+	hasAdded := false
+	for _, d := range diffs {
+		if d.Type == diffyml.DiffAdded {
+			hasAdded = true
+		}
+	}
+	if !hasAdded {
+		t.Error("expected DiffAdded for second document in to")
+	}
+}
+
+func TestCompare_MultiDoc_From2To1(t *testing.T) {
+	from := yml(`name: first
+---
+name: second`)
+	to := yml(`name: single`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	// Second document in from has no counterpart in to → DiffModified (from=doc, to=nil)
+	hasSecondDocDiff := false
+	for _, d := range diffs {
+		if strings.HasPrefix(d.Path, "[1]") {
+			hasSecondDocDiff = true
+		}
+	}
+	if !hasSecondDocDiff {
+		t.Error("expected diff for second document [1] in from")
+	}
+}
+
+func TestCompare_IgnoreValueChanges_ValueToNull(t *testing.T) {
+	from := yml(`key: val`)
+	to := yml(`key: ~`)
+
+	diffs, err := compare(from, to, &diffyml.Options{IgnoreValueChanges: true})
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if len(diffs) != 0 {
+		t.Errorf("expected 0 diffs with IgnoreValueChanges when value → null, got %d", len(diffs))
+	}
+}
+
+func TestCompare_IgnoreValueChanges_TypeMismatch(t *testing.T) {
+	from := yml(`port: 80`)
+	to := yml(`port: "80"`)
+
+	diffs, err := compare(from, to, &diffyml.Options{IgnoreValueChanges: true})
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if len(diffs) != 0 {
+		t.Errorf("expected 0 diffs with IgnoreValueChanges on type mismatch, got %d", len(diffs))
+	}
+}
+
+func TestCompare_HeterogeneousSingleKeyList(t *testing.T) {
+	// Items with same single-key structure should use positional compare (homogeneous)
+	from := yml(`rules:
+  - port: 80
+  - port: 443`)
+	to := yml(`rules:
+  - port: 80
+  - port: 8443`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if len(diffs) != 1 {
+		t.Fatalf("expected 1 diff for positional compare, got %d", len(diffs))
+	}
+	if diffs[0].Type != diffyml.DiffModified {
+		t.Errorf("expected DiffModified, got %v", diffs[0].Type)
+	}
+}
+
+func TestCompare_UnorderedListWithNull(t *testing.T) {
+	from := yml(`items: [~, a]`)
+	to := yml(`items: [a]`)
+
+	diffs, err := compare(from, to, &diffyml.Options{IgnoreOrderChanges: true})
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	// null was removed
+	hasRemoved := false
+	for _, d := range diffs {
+		if d.Type == diffyml.DiffRemoved && d.From == nil {
+			hasRemoved = true
+		}
+	}
+	if !hasRemoved {
+		t.Error("expected DiffRemoved for null item")
+	}
+}
+
+// --- Mutation testing: diffyml.go sort order ---
+
+func TestCompare_DiffOrderMatchesDocumentOrder(t *testing.T) {
+	from := yml(`z: 1
+a: 2
+m: 3`)
+	to := yml(`z: 10
+a: 20
+m: 30`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if len(diffs) != 3 {
+		t.Fatalf("expected 3 diffs, got %d", len(diffs))
+	}
+	// Diffs should follow source order: z, a, m — NOT alphabetical a, m, z
+	if diffs[0].Path != "z" {
+		t.Errorf("expected first diff path 'z', got %q", diffs[0].Path)
+	}
+	if diffs[1].Path != "a" {
+		t.Errorf("expected second diff path 'a', got %q", diffs[1].Path)
+	}
+	if diffs[2].Path != "m" {
+		t.Errorf("expected third diff path 'm', got %q", diffs[2].Path)
+	}
+}
+
+func TestCompare_ListEntryAtIndex9(t *testing.T) {
+	from := yml(`items: [a,b,c,d,e,f,g,h,i,j]`)
+	to := yml(`items: [a,b,c,d,e,f,g,h,i,CHANGED]`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if len(diffs) != 1 {
+		t.Fatalf("expected 1 diff, got %d", len(diffs))
+	}
+	if diffs[0].Path != "items.9" {
+		t.Errorf("expected path 'items.9', got %q", diffs[0].Path)
+	}
+}
+
+func TestCompare_RootAdditionsVsNestedDiffsSort(t *testing.T) {
+	from := yml(`existing:
+  nested: value`)
+	to := yml(`existing:
+  nested: changed
+newroot: added`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if len(diffs) < 2 {
+		t.Fatalf("expected at least 2 diffs, got %d", len(diffs))
+	}
+	// Root-level addition should come first
+	if diffs[0].Type != diffyml.DiffAdded || diffs[0].Path != "newroot" {
+		t.Errorf("expected first diff to be root-level addition 'newroot', got type=%v path=%q",
+			diffs[0].Type, diffs[0].Path)
+	}
+}
+
+func TestCompare_SortFallbackBehaviors(t *testing.T) {
+	// Test depth sort and alphabetical tiebreak within same root component
+	from := yml(`root:
+  shallow: 1
+  deep:
+    nested: 2`)
+	to := yml(`root:
+  shallow: 10
+  deep:
+    nested: 20`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if len(diffs) != 2 {
+		t.Fatalf("expected 2 diffs, got %d", len(diffs))
+	}
+	// shallow (depth 1) should come before deep.nested (depth 2) in source order
+	if diffs[0].Path != "root.shallow" {
+		t.Errorf("expected first diff 'root.shallow', got %q", diffs[0].Path)
+	}
+	if diffs[1].Path != "root.deep.nested" {
+		t.Errorf("expected second diff 'root.deep.nested', got %q", diffs[1].Path)
 	}
 }

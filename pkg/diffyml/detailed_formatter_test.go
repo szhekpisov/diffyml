@@ -2951,3 +2951,96 @@ func TestParseBareDocIndex(t *testing.T) {
 		}
 	}
 }
+
+// --- Mutation testing: detailed_formatter.go ---
+
+func TestDetailedFormatter_NestedMapIndentation(t *testing.T) {
+	// Use map[string]interface{} (not OrderedMap) to exercise line 264 specifically
+	innerMap := map[string]interface{}{"inner": "value"}
+	outerMap := map[string]interface{}{"outer": innerMap}
+
+	diffs := []Difference{
+		{Path: "config", Type: DiffAdded, To: outerMap},
+	}
+
+	f := &DetailedFormatter{}
+	opts := &FormatOptions{Color: false}
+	output := f.Format(diffs, opts)
+
+	// Check that the nested map has proper indentation
+	lines := strings.Split(output, "\n")
+	outerIndent := -1
+	innerIndent := -1
+	for _, line := range lines {
+		trimmed := strings.TrimLeft(line, " ")
+		if strings.HasPrefix(trimmed, "outer:") {
+			outerIndent = len(line) - len(trimmed)
+		}
+		if strings.HasPrefix(trimmed, "inner:") {
+			innerIndent = len(line) - len(trimmed)
+		}
+	}
+	if outerIndent < 0 || innerIndent < 0 {
+		t.Fatalf("could not find outer (%d) or inner (%d) indent in output:\n%s", outerIndent, innerIndent, output)
+	}
+	// Indent difference must be exactly 2 (kills indent+2 → indent*2 or indent-2 mutations)
+	delta := innerIndent - outerIndent
+	if delta != 2 {
+		t.Errorf("inner key indent (%d) - outer key indent (%d) = %d, want exactly 2", innerIndent, outerIndent, delta)
+	}
+}
+
+func TestDetailedFormatter_ContextLinesZero(t *testing.T) {
+	// With ContextLines=0, no context lines should be shown around changes
+	fromStr := "line1\nline2\nline3\nCHANGED\nline5\nline6\nline7"
+	toStr := "line1\nline2\nline3\nNEW\nline5\nline6\nline7"
+
+	diffs := []Difference{
+		{Path: "text", Type: DiffModified, From: fromStr, To: toStr},
+	}
+
+	f := &DetailedFormatter{}
+	opts := &FormatOptions{Color: false, ContextLines: 0}
+	output := f.Format(diffs, opts)
+
+	// With zero context lines, there should be a collapsed message and no context
+	if !strings.Contains(output, "unchanged]") {
+		t.Errorf("expected collapsed message with ContextLines=0, got: %s", output)
+	}
+}
+
+func TestDetailedFormatter_CollapsedLineCount(t *testing.T) {
+	// Create a multiline diff where many lines are unchanged
+	var fromLines, toLines []string
+	for i := 0; i < 20; i++ {
+		fromLines = append(fromLines, "unchanged line")
+		toLines = append(toLines, "unchanged line")
+	}
+	fromLines = append(fromLines, "CHANGED FROM")
+	toLines = append(toLines, "CHANGED TO")
+	for i := 0; i < 20; i++ {
+		fromLines = append(fromLines, "more unchanged")
+		toLines = append(toLines, "more unchanged")
+	}
+
+	fromStr := strings.Join(fromLines, "\n")
+	toStr := strings.Join(toLines, "\n")
+
+	diffs := []Difference{
+		{Path: "data", Type: DiffModified, From: fromStr, To: toStr},
+	}
+
+	f := &DetailedFormatter{}
+	// Use ContextLines=2 so most unchanged lines are collapsed
+	opts := &FormatOptions{Color: false, ContextLines: 2}
+	output := f.Format(diffs, opts)
+
+	// Collapsed message must contain exact positive count (kills collapsed++ → collapsed-- mutation)
+	if !strings.Contains(output, "[18 lines unchanged]") {
+		t.Errorf("expected exactly '[18 lines unchanged]' in output, got:\n%s", output)
+	}
+	// Ensure no negative counts appear
+	if strings.Contains(output, "[-") {
+		t.Errorf("collapsed line count should not be negative, got:\n%s", output)
+	}
+}

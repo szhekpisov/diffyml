@@ -451,6 +451,115 @@ func TestSummarize_NoTextContentBlock(t *testing.T) {
 	}
 }
 
+// --- Mutation testing: summarizer.go ---
+
+func TestNewSummarizerWithClient_CustomModelPreserved(t *testing.T) {
+	// summarizer.go:60 — custom model should be preserved, not replaced by default
+	mock := &mockHTTPDoer{statusCode: 200, body: `{"content":[{"type":"text","text":"ok"}]}`}
+	s := NewSummarizerWithClient("my-custom-model", "test-key", mock)
+	if s.model != "my-custom-model" {
+		t.Errorf("NewSummarizerWithClient model = %q, want %q", s.model, "my-custom-model")
+	}
+}
+
+func TestNewSummarizerWithClient_EmptyModelDefault(t *testing.T) {
+	// summarizer.go:60 — empty model should be replaced by default
+	mock := &mockHTTPDoer{statusCode: 200, body: `{"content":[{"type":"text","text":"ok"}]}`}
+	s := NewSummarizerWithClient("", "test-key", mock)
+	if s.model != defaultModel {
+		t.Errorf("NewSummarizerWithClient empty model = %q, want %q", s.model, defaultModel)
+	}
+}
+
+func TestSummarize_ServerError500_IncludesMessage(t *testing.T) {
+	// summarizer.go:152 — error message from API body should be included in error
+	mock := &mockHTTPDoer{
+		statusCode: 500,
+		body:       `{"type":"error","error":{"type":"api_error","message":"internal error"}}`,
+	}
+	s := NewSummarizerWithClient("test-model", "test-key", mock)
+
+	groups := []DiffGroup{
+		{FilePath: "f.yaml", Diffs: []Difference{{Path: "a", Type: DiffAdded, To: "v"}}},
+	}
+
+	_, err := s.Summarize(context.Background(), groups)
+	if err == nil {
+		t.Fatal("Summarize() expected error for 500")
+	}
+	// Must include the specific message, not just "server error"
+	if !strings.Contains(err.Error(), "internal error") {
+		t.Errorf("error should contain 'internal error' from API body, got: %v", err)
+	}
+}
+
+func TestBuildPrompt_SingleOversizedGroup(t *testing.T) {
+	// summarizer.go:215 — single oversized group should still be included
+	// (groupsWritten > 0 condition means first group is never truncated)
+	var diffs []Difference
+	for i := 0; i < 500; i++ {
+		diffs = append(diffs, Difference{
+			Path: strings.Repeat("very.long.path.", 10) + "key",
+			Type: DiffModified,
+			From: strings.Repeat("old-value-", 20),
+			To:   strings.Repeat("new-value-", 20),
+		})
+	}
+
+	groups := []DiffGroup{
+		{FilePath: "single-big.yaml", Diffs: diffs},
+	}
+
+	got := buildPrompt(groups)
+
+	// The single group must be included even if it exceeds maxPromptLen
+	if !strings.Contains(got, "File: single-big.yaml") {
+		t.Error("single oversized group should still be included in prompt")
+	}
+	// Should NOT contain truncation message since it's the only group
+	if strings.Contains(got, "truncated") {
+		t.Error("single oversized group should not trigger truncation")
+	}
+}
+
+func TestBuildPrompt_TruncationRemainingCount(t *testing.T) {
+	// summarizer.go:220 — remaining file count must be correct
+	var bigDiffs []Difference
+	for i := 0; i < 200; i++ {
+		bigDiffs = append(bigDiffs, Difference{
+			Path: strings.Repeat("path.", 10) + "key",
+			Type: DiffModified,
+			From: strings.Repeat("a", 50),
+			To:   strings.Repeat("b", 50),
+		})
+	}
+
+	groups := []DiffGroup{
+		{FilePath: "file1.yaml", Diffs: bigDiffs},
+		{FilePath: "file2.yaml", Diffs: []Difference{{Path: "x", Type: DiffAdded, To: "v"}}},
+		{FilePath: "file3.yaml", Diffs: []Difference{{Path: "y", Type: DiffAdded, To: "w"}}},
+		{FilePath: "file4.yaml", Diffs: []Difference{{Path: "z", Type: DiffAdded, To: "u"}}},
+	}
+
+	got := buildPrompt(groups)
+
+	// file1 should be included (first group always is)
+	if !strings.Contains(got, "File: file1.yaml") {
+		t.Error("first group should always be included")
+	}
+
+	// If truncated, remaining count should be correct (3 files with correct diff counts)
+	if strings.Contains(got, "truncated") {
+		// Remaining should be 3 files (file2, file3, file4) with 3 total changes
+		if !strings.Contains(got, "3 more files") {
+			t.Errorf("truncation message should say '3 more files', got: %s", got)
+		}
+		if !strings.Contains(got, "3 more changes") {
+			t.Errorf("truncation message should say '3 more changes', got: %s", got)
+		}
+	}
+}
+
 func TestSummarize_APIKeyNotInError(t *testing.T) {
 	mock := &mockHTTPDoer{
 		statusCode: 401,

@@ -2024,6 +2024,36 @@ func TestRunDirectory_WithSummary_MultipleFiles_SingleSummary(t *testing.T) {
 	}
 }
 
+// --- Mutation testing: directory.go ---
+
+func TestRunDirectory_StructuredFormatter_ZeroDiffs_ExitCode(t *testing.T) {
+	// directory.go:362 — when there are zero diffs with a structured formatter
+	// and SetExitCode, exit code should be 0 and no summary should appear
+	cfg := NewCLIConfig()
+	cfg.Output = "github"
+	cfg.SetExitCode = true
+	cfg.Summary = true // summary enabled but should NOT trigger with 0 diffs
+	cfg.Color = "never"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	// Identical files → zero diffs
+	rc.FilePairs = map[string][2][]byte{
+		"same.yaml": {[]byte("key: val\n"), []byte("key: val\n")},
+	}
+
+	result := runDirectory(cfg, rc, "", "")
+
+	if result.Code != 0 {
+		t.Errorf("expected exit code 0 for identical files, got %d", result.Code)
+	}
+	if strings.Contains(stdout.String(), "AI Summary:") {
+		t.Error("no AI Summary should appear when there are zero diffs")
+	}
+}
+
 func TestRunDirectory_WithSummary_Gitea_AppendsSummary(t *testing.T) {
 	t.Setenv("ANTHROPIC_API_KEY", "test-key")
 

@@ -1,4 +1,4 @@
-.PHONY: build coverage check-coverage bench bench-cpu bench-mem bench-compare govulncheck golangci-lint security test fmt lint vet ci fixture changelog fuzz fuzz-long
+.PHONY: build coverage check-coverage bench bench-cpu bench-mem bench-compare govulncheck golangci-lint security test e2e fmt lint vet ci fixture changelog fuzz fuzz-long
 
 BIN = /tmp/diffyml-dev
 
@@ -65,6 +65,9 @@ security: govulncheck golangci-lint
 
 test:
 	go test ./...
+
+e2e: build
+	go test -v -timeout 120s ./test/e2e/
 
 fmt:
 	gofmt -l -w .

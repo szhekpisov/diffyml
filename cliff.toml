@@ -56,6 +56,7 @@ conventional_commits = true
 filter_unconventional = true
 split_commits = false
 commit_parsers = [
+  { field = "breaking", pattern = "true", group = "<!-- 00 -->Breaking Changes" },
   { message = "^feat", group = "<!-- 0 -->Added" },
   { message = "^fix|^bug", group = "<!-- 1 -->Fixed" },
   { message = "^docs: update CHANGELOG", skip = true },

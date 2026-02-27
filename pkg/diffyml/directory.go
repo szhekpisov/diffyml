@@ -26,11 +26,14 @@ func IsDirectory(path string) bool {
 	return info.IsDir()
 }
 
-// DiscoverYAMLFiles returns sorted filenames of .yaml/.yml files
+// DiscoverFiles returns sorted filenames of all regular files
 // in the given directory (non-recursive).
 // Returns base names only (not full paths), sorted alphabetically.
-// Skips subdirectories, symlinks, and non-YAML files silently.
-func DiscoverYAMLFiles(dir string) ([]string, error) {
+// Skips subdirectories and symlinks silently.
+// All regular files are included regardless of extension, so that
+// kubectl temp files (e.g. "apps.v1.Deployment.default.nginx") are
+// discovered when diffyml is used as KUBECTL_EXTERNAL_DIFF.
+func DiscoverFiles(dir string) ([]string, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, err
@@ -41,10 +44,7 @@ func DiscoverYAMLFiles(dir string) ([]string, error) {
 		if !entry.Type().IsRegular() {
 			continue
 		}
-		ext := filepath.Ext(entry.Name())
-		if ext == ".yaml" || ext == ".yml" {
-			files = append(files, entry.Name())
-		}
+		files = append(files, entry.Name())
 	}
 
 	sort.Strings(files)
@@ -73,14 +73,14 @@ type FilePair struct {
 
 // BuildFilePairPlan creates an alphabetically sorted plan of file
 // pairs from two directories, matching files by filename.
-// Every YAML file from both directories appears exactly once.
+// Every file from both directories appears exactly once.
 // Returns an error if either directory cannot be read.
 func BuildFilePairPlan(fromDir, toDir string) ([]FilePair, error) {
-	fromFiles, err := DiscoverYAMLFiles(fromDir)
+	fromFiles, err := DiscoverFiles(fromDir)
 	if err != nil {
 		return nil, err
 	}
-	toFiles, err := DiscoverYAMLFiles(toDir)
+	toFiles, err := DiscoverFiles(toDir)
 	if err != nil {
 		return nil, err
 	}

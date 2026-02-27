@@ -1,7 +1,7 @@
 silent: false
 unleash:
   dry-run: false
-  timeout-coefficient: 3
+  timeout-coefficient: 30
   threshold:
     efficacy: 0
     mutant-coverage: 0

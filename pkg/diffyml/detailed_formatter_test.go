@@ -3056,10 +3056,72 @@ func TestDetailedFormatter_NestedListOfMaps(t *testing.T) {
 	if strings.Contains(output, "&{") {
 		t.Errorf("detailed nested list output contains raw struct &{ — got:\n%s", output)
 	}
-	if !strings.Contains(output, "name: web") {
-		t.Errorf("expected 'name: web' in unfolded output, got:\n%s", output)
+	if strings.Contains(output, "- {") {
+		t.Errorf("map items in list should be unfolded to block YAML, not inline — got:\n%s", output)
 	}
-	if !strings.Contains(output, "name: api") {
-		t.Errorf("expected 'name: api' in unfolded output, got:\n%s", output)
+	if !strings.Contains(output, "- name: web") {
+		t.Errorf("expected '- name: web' as first key of unfolded block, got:\n%s", output)
+	}
+	if !strings.Contains(output, "  image: nginx") {
+		t.Errorf("expected '  image: nginx' as continuation key of unfolded block, got:\n%s", output)
+	}
+	if !strings.Contains(output, "- name: api") {
+		t.Errorf("expected '- name: api' as first key of unfolded block, got:\n%s", output)
+	}
+}
+
+func TestDetailedFormatter_ListUnderKey_UnfoldsMapItems(t *testing.T) {
+	container := NewOrderedMap()
+	container.Keys = append(container.Keys, "name", "image")
+	container.Values["name"] = "web"
+	container.Values["image"] = "nginx:1.21"
+
+	parent := NewOrderedMap()
+	parent.Keys = append(parent.Keys, "containers")
+	parent.Values["containers"] = []interface{}{container}
+
+	f := &DetailedFormatter{}
+	opts := DefaultFormatOptions()
+
+	diffs := []Difference{
+		{Path: "spec[0]", Type: DiffAdded, To: parent},
+	}
+
+	output := f.Format(diffs, opts)
+	if strings.Contains(output, "- {") {
+		t.Errorf("map items nested under a key should be unfolded to block YAML — got:\n%s", output)
+	}
+	if !strings.Contains(output, "- name: web") {
+		t.Errorf("expected '- name: web' in unfolded output, got:\n%s", output)
+	}
+}
+
+func TestDetailedFormatter_FirstKeyList_UnfoldsMapItems(t *testing.T) {
+	item := NewOrderedMap()
+	item.Keys = append(item.Keys, "port", "protocol")
+	item.Values["port"] = 80
+	item.Values["protocol"] = "TCP"
+
+	parent := NewOrderedMap()
+	parent.Keys = append(parent.Keys, "ports")
+	parent.Values["ports"] = []interface{}{item}
+
+	f := &DetailedFormatter{}
+	opts := DefaultFormatOptions()
+
+	// List entry where the first key's value is itself a list of maps
+	diffs := []Difference{
+		{Path: "spec[0]", Type: DiffAdded, To: parent},
+	}
+
+	output := f.Format(diffs, opts)
+	if strings.Contains(output, "- {") {
+		t.Errorf("map items in first-key list should be unfolded — got:\n%s", output)
+	}
+	if !strings.Contains(output, "- port: 80") {
+		t.Errorf("expected '- port: 80' in unfolded output, got:\n%s", output)
+	}
+	if !strings.Contains(output, "  protocol: TCP") {
+		t.Errorf("expected '  protocol: TCP' in unfolded output, got:\n%s", output)
 	}
 }

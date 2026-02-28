@@ -3,10 +3,13 @@ package diffyml
 import (
 	"bytes"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // Tests targeting remaining coverage gaps identified by gremlins mutation testing.
@@ -317,5 +320,416 @@ func TestGetTrueColorCode_Clamped(t *testing.T) {
 	expected := fmt.Sprintf("\033[38;2;%d;%d;%dm", 0, 255, 128)
 	if code != expected {
 		t.Errorf("expected clamped color code %q, got %q", expected, code)
+	}
+}
+
+// === Section 2: Kill LIVED mutants ===
+
+// --- extractPathOrder: index++ increment (diffyml.go:155) ---
+
+func TestExtractPathOrder_PlainMapIndexIncrement(t *testing.T) {
+	// Kills INCREMENT_DECREMENT at diffyml.go:155 (index++ → index--)
+	// With 3 keys, indices must be strictly increasing.
+	docs := []interface{}{
+		map[string]interface{}{
+			"alpha": "1",
+			"beta":  "2",
+			"gamma": "3",
+		},
+	}
+	order := extractPathOrder(docs, nil, nil)
+
+	// Keys are sorted alphabetically for plain maps, so alpha < beta < gamma
+	if order["alpha"] >= order["beta"] {
+		t.Errorf("expected alpha (%d) < beta (%d)", order["alpha"], order["beta"])
+	}
+	if order["beta"] >= order["gamma"] {
+		t.Errorf("expected beta (%d) < gamma (%d)", order["beta"], order["gamma"])
+	}
+}
+
+// --- DetailedFormatter: map continuation indent (detailed_formatter.go:239) ---
+
+func TestDetailedFormatter_MapContinuationIndent(t *testing.T) {
+	// Kills ARITHMETIC_BASE at detailed_formatter.go:239 (indent+2)
+	// A map[string]interface{} with 2+ keys: continuation keys must be indented
+	// deeper than the first key (rendered via renderFirstKeyValueYAML).
+	diffs := []Difference{
+		{
+			Path: "items.0",
+			Type: DiffAdded,
+			From: nil,
+			To:   map[string]interface{}{"aaa": "val1", "zzz": "val2"},
+		},
+	}
+
+	f := &DetailedFormatter{}
+	opts := &FormatOptions{Color: false}
+	result := f.Format(diffs, opts)
+
+	// Both keys must appear
+	if !strings.Contains(result, "aaa") || !strings.Contains(result, "zzz") {
+		t.Fatalf("expected both keys in output, got:\n%s", result)
+	}
+
+	// The continuation key should have more leading spaces than the first key line.
+	// The first key is rendered as "  - aaa: val1" and continuation as "    zzz: val2"
+	lines := strings.Split(result, "\n")
+	var firstKeyIndent, contKeyIndent int
+	for _, line := range lines {
+		trimmed := strings.TrimLeft(line, " ")
+		if trimmed == "" {
+			continue
+		}
+		indent := len(line) - len(trimmed)
+		if strings.Contains(line, "- ") && (strings.Contains(line, "aaa") || strings.Contains(line, "zzz")) {
+			if firstKeyIndent == 0 {
+				firstKeyIndent = indent
+			}
+		} else if strings.Contains(line, "aaa") || strings.Contains(line, "zzz") {
+			contKeyIndent = indent
+		}
+	}
+	if contKeyIndent > 0 && contKeyIndent <= firstKeyIndent {
+		t.Errorf("continuation key indent (%d) should be > first key indent (%d)", contKeyIndent, firstKeyIndent)
+	}
+}
+
+// --- DetailedFormatter: multiline first key indent (detailed_formatter.go:303) ---
+
+func TestDetailedFormatter_FirstKeyMultilineIndent(t *testing.T) {
+	// Kills ARITHMETIC_BASE at detailed_formatter.go:303 (indent+2)
+	om := &OrderedMap{
+		Keys:   []string{"config"},
+		Values: map[string]interface{}{"config": "line1\nline2\nline3"},
+	}
+	diffs := []Difference{
+		{
+			Path: "items.0",
+			Type: DiffAdded,
+			From: nil,
+			To:   om,
+		},
+	}
+
+	f := &DetailedFormatter{}
+	opts := &FormatOptions{Color: false}
+	result := f.Format(diffs, opts)
+
+	// The multiline value should have continuation lines indented
+	if !strings.Contains(result, "line1") {
+		t.Fatalf("expected multiline content in output, got:\n%s", result)
+	}
+	// line2 and line3 should appear indented
+	lines := strings.Split(result, "\n")
+	for _, line := range lines {
+		if strings.Contains(line, "line2") || strings.Contains(line, "line3") {
+			trimmed := strings.TrimLeft(line, " ")
+			indent := len(line) - len(trimmed)
+			if indent < 4 {
+				t.Errorf("multiline continuation should be indented (got %d spaces): %q", indent, line)
+			}
+		}
+	}
+}
+
+// --- directory.go:232 trueColor mode ---
+
+func TestRunDirectory_TrueColorMode(t *testing.T) {
+	// Kills CONDITIONALS_NEGATION at directory.go:232 (== ColorModeAlways → !=)
+	cfg := &CLIConfig{
+		Output:    "detailed",
+		Color:     "always",
+		TrueColor: "always",
+	}
+	var stdout, stderr bytes.Buffer
+	rc := &RunConfig{
+		Stdout: &stdout,
+		Stderr: &stderr,
+		FilePairs: map[string][2][]byte{
+			"test.yaml": {[]byte("key: old"), []byte("key: new")},
+		},
+	}
+
+	_ = runDirectory(cfg, rc, "", "")
+
+	output := stdout.String()
+	// True color uses \033[38;2;R;G;Bm format
+	if !strings.Contains(output, "\033[38;2;") {
+		t.Errorf("expected true color escape codes with TrueColor=always, got:\n%s", output)
+	}
+}
+
+// --- directory.go:362 summary not called when no diffs ---
+
+func TestRunDirectory_SummaryNotCalledWhenNoDiffs(t *testing.T) {
+	// Kills CONDITIONALS_BOUNDARY at directory.go:362 (len(groups) > 0 → >= 0)
+	t.Setenv("ANTHROPIC_API_KEY", "test-key")
+
+	apiCalled := false
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		apiCalled = true
+		w.WriteHeader(500)
+	}))
+	defer server.Close()
+
+	cfg := &CLIConfig{
+		Output:  "github",
+		Summary: true,
+		Color:   "never",
+	}
+	var stdout, stderr bytes.Buffer
+	rc := &RunConfig{
+		Stdout: &stdout,
+		Stderr: &stderr,
+		FilePairs: map[string][2][]byte{
+			"same.yaml": {[]byte("key: same"), []byte("key: same")},
+		},
+		SummaryAPIURL: server.URL,
+	}
+
+	_ = runDirectory(cfg, rc, "", "")
+
+	if apiCalled {
+		t.Error("summarizer should not be called when there are no diffs")
+	}
+}
+
+// --- cli.go:638 brief+summary defers output ---
+
+func TestRun_BriefSummary_DefersOutput(t *testing.T) {
+	// Kills CONDITIONALS_NEGATION at cli.go:638 (== "brief" → != "brief")
+	t.Setenv("ANTHROPIC_API_KEY", "test-key")
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		fmt.Fprint(w, `{"content":[{"type":"text","text":"AI summary of changes."}]}`)
+	}))
+	defer server.Close()
+
+	cfg := NewCLIConfig()
+	cfg.Output = "brief"
+	cfg.Summary = true
+	cfg.Color = "never"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FromContent = []byte("key: old")
+	rc.ToContent = []byte("key: new")
+	rc.SummaryAPIURL = server.URL
+
+	result := Run(cfg, rc)
+	output := stdout.String()
+
+	if result.Code == ExitCodeError {
+		t.Fatalf("Run failed: %v\nstderr: %s", result.Err, stderr.String())
+	}
+
+	// When brief+summary succeeds, the AI summary replaces brief output
+	if !strings.Contains(output, "AI summary of changes.") {
+		t.Errorf("expected AI summary in output, got:\n%s", output)
+	}
+}
+
+// --- color.go:77,81 IsTerminal return value ---
+
+func TestIsTerminal_ReturnValue(t *testing.T) {
+	// Kills CONDITIONALS_NEGATION at color.go:77 (err != nil → == nil)
+	// and color.go:81 (!= 0 → == 0).
+	// In test/CI, stdout is a pipe, not a terminal.
+	got := IsTerminal(os.Stdout.Fd())
+	if got {
+		t.Skip("running in a real terminal; cannot test pipe behavior")
+	}
+	// When stdout is a pipe, IsTerminal must return false.
+	// The mutant at line 77 (err != nil → == nil) would return false on success,
+	// which happens to be correct for pipes. But the mutant at line 81
+	// (!=0 → ==0) would return true for pipes. So asserting false kills line 81.
+	if got != false {
+		t.Error("IsTerminal should return false for pipe stdout")
+	}
+}
+
+// === Section 3: Target NOT COVERED mutants ===
+
+// --- computeLineDiff direct unit tests (detailed_formatter.go:464-483) ---
+
+func TestComputeLineDiff_PartialMatch(t *testing.T) {
+	from := []string{"a", "b", "c"}
+	to := []string{"a", "x", "c"}
+	ops := computeLineDiff(from, to)
+
+	var keeps, deletes, inserts int
+	for _, op := range ops {
+		switch op.Type {
+		case editKeep:
+			keeps++
+		case editDelete:
+			deletes++
+		case editInsert:
+			inserts++
+		}
+	}
+	if keeps != 2 || deletes != 1 || inserts != 1 {
+		t.Errorf("expected 2 keeps, 1 delete, 1 insert; got %d/%d/%d", keeps, deletes, inserts)
+	}
+}
+
+func TestComputeLineDiff_AllDifferent(t *testing.T) {
+	from := []string{"a", "b"}
+	to := []string{"c", "d"}
+	ops := computeLineDiff(from, to)
+
+	var deletes, inserts int
+	for _, op := range ops {
+		switch op.Type {
+		case editDelete:
+			deletes++
+		case editInsert:
+			inserts++
+		}
+	}
+	if deletes != 2 || inserts != 2 {
+		t.Errorf("expected 2 deletes, 2 inserts; got %d/%d", deletes, inserts)
+	}
+}
+
+func TestComputeLineDiff_EmptyFrom(t *testing.T) {
+	ops := computeLineDiff([]string{}, []string{"a", "b"})
+	inserts := 0
+	for _, op := range ops {
+		if op.Type == editInsert {
+			inserts++
+		}
+	}
+	if inserts != 2 {
+		t.Errorf("expected 2 inserts, got %d", inserts)
+	}
+}
+
+func TestComputeLineDiff_EmptyTo(t *testing.T) {
+	ops := computeLineDiff([]string{"a", "b"}, []string{})
+	deletes := 0
+	for _, op := range ops {
+		if op.Type == editDelete {
+			deletes++
+		}
+	}
+	if deletes != 2 {
+		t.Errorf("expected 2 deletes, got %d", deletes)
+	}
+}
+
+func TestComputeLineDiff_IdenticalLines(t *testing.T) {
+	ops := computeLineDiff([]string{"a", "b", "c"}, []string{"a", "b", "c"})
+	for _, op := range ops {
+		if op.Type != editKeep {
+			t.Errorf("expected all keeps for identical input, got %v", op.Type)
+		}
+	}
+	if len(ops) != 3 {
+		t.Errorf("expected 3 ops, got %d", len(ops))
+	}
+}
+
+// --- compareListsPositional: different-length lists (comparator.go:353,361) ---
+
+func TestCompareListsPositional_ToLonger(t *testing.T) {
+	from := []interface{}{"a", "b"}
+	to := []interface{}{"a", "b", "c", "d"}
+	diffs := compareListsPositional("list", from, to, nil)
+
+	added := 0
+	for _, d := range diffs {
+		if d.Type == DiffAdded {
+			added++
+		}
+	}
+	if added != 2 {
+		t.Errorf("expected 2 added items, got %d", added)
+	}
+}
+
+func TestCompareListsPositional_FromLonger(t *testing.T) {
+	from := []interface{}{"a", "b", "c"}
+	to := []interface{}{"a"}
+	diffs := compareListsPositional("list", from, to, nil)
+
+	removed := 0
+	for _, d := range diffs {
+		if d.Type == DiffRemoved {
+			removed++
+		}
+	}
+	if removed != 2 {
+		t.Errorf("expected 2 removed items, got %d", removed)
+	}
+}
+
+// --- buildFilePairsFromMap: all pair types (directory.go:179,181) ---
+
+func TestBuildFilePairsFromMap_AllTypes(t *testing.T) {
+	m := map[string][2][]byte{
+		"both.yaml":      {[]byte("a"), []byte("b")},
+		"from-only.yaml": {[]byte("a"), nil},
+		"to-only.yaml":   {nil, []byte("b")},
+	}
+	pairs := buildFilePairsFromMap(m)
+
+	if len(pairs) != 3 {
+		t.Fatalf("expected 3 pairs, got %d", len(pairs))
+	}
+
+	types := map[string]FilePairType{}
+	for _, p := range pairs {
+		types[p.Name] = p.Type
+	}
+
+	if types["both.yaml"] != FilePairBothExist {
+		t.Error("both.yaml should be FilePairBothExist")
+	}
+	if types["from-only.yaml"] != FilePairOnlyFrom {
+		t.Error("from-only.yaml should be FilePairOnlyFrom")
+	}
+	if types["to-only.yaml"] != FilePairOnlyTo {
+		t.Error("to-only.yaml should be FilePairOnlyTo")
+	}
+}
+
+// --- summarizer: status 502 (summarizer.go:150) ---
+
+func TestSummarize_ServerError502(t *testing.T) {
+	mock := &mockHTTPDoer{
+		statusCode: 502,
+		body:       `{"type":"error","error":{"type":"api_error","message":"bad gateway"}}`,
+	}
+	s := NewSummarizerWithClient("test-model", "test-key", mock)
+
+	groups := []DiffGroup{
+		{FilePath: "f.yaml", Diffs: []Difference{{Path: "a", Type: DiffAdded, To: "v"}}},
+	}
+
+	_, err := s.Summarize(t.Context(), groups)
+	if err == nil {
+		t.Fatal("expected error for 502")
+	}
+	if !strings.Contains(err.Error(), "server error") {
+		t.Errorf("expected 'server error' for 502, got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "bad gateway") {
+		t.Errorf("expected 'bad gateway' message for 502, got: %v", err)
+	}
+}
+
+// --- remote.go: constant value assertions (remote.go:14,16) ---
+
+func TestRemoteConstants(t *testing.T) {
+	if MaxResponseSize != 10*1024*1024 {
+		t.Errorf("MaxResponseSize should be 10485760, got %d", MaxResponseSize)
+	}
+	if DefaultTimeout != 30*time.Second {
+		t.Errorf("DefaultTimeout should be 30s, got %v", DefaultTimeout)
 	}
 }

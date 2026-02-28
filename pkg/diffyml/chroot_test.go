@@ -262,6 +262,54 @@ func TestApplyChroot_PathNotFound(t *testing.T) {
 
 // --- Mutation testing: chroot.go ---
 
+func TestNavigateToPath_IndexAtExactLength(t *testing.T) {
+	// chroot.go:53 — `seg.index >= len(list)` → `> len(list)`
+	// If mutated, accessing index == len(list) would panic instead of returning error.
+	doc := map[string]interface{}{
+		"items": []interface{}{"a", "b", "c"},
+	}
+
+	// Index 3 is exactly len(list), should return error not panic
+	_, err := navigateToPath(doc, "items[3]")
+	if err == nil {
+		t.Error("expected error for index == len(list), but got nil")
+	}
+}
+
+func TestSplitPath_ConsecutiveDots(t *testing.T) {
+	// chroot.go:158 — `current.Len() > 0` → `>= 0`
+	// If mutated, consecutive dots like "a..b" would add empty segments.
+	parts, err := splitPath("a..b")
+	if err != nil {
+		t.Fatalf("splitPath(\"a..b\") failed: %v", err)
+	}
+	// Should produce ["a", "b"] — no empty segments
+	for i, part := range parts {
+		if part == "" {
+			t.Errorf("splitPath(\"a..b\") produced empty segment at index %d", i)
+		}
+	}
+	if len(parts) != 2 {
+		t.Errorf("splitPath(\"a..b\") produced %d parts, want 2: %v", len(parts), parts)
+	}
+}
+
+func TestSplitPath_TrailingDot(t *testing.T) {
+	// chroot.go:158 — trailing dot should not produce empty segment
+	parts, err := splitPath("a.b.")
+	if err != nil {
+		t.Fatalf("splitPath(\"a.b.\") failed: %v", err)
+	}
+	for i, part := range parts {
+		if part == "" {
+			t.Errorf("splitPath(\"a.b.\") produced empty segment at index %d", i)
+		}
+	}
+	if len(parts) != 2 {
+		t.Errorf("splitPath(\"a.b.\") produced %d parts, want 2: %v", len(parts), parts)
+	}
+}
+
 func TestNavigateToPath_BareIndex(t *testing.T) {
 	// chroot.go:117 — bare index path [0] without key prefix
 	// If idx >= 0 is mutated to idx > 0, [0] would be treated as simple key

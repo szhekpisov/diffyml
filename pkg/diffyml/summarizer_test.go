@@ -560,6 +560,118 @@ func TestBuildPrompt_TruncationRemainingCount(t *testing.T) {
 	}
 }
 
+func TestBuildPrompt_ExactBoundary(t *testing.T) {
+	// summarizer.go:215 — `> maxPromptLen` → `>= maxPromptLen`
+	// If mutated, a prompt that totals exactly maxPromptLen would be truncated.
+	// We construct groups that sum to exactly maxPromptLen to detect this.
+
+	// First, build a single group and measure its serialized length
+	singleDiff := Difference{
+		Path: "test.path",
+		Type: DiffModified,
+		From: "oldval",
+		To:   "newval",
+	}
+	// Measure the size of a single-diff group
+	testGroup := DiffGroup{
+		FilePath: "test.yaml",
+		Diffs:    []Difference{singleDiff},
+	}
+	singlePrompt := buildPrompt([]DiffGroup{testGroup})
+	singleLen := len(singlePrompt)
+
+	// Now create groups that total exactly maxPromptLen.
+	// We need group1 + group2 == maxPromptLen.
+	// Build group1 to have a known size, then pad group2 to reach exactly maxPromptLen.
+	remaining := maxPromptLen - singleLen
+	if remaining <= 0 {
+		t.Skip("single group already exceeds maxPromptLen")
+	}
+
+	// Build a second group whose serialized output is exactly `remaining` bytes
+	// We'll use a path long enough to fill the remaining space.
+	// Format: "File: X.yaml\n- [MODIFIED] PATH: \"old\" → \"new\"\n\n"
+	// Header: "File: pad.yaml\n" = 15 bytes
+	// Diff line: "- [MODIFIED] " + path + ": \"a\" → \"b\"\n"
+	// Trailing: "\n"
+	overhead := len("File: pad.yaml\n") + len("- [MODIFIED] ") + len(": \"a\" \xe2\x86\x92 \"b\"\n") + len("\n")
+	pathLen := remaining - overhead
+	if pathLen <= 0 {
+		t.Skip("can't construct exact boundary test")
+	}
+
+	padPath := strings.Repeat("x", pathLen)
+	group2 := DiffGroup{
+		FilePath: "pad.yaml",
+		Diffs: []Difference{
+			{Path: padPath, Type: DiffModified, From: "a", To: "b"},
+		},
+	}
+
+	groups := []DiffGroup{testGroup, group2}
+	got := buildPrompt(groups)
+
+	// Both groups should be included (not truncated) since total == maxPromptLen
+	if !strings.Contains(got, "File: test.yaml") {
+		t.Error("first group should be present")
+	}
+	if !strings.Contains(got, "File: pad.yaml") {
+		t.Error("second group should be present when total == maxPromptLen")
+	}
+	if strings.Contains(got, "truncated") {
+		t.Error("should not truncate when total equals exactly maxPromptLen")
+	}
+}
+
+func TestBuildPrompt_OneByteOverBoundary(t *testing.T) {
+	// Companion test: verify that one byte over the boundary DOES truncate.
+	singleDiff := Difference{
+		Path: "test.path",
+		Type: DiffModified,
+		From: "oldval",
+		To:   "newval",
+	}
+	testGroup := DiffGroup{
+		FilePath: "test.yaml",
+		Diffs:    []Difference{singleDiff},
+	}
+	singlePrompt := buildPrompt([]DiffGroup{testGroup})
+	singleLen := len(singlePrompt)
+
+	remaining := maxPromptLen - singleLen + 1 // one byte over
+	if remaining <= 0 {
+		t.Skip("single group already exceeds maxPromptLen")
+	}
+
+	overhead := len("File: pad.yaml\n") + len("- [MODIFIED] ") + len(": \"a\" \xe2\x86\x92 \"b\"\n") + len("\n")
+	pathLen := remaining - overhead
+	if pathLen <= 0 {
+		t.Skip("can't construct boundary+1 test")
+	}
+
+	padPath := strings.Repeat("x", pathLen)
+	group2 := DiffGroup{
+		FilePath: "pad.yaml",
+		Diffs: []Difference{
+			{Path: padPath, Type: DiffModified, From: "a", To: "b"},
+		},
+	}
+
+	groups := []DiffGroup{testGroup, group2}
+	got := buildPrompt(groups)
+
+	// Second group should be truncated since total > maxPromptLen
+	if !strings.Contains(got, "File: test.yaml") {
+		t.Error("first group should always be present")
+	}
+	if strings.Contains(got, "File: pad.yaml") {
+		// This is expected - second group should be truncated
+	}
+	if !strings.Contains(got, "truncated") {
+		t.Error("should truncate when total exceeds maxPromptLen by 1")
+	}
+}
+
 func TestSummarize_APIKeyNotInError(t *testing.T) {
 	mock := &mockHTTPDoer{
 		statusCode: 401,

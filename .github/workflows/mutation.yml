@@ -18,6 +18,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           persist-credentials: false
+          fetch-depth: 0
 
       - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
@@ -27,17 +28,14 @@ jobs:
         run: go install github.com/go-gremlins/gremlins/cmd/gremlins@v0.6.0
 
       - name: Run mutation testing
-        run: gremlins unleash --workers 2 --coverpkg="./pkg/diffyml/..." --output=mutation-report.json ./pkg/diffyml/
-
-      - name: Check efficacy threshold
-        run: |
-          THRESHOLD=96
-          EFFICACY=$(jq '.test_efficacy' mutation-report.json)
-          echo "Efficacy: ${EFFICACY}% (threshold: ${THRESHOLD}%)"
-          if [ "$(echo "$EFFICACY < $THRESHOLD" | bc -l)" -eq 1 ]; then
-            echo "::error::Mutation efficacy ${EFFICACY}% is below threshold ${THRESHOLD}%"
-            exit 1
-          fi
+        run: >-
+          gremlins unleash
+          --diff="origin/${{ github.base_ref }}"
+          --threshold-efficacy=96
+          --workers 2
+          --coverpkg="./pkg/diffyml/..."
+          --output=mutation-report.json
+          ./pkg/diffyml/
 
       - name: Clean build cache
         if: always()

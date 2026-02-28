@@ -1,23 +1,23 @@
 Found 313 differences
 
-[0].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.operation.properties.retry.properties.refresh
+0:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.operation.properties.retry.properties.refresh
   + one map entry added:
     refresh:
       description: Refresh indicates if the latest revision should be used on retry instead of the initial one (default: false)
       type: boolean
 
-[0].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.health.properties.message.description
+0:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.health.properties.message.description
   ± value change in multiline text (two inserts, zero deletions)
       Message is a human-readable informational message describing the health status
     + 
     + Deprecated: this field is not used and will be removed in a future release.
 
-[0].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.health.properties.status.description
+0:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.health.properties.status.description
   ± value change
     - Status holds the status code of the application or resource
     + Status holds the status code of the application
 
-[0].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
+0:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
   + one map entry added:
     directory:
       description: Directory specifies path/directory specific options
@@ -74,7 +74,7 @@ Found 313 differences
           type: boolean
       type: object
 
-[0].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
+0:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
   + one map entry added:
     helm:
       description: Helm specifies helm specific options
@@ -158,7 +158,7 @@ Found 313 differences
           type: string
       type: object
 
-[0].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
+0:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
   + one map entry added:
     kustomize:
       description: Kustomize specifies kustomize specific options
@@ -277,7 +277,7 @@ Found 313 differences
           type: string
       type: object
 
-[0].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
+0:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
   + one map entry added:
     plugin:
       description: Plugin specifies config management plugin specific options
@@ -323,57 +323,57 @@ Found 313 differences
           type: array
       type: object
 
-[0].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
+0:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
   + one map entry added:
     enabled:
       description: Enable allows apps to explicitly control automated sync
       type: boolean
 
-[0].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
+0:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
   + one map entry added:
     refresh:
       description: Refresh indicates if the latest revision should be used on retry instead of the initial one (default: false)
       type: boolean
 
-[0].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.description
+0:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.description
   ± value change in multiline text (two inserts, one deletion)
       Path is a directory path within the git repository where hydrated manifests should be committed to and synced
     - from. If hydrateTo is set, this is just the path from which hydrated manifests will be synced.
     + from. The Path should never point to the root of the repo. If hydrateTo is set, this is just the path from which
     + hydrated manifests will be synced.
 
-[0].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
+0:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
   + one map entry added:
     minLength: 1
 
-[0].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
+0:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
   + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-[0].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.sourceHydrator.properties.syncSource.properties.targetBranch.description
+0:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.sourceHydrator.properties.syncSource.properties.targetBranch.description
   ± value change in multiline text (two inserts, one deletion)
     - TargetBranch is the branch to which hydrated manifests should be committed
     + TargetBranch is the branch from which hydrated manifests will be synced.
     + If HydrateTo is not set, this is also the branch to which hydrated manifests are committed.
 
-[0].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.operationState.properties.operation.properties.retry.properties.refresh
+0:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.operationState.properties.operation.properties.retry.properties.refresh
   + one map entry added:
     refresh:
       description: Refresh indicates if the latest revision should be used on retry instead of the initial one (default: false)
       type: boolean
 
-[0].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.resources.items.properties.health.properties.lastTransitionTime.description
+0:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.resources.items.properties.health.properties.lastTransitionTime.description
   ± value change in multiline text (two inserts, zero deletions)
       LastTransitionTime is the time the HealthStatus was set or updated
     + 
     + Deprecated: this field is not used and will be removed in a future release.
 
-[0].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.resources.items.properties.health.properties.status.description
+0:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.resources.items.properties.health.properties.status.description
   ± value change
     - Status holds the status code of the application or resource
     + Status holds the status code of the resource
 
-[0].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.operationState.properties.syncResult.properties.resources.items.properties.images
+0:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.operationState.properties.syncResult.properties.resources.items.properties.images
   + one map entry added:
     images:
       description: Images contains the images related to the ResourceResult
@@ -381,7 +381,7 @@ Found 313 differences
         type: string
       type: array
 
-[0].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.currentOperation.properties.sourceHydrator.properties.drySource.properties.directory
+0:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.currentOperation.properties.sourceHydrator.properties.drySource.properties.directory
   + one map entry added:
     directory:
       description: Directory specifies path/directory specific options
@@ -438,7 +438,7 @@ Found 313 differences
           type: boolean
       type: object
 
-[0].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.currentOperation.properties.sourceHydrator.properties.drySource.properties.helm
+0:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.currentOperation.properties.sourceHydrator.properties.drySource.properties.helm
   + one map entry added:
     helm:
       description: Helm specifies helm specific options
@@ -522,7 +522,7 @@ Found 313 differences
           type: string
       type: object
 
-[0].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.currentOperation.properties.sourceHydrator.properties.drySource.properties.kustomize
+0:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.currentOperation.properties.sourceHydrator.properties.drySource.properties.kustomize
   + one map entry added:
     kustomize:
       description: Kustomize specifies kustomize specific options
@@ -641,7 +641,7 @@ Found 313 differences
           type: string
       type: object
 
-[0].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.currentOperation.properties.sourceHydrator.properties.drySource.properties.plugin
+0:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.currentOperation.properties.sourceHydrator.properties.drySource.properties.plugin
   + one map entry added:
     plugin:
       description: Plugin specifies config management plugin specific options
@@ -687,7 +687,7 @@ Found 313 differences
           type: array
       type: object
 
-[0].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.lastSuccessfulOperation.properties.sourceHydrator.properties.drySource.properties.directory
+0:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.lastSuccessfulOperation.properties.sourceHydrator.properties.drySource.properties.directory
   + one map entry added:
     directory:
       description: Directory specifies path/directory specific options
@@ -744,7 +744,7 @@ Found 313 differences
           type: boolean
       type: object
 
-[0].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.lastSuccessfulOperation.properties.sourceHydrator.properties.drySource.properties.helm
+0:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.lastSuccessfulOperation.properties.sourceHydrator.properties.drySource.properties.helm
   + one map entry added:
     helm:
       description: Helm specifies helm specific options
@@ -828,7 +828,7 @@ Found 313 differences
           type: string
       type: object
 
-[0].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.lastSuccessfulOperation.properties.sourceHydrator.properties.drySource.properties.kustomize
+0:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.lastSuccessfulOperation.properties.sourceHydrator.properties.drySource.properties.kustomize
   + one map entry added:
     kustomize:
       description: Kustomize specifies kustomize specific options
@@ -947,7 +947,7 @@ Found 313 differences
           type: string
       type: object
 
-[0].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.lastSuccessfulOperation.properties.sourceHydrator.properties.drySource.properties.plugin
+0:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.lastSuccessfulOperation.properties.sourceHydrator.properties.drySource.properties.plugin
   + one map entry added:
     plugin:
       description: Plugin specifies config management plugin specific options
@@ -993,49 +993,49 @@ Found 313 differences
           type: array
       type: object
 
-[0].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.currentOperation.properties.sourceHydrator.properties.syncSource.properties.path.description
+0:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.currentOperation.properties.sourceHydrator.properties.syncSource.properties.path.description
   ± value change in multiline text (two inserts, one deletion)
       Path is a directory path within the git repository where hydrated manifests should be committed to and synced
     - from. If hydrateTo is set, this is just the path from which hydrated manifests will be synced.
     + from. The Path should never point to the root of the repo. If hydrateTo is set, this is just the path from which
     + hydrated manifests will be synced.
 
-[0].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.currentOperation.properties.sourceHydrator.properties.syncSource.properties.path.minLength
+0:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.currentOperation.properties.sourceHydrator.properties.syncSource.properties.path.minLength
   + one map entry added:
     minLength: 1
 
-[0].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.currentOperation.properties.sourceHydrator.properties.syncSource.properties.path.pattern
+0:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.currentOperation.properties.sourceHydrator.properties.syncSource.properties.path.pattern
   + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-[0].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.currentOperation.properties.sourceHydrator.properties.syncSource.properties.targetBranch.description
+0:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.currentOperation.properties.sourceHydrator.properties.syncSource.properties.targetBranch.description
   ± value change in multiline text (two inserts, one deletion)
     - TargetBranch is the branch to which hydrated manifests should be committed
     + TargetBranch is the branch from which hydrated manifests will be synced.
     + If HydrateTo is not set, this is also the branch to which hydrated manifests are committed.
 
-[0].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.lastSuccessfulOperation.properties.sourceHydrator.properties.syncSource.properties.path.description
+0:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.lastSuccessfulOperation.properties.sourceHydrator.properties.syncSource.properties.path.description
   ± value change in multiline text (two inserts, one deletion)
       Path is a directory path within the git repository where hydrated manifests should be committed to and synced
     - from. If hydrateTo is set, this is just the path from which hydrated manifests will be synced.
     + from. The Path should never point to the root of the repo. If hydrateTo is set, this is just the path from which
     + hydrated manifests will be synced.
 
-[0].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.lastSuccessfulOperation.properties.sourceHydrator.properties.syncSource.properties.path.minLength
+0:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.lastSuccessfulOperation.properties.sourceHydrator.properties.syncSource.properties.path.minLength
   + one map entry added:
     minLength: 1
 
-[0].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.lastSuccessfulOperation.properties.sourceHydrator.properties.syncSource.properties.path.pattern
+0:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.lastSuccessfulOperation.properties.sourceHydrator.properties.syncSource.properties.path.pattern
   + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-[0].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.lastSuccessfulOperation.properties.sourceHydrator.properties.syncSource.properties.targetBranch.description
+0:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.lastSuccessfulOperation.properties.sourceHydrator.properties.syncSource.properties.targetBranch.description
   ± value change in multiline text (two inserts, one deletion)
     - TargetBranch is the branch to which hydrated manifests should be committed
     + TargetBranch is the branch from which hydrated manifests will be synced.
     + If HydrateTo is not set, this is also the branch to which hydrated manifests are committed.
 
-[11].rules.6
+11:rules.6
   + one list entry added:
     - apiGroups:
         - coordination.k8s.io
@@ -1048,34 +1048,34 @@ Found 313 differences
         - update
         - create
 
-[11].rules.5.apiGroups.0
+11:rules.5.apiGroups.0
   ± value change
     - apps
     + coordination.k8s.io
 
-[11].rules.5.apiGroups.1
+11:rules.5.apiGroups.1
   - one list entry removed:
     - extensions
 
-[11].rules.5.resources.0
+11:rules.5.resources.0
   ± value change
     - deployments
     + leases
 
-[11].rules.5.verbs.0
+11:rules.5.verbs.0
   ± value change
     - get
     + create
 
-[11].rules.5.verbs.1
+11:rules.5.verbs.1
   - one list entry removed:
     - list
 
-[11].rules.5.verbs.2
+11:rules.5.verbs.2
   - one list entry removed:
     - watch
 
-[17].rules.7
+17:rules.7
   - one list entry removed:
     - apiGroups:
         - coordination.k8s.io
@@ -1090,162 +1090,162 @@ Found 313 differences
         - update
         - watch
 
-[17].rules.6.resourceNames
+17:rules.6.resourceNames
   + one map entry added:
     resourceNames:
       - 58ac56fa.applicationsets.argoproj.io
 
-[17].rules.1.resources.0
+17:rules.1.resources.0
   ± value change
     - applicationsets/status
     + appprojects
 
-[17].rules.1.verbs.1
+17:rules.1.verbs.1
   ± value change
     - patch
     + list
 
-[17].rules.1.verbs.2
+17:rules.1.verbs.2
   ± value change
     - update
     + watch
 
-[17].rules.2.resources.0
+17:rules.2.resources.0
   ± value change
     - appprojects
     + applicationsets/status
 
-[17].rules.2.verbs.1
+17:rules.2.verbs.1
   ± value change
     - list
     + patch
 
-[17].rules.2.verbs.2
+17:rules.2.verbs.2
   ± value change
     - watch
     + update
 
-[17].rules.4.resources.0
+17:rules.4.resources.0
   ± value change
     - configmaps
     + secrets
 
-[17].rules.4.resources.1
+17:rules.4.resources.1
   + one list entry added:
     - configmaps
 
-[17].rules.4.verbs.0
+17:rules.4.verbs.0
   ± value change
     - create
     + get
 
-[17].rules.4.verbs.1
+17:rules.4.verbs.1
   ± value change
     - update
     + list
 
-[17].rules.4.verbs.2
+17:rules.4.verbs.2
   ± value change
     - delete
     + watch
 
-[17].rules.4.verbs.3
+17:rules.4.verbs.3
   - one list entry removed:
     - get
 
-[17].rules.4.verbs.4
+17:rules.4.verbs.4
   - one list entry removed:
     - list
 
-[17].rules.4.verbs.5
+17:rules.4.verbs.5
   - one list entry removed:
     - patch
 
-[17].rules.4.verbs.6
+17:rules.4.verbs.6
   - one list entry removed:
     - watch
 
-[17].rules.5.apiGroups.0
+17:rules.5.apiGroups.0
   ± value change
     - 
     + coordination.k8s.io
 
-[17].rules.5.resources.0
+17:rules.5.resources.0
   ± value change
     - secrets
     + leases
 
-[17].rules.5.verbs.0
+17:rules.5.verbs.0
   ± value change
     - get
     + create
 
-[17].rules.5.verbs.1
+17:rules.5.verbs.1
   - one list entry removed:
     - list
 
-[17].rules.5.verbs.2
+17:rules.5.verbs.2
   - one list entry removed:
     - watch
 
-[17].rules.6.apiGroups.0
+17:rules.6.apiGroups.0
   ± value change
     - apps
     + coordination.k8s.io
 
-[17].rules.6.apiGroups.1
+17:rules.6.apiGroups.1
   - one list entry removed:
     - extensions
 
-[17].rules.6.resources.0
+17:rules.6.resources.0
   ± value change
     - deployments
     + leases
 
-[17].rules.6.verbs.1
+17:rules.6.verbs.1
   ± value change
     - list
     + update
 
-[17].rules.6.verbs.2
+17:rules.6.verbs.2
   ± value change
     - watch
     + create
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.resourcesCount
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.resourcesCount
   + one map entry added:
     resourcesCount:
       format: int64
       type: integer
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.strategy.properties.deletionOrder
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.strategy.properties.deletionOrder
   + one map entry added:
     deletionOrder:
       type: string
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.continueOnRepoNotFoundError
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.continueOnRepoNotFoundError
   + one map entry added:
     continueOnRepoNotFoundError:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.gitea.properties.labels
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.gitea.properties.labels
   + one map entry added:
     labels:
       items:
         type: string
       type: array
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.files.items.properties.exclude
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.files.items.properties.exclude
   + one map entry added:
     exclude:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.filters.items.properties.titleMatch
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.filters.items.properties.titleMatch
   + one map entry added:
     titleMatch:
       type: string
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
   + one map entry added:
     directory:
       properties:
@@ -1292,7 +1292,7 @@ Found 313 differences
           type: boolean
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
   + one map entry added:
     helm:
       properties:
@@ -1349,7 +1349,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
   + one map entry added:
     kustomize:
       properties:
@@ -1442,7 +1442,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
   + one map entry added:
     plugin:
       properties:
@@ -1479,49 +1479,49 @@ Found 313 differences
           type: array
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
   + one map entry added:
     enabled:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
   + one map entry added:
     refresh:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
   + one map entry added:
     minLength: 1
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
   + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.continueOnRepoNotFoundError
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.continueOnRepoNotFoundError
   + one map entry added:
     continueOnRepoNotFoundError:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.continueOnRepoNotFoundError
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.continueOnRepoNotFoundError
   + one map entry added:
     continueOnRepoNotFoundError:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.gitea.properties.labels
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.gitea.properties.labels
   + one map entry added:
     labels:
       items:
         type: string
       type: array
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.gitea.properties.labels
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.gitea.properties.labels
   + one map entry added:
     labels:
       items:
         type: string
       type: array
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
   + one map entry added:
     directory:
       properties:
@@ -1568,7 +1568,7 @@ Found 313 differences
           type: boolean
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
   + one map entry added:
     helm:
       properties:
@@ -1625,7 +1625,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
   + one map entry added:
     kustomize:
       properties:
@@ -1718,7 +1718,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
   + one map entry added:
     plugin:
       properties:
@@ -1755,17 +1755,17 @@ Found 313 differences
           type: array
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
   + one map entry added:
     enabled:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
   + one map entry added:
     refresh:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
   + one map entry added:
     directory:
       properties:
@@ -1812,7 +1812,7 @@ Found 313 differences
           type: boolean
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
   + one map entry added:
     helm:
       properties:
@@ -1869,7 +1869,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
   + one map entry added:
     kustomize:
       properties:
@@ -1962,7 +1962,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
   + one map entry added:
     plugin:
       properties:
@@ -1999,17 +1999,17 @@ Found 313 differences
           type: array
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
   + one map entry added:
     enabled:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
   + one map entry added:
     refresh:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
   + one map entry added:
     directory:
       properties:
@@ -2056,7 +2056,7 @@ Found 313 differences
           type: boolean
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
   + one map entry added:
     helm:
       properties:
@@ -2113,7 +2113,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
   + one map entry added:
     kustomize:
       properties:
@@ -2206,7 +2206,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
   + one map entry added:
     plugin:
       properties:
@@ -2243,17 +2243,17 @@ Found 313 differences
           type: array
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
   + one map entry added:
     enabled:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
   + one map entry added:
     refresh:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
   + one map entry added:
     directory:
       properties:
@@ -2300,7 +2300,7 @@ Found 313 differences
           type: boolean
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
   + one map entry added:
     helm:
       properties:
@@ -2357,7 +2357,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
   + one map entry added:
     kustomize:
       properties:
@@ -2450,7 +2450,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
   + one map entry added:
     plugin:
       properties:
@@ -2487,27 +2487,27 @@ Found 313 differences
           type: array
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.list.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.list.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
   + one map entry added:
     enabled:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.list.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.list.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
   + one map entry added:
     refresh:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.files.items.properties.exclude
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.files.items.properties.exclude
   + one map entry added:
     exclude:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.filters.items.properties.titleMatch
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.filters.items.properties.titleMatch
   + one map entry added:
     titleMatch:
       type: string
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
   + one map entry added:
     directory:
       properties:
@@ -2554,7 +2554,7 @@ Found 313 differences
           type: boolean
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
   + one map entry added:
     helm:
       properties:
@@ -2611,7 +2611,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
   + one map entry added:
     kustomize:
       properties:
@@ -2704,7 +2704,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
   + one map entry added:
     plugin:
       properties:
@@ -2741,27 +2741,27 @@ Found 313 differences
           type: array
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
   + one map entry added:
     enabled:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
   + one map entry added:
     refresh:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.files.items.properties.exclude
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.files.items.properties.exclude
   + one map entry added:
     exclude:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.filters.items.properties.titleMatch
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.filters.items.properties.titleMatch
   + one map entry added:
     titleMatch:
       type: string
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
   + one map entry added:
     directory:
       properties:
@@ -2808,7 +2808,7 @@ Found 313 differences
           type: boolean
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
   + one map entry added:
     helm:
       properties:
@@ -2865,7 +2865,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
   + one map entry added:
     kustomize:
       properties:
@@ -2958,7 +2958,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
   + one map entry added:
     plugin:
       properties:
@@ -2995,17 +2995,17 @@ Found 313 differences
           type: array
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
   + one map entry added:
     enabled:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
   + one map entry added:
     refresh:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
   + one map entry added:
     directory:
       properties:
@@ -3052,7 +3052,7 @@ Found 313 differences
           type: boolean
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
   + one map entry added:
     helm:
       properties:
@@ -3109,7 +3109,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
   + one map entry added:
     kustomize:
       properties:
@@ -3202,7 +3202,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
   + one map entry added:
     plugin:
       properties:
@@ -3239,17 +3239,17 @@ Found 313 differences
           type: array
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
   + one map entry added:
     enabled:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
   + one map entry added:
     refresh:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
   + one map entry added:
     directory:
       properties:
@@ -3296,7 +3296,7 @@ Found 313 differences
           type: boolean
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
   + one map entry added:
     helm:
       properties:
@@ -3353,7 +3353,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
   + one map entry added:
     kustomize:
       properties:
@@ -3446,7 +3446,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
   + one map entry added:
     plugin:
       properties:
@@ -3483,17 +3483,17 @@ Found 313 differences
           type: array
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
   + one map entry added:
     enabled:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
   + one map entry added:
     refresh:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
   + one map entry added:
     directory:
       properties:
@@ -3540,7 +3540,7 @@ Found 313 differences
           type: boolean
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
   + one map entry added:
     helm:
       properties:
@@ -3597,7 +3597,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
   + one map entry added:
     kustomize:
       properties:
@@ -3690,7 +3690,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
   + one map entry added:
     plugin:
       properties:
@@ -3727,89 +3727,89 @@ Found 313 differences
           type: array
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
   + one map entry added:
     enabled:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
   + one map entry added:
     refresh:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
   + one map entry added:
     minLength: 1
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
   + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
   + one map entry added:
     minLength: 1
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
   + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
   + one map entry added:
     minLength: 1
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
   + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
   + one map entry added:
     minLength: 1
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
   + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
   + one map entry added:
     minLength: 1
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
   + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
   + one map entry added:
     minLength: 1
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
   + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
   + one map entry added:
     minLength: 1
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
   + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
   + one map entry added:
     minLength: 1
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
   + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
   + one map entry added:
     minLength: 1
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
   + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
   + one map entry added:
     directory:
       properties:
@@ -3856,7 +3856,7 @@ Found 313 differences
           type: boolean
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
   + one map entry added:
     helm:
       properties:
@@ -3913,7 +3913,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
   + one map entry added:
     kustomize:
       properties:
@@ -4006,7 +4006,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
   + one map entry added:
     plugin:
       properties:
@@ -4043,17 +4043,17 @@ Found 313 differences
           type: array
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
   + one map entry added:
     enabled:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
   + one map entry added:
     refresh:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
   + one map entry added:
     directory:
       properties:
@@ -4100,7 +4100,7 @@ Found 313 differences
           type: boolean
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
   + one map entry added:
     helm:
       properties:
@@ -4157,7 +4157,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
   + one map entry added:
     kustomize:
       properties:
@@ -4250,7 +4250,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
   + one map entry added:
     plugin:
       properties:
@@ -4287,17 +4287,17 @@ Found 313 differences
           type: array
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
   + one map entry added:
     enabled:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
   + one map entry added:
     refresh:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
   + one map entry added:
     directory:
       properties:
@@ -4344,7 +4344,7 @@ Found 313 differences
           type: boolean
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
   + one map entry added:
     helm:
       properties:
@@ -4401,7 +4401,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
   + one map entry added:
     kustomize:
       properties:
@@ -4494,7 +4494,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
   + one map entry added:
     plugin:
       properties:
@@ -4531,17 +4531,17 @@ Found 313 differences
           type: array
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
   + one map entry added:
     enabled:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
   + one map entry added:
     refresh:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
   + one map entry added:
     directory:
       properties:
@@ -4588,7 +4588,7 @@ Found 313 differences
           type: boolean
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
   + one map entry added:
     helm:
       properties:
@@ -4645,7 +4645,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
   + one map entry added:
     kustomize:
       properties:
@@ -4738,7 +4738,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
   + one map entry added:
     plugin:
       properties:
@@ -4775,17 +4775,17 @@ Found 313 differences
           type: array
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.list.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.list.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
   + one map entry added:
     enabled:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.list.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.list.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
   + one map entry added:
     refresh:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
   + one map entry added:
     directory:
       properties:
@@ -4832,7 +4832,7 @@ Found 313 differences
           type: boolean
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
   + one map entry added:
     helm:
       properties:
@@ -4889,7 +4889,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
   + one map entry added:
     kustomize:
       properties:
@@ -4982,7 +4982,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
   + one map entry added:
     plugin:
       properties:
@@ -5019,17 +5019,17 @@ Found 313 differences
           type: array
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
   + one map entry added:
     enabled:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
   + one map entry added:
     refresh:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
   + one map entry added:
     directory:
       properties:
@@ -5076,7 +5076,7 @@ Found 313 differences
           type: boolean
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
   + one map entry added:
     helm:
       properties:
@@ -5133,7 +5133,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
   + one map entry added:
     kustomize:
       properties:
@@ -5226,7 +5226,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
   + one map entry added:
     plugin:
       properties:
@@ -5263,17 +5263,17 @@ Found 313 differences
           type: array
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
   + one map entry added:
     enabled:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
   + one map entry added:
     refresh:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
   + one map entry added:
     directory:
       properties:
@@ -5320,7 +5320,7 @@ Found 313 differences
           type: boolean
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
   + one map entry added:
     helm:
       properties:
@@ -5377,7 +5377,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
   + one map entry added:
     kustomize:
       properties:
@@ -5470,7 +5470,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
   + one map entry added:
     plugin:
       properties:
@@ -5507,17 +5507,17 @@ Found 313 differences
           type: array
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
   + one map entry added:
     enabled:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
   + one map entry added:
     refresh:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
   + one map entry added:
     directory:
       properties:
@@ -5564,7 +5564,7 @@ Found 313 differences
           type: boolean
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
   + one map entry added:
     helm:
       properties:
@@ -5621,7 +5621,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
   + one map entry added:
     kustomize:
       properties:
@@ -5714,7 +5714,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
   + one map entry added:
     plugin:
       properties:
@@ -5751,17 +5751,17 @@ Found 313 differences
           type: array
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
   + one map entry added:
     enabled:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
   + one map entry added:
     refresh:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
   + one map entry added:
     directory:
       properties:
@@ -5808,7 +5808,7 @@ Found 313 differences
           type: boolean
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
   + one map entry added:
     helm:
       properties:
@@ -5865,7 +5865,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
   + one map entry added:
     kustomize:
       properties:
@@ -5958,7 +5958,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
   + one map entry added:
     plugin:
       properties:
@@ -5995,17 +5995,17 @@ Found 313 differences
           type: array
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
   + one map entry added:
     enabled:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
   + one map entry added:
     refresh:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
   + one map entry added:
     directory:
       properties:
@@ -6052,7 +6052,7 @@ Found 313 differences
           type: boolean
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
   + one map entry added:
     helm:
       properties:
@@ -6109,7 +6109,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
   + one map entry added:
     kustomize:
       properties:
@@ -6202,7 +6202,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
   + one map entry added:
     plugin:
       properties:
@@ -6239,17 +6239,17 @@ Found 313 differences
           type: array
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
   + one map entry added:
     enabled:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
   + one map entry added:
     refresh:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
   + one map entry added:
     directory:
       properties:
@@ -6296,7 +6296,7 @@ Found 313 differences
           type: boolean
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
   + one map entry added:
     helm:
       properties:
@@ -6353,7 +6353,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
   + one map entry added:
     kustomize:
       properties:
@@ -6446,7 +6446,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
   + one map entry added:
     plugin:
       properties:
@@ -6483,17 +6483,17 @@ Found 313 differences
           type: array
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.list.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.list.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
   + one map entry added:
     enabled:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.list.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.list.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
   + one map entry added:
     refresh:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
   + one map entry added:
     directory:
       properties:
@@ -6540,7 +6540,7 @@ Found 313 differences
           type: boolean
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
   + one map entry added:
     helm:
       properties:
@@ -6597,7 +6597,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
   + one map entry added:
     kustomize:
       properties:
@@ -6690,7 +6690,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
   + one map entry added:
     plugin:
       properties:
@@ -6727,17 +6727,17 @@ Found 313 differences
           type: array
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
   + one map entry added:
     enabled:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
   + one map entry added:
     refresh:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
   + one map entry added:
     directory:
       properties:
@@ -6784,7 +6784,7 @@ Found 313 differences
           type: boolean
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
   + one map entry added:
     helm:
       properties:
@@ -6841,7 +6841,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
   + one map entry added:
     kustomize:
       properties:
@@ -6934,7 +6934,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
   + one map entry added:
     plugin:
       properties:
@@ -6971,17 +6971,17 @@ Found 313 differences
           type: array
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
   + one map entry added:
     enabled:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
   + one map entry added:
     refresh:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory
   + one map entry added:
     directory:
       properties:
@@ -7028,7 +7028,7 @@ Found 313 differences
           type: boolean
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm
   + one map entry added:
     helm:
       properties:
@@ -7085,7 +7085,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize
   + one map entry added:
     kustomize:
       properties:
@@ -7178,7 +7178,7 @@ Found 313 differences
           type: string
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin
   + one map entry added:
     plugin:
       properties:
@@ -7215,145 +7215,145 @@ Found 313 differences
           type: array
       type: object
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled
   + one map entry added:
     enabled:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh
   + one map entry added:
     refresh:
       type: boolean
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
   + one map entry added:
     minLength: 1
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
   + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
   + one map entry added:
     minLength: 1
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
   + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
   + one map entry added:
     minLength: 1
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
   + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
   + one map entry added:
     minLength: 1
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
   + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
   + one map entry added:
     minLength: 1
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
   + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
   + one map entry added:
     minLength: 1
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
   + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
   + one map entry added:
     minLength: 1
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
   + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
   + one map entry added:
     minLength: 1
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
   + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
   + one map entry added:
     minLength: 1
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
   + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
   + one map entry added:
     minLength: 1
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
   + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
   + one map entry added:
     minLength: 1
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
   + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
   + one map entry added:
     minLength: 1
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
   + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
   + one map entry added:
     minLength: 1
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
   + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength
   + one map entry added:
     minLength: 1
 
-[1].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
+1:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern
   + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-[2].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.description.maxLength
+2:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.description.maxLength
   + one map entry added:
     maxLength: 255
 
-[2].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.clusterResourceBlacklist.items.description
+2:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.clusterResourceBlacklist.items.description
   ± value change in multiline text (one insert, two deletions)
     - GroupKind specifies a Group and a Kind, but does not force a version.  This is useful for identifying
     - concepts during lookup stages without having partially valid types
     + ClusterResourceRestrictionItem is a cluster resource that is restricted by the project's whitelist or blacklist
 
-[2].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.clusterResourceWhitelist.items.description
+2:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.clusterResourceWhitelist.items.description
   ± value change in multiline text (one insert, two deletions)
     - GroupKind specifies a Group and a Kind, but does not force a version.  This is useful for identifying
     - concepts during lookup stages without having partially valid types
     + ClusterResourceRestrictionItem is a cluster resource that is restricted by the project's whitelist or blacklist
 
-[2].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.clusterResourceBlacklist.items.properties.name
+2:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.clusterResourceBlacklist.items.properties.name
   + one map entry added:
     name:
       description: |
@@ -7361,7 +7361,7 @@ Found 313 differences
         Unlike the group and kind fields, if no name is specified, all resources of the specified group/kind are matched.
       type: string
 
-[2].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.clusterResourceWhitelist.items.properties.name
+2:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.clusterResourceWhitelist.items.properties.name
   + one map entry added:
     name:
       description: |
@@ -7369,13 +7369,13 @@ Found 313 differences
         Unlike the group and kind fields, if no name is specified, all resources of the specified group/kind are matched.
       type: string
 
-[2].spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.syncWindows.items.properties.description
+2:spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.syncWindows.items.properties.description
   + one map entry added:
     description:
       description: Description of the sync that will be applied to the schedule, can be used to add any information such as a ticket number for example
       type: string
 
-[45].spec.template.spec.volumes
+45:spec.template.spec.volumes
   + one list entry added:
     - configMap:
         items:
@@ -7384,7 +7384,7 @@ Found 313 differences
         optional: true
       name: argocd-cmd-params-cm
 
-[45].spec.template.spec.containers.argocd-applicationset-controller.env
+45:spec.template.spec.containers.argocd-applicationset-controller.env
   + two list entries added:
     - name: ARGOCD_APPLICATIONSET_CONTROLLER_ENABLE_GITHUB_API_METRICS
       valueFrom:
@@ -7399,42 +7399,42 @@ Found 313 differences
           name: argocd-cmd-params-cm
           optional: true
 
-[45].spec.template.spec.containers.argocd-applicationset-controller.image
+45:spec.template.spec.containers.argocd-applicationset-controller.image
   ± value change
     - quay.io/argoproj/argocd:v3.0.0
     + quay.io/argoproj/argocd:v3.3.2
 
-[45].spec.template.spec.containers.argocd-applicationset-controller.volumeMounts
+45:spec.template.spec.containers.argocd-applicationset-controller.volumeMounts
   + one list entry added:
     - mountPath: /home/argocd/params
       name: argocd-cmd-params-cm
 
-[46].spec.template.spec.containers.dex.image
+46:spec.template.spec.containers.dex.image
   ± value change
     - ghcr.io/dexidp/dex:v2.41.1
     + ghcr.io/dexidp/dex:v2.43.0
 
-[46].spec.template.spec.initContainers.copyutil.image
+46:spec.template.spec.initContainers.copyutil.image
   ± value change
     - quay.io/argoproj/argocd:v3.0.0
     + quay.io/argoproj/argocd:v3.3.2
 
-[47].spec.template.spec.containers.argocd-notifications-controller.image
+47:spec.template.spec.containers.argocd-notifications-controller.image
   ± value change
     - quay.io/argoproj/argocd:v3.0.0
     + quay.io/argoproj/argocd:v3.3.2
 
-[48].spec.template.spec.containers.redis.image
+48:spec.template.spec.containers.redis.image
   ± value change
     - redis:7.2.7-alpine
     + public.ecr.aws/docker/library/redis:8.2.3-alpine
 
-[48].spec.template.spec.initContainers.secret-init.image
+48:spec.template.spec.initContainers.secret-init.image
   ± value change
     - quay.io/argoproj/argocd:v3.0.0
     + quay.io/argoproj/argocd:v3.3.2
 
-[49].spec.template.spec.containers.argocd-repo-server.env
+49:spec.template.spec.containers.argocd-repo-server.env
   + four list entries added:
     - name: ARGOCD_REPO_SERVER_OCI_MANIFEST_MAX_EXTRACTED_SIZE
       valueFrom:
@@ -7461,40 +7461,40 @@ Found 313 differences
           name: argocd-cmd-params-cm
           optional: true
 
-[49].spec.template.spec.containers.argocd-repo-server.image
+49:spec.template.spec.containers.argocd-repo-server.image
   ± value change
     - quay.io/argoproj/argocd:v3.0.0
     + quay.io/argoproj/argocd:v3.3.2
 
-[49].spec.template.spec.initContainers.copyutil.args
+49:spec.template.spec.initContainers.copyutil.args
   + one map entry added:
     args:
       - /bin/cp --update=none /usr/local/bin/argocd /var/run/argocd/argocd && /bin/ln -s /var/run/argocd/argocd /var/run/argocd/argocd-cmp-server
 
-[49].spec.template.spec.initContainers.copyutil.image
+49:spec.template.spec.initContainers.copyutil.image
   ± value change
     - quay.io/argoproj/argocd:v3.0.0
     + quay.io/argoproj/argocd:v3.3.2
 
-[49].spec.template.spec.initContainers.copyutil.command.0
+49:spec.template.spec.initContainers.copyutil.command.0
   ± value change
     - /bin/cp
     + sh
 
-[49].spec.template.spec.initContainers.copyutil.command.1
+49:spec.template.spec.initContainers.copyutil.command.1
   ± value change
     - -n
     + -c
 
-[49].spec.template.spec.initContainers.copyutil.command.2
+49:spec.template.spec.initContainers.copyutil.command.2
   - one list entry removed:
     - /usr/local/bin/argocd
 
-[49].spec.template.spec.initContainers.copyutil.command.3
+49:spec.template.spec.initContainers.copyutil.command.3
   - one list entry removed:
     - /var/run/argocd/argocd-cmp-server
 
-[50].spec.template.spec.containers.argocd-server.env
+50:spec.template.spec.containers.argocd-server.env
   + one list entry added:
     - name: ARGOCD_APPLICATIONSET_CONTROLLER_ENABLE_GITHUB_API_METRICS
       valueFrom:
@@ -7511,12 +7511,12 @@ Found 313 differences
           name: argocd-cmd-params-cm
           optional: true
 
-[50].spec.template.spec.containers.argocd-server.image
+50:spec.template.spec.containers.argocd-server.image
   ± value change
     - quay.io/argoproj/argocd:v3.0.0
     + quay.io/argoproj/argocd:v3.3.2
 
-[51].spec.template.spec.containers.argocd-application-controller.env
+51:spec.template.spec.containers.argocd-application-controller.env
   + three list entries added:
     - name: ARGOCD_APPLICATION_CONTROLLER_SELF_HEAL_BACKOFF_COOLDOWN_SECONDS
       valueFrom:
@@ -7537,47 +7537,47 @@ Found 313 differences
           name: argocd-cmd-params-cm
           optional: true
 
-[51].spec.template.spec.containers.argocd-application-controller.image
+51:spec.template.spec.containers.argocd-application-controller.image
   ± value change
     - quay.io/argoproj/argocd:v3.0.0
     + quay.io/argoproj/argocd:v3.3.2
 
-[52].metadata.labels
+52:metadata.labels
   + one map entry added:
     labels:
       app.kubernetes.io/component: application-controller
       app.kubernetes.io/name: argocd-application-controller
       app.kubernetes.io/part-of: argocd
 
-[53].metadata.labels
+53:metadata.labels
   + one map entry added:
     labels:
       app.kubernetes.io/component: applicationset-controller
       app.kubernetes.io/name: argocd-applicationset-controller
       app.kubernetes.io/part-of: argocd
 
-[54].metadata.labels
+54:metadata.labels
   + one map entry added:
     labels:
       app.kubernetes.io/component: dex-server
       app.kubernetes.io/name: argocd-dex-server
       app.kubernetes.io/part-of: argocd
 
-[56].metadata.labels
+56:metadata.labels
   + one map entry added:
     labels:
       app.kubernetes.io/component: redis
       app.kubernetes.io/name: argocd-redis
       app.kubernetes.io/part-of: argocd
 
-[57].metadata.labels
+57:metadata.labels
   + one map entry added:
     labels:
       app.kubernetes.io/component: repo-server
       app.kubernetes.io/name: argocd-repo-server
       app.kubernetes.io/part-of: argocd
 
-[58].metadata.labels
+58:metadata.labels
   + one map entry added:
     labels:
       app.kubernetes.io/component: server

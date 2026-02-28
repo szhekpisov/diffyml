@@ -2951,3 +2951,81 @@ func TestParseBareDocIndex(t *testing.T) {
 		}
 	}
 }
+
+func TestParseDocIndexPrefix(t *testing.T) {
+	tests := []struct {
+		path     string
+		wantIdx  int
+		wantRest string
+		wantOk   bool
+	}{
+		{"[0].spec.field", 0, "spec.field", true},
+		{"[2].metadata.name", 2, "metadata.name", true},
+		{"[12].x", 12, "x", true},
+		{"[0]", 0, "[0]", false},           // bare index — handled by parseBareDocIndex
+		{"items[0]", 0, "items[0]", false},  // not a leading index
+		{"name", 0, "name", false},          // no bracket
+		{"", 0, "", false},                  // empty
+		{"[abc].spec", 0, "[abc].spec", false}, // non-numeric
+		{"[].", 0, "[].", false},             // empty brackets
+	}
+	for _, tt := range tests {
+		idx, rest, ok := parseDocIndexPrefix(tt.path)
+		if ok != tt.wantOk || idx != tt.wantIdx || rest != tt.wantRest {
+			t.Errorf("parseDocIndexPrefix(%q) = (%d, %q, %v), want (%d, %q, %v)",
+				tt.path, idx, rest, ok, tt.wantIdx, tt.wantRest, tt.wantOk)
+		}
+	}
+}
+
+func TestDetailedFormatter_ColonNotation(t *testing.T) {
+	f, _ := GetFormatter("detailed")
+	opts := DefaultFormatOptions()
+	opts.OmitHeader = true
+
+	t.Run("doc index prefix uses colon notation", func(t *testing.T) {
+		diffs := []Difference{
+			{Path: "[0].spec.field", Type: DiffModified, From: "old", To: "new"},
+		}
+		output := f.Format(diffs, opts)
+		if !strings.Contains(output, "0:spec.field") {
+			t.Errorf("expected '0:spec.field' in output, got: %q", output)
+		}
+		if strings.Contains(output, "[0]") {
+			t.Errorf("should not contain '[0]' in output, got: %q", output)
+		}
+	})
+
+	t.Run("higher doc index uses colon notation", func(t *testing.T) {
+		diffs := []Difference{
+			{Path: "[2].metadata.name", Type: DiffModified, From: "old", To: "new"},
+		}
+		output := f.Format(diffs, opts)
+		if !strings.Contains(output, "2:metadata.name") {
+			t.Errorf("expected '2:metadata.name' in output, got: %q", output)
+		}
+	})
+
+	t.Run("go-patch style with doc index prefix", func(t *testing.T) {
+		gpOpts := DefaultFormatOptions()
+		gpOpts.OmitHeader = true
+		gpOpts.UseGoPatchStyle = true
+		diffs := []Difference{
+			{Path: "[0].spec.field", Type: DiffModified, From: "old", To: "new"},
+		}
+		output := f.Format(diffs, gpOpts)
+		if !strings.Contains(output, "0:/spec/field") {
+			t.Errorf("expected '0:/spec/field' in output, got: %q", output)
+		}
+	})
+
+	t.Run("non-leading index still preserved", func(t *testing.T) {
+		diffs := []Difference{
+			{Path: "items[0]", Type: DiffModified, From: "old", To: "new"},
+		}
+		output := f.Format(diffs, opts)
+		if !strings.Contains(output, "items[0]") {
+			t.Errorf("expected 'items[0]' preserved in output, got: %q", output)
+		}
+	})
+}

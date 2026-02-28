@@ -142,18 +142,17 @@ func (s *Summarizer) Summarize(ctx context.Context, groups []DiffGroup) (string,
 	}
 
 	// Handle HTTP error status codes
-	switch {
-	case resp.StatusCode == 401:
+	if resp.StatusCode == 401 {
 		return "", fmt.Errorf("invalid API key")
-	case resp.StatusCode == 429:
+	} else if resp.StatusCode == 429 {
 		return "", fmt.Errorf("rate limited")
-	case resp.StatusCode >= 500:
+	} else if resp.StatusCode >= 500 {
 		msg := "unknown error"
 		if result.Error != nil && result.Error.Message != "" {
 			msg = result.Error.Message
 		}
 		return "", fmt.Errorf("server error: %s", msg)
-	case resp.StatusCode != 200:
+	} else if resp.StatusCode != 200 {
 		msg := fmt.Sprintf("HTTP %d", resp.StatusCode)
 		if result.Error != nil && result.Error.Message != "" {
 			msg = result.Error.Message

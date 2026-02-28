@@ -1,23 +1,36 @@
 # Mutation Testing Report
 
 **Tool:** [gremlins](https://github.com/go-gremlins/gremlins)
-**Last full run:** 2026-02-28 — efficacy 95.15% (490 killed / 515 covered)
-**Line coverage:** 96.5% (`go test -cover ./pkg/diffyml/`)
-**Mutator coverage:** 91.96%
+**Last full run:** 2026-02-28 — efficacy 95.86% (533 killed / 556 covered)
+**Line coverage:** 96.6% (`go test -cover ./pkg/diffyml/`)
+**Mutator coverage:** 99.29%
 
 ## Summary
 
 | Status | Count |
 |--------|-------|
-| Killed | 490 |
-| Lived | 25 |
+| Killed | 533 |
+| Lived | 23 |
 | Timed out | 4 |
-| Not covered | 45 |
-| **Efficacy** | **95.15%** |
-| **Mutator coverage** | **91.96%** |
+| Not covered | 4 |
+| **Efficacy** | **95.86%** |
+| **Mutator coverage** | **99.29%** |
 
 ### Change log
 
+- **Round 5** (2026-02-28): Fixed gremlins coverage discrepancy — converted 5
+  `switch/case` statements to `if/else` chains in `detailed_formatter.go`,
+  `summarizer.go`, `comparator.go`, and `directory.go`. Root cause: Go's
+  `-coverprofile` instruments case bodies but not case conditions; gremlins
+  checks mutation positions against coverage block boundaries and classified
+  case-condition mutations as NOT COVERED. The `if/else` form places conditions
+  inside coverage blocks. NOT COVERED 45 → 4 (remaining 4 are package-level
+  constants), mutator coverage 91.96% → 99.29%. Two previously hidden equivalent
+  mutants were exposed (LIVED 21 → 23).
+- **Round 4** (2026-02-28): Killed 4 surviving mutants by fixing imprecise test
+  assertions. Tests now exercise the correct type branches (nested maps for
+  `extractPathOrder`, map values for `renderFirstKeyValueYAML`) and assert exact
+  indentation and output exclusion. LIVED 25 → 21, efficacy 95.15% → 95.92%.
 - **Round 3** (2026-02-28): Refactored `filter.go` to remove 12 redundant `len > 0`
   guards (equivalent mutants). Added 17 new mutation-targeted tests in
   `coverage_gaps_test.go`. Net result: LIVED 36 → 25, efficacy 93.23% → 95.15%.
@@ -27,9 +40,9 @@
   Not-covered dropped from 60 → 45, line coverage rose from 92.3% → 96.6%.
 - **Round 1**: Initial mutation testing setup with gremlins.
 
-## Survived Mutants (25 LIVED)
+## Survived Mutants (23 LIVED)
 
-All 25 surviving mutants are **equivalent** — the mutation does not change
+All 23 surviving mutants are **equivalent** — the mutation does not change
 observable program behavior, so no test can detect them.
 
 ---
@@ -79,7 +92,7 @@ that ensures the operands are never equal. When they can't be equal, `<` and
 
 ---
 
-### Pattern 4: `maxLen` boundary in document comparison (3 mutants)
+### Pattern 4: `maxLen` and list-bounds boundaries in comparator (4 mutants)
 
 **File:** `comparator.go`
 **Mutation:** `CONDITIONALS_BOUNDARY`
@@ -89,6 +102,7 @@ that ensures the operands are never equal. When they can't be equal, `<` and
 | 27:13 | `len(to) > maxLen` → `>=` | Sets `maxLen` to `len(to)` which already equals `maxLen` at boundary |
 | 31:16 | `i < maxLen` → `<=` | Extra iteration with both nil docs is a no-op |
 | 337:13 | `len(to) > maxLen` → `>=` | Same pattern as line 27 |
+| 352:8 | `i >= len(from)` → `>` | At `i == len(from)`: `fromVal` is nil (prior `if i < len(from)` failed), so the `else` branch calls `compareNodes(path, nil, toVal)` which produces `DiffAdded` — same result |
 
 ---
 
@@ -119,20 +133,25 @@ prevents any behavior change.
 
 ---
 
-### Pattern 7: LCS tie-breaking (1 mutant)
+### Pattern 7: LCS tie-breaking (2 mutants)
 
 **File:** `detailed_formatter.go`
-**Mutation:** `CONDITIONALS_BOUNDARY` at line 462:17 — `>=` changed to `>`
+**Mutation:** `CONDITIONALS_BOUNDARY`
 
 When `dp[i-1][j] == dp[i][j-1]`, both branches assign the same value. The DP
 table is identical regardless of which branch is taken.
+
+| Line | Code | Why equivalent |
+|------|------|----------------|
+| 462:17 | `j <= n` → `j < n` | Inner loop boundary; at `j == n` the DP cell is already computed by the outer structure |
+| 465:25 | `dp[i-1][j] >= dp[i][j-1]` → `>` | When equal, both branches assign the same max LCS value |
 
 ---
 
 ### Pattern 8: Array reverse self-swap (1 mutant)
 
 **File:** `detailed_formatter.go`
-**Mutation:** `CONDITIONALS_BOUNDARY` at line 493:41 — `<` changed to `<=`
+**Mutation:** `CONDITIONALS_BOUNDARY` at line 491:41 — `<` changed to `<=`
 
 When `left == right` (odd-length array midpoint), swapping an element with
 itself is a no-op.
@@ -148,19 +167,7 @@ The capacity hint only affects initial memory allocation, not map behavior.
 
 ---
 
-### Pattern 10: Arithmetic in formatter indentation (2 mutants)
-
-**File:** `detailed_formatter.go`
-**Mutation:** `ARITHMETIC_BASE`
-
-| Line | Code | Why equivalent |
-|------|------|----------------|
-| 294:45 | `indent+4` in `renderFirstKeyValueYAML` for `map[string]interface{}` | Unordered map iteration makes indent assertion unreliable; value is correct but gremlins' mutant produces output that existing tests don't distinguish |
-| 303:87 | `indent+2` in `renderFirstKeyValueYAML` for multiline default | Test asserts multiline content appears indented, but the specific indent depth change from mutation doesn't affect the assertion |
-
----
-
-### Pattern 11: Flag parsing edge case (1 mutant)
+### Pattern 10: Flag parsing edge case (1 mutant)
 
 **File:** `cli.go`
 **Mutation:** `CONDITIONALS_BOUNDARY` at line 221:51 — `>= 0` changed to `> 0`
@@ -170,63 +177,33 @@ nil and the arg is treated as positional.
 
 ---
 
-### Pattern 12: `index++` in `extractPathOrder` (1 mutant)
+## Not Covered (4 mutants)
 
-**File:** `diffyml.go`
-**Mutation:** `INCREMENT_DECREMENT` at line 155:11 — `index++` → `index--`
+4 mutants remain NOT COVERED. All are `ARITHMETIC_BASE` mutations on
+package-level constants. Constants are compile-time expressions that do not
+appear as executable statements in Go's `-coverprofile`, so gremlins cannot
+determine whether they are tested.
 
-Path order values become negative and descending, but `sortDiffsWithOrder` only
-uses relative ordering (`<`), which is preserved when all values are shifted or
-inverted uniformly within a single map traversal.
+| File | Line | Constant |
+|------|------|----------|
+| `remote.go` | 14:23 | `MaxResponseSize = 10 * 1024 * 1024` |
+| `remote.go` | 14:30 | `MaxResponseSize = 10 * 1024 * 1024` |
+| `remote.go` | 16:22 | `DefaultTimeout = 30 * time.Second` |
+| `summarizer.go` | 26:24 | `summaryTimeout = 30 * time.Second` |
 
----
+These constants are exercised by unit tests (`TestRemoteConstants`,
+`TestSummarize_Timeout`), but since Go does not instrument constant
+declarations, they will always be reported as NOT COVERED by gremlins.
 
-### Pattern 13: Brief+summary condition (1 mutant)
+### Previously NOT COVERED (resolved in Round 5)
 
-**File:** `cli.go`
-**Mutation:** `CONDITIONALS_NEGATION` at line 638:31 — `== "brief"` → `!= "brief"`
+41 mutants were previously reported as NOT COVERED due to a Go coverage
+instrumentation limitation: `switch/case` condition expressions fall outside
+Go's coverage blocks (which only instrument case *bodies*, starting after the
+`:`). Gremlins checks if a mutation's `line:column` falls within a covered
+block, so mutations on case conditions were classified as NOT COVERED even
+though the code was fully tested.
 
-When mutated, all non-brief outputs defer printing. But the test uses
-`Output: "brief"`, so the mutant matches the original code path for that test
-input. The mutation can only be detected by testing a non-brief output with
-`Summary: true` and checking that output is NOT deferred — but the formatter
-writes output regardless, making the deferral invisible in the final result.
-
----
-
-## Not Covered (45 mutants)
-
-45 mutants are in code paths that gremlins reports as not covered. Most of these
-are covered by `go test -coverprofile` but gremlins' coverage gathering disagrees.
-
-**Line coverage:** 96.5% (`go test -cover`)
-
-### By file
-
-| File | Mutants | Category |
-|------|---------|----------|
-| `detailed_formatter.go` | 29 | LCS algorithm in `computeLineDiff` (lines 464, 466, 479, 483) |
-| `summarizer.go` | 6 | API error-status branches (lines 146, 148, 150, 156) and timeout constant (line 26) |
-| `comparator.go` | 4 | `compareListsPositional` add/remove bounds (lines 353, 361) |
-| `remote.go` | 3 | Constant arithmetic (`MaxResponseSize`, `DefaultTimeout`) |
-| `directory.go` | 3 | `buildFilePairsFromMap` branch conditions (lines 179, 181) |
-
-### Analysis
-
-**LCS algorithm (29 mutants):** `computeLineDiff` implements LCS for inline
-multiline diffs. Direct unit tests exist (`TestComputeLineDiff_*`) and
-`go test -coverprofile` shows 100% coverage, but gremlins' coverage gathering
-reports them as NOT COVERED — a known discrepancy in how gremlins aggregates
-coverage.
-
-**Summarizer API errors (6 mutants):** The HTTP status-code switch (401, 429,
->=500, !=200) and `summaryTimeout` constant. Tests exist for all paths
-(`TestSummarize_Auth401`, `_RateLimit429`, `_ServerError500`, `_ServerError502`),
-but gremlins does not recognize them as covered.
-
-**Gremlins coverage discrepancy (10 mutants):** The remaining NOT COVERED
-mutants in `comparator.go`, `remote.go`, and `directory.go` are in lines that
-`go test -coverprofile` confirms ARE executed. Direct unit tests exist for all
-three (`TestCompareListsPositional_*`, `TestRemoteConstants`,
-`TestBuildFilePairsFromMap_AllTypes`). This appears to be a gremlins-specific
-issue with coverage aggregation, not an actual test gap.
+**Fix:** Converted 5 `switch` statements to `if/else` chains, which places
+conditions inside coverage blocks. Of the 41 newly covered mutants, 39 were
+KILLED and 2 became LIVED (newly exposed equivalent boundary mutants).

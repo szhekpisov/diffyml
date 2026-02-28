@@ -349,8 +349,7 @@ func compareListsPositional(path string, from, to []interface{}, opts *Options) 
 			toVal = to[i]
 		}
 
-		switch {
-		case i >= len(from):
+		if i >= len(from) {
 			// Item was added
 			diffs = append(diffs, Difference{
 				Path: cleanPath(childPath),
@@ -358,7 +357,7 @@ func compareListsPositional(path string, from, to []interface{}, opts *Options) 
 				From: nil,
 				To:   toVal,
 			})
-		case i >= len(to):
+		} else if i >= len(to) {
 			// Item was removed
 			diffs = append(diffs, Difference{
 				Path: cleanPath(childPath),
@@ -366,7 +365,7 @@ func compareListsPositional(path string, from, to []interface{}, opts *Options) 
 				From: fromVal,
 				To:   nil,
 			})
-		default:
+		} else {
 			// Both exist - recurse
 			diffs = append(diffs, compareNodes(childPath, fromVal, toVal, opts)...)
 		}

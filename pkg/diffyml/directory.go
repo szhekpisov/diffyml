@@ -175,12 +175,11 @@ func buildFilePairsFromMap(m map[string][2][]byte) []FilePair {
 		contents := m[name]
 		var pair FilePair
 		pair.Name = name
-		switch {
-		case contents[0] != nil && contents[1] != nil:
+		if contents[0] != nil && contents[1] != nil {
 			pair.Type = FilePairBothExist
-		case contents[0] != nil:
+		} else if contents[0] != nil {
 			pair.Type = FilePairOnlyFrom
-		default:
+		} else {
 			pair.Type = FilePairOnlyTo
 		}
 		pairs = append(pairs, pair)

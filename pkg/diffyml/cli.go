@@ -203,8 +203,12 @@ func isBoolFlag(f *flag.Flag) bool {
 func reorderArgs(args []string, fs *flag.FlagSet) []string {
 	var flags, positional []string
 
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
+	skip := false
+	for i, arg := range args {
+		if skip {
+			skip = false
+			continue
+		}
 
 		if arg == "--" {
 			positional = append(positional, args[i:]...)
@@ -233,8 +237,8 @@ func reorderArgs(args []string, fs *flag.FlagSet) []string {
 
 		// If this is a non-bool flag without "=" form, consume next arg as value.
 		if !strings.Contains(arg, "=") && !isBoolFlag(f) && i+1 < len(args) {
-			i++
-			flags = append(flags, args[i])
+			flags = append(flags, args[i+1])
+			skip = true
 		}
 	}
 

@@ -1,0 +1,19 @@
+silent: false
+unleash:
+  dry-run: false
+  timeout-coefficient: 30
+  threshold:
+    efficacy: 0
+    mutant-coverage: 0
+
+mutants:
+  arithmetic-base:
+    enabled: true
+  conditionals-boundary:
+    enabled: true
+  conditionals-negation:
+    enabled: true
+  increment-decrement:
+    enabled: true
+  invert-negatives:
+    enabled: true

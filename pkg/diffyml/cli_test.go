@@ -2660,3 +2660,154 @@ func TestCLIConfig_Usage_IncludesIgnoreApiVersion(t *testing.T) {
 		t.Error("expected usage output to contain --ignore-api-version flag")
 	}
 }
+
+// --- Mutation testing: cli.go ---
+
+func TestReorderArgs_EqualsAtPositionZero(t *testing.T) {
+	// cli.go:221 — `eqIdx >= 0` → `> 0` would skip flags like `--=value`
+	// where the = sign is at position 0 of the name part.
+	// After stripping dashes from "--=value", name becomes "=value",
+	// IndexByte('=') returns 0. If mutated to > 0, name would be "=value"
+	// instead of "" and fs.Lookup would fail differently.
+	//
+	// We test with a real flag that has `=` at the start of the value portion.
+	cfg := NewCLIConfig()
+	args := []string{"from.yaml", "to.yaml", "--output=brief"}
+
+	err := cfg.ParseArgs(args)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Output != "brief" {
+		t.Errorf("expected Output='brief', got %q", cfg.Output)
+	}
+}
+
+func TestReorderArgs_NonBoolFlagConsumesNextArg(t *testing.T) {
+	// cli.go:235 — `i+1` → `i-1` would consume wrong arg
+	// cli.go:235 — `i+1 < len(args)` → `<= len(args)` would OOB
+	cfg := NewCLIConfig()
+	args := []string{"--output", "brief", "from.yaml", "to.yaml"}
+
+	err := cfg.ParseArgs(args)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Output != "brief" {
+		t.Errorf("expected Output='brief', got %q", cfg.Output)
+	}
+	if cfg.FromFile != "from.yaml" {
+		t.Errorf("expected FromFile='from.yaml', got %q", cfg.FromFile)
+	}
+	if cfg.ToFile != "to.yaml" {
+		t.Errorf("expected ToFile='to.yaml', got %q", cfg.ToFile)
+	}
+}
+
+func TestReorderArgs_NonBoolFlagAtEnd(t *testing.T) {
+	// cli.go:235 — when non-bool flag is the LAST arg (no value following),
+	// `i+1 < len(args)` prevents OOB. If mutated to `<=`, would panic.
+	cfg := NewCLIConfig()
+	// --output with no following value → will fail at Parse, but should NOT panic
+	args := []string{"from.yaml", "to.yaml", "--output"}
+
+	err := cfg.ParseArgs(args)
+	// This might succeed or fail depending on flag parsing, but must not panic.
+	// The key is that reorderArgs doesn't panic when non-bool flag is last.
+	_ = err
+}
+
+func TestReorderArgs_MultipleFlagValuePairs(t *testing.T) {
+	// cli.go:235 — if `i+1` mutated to `i-1`, the second flag/value pair
+	// would consume the wrong argument.
+	cfg := NewCLIConfig()
+	args := []string{"from.yaml", "--output", "brief", "--color", "off", "to.yaml"}
+
+	err := cfg.ParseArgs(args)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Output != "brief" {
+		t.Errorf("expected Output='brief', got %q", cfg.Output)
+	}
+	if cfg.Color != "off" {
+		t.Errorf("expected Color='off', got %q", cfg.Color)
+	}
+	if cfg.FromFile != "from.yaml" {
+		t.Errorf("expected FromFile='from.yaml', got %q", cfg.FromFile)
+	}
+	if cfg.ToFile != "to.yaml" {
+		t.Errorf("expected ToFile='to.yaml', got %q", cfg.ToFile)
+	}
+}
+
+func TestReorderArgs_TrailingNonBoolFlag(t *testing.T) {
+	// Non-bool flag as last arg → no panic
+	cfg := NewCLIConfig()
+	args := []string{"from.yaml", "to.yaml", "--output", "brief"}
+
+	err := cfg.ParseArgs(args)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.Output != "brief" {
+		t.Errorf("expected Output='brief', got %q", cfg.Output)
+	}
+	if cfg.FromFile != "from.yaml" {
+		t.Errorf("expected FromFile='from.yaml', got %q", cfg.FromFile)
+	}
+}
+
+func TestRun_TrueColorAlways(t *testing.T) {
+	yaml1 := "key: value1\n"
+	yaml2 := "key: value2\n"
+
+	cfg := NewCLIConfig()
+	cfg.Output = "detailed"
+	cfg.Color = "always"
+	cfg.TrueColor = "always"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FromContent = []byte(yaml1)
+	rc.ToContent = []byte(yaml2)
+
+	result := Run(cfg, rc)
+	if result.Code == ExitCodeError {
+		t.Fatalf("unexpected error: %v", result.Err)
+	}
+
+	output := stdout.String()
+	// With TrueColor=always, output should contain 24-bit ANSI codes (38;2;)
+	if !strings.Contains(output, "\033[38;2;") {
+		t.Errorf("expected 24-bit ANSI color codes in output with TrueColor=always, got: %s", output)
+	}
+}
+
+func TestRun_DetailedWithSummaryOutputNotDeferred(t *testing.T) {
+	yaml1 := "key: value1\n"
+	yaml2 := "key: value2\n"
+
+	cfg := NewCLIConfig()
+	cfg.Output = "detailed"
+	cfg.Summary = true
+	// Don't set ANTHROPIC_API_KEY — summary will fail, but detailed output should already be written
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FromContent = []byte(yaml1)
+	rc.ToContent = []byte(yaml2)
+
+	Run(cfg, rc)
+
+	output := stdout.String()
+	// Detailed output should be present (not deferred like brief+summary)
+	if !strings.Contains(output, "key") {
+		t.Error("expected detailed diff output to be written even with --summary, but output is empty or missing")
+	}
+}

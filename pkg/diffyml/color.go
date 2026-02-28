@@ -71,9 +71,15 @@ func GetTerminalWidth(override int) int {
 	return defaultTerminalWidth
 }
 
+// stdoutStatFn is an injectable function for os.Stdout.Stat(), enabling
+// terminal-mode mocking in tests without a real TTY.
+var stdoutStatFn = func() (os.FileInfo, error) {
+	return os.Stdout.Stat()
+}
+
 // IsTerminal checks if the given file descriptor is a terminal.
 func IsTerminal(fd uintptr) bool {
-	stat, err := os.Stdout.Stat()
+	stat, err := stdoutStatFn()
 	if err != nil {
 		return false
 	}
@@ -130,8 +136,8 @@ func (c *ColorConfig) ShouldUseTrueColor() bool {
 	if strings.Contains(term, "256color") || strings.Contains(term, "truecolor") {
 		return true
 	}
-	// Default to assuming support if explicitly requested
-	return c.trueColor && c.isTerminal
+	// trueColor is only set for "always" mode, so honor the explicit request
+	return c.trueColor
 }
 
 // GetWidth returns the terminal width to use.

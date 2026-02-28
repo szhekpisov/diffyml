@@ -1,4 +1,4 @@
-.PHONY: build coverage check-coverage bench bench-cpu bench-mem bench-compare govulncheck golangci-lint security test e2e fmt lint vet ci fixture changelog fuzz fuzz-long
+.PHONY: build coverage check-coverage bench bench-cpu bench-mem bench-compare govulncheck golangci-lint security test e2e fmt lint vet ci fixture changelog fuzz fuzz-long mutation mutation-dry
 
 BIN = /tmp/diffyml-dev
 
@@ -91,6 +91,13 @@ fuzz-long:
 		echo "=== Fuzzing $$target for 5m ==="; \
 		go test -fuzz="^$${target}$$" -fuzztime=5m -run='^$$' ./pkg/diffyml/; \
 	done
+
+mutation:
+	gremlins unleash --workers 5 --coverpkg="./pkg/diffyml/..." --output=mutation-report.json ./pkg/diffyml/
+	go clean -cache
+
+mutation-dry:
+	gremlins unleash --dry-run --coverpkg="./pkg/diffyml/..." ./pkg/diffyml/
 
 ci: fmt vet test check-coverage security
 

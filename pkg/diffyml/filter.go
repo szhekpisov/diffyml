@@ -49,10 +49,8 @@ func FilterDiffs(diffs []Difference, opts *FilterOptions) []Difference {
 		}
 
 		// Step 2: Apply exclude filter (if specified)
-		if len(opts.ExcludePaths) > 0 {
-			if matchesAnyPath(diff.Path, opts.ExcludePaths) {
-				continue // Excluded, skip
-			}
+		if matchesAnyPath(diff.Path, opts.ExcludePaths) {
+			continue // Excluded, skip
 		}
 
 		result = append(result, diff)
@@ -84,13 +82,9 @@ func pathMatches(diffPath, filterPath string) bool {
 	// The character after the prefix must be '.' or '[' to ensure we match
 	// at path boundaries (not partial word matches)
 	if strings.HasPrefix(diffPath, filterPath) {
-		// Check that the prefix ends at a path boundary
-		remaining := diffPath[len(filterPath):]
-		if len(remaining) > 0 {
-			firstChar := remaining[0]
-			if firstChar == '.' || firstChar == '[' {
-				return true
-			}
+		firstChar := diffPath[len(filterPath)]
+		if firstChar == '.' || firstChar == '[' {
+			return true
 		}
 	}
 
@@ -130,30 +124,21 @@ func FilterDiffsWithRegexp(diffs []Difference, opts *FilterOptions) ([]Differenc
 		return diffs, nil
 	}
 
+	// Compile regex patterns
+	includeRegex, err := compileRegexPatterns(opts.IncludeRegexp)
+	if err != nil {
+		return nil, err
+	}
+	excludeRegex, err := compileRegexPatterns(opts.ExcludeRegexp)
+	if err != nil {
+		return nil, err
+	}
+
 	// Check if any filters are specified
-	hasPathFilters := len(opts.IncludePaths) > 0 || len(opts.ExcludePaths) > 0
-	hasRegexFilters := len(opts.IncludeRegexp) > 0 || len(opts.ExcludeRegexp) > 0
+	hasIncludeFilters := len(opts.IncludePaths) > 0 || len(includeRegex) > 0
 
-	if !hasPathFilters && !hasRegexFilters {
+	if !hasIncludeFilters && len(opts.ExcludePaths) == 0 && len(excludeRegex) == 0 {
 		return diffs, nil
-	}
-
-	// Compile regex patterns (cached for performance within this call)
-	var includeRegex, excludeRegex []*regexp.Regexp
-	var err error
-
-	if len(opts.IncludeRegexp) > 0 {
-		includeRegex, err = compileRegexPatterns(opts.IncludeRegexp)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if len(opts.ExcludeRegexp) > 0 {
-		excludeRegex, err = compileRegexPatterns(opts.ExcludeRegexp)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	var result []Difference
@@ -162,18 +147,9 @@ func FilterDiffsWithRegexp(diffs []Difference, opts *FilterOptions) ([]Differenc
 		included := true
 
 		// Step 1: Apply include filters (path or regex)
-		if len(opts.IncludePaths) > 0 || len(opts.IncludeRegexp) > 0 {
-			included = false
-
-			// Check path includes
-			if len(opts.IncludePaths) > 0 && matchesAnyPath(diff.Path, opts.IncludePaths) {
-				included = true
-			}
-
-			// Check regex includes
-			if !included && len(includeRegex) > 0 && matchesAnyRegex(diff.Path, includeRegex) {
-				included = true
-			}
+		if hasIncludeFilters {
+			included = matchesAnyPath(diff.Path, opts.IncludePaths) ||
+				matchesAnyRegex(diff.Path, includeRegex)
 		}
 
 		if !included {
@@ -181,17 +157,8 @@ func FilterDiffsWithRegexp(diffs []Difference, opts *FilterOptions) ([]Differenc
 		}
 
 		// Step 2: Apply exclude filters (path or regex)
-		excluded := false
-
-		if len(opts.ExcludePaths) > 0 && matchesAnyPath(diff.Path, opts.ExcludePaths) {
-			excluded = true
-		}
-
-		if !excluded && len(excludeRegex) > 0 && matchesAnyRegex(diff.Path, excludeRegex) {
-			excluded = true
-		}
-
-		if excluded {
+		if matchesAnyPath(diff.Path, opts.ExcludePaths) ||
+			matchesAnyRegex(diff.Path, excludeRegex) {
 			continue
 		}
 

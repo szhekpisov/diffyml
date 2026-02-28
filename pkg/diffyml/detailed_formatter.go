@@ -428,9 +428,11 @@ func (f *DetailedFormatter) formatMultilineDiff(sb *strings.Builder, from, to st
 	}
 
 	// Render with collapsing
-	i := 0
-	for i < len(ops) {
-		op := ops[i]
+	skipUntil := 0
+	for i, op := range ops {
+		if i < skipUntil {
+			continue
+		}
 		if op.Type != editKeep || nearChange[i] {
 			switch op.Type {
 			case editKeep:
@@ -440,14 +442,16 @@ func (f *DetailedFormatter) formatMultilineDiff(sb *strings.Builder, from, to st
 			case editDelete:
 				f.writeColoredLine(sb, fmt.Sprintf("    - %s", op.Line), f.colorRemoved(opts), opts)
 			}
-			i++
 		} else {
 			// Count consecutive non-near-change keep ops
 			collapsed := 0
-			for i < len(ops) && ops[i].Type == editKeep && !nearChange[i] {
+			for _, sub := range ops[i:] {
+				if sub.Type != editKeep || nearChange[i+collapsed] {
+					break
+				}
 				collapsed++
-				i++
 			}
+			skipUntil = i + collapsed
 			f.writeColoredLine(sb, fmt.Sprintf("    [%d %s unchanged]", collapsed, pluralize(collapsed, "line", "lines")), f.colorContext(opts), opts)
 		}
 	}
@@ -466,12 +470,12 @@ func computeLineDiff(fromLines, toLines []string) []editOp {
 	}
 	for i := 1; i <= m; i++ {
 		for j := 1; j <= n; j++ {
-			switch {
-			case fromLines[i-1] == toLines[j-1]:
+			//nolint:gocritic // if-else kept intentionally: switch/case conditions fall outside Go coverage blocks, causing gremlins to misclassify mutations as NOT COVERED
+			if fromLines[i-1] == toLines[j-1] {
 				dp[i][j] = dp[i-1][j-1] + 1
-			case dp[i-1][j] >= dp[i][j-1]:
+			} else if dp[i-1][j] >= dp[i][j-1] {
 				dp[i][j] = dp[i-1][j]
-			default:
+			} else {
 				dp[i][j] = dp[i][j-1]
 			}
 		}
@@ -481,15 +485,15 @@ func computeLineDiff(fromLines, toLines []string) []editOp {
 	var ops []editOp
 	i, j := m, n
 	for i > 0 || j > 0 {
-		switch {
-		case i > 0 && j > 0 && fromLines[i-1] == toLines[j-1]:
+		//nolint:gocritic // if-else kept intentionally: switch/case conditions fall outside Go coverage blocks, causing gremlins to misclassify mutations as NOT COVERED
+		if i > 0 && j > 0 && fromLines[i-1] == toLines[j-1] {
 			ops = append(ops, editOp{Type: editKeep, Line: fromLines[i-1]})
 			i--
 			j--
-		case j > 0 && (i == 0 || dp[i][j-1] >= dp[i-1][j]):
+		} else if j > 0 && (i == 0 || dp[i][j-1] >= dp[i-1][j]) {
 			ops = append(ops, editOp{Type: editInsert, Line: toLines[j-1]})
 			j--
-		default:
+		} else {
 			ops = append(ops, editOp{Type: editDelete, Line: fromLines[i-1]})
 			i--
 		}

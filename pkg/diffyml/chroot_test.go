@@ -260,6 +260,100 @@ func TestApplyChroot_PathNotFound(t *testing.T) {
 	}
 }
 
+// --- Mutation testing: chroot.go ---
+
+func TestNavigateToPath_IndexAtExactLength(t *testing.T) {
+	// chroot.go:53 — `seg.index >= len(list)` → `> len(list)`
+	// If mutated, accessing index == len(list) would panic instead of returning error.
+	doc := map[string]interface{}{
+		"items": []interface{}{"a", "b", "c"},
+	}
+
+	// Index 3 is exactly len(list), should return error not panic
+	_, err := navigateToPath(doc, "items[3]")
+	if err == nil {
+		t.Error("expected error for index == len(list), but got nil")
+	}
+}
+
+func TestSplitPath_ConsecutiveDots(t *testing.T) {
+	// chroot.go:158 — `current.Len() > 0` → `>= 0`
+	// If mutated, consecutive dots like "a..b" would add empty segments.
+	parts, err := splitPath("a..b")
+	if err != nil {
+		t.Fatalf("splitPath(\"a..b\") failed: %v", err)
+	}
+	// Should produce ["a", "b"] — no empty segments
+	for i, part := range parts {
+		if part == "" {
+			t.Errorf("splitPath(\"a..b\") produced empty segment at index %d", i)
+		}
+	}
+	if len(parts) != 2 {
+		t.Errorf("splitPath(\"a..b\") produced %d parts, want 2: %v", len(parts), parts)
+	}
+}
+
+func TestSplitPath_TrailingDot(t *testing.T) {
+	// chroot.go:158 — trailing dot should not produce empty segment
+	parts, err := splitPath("a.b.")
+	if err != nil {
+		t.Fatalf("splitPath(\"a.b.\") failed: %v", err)
+	}
+	for i, part := range parts {
+		if part == "" {
+			t.Errorf("splitPath(\"a.b.\") produced empty segment at index %d", i)
+		}
+	}
+	if len(parts) != 2 {
+		t.Errorf("splitPath(\"a.b.\") produced %d parts, want 2: %v", len(parts), parts)
+	}
+}
+
+func TestNavigateToPath_BareIndex(t *testing.T) {
+	// chroot.go:117 — bare index path [0] without key prefix
+	// If idx >= 0 is mutated to idx > 0, [0] would be treated as simple key
+	doc := []interface{}{"first", "second", "third"}
+
+	result, err := navigateToPath(doc, "[0]")
+	if err != nil {
+		t.Fatalf("navigateToPath(list, \"[0]\") failed: %v", err)
+	}
+	if result != "first" {
+		t.Errorf("navigateToPath(list, \"[0]\") = %v, want \"first\"", result)
+	}
+}
+
+func TestParsePath_LeadingDot(t *testing.T) {
+	// chroot.go:158 — leading dot in path should produce 1 segment, not 2
+	// If current.Len() > 0 mutated to >= 0, it would append empty string
+	segments, err := parsePath(".items")
+	if err != nil {
+		t.Fatalf("parsePath(\".items\") failed: %v", err)
+	}
+	if len(segments) != 1 {
+		t.Errorf("parsePath(\".items\") returned %d segments, want 1", len(segments))
+	}
+	if len(segments) > 0 && segments[0].key != "items" {
+		t.Errorf("parsePath(\".items\")[0].key = %q, want \"items\"", segments[0].key)
+	}
+}
+
+func TestSplitPath_SimpleKey(t *testing.T) {
+	// chroot.go:181 — simple key with no brackets or dots
+	// If current.Len() > 0 mutated to == 0, the last segment would be dropped
+	parts, err := splitPath("key")
+	if err != nil {
+		t.Fatalf("splitPath(\"key\") failed: %v", err)
+	}
+	if len(parts) != 1 {
+		t.Errorf("splitPath(\"key\") returned %d parts, want 1", len(parts))
+	}
+	if len(parts) > 0 && parts[0] != "key" {
+		t.Errorf("splitPath(\"key\")[0] = %q, want \"key\"", parts[0])
+	}
+}
+
 func TestCompareWithChroot_BothFiles(t *testing.T) {
 	from := []byte(`---
 root:

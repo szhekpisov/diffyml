@@ -62,6 +62,36 @@ func TestNodeToInterface_EdgeCases(t *testing.T) {
 	})
 }
 
+func TestNodeToInterface_MappingOddContent(t *testing.T) {
+	// ordered_map.go:75 — `i+1 < len(node.Content)` → `<= len(node.Content)`
+	// If mutated, accessing node.Content[i+1] when i+1 == len would panic.
+	// We create a MappingNode with an odd number of Content entries.
+	node := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "key1"},
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "val1"},
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "orphanKey"},
+			// Missing value node — odd content count
+		},
+	}
+
+	// Should not panic
+	result := nodeToInterface(node)
+	om, ok := result.(*OrderedMap)
+	if !ok {
+		t.Fatalf("expected *OrderedMap, got %T", result)
+	}
+
+	// Should have only 1 key ("key1") since "orphanKey" has no pair
+	if len(om.Keys) != 1 {
+		t.Errorf("expected 1 key for odd content, got %d: %v", len(om.Keys), om.Keys)
+	}
+	if om.Keys[0] != "key1" {
+		t.Errorf("expected key 'key1', got %q", om.Keys[0])
+	}
+}
+
 func TestResolveScalar_DecodeError(t *testing.T) {
 	// Construct a scalar node with a tag that will cause Decode to fail
 	node := &yaml.Node{

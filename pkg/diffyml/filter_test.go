@@ -494,3 +494,65 @@ func TestCompileRegexPatterns_Empty(t *testing.T) {
 		t.Fatalf("expected 0 compiled patterns, got %d", len(compiled))
 	}
 }
+
+// --- Mutation testing: filter.go combined include path + regex ---
+
+func TestFilterDiffsRegex_CombinedIncludePathAndRegex(t *testing.T) {
+	// Item matches IncludeRegexp but not IncludePaths → still included
+	diffs := []Difference{
+		{Path: "config.name", Type: DiffModified, From: "old", To: "new"},
+		{Path: "metadata.label", Type: DiffAdded, From: nil, To: "value"},
+		{Path: "spec.replicas", Type: DiffModified, From: 3, To: 5},
+	}
+
+	opts := &FilterOptions{
+		IncludePaths:  []string{"config"},        // matches config.name
+		IncludeRegexp: []string{`^spec\.`},        // matches spec.replicas
+	}
+
+	result, err := FilterDiffsWithRegexp(diffs, opts)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result) != 2 {
+		t.Fatalf("expected 2 diffs (config.name via path + spec.replicas via regex), got %d", len(result))
+	}
+
+	paths := map[string]bool{}
+	for _, d := range result {
+		paths[d.Path] = true
+	}
+	if !paths["config.name"] {
+		t.Error("config.name should be included via path filter")
+	}
+	if !paths["spec.replicas"] {
+		t.Error("spec.replicas should be included via regex filter")
+	}
+}
+
+func TestFilterDiffsRegex_CombinedExcludePathAndRegex(t *testing.T) {
+	// Item matches ExcludeRegexp but not ExcludePaths → still excluded
+	diffs := []Difference{
+		{Path: "config.name", Type: DiffModified, From: "old", To: "new"},
+		{Path: "config.secret", Type: DiffModified, From: "xxx", To: "yyy"},
+		{Path: "metadata.password", Type: DiffAdded, From: nil, To: "secret"},
+	}
+
+	opts := &FilterOptions{
+		ExcludePaths:  []string{"config.secret"},   // excludes config.secret via path
+		ExcludeRegexp: []string{`password`},         // excludes metadata.password via regex
+	}
+
+	result, err := FilterDiffsWithRegexp(diffs, opts)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result) != 1 {
+		t.Fatalf("expected 1 diff (only config.name), got %d", len(result))
+	}
+	if result[0].Path != "config.name" {
+		t.Errorf("expected config.name, got %q", result[0].Path)
+	}
+}

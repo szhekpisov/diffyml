@@ -24,6 +24,9 @@ profile.cov
 # Profiling artifacts
 *.prof
 
+# Mutation testing reports
+mutation-report.json
+
 # Dependency directories (remove the comment below to include it)
 # vendor/
 

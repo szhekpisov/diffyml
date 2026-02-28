@@ -329,12 +329,15 @@ func TestGetTrueColorCode_Clamped(t *testing.T) {
 
 func TestExtractPathOrder_PlainMapIndexIncrement(t *testing.T) {
 	// Kills INCREMENT_DECREMENT at diffyml.go:155 (index++ → index--)
-	// With 3 keys, indices must be strictly increasing.
+	// Uses nested maps so recursion enters the map[string]interface{} case at line 150,
+	// where index++ (line 155) is executed for each parent path.
+	// With the mutation (index--), all parent paths get the same order value (0),
+	// so the strict ordering assertion catches it.
 	docs := []interface{}{
 		map[string]interface{}{
-			"alpha": "1",
-			"beta":  "2",
-			"gamma": "3",
+			"alpha": map[string]interface{}{"child1": "v1"},
+			"beta":  map[string]interface{}{"child2": "v2"},
+			"gamma": map[string]interface{}{"child3": "v3"},
 		},
 	}
 	order := extractPathOrder(docs, nil, nil)
@@ -348,12 +351,48 @@ func TestExtractPathOrder_PlainMapIndexIncrement(t *testing.T) {
 	}
 }
 
-// --- DetailedFormatter: map continuation indent (detailed_formatter.go:239) ---
+// --- DetailedFormatter: map continuation indent (detailed_formatter.go:239,294) ---
 
 func TestDetailedFormatter_MapContinuationIndent(t *testing.T) {
-	// Kills ARITHMETIC_BASE at detailed_formatter.go:239 (indent+2)
-	// A map[string]interface{} with 2+ keys: continuation keys must be indented
-	// deeper than the first key (rendered via renderFirstKeyValueYAML).
+	// Kills ARITHMETIC_BASE at detailed_formatter.go:294 (indent+4 → indent-4)
+	// The first key's value is a map[string]interface{}, so renderFirstKeyValueYAML
+	// enters the map case (line 291) and renders children at indent+4 (=8 spaces).
+	// With the mutation (indent-4), children would be at 0 spaces instead.
+	diffs := []Difference{
+		{
+			Path: "items.0",
+			Type: DiffAdded,
+			From: nil,
+			To:   map[string]interface{}{"aaa": map[string]interface{}{"child": "value"}},
+		},
+	}
+
+	f := &DetailedFormatter{}
+	opts := &FormatOptions{Color: false}
+	result := f.Format(diffs, opts)
+
+	// Find the "child:" line and verify it has exactly 8 spaces of indentation.
+	lines := strings.Split(result, "\n")
+	found := false
+	for _, line := range lines {
+		if strings.Contains(line, "child:") {
+			found = true
+			trimmed := strings.TrimLeft(line, " ")
+			indent := len(line) - len(trimmed)
+			if indent != 8 {
+				t.Errorf("expected child key at indent 8, got %d: %q", indent, line)
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("expected 'child:' in output, got:\n%s", result)
+	}
+}
+
+func TestDetailedFormatter_MapContinuationKeyIndent(t *testing.T) {
+	// Kills ARITHMETIC_BASE at detailed_formatter.go:239 (indent+2 → indent-2)
+	// A map with 2+ keys: the continuation key is rendered via renderKeyValueYAML
+	// at indent+2 (=6 spaces). With the mutation, it would be at 2 spaces.
 	diffs := []Difference{
 		{
 			Path: "items.0",
@@ -367,38 +406,29 @@ func TestDetailedFormatter_MapContinuationIndent(t *testing.T) {
 	opts := &FormatOptions{Color: false}
 	result := f.Format(diffs, opts)
 
-	// Both keys must appear
-	if !strings.Contains(result, "aaa") || !strings.Contains(result, "zzz") {
-		t.Fatalf("expected both keys in output, got:\n%s", result)
-	}
-
-	// The continuation key should have more leading spaces than the first key line.
-	// The first key is rendered as "  - aaa: val1" and continuation as "    zzz: val2"
+	// The continuation key (no "- " prefix) should be at exactly 6 spaces (indent 4+2).
 	lines := strings.Split(result, "\n")
-	var firstKeyIndent, contKeyIndent int
 	for _, line := range lines {
 		trimmed := strings.TrimLeft(line, " ")
 		if trimmed == "" {
 			continue
 		}
 		indent := len(line) - len(trimmed)
-		if strings.Contains(line, "- ") && (strings.Contains(line, "aaa") || strings.Contains(line, "zzz")) {
-			if firstKeyIndent == 0 {
-				firstKeyIndent = indent
+		if !strings.HasPrefix(trimmed, "-") && (strings.Contains(line, "aaa:") || strings.Contains(line, "zzz:")) {
+			if indent != 6 {
+				t.Errorf("expected continuation key at indent 6, got %d: %q", indent, line)
 			}
-		} else if strings.Contains(line, "aaa") || strings.Contains(line, "zzz") {
-			contKeyIndent = indent
 		}
-	}
-	if contKeyIndent > 0 && contKeyIndent <= firstKeyIndent {
-		t.Errorf("continuation key indent (%d) should be > first key indent (%d)", contKeyIndent, firstKeyIndent)
 	}
 }
 
 // --- DetailedFormatter: multiline first key indent (detailed_formatter.go:303) ---
 
 func TestDetailedFormatter_FirstKeyMultilineIndent(t *testing.T) {
-	// Kills ARITHMETIC_BASE at detailed_formatter.go:303 (indent+2)
+	// Kills ARITHMETIC_BASE at detailed_formatter.go:303 (indent+2 → indent-2)
+	// renderFirstKeyValueYAML calls renderMultilineValue with indent+2 (=6),
+	// which adds indent+2 (=8) padding. With mutation (indent-2 = 2),
+	// padding becomes 2+2=4 spaces instead of 8.
 	om := &OrderedMap{
 		Keys:   []string{"config"},
 		Values: map[string]interface{}{"config": "line1\nline2\nline3"},
@@ -416,18 +446,17 @@ func TestDetailedFormatter_FirstKeyMultilineIndent(t *testing.T) {
 	opts := &FormatOptions{Color: false}
 	result := f.Format(diffs, opts)
 
-	// The multiline value should have continuation lines indented
 	if !strings.Contains(result, "line1") {
 		t.Fatalf("expected multiline content in output, got:\n%s", result)
 	}
-	// line2 and line3 should appear indented
+	// Assert exact indentation: continuation lines must have exactly 8 spaces.
 	lines := strings.Split(result, "\n")
 	for _, line := range lines {
 		if strings.Contains(line, "line2") || strings.Contains(line, "line3") {
 			trimmed := strings.TrimLeft(line, " ")
 			indent := len(line) - len(trimmed)
-			if indent < 4 {
-				t.Errorf("multiline continuation should be indented (got %d spaces): %q", indent, line)
+			if indent != 8 {
+				t.Errorf("expected 8 spaces for multiline continuation, got %d: %q", indent, line)
 			}
 		}
 	}
@@ -530,6 +559,13 @@ func TestRun_BriefSummary_DefersOutput(t *testing.T) {
 	// When brief+summary succeeds, the AI summary replaces brief output
 	if !strings.Contains(output, "AI summary of changes.") {
 		t.Errorf("expected AI summary in output, got:\n%s", output)
+	}
+
+	// The brief diff output must NOT appear — it should be deferred and replaced.
+	// With the mutation (== "brief" → != "brief"), isBriefSummary becomes false,
+	// so the brief output ("1 modified") is printed alongside the AI summary.
+	if strings.Contains(output, "modified") {
+		t.Errorf("expected brief diff output to be absent when AI summary succeeds, got:\n%s", output)
 	}
 }
 

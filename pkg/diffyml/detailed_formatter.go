@@ -109,6 +109,12 @@ func (f *DetailedFormatter) formatPathHeading(sb *strings.Builder, path string, 
 		} else {
 			heading = "(document)"
 		}
+	} else if idx, rest, ok := parseDocIndexPrefix(path); ok {
+		if opts.UseGoPatchStyle {
+			heading = fmt.Sprintf("%d:%s", idx, convertToGoPatchPath(rest))
+		} else {
+			heading = fmt.Sprintf("%d:%s", idx, rest)
+		}
 	} else if opts.UseGoPatchStyle {
 		heading = convertToGoPatchPath(path)
 	}
@@ -623,6 +629,30 @@ func parseBareDocIndex(path string) (int, bool) {
 		return 0, false
 	}
 	return idx, true
+}
+
+// parseDocIndexPrefix extracts a leading [N] document index from a path like "[0].spec.field".
+// Returns (index, remainingPath, true) if found, (0, originalPath, false) otherwise.
+// Only matches paths starting with "[N]." — bare "[N]" is handled by parseBareDocIndex.
+func parseDocIndexPrefix(path string) (int, string, bool) {
+	if !strings.HasPrefix(path, "[") {
+		return 0, path, false
+	}
+	closeBracket := strings.Index(path, "]")
+	if closeBracket < 0 {
+		return 0, path, false
+	}
+	// Must have a dot after the closing bracket
+	if closeBracket+1 >= len(path) || path[closeBracket+1] != '.' {
+		return 0, path, false
+	}
+	inner := path[1:closeBracket]
+	idx, err := strconv.Atoi(inner)
+	if err != nil {
+		return 0, path, false
+	}
+	rest := path[closeBracket+2:] // skip "]."
+	return idx, rest, true
 }
 
 // detectMultiDoc checks if diffs span multiple documents by examining DocumentIndex values.

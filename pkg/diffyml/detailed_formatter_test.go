@@ -3193,3 +3193,225 @@ func TestComputeLineDiff_TieBreakingDeterminism(t *testing.T) {
 		}
 	}
 }
+
+func TestParseDocIndexPrefix(t *testing.T) {
+	tests := []struct {
+		path     string
+		wantIdx  int
+		wantRest string
+		wantOk   bool
+	}{
+		{"[0].spec.field", 0, "spec.field", true},
+		{"[2].metadata.name", 2, "metadata.name", true},
+		{"[12].x", 12, "x", true},
+		{"[0]", 0, "[0]", false},           // bare index — handled by parseBareDocIndex
+		{"items[0]", 0, "items[0]", false},  // not a leading index
+		{"name", 0, "name", false},          // no bracket
+		{"", 0, "", false},                  // empty
+		{"[abc].spec", 0, "[abc].spec", false}, // non-numeric
+		{"[].", 0, "[].", false},             // empty brackets
+	}
+	for _, tt := range tests {
+		idx, rest, ok := parseDocIndexPrefix(tt.path)
+		if ok != tt.wantOk || idx != tt.wantIdx || rest != tt.wantRest {
+			t.Errorf("parseDocIndexPrefix(%q) = (%d, %q, %v), want (%d, %q, %v)",
+				tt.path, idx, rest, ok, tt.wantIdx, tt.wantRest, tt.wantOk)
+		}
+	}
+}
+
+func TestDetailedFormatter_ColonNotation(t *testing.T) {
+	f, _ := GetFormatter("detailed")
+	opts := DefaultFormatOptions()
+	opts.OmitHeader = true
+
+	t.Run("doc index prefix uses colon notation", func(t *testing.T) {
+		diffs := []Difference{
+			{Path: "[0].spec.field", Type: DiffModified, From: "old", To: "new"},
+		}
+		output := f.Format(diffs, opts)
+		if !strings.Contains(output, "0:spec.field") {
+			t.Errorf("expected '0:spec.field' in output, got: %q", output)
+		}
+		if strings.Contains(output, "[0]") {
+			t.Errorf("should not contain '[0]' in output, got: %q", output)
+		}
+	})
+
+	t.Run("higher doc index uses colon notation", func(t *testing.T) {
+		diffs := []Difference{
+			{Path: "[2].metadata.name", Type: DiffModified, From: "old", To: "new"},
+		}
+		output := f.Format(diffs, opts)
+		if !strings.Contains(output, "2:metadata.name") {
+			t.Errorf("expected '2:metadata.name' in output, got: %q", output)
+		}
+	})
+
+	t.Run("go-patch style with doc index prefix", func(t *testing.T) {
+		gpOpts := DefaultFormatOptions()
+		gpOpts.OmitHeader = true
+		gpOpts.UseGoPatchStyle = true
+		diffs := []Difference{
+			{Path: "[0].spec.field", Type: DiffModified, From: "old", To: "new"},
+		}
+		output := f.Format(diffs, gpOpts)
+		if !strings.Contains(output, "0:/spec/field") {
+			t.Errorf("expected '0:/spec/field' in output, got: %q", output)
+		}
+	})
+
+	t.Run("non-leading index still preserved", func(t *testing.T) {
+		diffs := []Difference{
+			{Path: "items[0]", Type: DiffModified, From: "old", To: "new"},
+		}
+		output := f.Format(diffs, opts)
+		if !strings.Contains(output, "items[0]") {
+			t.Errorf("expected 'items[0]' preserved in output, got: %q", output)
+		}
+	})
+}
+
+func TestDetailedFormatter_RenderEntryValue_ListScalar(t *testing.T) {
+	f, _ := GetFormatter("detailed")
+	opts := DefaultFormatOptions()
+	opts.OmitHeader = true
+
+	// Scalar list entry (default branch of renderEntryValue for isList=true)
+	diffs := []Difference{
+		{Path: "tags.0", Type: DiffAdded, To: "production"},
+	}
+	output := f.Format(diffs, opts)
+	if !strings.Contains(output, "- production") {
+		t.Errorf("expected '- production' for scalar list entry, got: %q", output)
+	}
+}
+
+func TestDetailedFormatter_RenderEntryValue_ListOfLists(t *testing.T) {
+	f, _ := GetFormatter("detailed")
+	opts := DefaultFormatOptions()
+	opts.OmitHeader = true
+
+	// []interface{} branch of renderEntryValue for isList=true
+	diffs := []Difference{
+		{Path: "matrix.0", Type: DiffAdded, To: []interface{}{"a", "b", "c"}},
+	}
+	output := f.Format(diffs, opts)
+	if !strings.Contains(output, "- a") {
+		t.Errorf("expected '- a' for nested list entry, got: %q", output)
+	}
+}
+
+func TestDetailedFormatter_RenderEntryValue_MapEntry(t *testing.T) {
+	f, _ := GetFormatter("detailed")
+	opts := DefaultFormatOptions()
+	opts.OmitHeader = true
+
+	// map[string]interface{} branch of renderEntryValue for isList=true
+	diffs := []Difference{
+		{Path: "items.0", Type: DiffAdded, To: map[string]interface{}{"name": "test", "value": "123"}},
+	}
+	output := f.Format(diffs, opts)
+	if !strings.Contains(output, "name") || !strings.Contains(output, "value") {
+		t.Errorf("expected map keys in output, got: %q", output)
+	}
+}
+
+func TestDetailedFormatter_RenderFirstKeyValueYAML_MapValue(t *testing.T) {
+	f, _ := GetFormatter("detailed")
+	opts := DefaultFormatOptions()
+	opts.OmitHeader = true
+
+	// map[string]interface{} branch of renderFirstKeyValueYAML
+	om := NewOrderedMap()
+	om.Keys = append(om.Keys, "config")
+	om.Values["config"] = map[string]interface{}{"host": "localhost", "port": 8080}
+	diffs := []Difference{
+		{Path: "services.0", Type: DiffAdded, To: om},
+	}
+	output := f.Format(diffs, opts)
+	if !strings.Contains(output, "- config:") {
+		t.Errorf("expected '- config:' for map value in first key, got: %q", output)
+	}
+}
+
+func TestDetailedFormatter_RenderFirstKeyValueYAML_ListValue(t *testing.T) {
+	f, _ := GetFormatter("detailed")
+	opts := DefaultFormatOptions()
+	opts.OmitHeader = true
+
+	// []interface{} branch of renderFirstKeyValueYAML
+	om := NewOrderedMap()
+	om.Keys = append(om.Keys, "ports")
+	om.Values["ports"] = []interface{}{80, 443}
+	diffs := []Difference{
+		{Path: "services.0", Type: DiffAdded, To: om},
+	}
+	output := f.Format(diffs, opts)
+	if !strings.Contains(output, "- ports:") {
+		t.Errorf("expected '- ports:' for list value, got: %q", output)
+	}
+	if !strings.Contains(output, "- 80") {
+		t.Errorf("expected '- 80' in list items, got: %q", output)
+	}
+}
+
+func TestDetailedFormatter_RenderFirstKeyValueYAML_MultilineString(t *testing.T) {
+	f, _ := GetFormatter("detailed")
+	opts := DefaultFormatOptions()
+	opts.OmitHeader = true
+
+	// multiline string in default branch of renderFirstKeyValueYAML
+	om := NewOrderedMap()
+	om.Keys = append(om.Keys, "script")
+	om.Values["script"] = "line1\nline2\nline3"
+	diffs := []Difference{
+		{Path: "steps.0", Type: DiffAdded, To: om},
+	}
+	output := f.Format(diffs, opts)
+	if !strings.Contains(output, "- script:") {
+		t.Errorf("expected '- script:' for multiline string, got: %q", output)
+	}
+	if !strings.Contains(output, "line1") {
+		t.Errorf("expected multiline content in output, got: %q", output)
+	}
+}
+
+func TestYamlTypeName_DefaultType(t *testing.T) {
+	// default branch: unknown type
+	result := yamlTypeName(struct{}{})
+	if result != "struct {}" {
+		t.Errorf("expected 'struct {}' for unknown type, got: %q", result)
+	}
+}
+
+func TestFormatCommaSeparated_NonSlice(t *testing.T) {
+	// non-slice fallback
+	result := formatCommaSeparated("scalar-value")
+	if result != "scalar-value" {
+		t.Errorf("expected 'scalar-value', got: %q", result)
+	}
+}
+
+func TestParseDocIndexPrefix_NoBracketClose(t *testing.T) {
+	// path with [ but no ]
+	idx, rest, ok := parseDocIndexPrefix("[0.spec")
+	if ok {
+		t.Errorf("expected false for missing close bracket, got (%d, %q, %v)", idx, rest, ok)
+	}
+}
+
+func TestDetailedFormatter_MultilineDiff_NegativeContextLines(t *testing.T) {
+	f, _ := GetFormatter("detailed")
+	opts := DefaultFormatOptions()
+	opts.OmitHeader = true
+	opts.ContextLines = -1 // should default to 4
+
+	diffs := []Difference{
+		{Path: "config.script", Type: DiffModified, From: "line1\nline2", To: "line1\nline3"},
+	}
+	output := f.Format(diffs, opts)
+	if !strings.Contains(output, "value change in multiline text") {
+		t.Errorf("expected multiline diff output with negative context lines, got: %q", output)
+	}
+}

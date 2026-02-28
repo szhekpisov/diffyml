@@ -29,7 +29,11 @@ jobs:
         run: go install github.com/go-gremlins/gremlins/cmd/gremlins@v0.6.0
 
       - name: Run mutation testing
-        run: gremlins unleash --coverpkg="./pkg/diffyml/..." --output=mutation-report.json ./pkg/diffyml/
+        run: gremlins unleash --workers 2 --coverpkg="./pkg/diffyml/..." --output=mutation-report.json ./pkg/diffyml/
+
+      - name: Clean build cache
+        if: always()
+        run: go clean -cache
 
       - name: Upload mutation report
         if: always()

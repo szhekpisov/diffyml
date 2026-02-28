@@ -2,22 +2,17 @@
 
 ## What is Mutation Testing?
 
-Mutation testing evaluates test suite quality by introducing small, systematic
-changes (mutations) to source code and checking whether tests detect them.
-Unlike line coverage, which only measures whether code *executes*, mutation
-testing measures whether tests actually *verify* correct behavior.
+Mutation testing evaluates test suite quality by introducing small, systematic changes (mutations) to source code and checking whether tests detect them. Unlike line coverage, which only measures whether code *executes*, mutation testing measures whether tests actually *verify* correct behavior.
 
 ### How it works
 
-1. A mutation tool modifies the source code — e.g., changing `<` to `<=`,
-   `+` to `-`, or negating a condition
+1. A mutation tool modifies the source code — e.g., changing `<` to `<=`, `+` to `-`, or negating a condition
 2. The test suite runs against each mutant
 3. If tests **fail** → the mutant is **killed** (tests caught the bug)
 4. If tests **pass** → the mutant **lived** (tests missed the bug)
 5. **Efficacy** = killed / (killed + lived) — the higher, the better
 
-A surviving mutant means either the test suite has a gap, or the mutation is
-**equivalent** (it doesn't change observable behavior, so no test can detect it).
+A surviving mutant means either the test suite has a gap, or the mutation is **equivalent** (it doesn't change observable behavior, so no test can detect it).
 
 ## Tool
 
@@ -25,9 +20,7 @@ A surviving mutant means either the test suite has a gap, or the mutation is
 
 ## CI Integration
 
-The mutation testing workflow (`.github/workflows/mutation.yml`) runs on every
-PR targeting `main`. It uses `--diff` to only mutate changed code and enforces
-a 96% efficacy threshold via `--threshold-efficacy`.
+The mutation testing workflow (`.github/workflows/mutation.yml`) runs on every PR targeting `main`. It uses `--diff` to only mutate changed code and enforces a 96% efficacy threshold via `--threshold-efficacy`.
 
 ## Report
 
@@ -56,9 +49,7 @@ observable program behavior, so no test can detect them.
 **File:** `diffyml.go`
 **Mutation:** `CONDITIONALS_BOUNDARY` — `<` changed to `<=`
 
-In `sortDiffsWithOrder`, each `<` comparison is guarded by a prior `!=` check
-that ensures the operands are never equal. When they can't be equal, `<` and
-`<=` behave identically.
+In `sortDiffsWithOrder`, each `<` comparison is guarded by a prior `!=` check that ensures the operands are never equal. When they can't be equal, `<` and `<=` behave identically.
 
 | Line | Code | Why equivalent |
 |------|------|----------------|
@@ -101,9 +92,7 @@ that ensures the operands are never equal. When they can't be equal, `<` and
 **File:** `diffyml.go`
 **Mutation:** `CONDITIONALS_BOUNDARY` at line 222:15 — `> 1` changed to `>= 1`
 
-For a single-character path, `LastIndex` returns -1 (no dot), and the inner
-`lastDot >= 0` check fails. The mutation allows entry but the inner guard
-prevents any behavior change.
+For a single-character path, `LastIndex` returns -1 (no dot), and the inner `lastDot >= 0` check fails. The mutation allows entry but the inner guard prevents any behavior change.
 
 ---
 
@@ -112,8 +101,7 @@ prevents any behavior change.
 **File:** `detailed_formatter.go`
 **Mutation:** `CONDITIONALS_BOUNDARY`
 
-When `dp[i-1][j] == dp[i][j-1]`, both branches assign the same value. The DP
-table is identical regardless of which branch is taken.
+When `dp[i-1][j] == dp[i][j-1]`, both branches assign the same value. The DP table is identical regardless of which branch is taken.
 
 | Line | Code | Why equivalent |
 |------|------|----------------|
@@ -127,8 +115,7 @@ table is identical regardless of which branch is taken.
 **File:** `detailed_formatter.go`
 **Mutation:** `CONDITIONALS_BOUNDARY` at line 501:41 — `<` changed to `<=`
 
-When `left == right` (odd-length array midpoint), swapping an element with
-itself is a no-op.
+When `left == right` (odd-length array midpoint), swapping an element with itself is a no-op.
 
 ---
 
@@ -146,8 +133,7 @@ The capacity hint only affects initial memory allocation, not map behavior.
 **File:** `cli.go`
 **Mutation:** `CONDITIONALS_BOUNDARY` at line 225:51 — `>= 0` changed to `> 0`
 
-For `eqIdx == 0`, the flag name would be `""`. Either way, `fs.Lookup` returns
-nil and the arg is treated as positional.
+For `eqIdx == 0`, the flag name would be `""`. Either way, `fs.Lookup` returns nil and the arg is treated as positional.
 
 ---
 
@@ -156,18 +142,13 @@ nil and the arg is treated as positional.
 **File:** `detailed_formatter.go`
 **Mutation:** `CONDITIONALS_BOUNDARY` at line 646:18 — `< 0` changed to `<= 0`
 
-In `parseDocIndexPrefix`, the prior check `!strings.HasPrefix(path, "[")` ensures
-`path[0] == '['`. Therefore `strings.Index(path, "]")` can never return 0 (the
-first `]` is always at index >= 1). Changing `< 0` to `<= 0` has no effect.
+In `parseDocIndexPrefix`, the prior check `!strings.HasPrefix(path, "[")` ensures `path[0] == '['`. Therefore `strings.Index(path, "]")` can never return 0 (the first `]` is always at index >= 1). Changing `< 0` to `<= 0` has no effect.
 
 ---
 
 ## Not Covered (4 mutants)
 
-4 mutants remain NOT COVERED. All are `ARITHMETIC_BASE` mutations on
-package-level constants. Constants are compile-time expressions that do not
-appear as executable statements in Go's `-coverprofile`, so gremlins cannot
-determine whether they are tested.
+4 mutants remain NOT COVERED. All are `ARITHMETIC_BASE` mutations on package-level constants. Constants are compile-time expressions that do not appear as executable statements in Go's `-coverprofile`, so gremlins cannot determine whether they are tested.
 
 | File | Line | Constant |
 |------|------|----------|
@@ -176,6 +157,4 @@ determine whether they are tested.
 | `remote.go` | 16:22 | `DefaultTimeout = 30 * time.Second` |
 | `summarizer.go` | 26:24 | `summaryTimeout = 30 * time.Second` |
 
-These constants are exercised by unit tests (`TestRemoteConstants`,
-`TestSummarize_Timeout`), but since Go does not instrument constant
-declarations, they will always be reported as NOT COVERED by gremlins.
+These constants are exercised by unit tests (`TestRemoteConstants`, `TestSummarize_Timeout`), but since Go does not instrument constant declarations, they will always be reported as NOT COVERED by gremlins.

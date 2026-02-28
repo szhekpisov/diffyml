@@ -82,13 +82,9 @@ func pathMatches(diffPath, filterPath string) bool {
 	// The character after the prefix must be '.' or '[' to ensure we match
 	// at path boundaries (not partial word matches)
 	if strings.HasPrefix(diffPath, filterPath) {
-		// Check that the prefix ends at a path boundary
-		remaining := diffPath[len(filterPath):]
-		if len(remaining) > 0 {
-			firstChar := remaining[0]
-			if firstChar == '.' || firstChar == '[' {
-				return true
-			}
+		firstChar := diffPath[len(filterPath)]
+		if firstChar == '.' || firstChar == '[' {
+			return true
 		}
 	}
 
@@ -140,9 +136,8 @@ func FilterDiffsWithRegexp(diffs []Difference, opts *FilterOptions) ([]Differenc
 
 	// Check if any filters are specified
 	hasIncludeFilters := len(opts.IncludePaths) > 0 || len(includeRegex) > 0
-	hasExcludeFilters := len(opts.ExcludePaths) > 0 || len(excludeRegex) > 0
 
-	if !hasIncludeFilters && !hasExcludeFilters {
+	if !hasIncludeFilters && len(opts.ExcludePaths) == 0 && len(excludeRegex) == 0 {
 		return diffs, nil
 	}
 
@@ -162,8 +157,8 @@ func FilterDiffsWithRegexp(diffs []Difference, opts *FilterOptions) ([]Differenc
 		}
 
 		// Step 2: Apply exclude filters (path or regex)
-		if hasExcludeFilters && (matchesAnyPath(diff.Path, opts.ExcludePaths) ||
-			matchesAnyRegex(diff.Path, excludeRegex)) {
+		if matchesAnyPath(diff.Path, opts.ExcludePaths) ||
+			matchesAnyRegex(diff.Path, excludeRegex) {
 			continue
 		}
 

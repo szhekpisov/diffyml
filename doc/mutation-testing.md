@@ -1,23 +1,31 @@
 # Mutation Testing Report
 
 **Tool:** [gremlins](https://github.com/go-gremlins/gremlins)
-**Last full run:** 2026-02-28 — efficacy 96.28% (543 killed / 564 covered)
+**Last full run:** 2026-02-28 — efficacy 96.79% (542 killed / 560 covered)
 **Line coverage:** 96.6% (`go test -cover ./pkg/diffyml/`)
-**Mutator coverage:** 99.30%
+**Mutator coverage:** 99.29%
 
 ## Summary
 
 | Status | Count |
 |--------|-------|
-| Killed | 543 |
-| Lived | 21 |
+| Killed | 542 |
+| Lived | 18 |
 | Timed out | 0 |
 | Not covered | 4 |
-| **Efficacy** | **96.28%** |
-| **Mutator coverage** | **99.30%** |
+| **Efficacy** | **96.79%** |
+| **Mutator coverage** | **99.29%** |
 
 ### Change log
 
+- **Round 8** (2026-02-28): Eliminated 3 equivalent `len(x) > 0` mutants in
+  `filter.go` by refactoring. Removed redundant `len(remaining) > 0` guard in
+  `pathMatches` (prior exact-match check + `HasPrefix` guarantees non-empty).
+  Removed `hasExcludeFilters` variable from `FilterDiffsWithRegexp` — the
+  `matchesAnyPath`/`matchesAnyRegex` functions already handle empty slices by
+  returning false, making the guard equivalent. One killed mutant also removed
+  (the `CONDITIONALS_NEGATION` on the deleted `len(remaining) > 0` line).
+  LIVED 21 → 18, efficacy 96.28% → 96.79%.
 - **Round 7** (2026-02-28): Eliminated 4 TIMED OUT mutants by refactoring manual
   index loops to `for range` in `cli.go:reorderArgs` and
   `detailed_formatter.go:formatMultilineDiff`. Root cause: `INCREMENT_DECREMENT`
@@ -53,9 +61,9 @@
   Not-covered dropped from 60 → 45, line coverage rose from 92.3% → 96.6%.
 - **Round 1**: Initial mutation testing setup with gremlins.
 
-## Survived Mutants (21 LIVED)
+## Survived Mutants (18 LIVED)
 
-All 21 surviving mutants are **equivalent** — the mutation does not change
+All 18 surviving mutants are **equivalent** — the mutation does not change
 observable program behavior, so no test can detect them.
 
 ---
@@ -78,20 +86,7 @@ that ensures the operands are never equal. When they can't be equal, `<` and
 
 ---
 
-### Pattern 2: `len(x) > 0` guards (3 mutants)
-
-**Files:** `filter.go`
-**Mutation:** `CONDITIONALS_BOUNDARY` — `> 0` changed to `>= 0`
-
-| Line | Code | Why equivalent |
-|------|------|----------------|
-| 87:21 | `len(remaining) > 0` | `HasPrefix` guarantees `remaining` is non-empty when reached |
-| 143:46 | `len(opts.IncludePaths) > 0` | Boolean OR; empty slice makes `hasIncludeFilters` true but filtering loop handles empties |
-| 143:71 | `len(includeRegex) > 0` | Same — empty compiled slice handled by match functions |
-
----
-
-### Pattern 3: Clamp boundary values (3 mutants)
+### Pattern 2: Clamp boundary values (3 mutants)
 
 **File:** `color.go`
 **Mutation:** `CONDITIONALS_BOUNDARY`
@@ -104,7 +99,7 @@ that ensures the operands are never equal. When they can't be equal, `<` and
 
 ---
 
-### Pattern 4: `maxLen` and list-bounds boundaries in comparator (4 mutants)
+### Pattern 3: `maxLen` and list-bounds boundaries in comparator (4 mutants)
 
 **File:** `comparator.go`
 **Mutation:** `CONDITIONALS_BOUNDARY`
@@ -118,7 +113,7 @@ that ensures the operands are never equal. When they can't be equal, `<` and
 
 ---
 
-### Pattern 5: Boundary in `len(path) > 1` (1 mutant)
+### Pattern 4: Boundary in `len(path) > 1` (1 mutant)
 
 **File:** `diffyml.go`
 **Mutation:** `CONDITIONALS_BOUNDARY` at line 222:15 — `> 1` changed to `>= 1`
@@ -129,7 +124,7 @@ prevents any behavior change.
 
 ---
 
-### Pattern 6: LCS tie-breaking (2 mutants)
+### Pattern 5: LCS tie-breaking (2 mutants)
 
 **File:** `detailed_formatter.go`
 **Mutation:** `CONDITIONALS_BOUNDARY`
@@ -144,7 +139,7 @@ table is identical regardless of which branch is taken.
 
 ---
 
-### Pattern 7: Array reverse self-swap (1 mutant)
+### Pattern 6: Array reverse self-swap (1 mutant)
 
 **File:** `detailed_formatter.go`
 **Mutation:** `CONDITIONALS_BOUNDARY` at line 501:41 — `<` changed to `<=`
@@ -154,7 +149,7 @@ itself is a no-op.
 
 ---
 
-### Pattern 8: Map capacity hint (1 mutant)
+### Pattern 7: Map capacity hint (1 mutant)
 
 **File:** `directory.go`
 **Mutation:** `ARITHMETIC_BASE` at line 98:49 — `len(a) + len(b)` mutated
@@ -163,7 +158,7 @@ The capacity hint only affects initial memory allocation, not map behavior.
 
 ---
 
-### Pattern 9: Flag parsing edge case (1 mutant)
+### Pattern 8: Flag parsing edge case (1 mutant)
 
 **File:** `cli.go`
 **Mutation:** `CONDITIONALS_BOUNDARY` at line 225:51 — `>= 0` changed to `> 0`
@@ -173,7 +168,7 @@ nil and the arg is treated as positional.
 
 ---
 
-### Pattern 10: `parseDocIndexPrefix` bracket boundary (1 mutant)
+### Pattern 9: `parseDocIndexPrefix` bracket boundary (1 mutant)
 
 **File:** `detailed_formatter.go`
 **Mutation:** `CONDITIONALS_BOUNDARY` at line 646:18 — `< 0` changed to `<= 0`

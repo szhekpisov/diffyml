@@ -1,19 +1,25 @@
 # Mutation Testing Report
 
 **Tool:** [gremlins](https://github.com/go-gremlins/gremlins)
-**Date:** 2026-02-28
-**Test efficacy:** 93.68% (489 killed / 522 covered)
+**Last full run:** 2026-02-28 — efficacy 93.68% (489 killed / 522 covered)
+**Line coverage:** 96.6% (`go test -cover ./pkg/diffyml/`)
+**Mutator coverage:** 92.27% (gremlins dry-run, 537 runnable / 45 not covered)
 
-## Summary
+## Summary (last full run)
 
 | Status | Count |
 |--------|-------|
 | Killed | 489 |
 | Lived | 33 |
 | Timed out | 4 |
-| Not covered | 60 |
+| Not covered | 60 → 45 (dry-run) |
 | **Efficacy** | **93.68%** |
-| **Mutator coverage** | **89.69%** |
+| **Mutator coverage** | **89.69% → 92.27%** |
+
+> **Note:** Efficacy and killed/lived counts are from the last full `gremlins unleash`
+> run. After removing dead code and adding new tests, the not-covered count dropped
+> from 60 to 45 (dry-run), and line coverage rose from 92.3% to 96.6%. A full run
+> is needed to update efficacy numbers.
 
 ## Survived Mutants (33 LIVED)
 
@@ -99,7 +105,7 @@ For a single-character path (length 1), `LastIndex` returns -1 (no dot), and the
 |------|------|----------------|
 | 27:13 | `len(to) > maxLen` → `>=` | Sets `maxLen` to `len(to)` which already equals `maxLen` at boundary |
 | 31:16 | `i < maxLen` → `<=` | Would cause OOB, but only reachable with nil docs handled elsewhere |
-| 363:13 | `len(to) > maxLen` → `>=` | Same pattern as line 27 |
+| 337:13 | `len(to) > maxLen` → `>=` | Same pattern as line 27 |
 
 ---
 
@@ -181,14 +187,46 @@ For `eqIdx == 0`, the flag name after stripping dashes would start with `=` (e.g
 
 ---
 
-## Not Covered (60 mutants)
+## Not Covered (45 mutants)
 
-60 mutants are in code paths not exercised by any test. These are primarily in:
+45 mutants are in code paths not exercised by tests. Down from 60 after adding
+coverage for plain-map branches, positional list bounds, `deepEqual` slices,
+`clamp` boundaries, `ChrootError.Error()`, `ExitResult.String()` edge cases,
+`renderFirstKeyValueYAML` list values, `compareListsByIdentifier` no-ID fallback,
+`extractPathOrder`/`areListItemsHeterogeneous` plain maps, `GetContextColorCode`
+true color path, and `runDirectory` with real filesystem paths. Dead cross-type
+branches in `compareNodes` and `deepEqual` were removed (provably unreachable
+due to type-equality guards).
 
-- `comparator.go` — advanced comparison edge cases (lines 130, 148, 339, 379, 387)
-- `detailed_formatter.go` — backtrack branch of LCS (lines 464, 466, 479, 483)
-- `directory.go` — directory walk edge cases (lines 179, 181)
-- `remote.go` — HTTP download helpers (lines 14, 16)
-- `summarizer.go` — API response parsing branches (lines 26, 146, 148, 150, 156)
+**Line coverage:** 96.6% (`go test -cover`)
+**Mutator coverage:** 92.27% (gremlins dry-run)
 
-Increasing coverage for these would require either integration tests with real filesystems/HTTP servers or mocking infrastructure.
+### By file
+
+| File | Mutants | Category |
+|------|---------|----------|
+| `detailed_formatter.go` | 29 | LCS algorithm in `computeLineDiff` (lines 464, 466, 479, 483) |
+| `summarizer.go` | 6 | Anthropic API error-status branches (lines 146, 148, 150, 156) and timeout constant (line 26) |
+| `comparator.go` | 4 | `compareListsPositional` add/remove bounds (lines 353, 361) — covered by `go test` but gremlins disagrees |
+| `remote.go` | 3 | `IsRemoteSource` prefix checks (line 14) and `fetchURL` status check (line 16) — covered by `go test` but gremlins disagrees |
+| `directory.go` | 3 | `buildFilePairsFromMap` branch conditions (lines 179, 181) — covered by `go test` but gremlins disagrees |
+
+### Analysis
+
+**LCS algorithm (29 mutants):** The `computeLineDiff` function implements a Longest
+Common Subsequence algorithm used for inline multiline diffs. The LCS DP table
+construction (line 464) and backtracking (lines 479, 483) have many arithmetic
+and conditional mutants. These lines ARE covered by existing tests (`go test
+-coverprofile` shows `computeLineDiff` at 100%), but gremlins' coverage gathering
+reports them as NOT COVERED — likely a discrepancy in how gremlins aggregates
+coverage across packages.
+
+**Summarizer API errors (6 mutants):** The HTTP status-code switch in `Summarize()`
+(401, 429, >=500, !=200) and the `summaryTimeout` constant. Tests exist for all
+these paths (`TestSummarize_Auth401`, `TestSummarize_RateLimit429`,
+`TestSummarize_ServerError500`), but gremlins does not recognize them as covered.
+
+**Gremlins coverage discrepancy (10 mutants):** 10 of the 45 NOT COVERED mutants
+are in lines that `go test -coverprofile` confirms ARE executed (comparator.go,
+remote.go, directory.go). This appears to be a gremlins-specific issue with
+coverage aggregation, not an actual test gap.

@@ -14,6 +14,16 @@ import (
 
 // Tests targeting remaining coverage gaps identified by gremlins mutation testing.
 
+// --- deepEqual: *OrderedMap different lengths ---
+
+func TestDeepEqual_OrderedMaps_DifferentLengths(t *testing.T) {
+	a := &OrderedMap{Values: map[string]interface{}{"x": 1, "y": 2}}
+	b := &OrderedMap{Values: map[string]interface{}{"x": 1}}
+	if deepEqual(a, b, nil) {
+		t.Error("expected OrderedMaps with different lengths to not be deepEqual")
+	}
+}
+
 // --- deepEqual: []interface{} slice case ---
 
 func TestDeepEqual_Slices_Equal(t *testing.T) {

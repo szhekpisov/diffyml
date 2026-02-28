@@ -29,6 +29,16 @@ jobs:
       - name: Run mutation testing
         run: gremlins unleash --workers 2 --coverpkg="./pkg/diffyml/..." --output=mutation-report.json ./pkg/diffyml/
 
+      - name: Check efficacy threshold
+        run: |
+          THRESHOLD=96
+          EFFICACY=$(jq '.test_efficacy' mutation-report.json)
+          echo "Efficacy: ${EFFICACY}% (threshold: ${THRESHOLD}%)"
+          if [ "$(echo "$EFFICACY < $THRESHOLD" | bc -l)" -eq 1 ]; then
+            echo "::error::Mutation efficacy ${EFFICACY}% is below threshold ${THRESHOLD}%"
+            exit 1
+          fi
+
       - name: Clean build cache
         if: always()
         run: go clean -cache

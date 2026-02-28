@@ -1,11 +1,39 @@
-# Mutation Testing Report
+# Mutation Testing
 
-**Tool:** [gremlins](https://github.com/go-gremlins/gremlins)
+## What is Mutation Testing?
+
+Mutation testing evaluates test suite quality by introducing small, systematic
+changes (mutations) to source code and checking whether tests detect them.
+Unlike line coverage, which only measures whether code *executes*, mutation
+testing measures whether tests actually *verify* correct behavior.
+
+### How it works
+
+1. A mutation tool modifies the source code — e.g., changing `<` to `<=`,
+   `+` to `-`, or negating a condition
+2. The test suite runs against each mutant
+3. If tests **fail** → the mutant is **killed** (tests caught the bug)
+4. If tests **pass** → the mutant **lived** (tests missed the bug)
+5. **Efficacy** = killed / (killed + lived) — the higher, the better
+
+A surviving mutant means either the test suite has a gap, or the mutation is
+**equivalent** (it doesn't change observable behavior, so no test can detect it).
+
+## Tool
+
+[gremlins](https://github.com/go-gremlins/gremlins) v0.6.0
+
+## CI Integration
+
+The mutation testing workflow (`.github/workflows/mutation.yml`) runs on every
+PR targeting `main`. It uses `--diff` to only mutate changed code and enforces
+a 96% efficacy threshold via `--threshold-efficacy`.
+
+## Report
+
 **Last full run:** 2026-02-28 — efficacy 96.79% (542 killed / 560 covered)
 **Line coverage:** 96.6% (`go test -cover ./pkg/diffyml/`)
 **Mutator coverage:** 99.29%
-
-## Summary
 
 | Status | Count |
 |--------|-------|
@@ -15,51 +43,6 @@
 | Not covered | 4 |
 | **Efficacy** | **96.79%** |
 | **Mutator coverage** | **99.29%** |
-
-### Change log
-
-- **Round 8** (2026-02-28): Eliminated 3 equivalent `len(x) > 0` mutants in
-  `filter.go` by refactoring. Removed redundant `len(remaining) > 0` guard in
-  `pathMatches` (prior exact-match check + `HasPrefix` guarantees non-empty).
-  Removed `hasExcludeFilters` variable from `FilterDiffsWithRegexp` — the
-  `matchesAnyPath`/`matchesAnyRegex` functions already handle empty slices by
-  returning false, making the guard equivalent. One killed mutant also removed
-  (the `CONDITIONALS_NEGATION` on the deleted `len(remaining) > 0` line).
-  LIVED 21 → 18, efficacy 96.28% → 96.79%.
-- **Round 7** (2026-02-28): Eliminated 4 TIMED OUT mutants by refactoring manual
-  index loops to `for range` in `cli.go:reorderArgs` and
-  `detailed_formatter.go:formatMultilineDiff`. Root cause: `INCREMENT_DECREMENT`
-  mutations (`i++` → `i--`) and related `CONDITIONALS_NEGATION` mutations created
-  infinite loops. The `for range` form has no explicit increment for gremlins to
-  mutate. New mutation targets (e.g. `skip`, `skipUntil`, `collapsed++`) produce
-  wrong output or panics rather than hangs. Added collapsed marker count assertion
-  to kill the new `skipUntil` arithmetic mutant. One new equivalent mutant exposed
-  (`parseDocIndexPrefix` boundary at `detailed_formatter.go:646:18`).
-  TIMED OUT 4 → 0, efficacy 96.22% → 96.28%.
-- **Round 6** (2026-02-28): Killed 2 `IsTerminal` mutants (color.go:77,81) by
-  introducing injectable `stdoutStatFn` and mock tests that simulate a real
-  terminal (character device). LIVED 23 → 21, efficacy 95.86% → 96.22%.
-- **Round 5** (2026-02-28): Fixed gremlins coverage discrepancy — converted 5
-  `switch/case` statements to `if/else` chains in `detailed_formatter.go`,
-  `summarizer.go`, `comparator.go`, and `directory.go`. Root cause: Go's
-  `-coverprofile` instruments case bodies but not case conditions; gremlins
-  checks mutation positions against coverage block boundaries and classified
-  case-condition mutations as NOT COVERED. The `if/else` form places conditions
-  inside coverage blocks. NOT COVERED 45 → 4 (remaining 4 are package-level
-  constants), mutator coverage 91.96% → 99.29%. Two previously hidden equivalent
-  mutants were exposed (LIVED 21 → 23).
-- **Round 4** (2026-02-28): Killed 4 surviving mutants by fixing imprecise test
-  assertions. Tests now exercise the correct type branches (nested maps for
-  `extractPathOrder`, map values for `renderFirstKeyValueYAML`) and assert exact
-  indentation and output exclusion. LIVED 25 → 21, efficacy 95.15% → 95.92%.
-- **Round 3** (2026-02-28): Refactored `filter.go` to remove 12 redundant `len > 0`
-  guards (equivalent mutants). Added 17 new mutation-targeted tests in
-  `coverage_gaps_test.go`. Net result: LIVED 36 → 25, efficacy 93.23% → 95.15%.
-- **Round 2**: Added coverage for plain-map branches, positional list bounds,
-  `deepEqual` slices, `clamp` boundaries, error formatting edge cases, and more.
-  Removed provably dead cross-type branches in `compareNodes`/`deepEqual`.
-  Not-covered dropped from 60 → 45, line coverage rose from 92.3% → 96.6%.
-- **Round 1**: Initial mutation testing setup with gremlins.
 
 ## Survived Mutants (18 LIVED)
 
@@ -196,16 +179,3 @@ determine whether they are tested.
 These constants are exercised by unit tests (`TestRemoteConstants`,
 `TestSummarize_Timeout`), but since Go does not instrument constant
 declarations, they will always be reported as NOT COVERED by gremlins.
-
-### Previously NOT COVERED (resolved in Round 5)
-
-41 mutants were previously reported as NOT COVERED due to a Go coverage
-instrumentation limitation: `switch/case` condition expressions fall outside
-Go's coverage blocks (which only instrument case *bodies*, starting after the
-`:`). Gremlins checks if a mutation's `line:column` falls within a covered
-block, so mutations on case conditions were classified as NOT COVERED even
-though the code was fully tested.
-
-**Fix:** Converted 5 `switch` statements to `if/else` chains, which places
-conditions inside coverage blocks. Of the 41 newly covered mutants, 39 were
-KILLED and 2 became LIVED (newly exposed equivalent boundary mutants).

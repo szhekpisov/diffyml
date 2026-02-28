@@ -28,9 +28,11 @@ jobs:
         run: go install github.com/go-gremlins/gremlins/cmd/gremlins@v0.6.0
 
       - name: Run mutation testing
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: >-
           gremlins unleash
-          --diff="origin/${{ github.base_ref }}"
+          --diff="origin/${BASE_REF}"
           --threshold-efficacy=96
           --workers 2
           --coverpkg="./pkg/diffyml/..."

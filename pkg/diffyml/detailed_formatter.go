@@ -428,9 +428,11 @@ func (f *DetailedFormatter) formatMultilineDiff(sb *strings.Builder, from, to st
 	}
 
 	// Render with collapsing
-	i := 0
-	for i < len(ops) {
-		op := ops[i]
+	skipUntil := 0
+	for i, op := range ops {
+		if i < skipUntil {
+			continue
+		}
 		if op.Type != editKeep || nearChange[i] {
 			switch op.Type {
 			case editKeep:
@@ -440,14 +442,16 @@ func (f *DetailedFormatter) formatMultilineDiff(sb *strings.Builder, from, to st
 			case editDelete:
 				f.writeColoredLine(sb, fmt.Sprintf("    - %s", op.Line), f.colorRemoved(opts), opts)
 			}
-			i++
 		} else {
 			// Count consecutive non-near-change keep ops
 			collapsed := 0
-			for i < len(ops) && ops[i].Type == editKeep && !nearChange[i] {
+			for _, sub := range ops[i:] {
+				if sub.Type != editKeep || nearChange[i+collapsed] {
+					break
+				}
 				collapsed++
-				i++
 			}
+			skipUntil = i + collapsed
 			f.writeColoredLine(sb, fmt.Sprintf("    [%d %s unchanged]", collapsed, pluralize(collapsed, "line", "lines")), f.colorContext(opts), opts)
 		}
 	}

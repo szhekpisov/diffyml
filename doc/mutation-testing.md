@@ -1,23 +1,33 @@
 # Mutation Testing Report
 
 **Tool:** [gremlins](https://github.com/go-gremlins/gremlins)
-**Last full run:** 2026-02-28 — efficacy 96.22% (535 killed / 556 covered)
+**Last full run:** 2026-02-28 — efficacy 96.28% (543 killed / 564 covered)
 **Line coverage:** 96.6% (`go test -cover ./pkg/diffyml/`)
-**Mutator coverage:** 99.29%
+**Mutator coverage:** 99.30%
 
 ## Summary
 
 | Status | Count |
 |--------|-------|
-| Killed | 535 |
+| Killed | 543 |
 | Lived | 21 |
-| Timed out | 4 |
+| Timed out | 0 |
 | Not covered | 4 |
-| **Efficacy** | **96.22%** |
-| **Mutator coverage** | **99.29%** |
+| **Efficacy** | **96.28%** |
+| **Mutator coverage** | **99.30%** |
 
 ### Change log
 
+- **Round 7** (2026-02-28): Eliminated 4 TIMED OUT mutants by refactoring manual
+  index loops to `for range` in `cli.go:reorderArgs` and
+  `detailed_formatter.go:formatMultilineDiff`. Root cause: `INCREMENT_DECREMENT`
+  mutations (`i++` → `i--`) and related `CONDITIONALS_NEGATION` mutations created
+  infinite loops. The `for range` form has no explicit increment for gremlins to
+  mutate. New mutation targets (e.g. `skip`, `skipUntil`, `collapsed++`) produce
+  wrong output or panics rather than hangs. Added collapsed marker count assertion
+  to kill the new `skipUntil` arithmetic mutant. One new equivalent mutant exposed
+  (`parseDocIndexPrefix` boundary at `detailed_formatter.go:646:18`).
+  TIMED OUT 4 → 0, efficacy 96.22% → 96.28%.
 - **Round 6** (2026-02-28): Killed 2 `IsTerminal` mutants (color.go:77,81) by
   introducing injectable `stdoutStatFn` and mock tests that simulate a real
   terminal (character device). LIVED 23 → 21, efficacy 95.86% → 96.22%.
@@ -45,12 +55,12 @@
 
 ## Survived Mutants (21 LIVED)
 
-All 23 surviving mutants are **equivalent** — the mutation does not change
+All 21 surviving mutants are **equivalent** — the mutation does not change
 observable program behavior, so no test can detect them.
 
 ---
 
-### Pattern 1: `<` changed to `<=` in sort comparisons (5 mutants)
+### Pattern 1: `<` changed to `<=` in sort comparisons (4 mutants)
 
 **File:** `diffyml.go`
 **Mutation:** `CONDITIONALS_BOUNDARY` — `<` changed to `<=`
@@ -65,7 +75,6 @@ that ensures the operands are never equal. When they can't be equal, `<` and
 | 307:17 | `rootI < rootJ` | Guarded by `rootI != rootJ`; identical strings can't reach this line |
 | 344:24 | `parentOrderI < parentOrderJ` | Guarded by `parentOrderI != parentOrderJ` on line 343 |
 | 351:18 | `depthI < depthJ` | Guarded by `depthI != depthJ` on line 350 |
-| 355:16 | `pathI < pathJ` | Diffs are grouped by path; two diffs can't have the same path |
 
 ---
 
@@ -90,8 +99,8 @@ that ensures the operands are never equal. When they can't be equal, `<` and
 | Line | Code | Why equivalent |
 |------|------|----------------|
 | 66:15 | `override < minTerminalWidth` → `<=` | When `override == min`, returns `min` either way |
-| 237:9 | `val < min` → `<=` | Clamp: returns `min` when `val == min` either way |
-| 240:9 | `val > max` → `>=` | Clamp: returns `max` when `val == max` either way |
+| 243:9 | `val < min` → `<=` | Clamp: returns `min` when `val == min` either way |
+| 246:9 | `val > max` → `>=` | Clamp: returns `max` when `val == max` either way |
 
 ---
 
@@ -130,15 +139,15 @@ table is identical regardless of which branch is taken.
 
 | Line | Code | Why equivalent |
 |------|------|----------------|
-| 462:17 | `j <= n` → `j < n` | Inner loop boundary; at `j == n` the DP cell is already computed by the outer structure |
-| 465:25 | `dp[i-1][j] >= dp[i][j-1]` → `>` | When equal, both branches assign the same max LCS value |
+| 472:17 | `j <= n` → `j < n` | Inner loop boundary; at `j == n` the DP cell is already computed by the outer structure |
+| 475:25 | `dp[i-1][j] >= dp[i][j-1]` → `>` | When equal, both branches assign the same max LCS value |
 
 ---
 
 ### Pattern 7: Array reverse self-swap (1 mutant)
 
 **File:** `detailed_formatter.go`
-**Mutation:** `CONDITIONALS_BOUNDARY` at line 491:41 — `<` changed to `<=`
+**Mutation:** `CONDITIONALS_BOUNDARY` at line 501:41 — `<` changed to `<=`
 
 When `left == right` (odd-length array midpoint), swapping an element with
 itself is a no-op.
@@ -157,10 +166,21 @@ The capacity hint only affects initial memory allocation, not map behavior.
 ### Pattern 9: Flag parsing edge case (1 mutant)
 
 **File:** `cli.go`
-**Mutation:** `CONDITIONALS_BOUNDARY` at line 221:51 — `>= 0` changed to `> 0`
+**Mutation:** `CONDITIONALS_BOUNDARY` at line 225:51 — `>= 0` changed to `> 0`
 
 For `eqIdx == 0`, the flag name would be `""`. Either way, `fs.Lookup` returns
 nil and the arg is treated as positional.
+
+---
+
+### Pattern 10: `parseDocIndexPrefix` bracket boundary (1 mutant)
+
+**File:** `detailed_formatter.go`
+**Mutation:** `CONDITIONALS_BOUNDARY` at line 646:18 — `< 0` changed to `<= 0`
+
+In `parseDocIndexPrefix`, the prior check `!strings.HasPrefix(path, "[")` ensures
+`path[0] == '['`. Therefore `strings.Index(path, "]")` can never return 0 (the
+first `]` is always at index >= 1). Changing `< 0` to `<= 0` has no effect.
 
 ---
 

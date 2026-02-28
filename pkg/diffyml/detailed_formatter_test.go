@@ -3043,6 +3043,13 @@ func TestDetailedFormatter_CollapsedLineCount(t *testing.T) {
 	if strings.Contains(output, "[-") {
 		t.Errorf("collapsed line count should not be negative, got:\n%s", output)
 	}
+	// Exactly 2 collapsed markers expected (one per unchanged region).
+	// Kills skipUntil = i + collapsed → i - collapsed mutation which produces
+	// duplicate collapsed markers for each line in a collapsed region.
+	markerCount := strings.Count(output, "lines unchanged]")
+	if markerCount != 2 {
+		t.Errorf("expected exactly 2 collapsed markers, got %d:\n%s", markerCount, output)
+	}
 }
 
 func TestDetailedFormatter_ListEntryAtIndex9(t *testing.T) {

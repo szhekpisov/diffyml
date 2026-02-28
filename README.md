@@ -319,6 +319,10 @@ make coverage       # generate HTML coverage report
 
 </details>
 
+## Acknowledgments
+
+diffyml is inspired by [dyff](https://github.com/homeport/dyff) by [HQS Quantum Simulations](https://github.com/homeport).
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

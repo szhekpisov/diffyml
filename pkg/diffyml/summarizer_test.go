@@ -665,7 +665,7 @@ func TestBuildPrompt_OneByteOverBoundary(t *testing.T) {
 		t.Error("first group should always be present")
 	}
 	if strings.Contains(got, "File: pad.yaml") {
-		// This is expected - second group should be truncated
+		t.Error("second group should be truncated when total exceeds maxPromptLen")
 	}
 	if !strings.Contains(got, "truncated") {
 		t.Error("should truncate when total exceeds maxPromptLen by 1")

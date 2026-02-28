@@ -175,6 +175,7 @@ func buildFilePairsFromMap(m map[string][2][]byte) []FilePair {
 		contents := m[name]
 		var pair FilePair
 		pair.Name = name
+		//nolint:gocritic // if-else kept intentionally: switch/case conditions fall outside Go coverage blocks, causing gremlins to misclassify mutations as NOT COVERED
 		if contents[0] != nil && contents[1] != nil {
 			pair.Type = FilePairBothExist
 		} else if contents[0] != nil {

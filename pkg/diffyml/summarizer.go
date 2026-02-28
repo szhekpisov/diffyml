@@ -142,6 +142,7 @@ func (s *Summarizer) Summarize(ctx context.Context, groups []DiffGroup) (string,
 	}
 
 	// Handle HTTP error status codes
+	//nolint:gocritic // if-else kept intentionally: switch/case conditions fall outside Go coverage blocks, causing gremlins to misclassify mutations as NOT COVERED
 	if resp.StatusCode == 401 {
 		return "", fmt.Errorf("invalid API key")
 	} else if resp.StatusCode == 429 {

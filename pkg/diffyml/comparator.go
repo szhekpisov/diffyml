@@ -349,6 +349,7 @@ func compareListsPositional(path string, from, to []interface{}, opts *Options) 
 			toVal = to[i]
 		}
 
+		//nolint:gocritic // if-else kept intentionally: switch/case conditions fall outside Go coverage blocks, causing gremlins to misclassify mutations as NOT COVERED
 		if i >= len(from) {
 			// Item was added
 			diffs = append(diffs, Difference{

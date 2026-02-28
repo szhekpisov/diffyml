@@ -157,8 +157,8 @@ func TestIsTerminal_Pipe(t *testing.T) {
 	if err != nil {
 		t.Fatalf("os.Pipe() failed: %v", err)
 	}
-	defer r.Close()
-	defer w.Close()
+	defer func() { _ = r.Close() }()
+	defer func() { _ = w.Close() }()
 
 	// Note: IsTerminal actually checks os.Stdout, not the fd parameter.
 	// This test just ensures it doesn't panic.

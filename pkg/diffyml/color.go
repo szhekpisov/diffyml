@@ -136,8 +136,8 @@ func (c *ColorConfig) ShouldUseTrueColor() bool {
 	if strings.Contains(term, "256color") || strings.Contains(term, "truecolor") {
 		return true
 	}
-	// Default to assuming support if explicitly requested
-	return c.trueColor && c.isTerminal
+	// trueColor is only set for "always" mode, so honor the explicit request
+	return c.trueColor
 }
 
 // GetWidth returns the terminal width to use.

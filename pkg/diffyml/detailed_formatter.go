@@ -470,6 +470,7 @@ func computeLineDiff(fromLines, toLines []string) []editOp {
 	}
 	for i := 1; i <= m; i++ {
 		for j := 1; j <= n; j++ {
+			//nolint:gocritic // if-else kept intentionally: switch/case conditions fall outside Go coverage blocks, causing gremlins to misclassify mutations as NOT COVERED
 			if fromLines[i-1] == toLines[j-1] {
 				dp[i][j] = dp[i-1][j-1] + 1
 			} else if dp[i-1][j] >= dp[i][j-1] {
@@ -484,6 +485,7 @@ func computeLineDiff(fromLines, toLines []string) []editOp {
 	var ops []editOp
 	i, j := m, n
 	for i > 0 || j > 0 {
+		//nolint:gocritic // if-else kept intentionally: switch/case conditions fall outside Go coverage blocks, causing gremlins to misclassify mutations as NOT COVERED
 		if i > 0 && j > 0 && fromLines[i-1] == toLines[j-1] {
 			ops = append(ops, editOp{Type: editKeep, Line: fromLines[i-1]})
 			i--

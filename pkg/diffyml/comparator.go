@@ -121,40 +121,14 @@ func compareNodes(path string, from, to interface{}, opts *Options) []Difference
 	// Compare based on type
 	switch fromVal := from.(type) {
 	case *OrderedMap:
-		if toOrderedMap, ok := to.(*OrderedMap); ok {
-			diffs = append(diffs, compareOrderedMaps(path, fromVal, toOrderedMap, opts)...)
-		} else if toMap, ok := to.(map[string]interface{}); ok {
-			diffs = append(diffs, compareMaps(path, fromVal.Values, toMap, opts)...)
-		} else {
-			// Type mismatch
-			if opts != nil && opts.IgnoreValueChanges {
-				return diffs
-			}
-			diffs = append(diffs, Difference{
-				Path: cleanPath(path),
-				Type: DiffModified,
-				From: from,
-				To:   to,
-			})
-		}
+		// Type-equality guard above ensures to is also *OrderedMap
+		toOrderedMap := to.(*OrderedMap)
+		diffs = append(diffs, compareOrderedMaps(path, fromVal, toOrderedMap, opts)...)
 
 	case map[string]interface{}:
-		if toOrderedMap, ok := to.(*OrderedMap); ok {
-			diffs = append(diffs, compareMaps(path, fromVal, toOrderedMap.Values, opts)...)
-		} else if toMap, ok := to.(map[string]interface{}); ok {
-			diffs = append(diffs, compareMaps(path, fromVal, toMap, opts)...)
-		} else {
-			// Type mismatch
-			if opts != nil && opts.IgnoreValueChanges {
-				return diffs
-			}
-			diffs = append(diffs, Difference{
-				Path: cleanPath(path),
-				Type: DiffModified,
-				From: from,
-				To:   to,
-			})
-		}
+		// Type-equality guard above ensures to is also map[string]interface{}
+		toMap := to.(map[string]interface{})
+		diffs = append(diffs, compareMaps(path, fromVal, toMap, opts)...)
 
 	case []interface{}:
 		toVal := to.([]interface{})
@@ -610,56 +584,32 @@ func deepEqual(from, to interface{}, opts *Options) bool {
 
 	switch fromVal := from.(type) {
 	case *OrderedMap:
-		if toOrderedMap, ok := to.(*OrderedMap); ok {
-			if len(fromVal.Values) != len(toOrderedMap.Values) {
-				return false
-			}
-			for k, fv := range fromVal.Values {
-				tv, ok := toOrderedMap.Values[k]
-				if !ok || !deepEqual(fv, tv, opts) {
-					return false
-				}
-			}
-			return true
-		} else if toMap, ok := to.(map[string]interface{}); ok {
-			if len(fromVal.Values) != len(toMap) {
-				return false
-			}
-			for k, fv := range fromVal.Values {
-				tv, ok := toMap[k]
-				if !ok || !deepEqual(fv, tv, opts) {
-					return false
-				}
-			}
-			return true
+		// Type-equality guard above ensures to is also *OrderedMap
+		toOrderedMap := to.(*OrderedMap)
+		if len(fromVal.Values) != len(toOrderedMap.Values) {
+			return false
 		}
-		return false
+		for k, fv := range fromVal.Values {
+			tv, ok := toOrderedMap.Values[k]
+			if !ok || !deepEqual(fv, tv, opts) {
+				return false
+			}
+		}
+		return true
 
 	case map[string]interface{}:
-		if toOrderedMap, ok := to.(*OrderedMap); ok {
-			if len(fromVal) != len(toOrderedMap.Values) {
-				return false
-			}
-			for k, fv := range fromVal {
-				tv, ok := toOrderedMap.Values[k]
-				if !ok || !deepEqual(fv, tv, opts) {
-					return false
-				}
-			}
-			return true
-		} else if toMap, ok := to.(map[string]interface{}); ok {
-			if len(fromVal) != len(toMap) {
-				return false
-			}
-			for k, fv := range fromVal {
-				tv, ok := toMap[k]
-				if !ok || !deepEqual(fv, tv, opts) {
-					return false
-				}
-			}
-			return true
+		// Type-equality guard above ensures to is also map[string]interface{}
+		toMap := to.(map[string]interface{})
+		if len(fromVal) != len(toMap) {
+			return false
 		}
-		return false
+		for k, fv := range fromVal {
+			tv, ok := toMap[k]
+			if !ok || !deepEqual(fv, tv, opts) {
+				return false
+			}
+		}
+		return true
 
 	case []interface{}:
 		toVal := to.([]interface{})

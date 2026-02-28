@@ -572,17 +572,14 @@ func TestRun_BriefSummary_DefersOutput(t *testing.T) {
 // --- color.go:77,81 IsTerminal return value ---
 
 func TestIsTerminal_ReturnValue(t *testing.T) {
-	// Kills CONDITIONALS_NEGATION at color.go:77 (err != nil → == nil)
-	// and color.go:81 (!= 0 → == 0).
-	// In test/CI, stdout is a pipe, not a terminal.
+	// Pipe/CI sanity check: stdout is a pipe, so IsTerminal returns false.
+	// The actual mutant-killing tests for lines 77/81 are in color_test.go
+	// (TestIsTerminal_WithCharDevice, TestIsTerminal_StatError) which use
+	// the injectable stdoutStatFn to mock a real terminal environment.
 	got := IsTerminal(os.Stdout.Fd())
 	if got {
 		t.Skip("running in a real terminal; cannot test pipe behavior")
 	}
-	// When stdout is a pipe, IsTerminal must return false.
-	// The mutant at line 77 (err != nil → == nil) would return false on success,
-	// which happens to be correct for pipes. But the mutant at line 81
-	// (!=0 → ==0) would return true for pipes. So asserting false kills line 81.
 	if got != false {
 		t.Error("IsTerminal should return false for pipe stdout")
 	}

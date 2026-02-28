@@ -71,9 +71,15 @@ func GetTerminalWidth(override int) int {
 	return defaultTerminalWidth
 }
 
+// stdoutStatFn is an injectable function for os.Stdout.Stat(), enabling
+// terminal-mode mocking in tests without a real TTY.
+var stdoutStatFn = func() (os.FileInfo, error) {
+	return os.Stdout.Stat()
+}
+
 // IsTerminal checks if the given file descriptor is a terminal.
 func IsTerminal(fd uintptr) bool {
-	stat, err := os.Stdout.Stat()
+	stat, err := stdoutStatFn()
 	if err != nil {
 		return false
 	}

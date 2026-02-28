@@ -1,7 +1,7 @@
 # Mutation Testing Report
 
 **Tool:** [gremlins](https://github.com/go-gremlins/gremlins)
-**Last full run:** 2026-02-28 — efficacy 95.86% (533 killed / 556 covered)
+**Last full run:** 2026-02-28 — efficacy 96.22% (535 killed / 556 covered)
 **Line coverage:** 96.6% (`go test -cover ./pkg/diffyml/`)
 **Mutator coverage:** 99.29%
 
@@ -9,15 +9,18 @@
 
 | Status | Count |
 |--------|-------|
-| Killed | 533 |
-| Lived | 23 |
+| Killed | 535 |
+| Lived | 21 |
 | Timed out | 4 |
 | Not covered | 4 |
-| **Efficacy** | **95.86%** |
+| **Efficacy** | **96.22%** |
 | **Mutator coverage** | **99.29%** |
 
 ### Change log
 
+- **Round 6** (2026-02-28): Killed 2 `IsTerminal` mutants (color.go:77,81) by
+  introducing injectable `stdoutStatFn` and mock tests that simulate a real
+  terminal (character device). LIVED 23 → 21, efficacy 95.86% → 96.22%.
 - **Round 5** (2026-02-28): Fixed gremlins coverage discrepancy — converted 5
   `switch/case` statements to `if/else` chains in `detailed_formatter.go`,
   `summarizer.go`, `comparator.go`, and `directory.go`. Root cause: Go's
@@ -40,7 +43,7 @@
   Not-covered dropped from 60 → 45, line coverage rose from 92.3% → 96.6%.
 - **Round 1**: Initial mutation testing setup with gremlins.
 
-## Survived Mutants (23 LIVED)
+## Survived Mutants (21 LIVED)
 
 All 23 surviving mutants are **equivalent** — the mutation does not change
 observable program behavior, so no test can detect them.
@@ -106,23 +109,7 @@ that ensures the operands are never equal. When they can't be equal, `<` and
 
 ---
 
-### Pattern 5: Terminal detection (2 mutants)
-
-**File:** `color.go`
-
-Tests assert `IsTerminal` returns false in pipe/CI context, but the mutant
-behavior is indistinguishable in this environment — both original and mutated
-code return false for pipes. Killing these requires a real terminal or
-OS-level mocking.
-
-| Line | Code | Why equivalent in test |
-|------|------|----------------------|
-| 77:9 | `err != nil` → `== nil` | `os.Stdout.Stat()` succeeds in tests; mutant falls through to mode check which also returns false for pipes |
-| 81:43 | `!= 0` → `== 0` | Would flip result, but test runs in a pipe where result is already false. Mutant can only be killed in a real terminal |
-
----
-
-### Pattern 6: Boundary in `len(path) > 1` (1 mutant)
+### Pattern 5: Boundary in `len(path) > 1` (1 mutant)
 
 **File:** `diffyml.go`
 **Mutation:** `CONDITIONALS_BOUNDARY` at line 222:15 — `> 1` changed to `>= 1`
@@ -133,7 +120,7 @@ prevents any behavior change.
 
 ---
 
-### Pattern 7: LCS tie-breaking (2 mutants)
+### Pattern 6: LCS tie-breaking (2 mutants)
 
 **File:** `detailed_formatter.go`
 **Mutation:** `CONDITIONALS_BOUNDARY`
@@ -148,7 +135,7 @@ table is identical regardless of which branch is taken.
 
 ---
 
-### Pattern 8: Array reverse self-swap (1 mutant)
+### Pattern 7: Array reverse self-swap (1 mutant)
 
 **File:** `detailed_formatter.go`
 **Mutation:** `CONDITIONALS_BOUNDARY` at line 491:41 — `<` changed to `<=`
@@ -158,7 +145,7 @@ itself is a no-op.
 
 ---
 
-### Pattern 9: Map capacity hint (1 mutant)
+### Pattern 8: Map capacity hint (1 mutant)
 
 **File:** `directory.go`
 **Mutation:** `ARITHMETIC_BASE` at line 98:49 — `len(a) + len(b)` mutated
@@ -167,7 +154,7 @@ The capacity hint only affects initial memory allocation, not map behavior.
 
 ---
 
-### Pattern 10: Flag parsing edge case (1 mutant)
+### Pattern 9: Flag parsing edge case (1 mutant)
 
 **File:** `cli.go`
 **Mutation:** `CONDITIONALS_BOUNDARY` at line 221:51 — `>= 0` changed to `> 0`

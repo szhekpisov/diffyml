@@ -3,6 +3,7 @@ package diffyml
 import (
 	"os"
 	"testing"
+	"time"
 )
 
 // --- Mutation testing: color.go ---
@@ -103,6 +104,50 @@ func TestGetTerminalWidth_AboveMin(t *testing.T) {
 	got := GetTerminalWidth(100)
 	if got != 100 {
 		t.Errorf("GetTerminalWidth(100) = %d, want 100", got)
+	}
+}
+
+// fakeFileInfo implements os.FileInfo for mocking terminal detection.
+type fakeFileInfo struct {
+	mode os.FileMode
+}
+
+func (f fakeFileInfo) Name() string      { return "stdout" }
+func (f fakeFileInfo) Size() int64       { return 0 }
+func (f fakeFileInfo) Mode() os.FileMode { return f.mode }
+func (f fakeFileInfo) ModTime() time.Time { return time.Time{} }
+func (f fakeFileInfo) IsDir() bool       { return false }
+func (f fakeFileInfo) Sys() interface{}  { return nil }
+
+func TestIsTerminal_WithCharDevice(t *testing.T) {
+	// Mock stdoutStatFn to simulate a real terminal (character device).
+	// Kills both mutants:
+	//   color.go:81 (!= 0 → == 0) — mutant returns false for char device
+	//   color.go:77 (err != nil → == nil) — mutant returns false on success
+	orig := stdoutStatFn
+	t.Cleanup(func() { stdoutStatFn = orig })
+
+	stdoutStatFn = func() (os.FileInfo, error) {
+		return fakeFileInfo{mode: os.ModeCharDevice}, nil
+	}
+
+	if !IsTerminal(0) {
+		t.Error("IsTerminal should return true when stdout is a character device")
+	}
+}
+
+func TestIsTerminal_StatError(t *testing.T) {
+	// Mock stdoutStatFn to return an error.
+	// Kills mutant at color.go:77 (err != nil → == nil) via the error path.
+	orig := stdoutStatFn
+	t.Cleanup(func() { stdoutStatFn = orig })
+
+	stdoutStatFn = func() (os.FileInfo, error) {
+		return nil, os.ErrPermission
+	}
+
+	if IsTerminal(0) {
+		t.Error("IsTerminal should return false when Stat() returns an error")
 	}
 }
 

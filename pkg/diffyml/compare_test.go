@@ -1418,3 +1418,77 @@ func TestCompare_HeterogeneousListReorder(t *testing.T) {
 		}
 	}
 }
+
+func TestCompare_AdditionalIdentifierModify(t *testing.T) {
+	// When using AdditionalIdentifiers, modifying an identified item must produce
+	// DiffModified (not remove+add) and use the identifier in the path.
+	from := yml(`items:
+  - key: alpha
+    value: 1`)
+	to := yml(`items:
+  - key: alpha
+    value: 2`)
+
+	diffs, err := compare(from, to, &diffyml.Options{
+		AdditionalIdentifiers: []string{"key"},
+	})
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if len(diffs) != 1 {
+		t.Fatalf("expected 1 diff, got %d", len(diffs))
+	}
+	if diffs[0].Type != diffyml.DiffModified {
+		t.Errorf("expected DiffModified, got %v", diffs[0].Type)
+	}
+	if !strings.Contains(diffs[0].Path, "alpha") {
+		t.Errorf("expected path to contain identifier 'alpha', got %q", diffs[0].Path)
+	}
+}
+
+func TestCompare_ParentOrderForAddedChildren(t *testing.T) {
+	// Added children under different parents (same root) must sort
+	// by the parents' document order, not alphabetically.
+	from := yml(`root:
+  zzz:
+    child: old
+  aaa:
+    child: old`)
+	to := yml(`root:
+  zzz:
+    child: old
+    newkey: added_z
+  aaa:
+    child: old
+    newkey: added_a`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if len(diffs) != 2 {
+		t.Fatalf("expected 2 diffs, got %d", len(diffs))
+	}
+	// zzz appears before aaa in the document, so zzz.newkey must come first
+	if diffs[0].Path != "root.zzz.newkey" {
+		t.Errorf("expected first diff 'root.zzz.newkey', got %q", diffs[0].Path)
+	}
+	if diffs[1].Path != "root.aaa.newkey" {
+		t.Errorf("expected second diff 'root.aaa.newkey', got %q", diffs[1].Path)
+	}
+}
+
+func TestCompare_UnorderedListNullVsValue(t *testing.T) {
+	// In unordered comparison, a non-null item must not match a null item.
+	from := yml(`items: [hello]`)
+	to := yml(`items: [null]`)
+
+	diffs, err := compare(from, to, &diffyml.Options{IgnoreOrderChanges: true})
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	// "hello" removed and null added — at least 1 diff expected
+	if len(diffs) == 0 {
+		t.Fatal("expected diffs when replacing a value with null, got 0")
+	}
+}

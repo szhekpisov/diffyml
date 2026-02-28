@@ -2019,3 +2019,23 @@ func TestBriefFormatter_ZeroCategories(t *testing.T) {
 		t.Errorf("output should not contain 'modified' when there are none, got: %s", output)
 	}
 }
+
+func TestBriefFormatter_OnlyModified(t *testing.T) {
+	// Only-modified diffs → output should have no "added" or "removed"
+	diffs := []Difference{
+		{Path: "a", Type: DiffModified, From: "old", To: "new"},
+	}
+
+	f := &BriefFormatter{}
+	output := f.Format(diffs, nil)
+
+	if !strings.HasPrefix(output, "1 modified") {
+		t.Errorf("expected output starting with '1 modified', got: %s", output)
+	}
+	if strings.Contains(output, "added") {
+		t.Errorf("output should not contain 'added' when there are none, got: %s", output)
+	}
+	if strings.Contains(output, "removed") {
+		t.Errorf("output should not contain 'removed' when there are none, got: %s", output)
+	}
+}

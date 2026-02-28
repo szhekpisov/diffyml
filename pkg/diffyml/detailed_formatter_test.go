@@ -3044,3 +3044,20 @@ func TestDetailedFormatter_CollapsedLineCount(t *testing.T) {
 		t.Errorf("collapsed line count should not be negative, got:\n%s", output)
 	}
 }
+
+func TestDetailedFormatter_ListEntryAtIndex9(t *testing.T) {
+	// A scalar list entry at index 9 must still be detected as a list entry.
+	// This catches the mutation c > '9' → c >= '9' which would treat '9' as non-digit.
+	f, _ := GetFormatter("detailed")
+	opts := DefaultFormatOptions()
+	opts.OmitHeader = true
+
+	diffs := []Difference{
+		{Path: "items.9", Type: DiffAdded, To: "newval"},
+	}
+
+	output := f.Format(diffs, opts)
+	if !strings.Contains(output, "list entry") {
+		t.Errorf("expected 'list entry' for index 9, got: %q", output)
+	}
+}

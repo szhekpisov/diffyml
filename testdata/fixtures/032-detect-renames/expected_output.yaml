@@ -1,0 +1,12 @@
+Found two differences
+
+1:data.log_level
+  ± value change
+    - info
+    + warn
+
+1:metadata.name
+  ± value change
+    - app-config-abc123
+    + app-config-def456
+

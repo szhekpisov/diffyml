@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-app
+  namespace: production
+spec:
+  ports:
+  - port: 80
+    targetPort: 8080
+  selector:
+    app: web
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config-def456
+  namespace: production
+data:
+  database_url: postgres://db:5432/myapp
+  log_level: warn
+  max_retries: "3"

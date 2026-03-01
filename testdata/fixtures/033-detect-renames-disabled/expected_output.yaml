@@ -1,0 +1,25 @@
+Found two differences
+
+(document)
+  + one list entry added:
+    - apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: app-config-def456
+        namespace: production
+      data:
+        database_url: postgres://db:5432/myapp
+        log_level: warn
+        max_retries: 3
+
+  - one list entry removed:
+    - apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: app-config-abc123
+        namespace: production
+      data:
+        database_url: postgres://db:5432/myapp
+        log_level: info
+        max_retries: 3
+

@@ -194,6 +194,11 @@ func (f *DetailedFormatter) formatEntryBatch(sb *strings.Builder, diffs []Differ
 		} else {
 			val = diff.From
 		}
+		if !opts.NoCertInspection {
+			if s, ok := val.(string); ok && IsPEMCertificate(s) {
+				val = FormatCertificate(s)
+			}
+		}
 		f.renderEntryValue(sb, val, symbol, 4, diff.Path, isListEntry, opts)
 	}
 	sb.WriteString("\n")
@@ -364,6 +369,12 @@ func (f *DetailedFormatter) formatModified(sb *strings.Builder, diff Difference,
 	toStr, toOk := diff.To.(string)
 
 	if fromOk && toOk {
+		// Certificate inspection: transform PEM certs to single-line summaries
+		if !opts.NoCertInspection && IsPEMCertificate(fromStr) && IsPEMCertificate(toStr) {
+			fromStr = FormatCertificate(fromStr)
+			toStr = FormatCertificate(toStr)
+		}
+
 		// Whitespace-only change detection
 		if isWhitespaceOnlyChange(fromStr, toStr) {
 			f.writeDescriptorLine(sb, "  ± whitespace only change", f.colorModified, opts)
@@ -378,9 +389,16 @@ func (f *DetailedFormatter) formatModified(sb *strings.Builder, diff Difference,
 			f.formatMultilineDiff(sb, fromStr, toStr, opts)
 			return
 		}
+
+		// Scalar string value change (may be cert-transformed)
+		f.writeDescriptorLine(sb, "  ± value change", f.colorModified, opts)
+		f.writeColoredLine(sb, fmt.Sprintf("    - %s", fromStr), f.colorRemoved(opts), opts)
+		f.writeColoredLine(sb, fmt.Sprintf("    + %s", toStr), f.colorAdded(opts), opts)
+		sb.WriteString("\n")
+		return
 	}
 
-	// Default: scalar value change
+	// Default: non-string scalar value change
 	f.writeDescriptorLine(sb, "  ± value change", f.colorModified, opts)
 	f.writeColoredLine(sb, fmt.Sprintf("    - %v", formatDetailedValue(diff.From)), f.colorRemoved(opts), opts)
 	f.writeColoredLine(sb, fmt.Sprintf("    + %v", formatDetailedValue(diff.To)), f.colorAdded(opts), opts)

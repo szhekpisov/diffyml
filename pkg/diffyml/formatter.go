@@ -30,6 +30,8 @@ type FormatOptions struct {
 	UseGoPatchStyle bool
 	// ContextLines is the number of context lines for multi-line values.
 	ContextLines int
+	// NoCertInspection disables x509 certificate inspection in output.
+	NoCertInspection bool
 	// FilePath is the source file path set by the CLI layer.
 	// Used by GitLabFormatter for location.path and fingerprint generation.
 	// Defaults to empty string (backward compatible).

@@ -351,6 +351,27 @@ func TestCLIConfig_ToFormatOptions(t *testing.T) {
 	}
 }
 
+func TestCLIConfig_ToFormatOptions_NoCertInspection(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.NoCertInspection = true
+
+	opts := cfg.ToFormatOptions()
+
+	if !opts.NoCertInspection {
+		t.Error("expected NoCertInspection=true in FormatOptions when set in CLI config")
+	}
+}
+
+func TestCLIConfig_ToFormatOptions_NoCertInspection_Default(t *testing.T) {
+	cfg := NewCLIConfig()
+
+	opts := cfg.ToFormatOptions()
+
+	if opts.NoCertInspection {
+		t.Error("expected NoCertInspection=false by default in FormatOptions")
+	}
+}
+
 func TestCLIConfig_UsageContainsFlags(t *testing.T) {
 	cfg := NewCLIConfig()
 	usage := cfg.Usage()

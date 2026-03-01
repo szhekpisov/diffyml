@@ -13,7 +13,7 @@ Structural diff for YAML files. Understands YAML semantics and detects Kubernete
 
 - **Minimal dependencies** — single runtime dependency ([yaml.v3](https://github.com/yaml/go-yaml)); pure Go stdlib otherwise. Small attack surface, fast by design ([benchmarks](#performance))
 - **Kubernetes-aware** — auto-detects and matches resources by apiVersion, kind, and metadata; optional apiVersion-agnostic matching for API migrations
-- **Rename detection** — identifies renamed resources instead of showing remove + add
+- **Rename detection** — detects renamed/moved Kubernetes resources by content similarity (e.g., kustomize configMapGenerator hash-suffix changes) and shows field-level diffs instead of bulk add/remove
 - **6 output formats** — detailed, compact, brief, GitHub, GitLab, Gitea
 - **Path filtering** — include/exclude paths with exact match or regex
 - **Remote files** — compare directly from HTTP/HTTPS URLs
@@ -87,7 +87,7 @@ diffyml [flags] <from> <to>
 
 ### Kubernetes Support
 
-Kubernetes resources are automatically detected and matched by `apiVersion`, `kind`, and `metadata.name`. Renames are tracked as moves, not as remove + add.
+Kubernetes resources are automatically detected and matched by `apiVersion`, `kind`, and `metadata.name`. When resources cannot be matched by identifier (e.g., kustomize `configMapGenerator` hash-suffix changes like `app-config-abc123` → `app-config-def456`), diffyml compares unmatched documents by content similarity and pairs those above a 60% threshold, showing field-level diffs instead of bulk add/remove. Use `--detect-renames=false` to disable this behavior.
 
 Use `--ignore-api-version` to drop `apiVersion` from the matching key — resources are paired by `kind` + `name` only, so an API migration (e.g. `apps/v1beta1` → `apps/v1`) shows field-level diffs instead of a remove + add. Use `--detect-kubernetes=false` to disable K8s-aware matching entirely and compare documents by position.
 
@@ -179,7 +179,7 @@ The summary is appended after the standard diff output. If the API call fails, a
 | `--ignore-whitespace-changes` | Ignore leading/trailing whitespace differences |
 | `-v, --ignore-value-changes` | Show only structural changes, exclude value changes |
 | `--detect-kubernetes` | Detect and match Kubernetes resources (default `true`) |
-| `--detect-renames` | Detect renamed resources (default `true`) |
+| `--detect-renames` | Detect renamed/moved Kubernetes resources by content similarity (default `true`) |
 | `--ignore-api-version` | Ignore `apiVersion` when matching Kubernetes resources |
 | `-x, --no-cert-inspection` | Disable x509 certificate inspection |
 | `--swap` | Swap from/to files |

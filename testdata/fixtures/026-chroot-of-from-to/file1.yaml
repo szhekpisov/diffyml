@@ -1,0 +1,4 @@
+data:
+  v1:
+    host: localhost
+    port: 8080

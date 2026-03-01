@@ -1,0 +1,6 @@
+metadata:
+  name: my-resource-v2
+  version: "2"
+data:
+  key1: updated
+  key2: value2

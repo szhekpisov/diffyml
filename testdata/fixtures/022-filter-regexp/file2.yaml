@@ -1,0 +1,5 @@
+server:
+  host: 0.0.0.0
+  http_port: 9090
+  grpc_port: 50051
+  max_connections: 200

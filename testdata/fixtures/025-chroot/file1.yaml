@@ -1,0 +1,5 @@
+metadata:
+  name: my-resource
+spec:
+  replicas: 1
+  image: nginx:1.19

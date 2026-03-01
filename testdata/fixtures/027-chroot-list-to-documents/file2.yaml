@@ -1,0 +1,5 @@
+items:
+- name: app
+  version: "2.0"
+- name: db
+  version: "8.0"

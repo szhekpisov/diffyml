@@ -1,0 +1,12 @@
+Found two differences
+
+/servers/web/config/host
+  ± value change
+    - localhost
+    + 0.0.0.0
+
+/servers/web/config/port
+  ± value change
+    - 8080
+    + 9090
+

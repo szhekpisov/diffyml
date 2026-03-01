@@ -1,0 +1,7 @@
+app:
+  name: myapp
+  settings:
+    timeout: 30
+    retries: 3
+  logging:
+    level: info

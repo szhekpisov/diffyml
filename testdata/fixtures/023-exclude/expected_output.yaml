@@ -1,0 +1,7 @@
+Found one difference
+
+data.key1
+  ± value change
+    - value1
+    + updated
+

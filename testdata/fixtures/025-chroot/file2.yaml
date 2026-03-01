@@ -1,0 +1,5 @@
+metadata:
+  name: my-resource-v2
+spec:
+  replicas: 3
+  image: nginx:1.25

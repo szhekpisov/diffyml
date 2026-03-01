@@ -1,0 +1,6 @@
+metadata:
+  name: my-resource
+  version: "1"
+data:
+  key1: value1
+  key2: value2

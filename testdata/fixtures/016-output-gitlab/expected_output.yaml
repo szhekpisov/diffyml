@@ -1,0 +1,5 @@
+[
+  {"description": "Modified: app.version changed from 1.0 to 2.0", "check_name": "diffyml/modified", "fingerprint": "6e62e8c3f411b2ca6f0a38f06df8a2359ebc2a5580da3a88d668fdd7fb6c9644", "severity": "major", "location": {"path": "dummy-to", "lines": {"begin": 1}}},
+  {"description": "Removed: app.debug = true", "check_name": "diffyml/removed", "fingerprint": "2c66786b95896190fd5f5152d9f5617564e9a58670033fca7cff4984e24d71e1", "severity": "major", "location": {"path": "dummy-to", "lines": {"begin": 1}}},
+  {"description": "Added: app.replicas = 3", "check_name": "diffyml/added", "fingerprint": "e11024701c291e9c3ce53ec2d9ab1a041f9077b915ea2d3006d32fc74d08e7fc", "severity": "info", "location": {"path": "dummy-to", "lines": {"begin": 1}}}
+]

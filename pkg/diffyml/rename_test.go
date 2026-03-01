@@ -383,3 +383,115 @@ func TestDetectRenames_NonK8sFiltered(t *testing.T) {
 		t.Errorf("expected non-K8s doc (index 0) in remainingTo, got %v", remainTo)
 	}
 }
+
+func TestToYAMLNode_MapStringInterface(t *testing.T) {
+	doc := map[string]interface{}{
+		"beta": "two",
+		"alpha": "one",
+	}
+	data, err := serializeDocument(doc)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	result := string(data)
+	// Keys should be sorted alphabetically
+	alphaIdx := strings.Index(result, "alpha")
+	betaIdx := strings.Index(result, "beta")
+	if alphaIdx >= betaIdx {
+		t.Errorf("expected sorted key order alpha < beta, got positions %d, %d", alphaIdx, betaIdx)
+	}
+}
+
+func TestToYAMLNode_UnknownType(t *testing.T) {
+	// Pass a type not in the switch (e.g., struct) — should fall through to default
+	type custom struct{ X int }
+	data, err := serializeDocument(custom{X: 42})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	result := string(data)
+	if !strings.Contains(result, "42") {
+		t.Errorf("expected default fmt.Sprintf output containing 42, got: %s", result)
+	}
+}
+
+func TestSimilarityIndex_AsymmetricLineCounts(t *testing.T) {
+	// self has fewer lines than other → exercises other.numLines > maxLines branch
+	data1 := []byte("line1\n")
+	data2 := []byte("line1\nline2\nline3\n")
+	idx1 := newSimilarityIndex(data1)
+	idx2 := newSimilarityIndex(data2)
+
+	score := idx1.score(idx2)
+	// 1 matching out of max(1,3) = 3 → 33%
+	if score != 33 {
+		t.Errorf("expected score 33, got %d", score)
+	}
+}
+
+func TestSimilarityIndex_DuplicateLines(t *testing.T) {
+	// self has 1 occurrence but other has 2 → exercises selfCount < count branch
+	data1 := []byte("aaa\nbbb\n")
+	data2 := []byte("aaa\naaa\nbbb\n")
+	idx1 := newSimilarityIndex(data1)
+	idx2 := newSimilarityIndex(data2)
+
+	score := idx1.score(idx2)
+	// matching: min(1,2)=1 for "aaa" + min(1,1)=1 for "bbb" = 2
+	// max lines = 3 → 2*100/3 = 66
+	if score != 66 {
+		t.Errorf("expected score 66, got %d", score)
+	}
+}
+
+func TestDetectRenames_SizeRatioRejection(t *testing.T) {
+	// Create two K8s docs with very different sizes so size ratio < 60%
+	smallDoc := mkK8sConfigMap("small", []string{"a"})
+	largeDoc := mkK8sConfigMap("large", []string{
+		"a", "b", "c", "d", "e", "f", "g", "h", "i", "j",
+		"k", "l", "m", "n", "o", "p", "q", "r", "s", "t",
+	})
+
+	from := []interface{}{smallDoc}
+	to := []interface{}{largeDoc}
+
+	opts := &Options{DetectRenames: true}
+	matched, remainFrom, remainTo := detectRenames(from, to, []int{0}, []int{0}, opts)
+
+	if len(matched) != 0 {
+		t.Errorf("expected 0 matches due to size ratio rejection, got %d", len(matched))
+	}
+	if len(remainFrom) != 1 {
+		t.Errorf("expected 1 remaining from, got %d", len(remainFrom))
+	}
+	if len(remainTo) != 1 {
+		t.Errorf("expected 1 remaining to, got %d", len(remainTo))
+	}
+}
+
+func TestDetectRenames_SortTiebreaker(t *testing.T) {
+	// Create 3 docs on each side with identical content except names.
+	// All pairs will have the same high score, so tiebreaker (ascending fromIdx, toIdx) decides.
+	from := []interface{}{
+		mkK8sConfigMap("from-0", []string{"shared1", "shared2", "shared3"}),
+		mkK8sConfigMap("from-1", []string{"shared1", "shared2", "shared3"}),
+	}
+	to := []interface{}{
+		mkK8sConfigMap("to-0", []string{"shared1", "shared2", "shared3"}),
+		mkK8sConfigMap("to-1", []string{"shared1", "shared2", "shared3"}),
+	}
+
+	opts := &Options{DetectRenames: true}
+	matched, _, _ := detectRenames(from, to, []int{0, 1}, []int{0, 1}, opts)
+
+	// With tiebreaker: from[0]→to[0] is assigned first, then from[1]→to[1]
+	if len(matched) != 2 {
+		t.Fatalf("expected 2 matches, got %d", len(matched))
+	}
+	if matched[0] != 0 {
+		t.Errorf("expected from[0]→to[0], got from[0]→to[%d]", matched[0])
+	}
+	if matched[1] != 1 {
+		t.Errorf("expected from[1]→to[1], got from[1]→to[%d]", matched[1])
+	}
+}

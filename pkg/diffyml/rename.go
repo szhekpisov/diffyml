@@ -1,7 +1,6 @@
 package diffyml
 
 import (
-	"fmt"
 	"sort"
 
 	"gopkg.in/yaml.v3"
@@ -81,54 +80,9 @@ func (s *similarityIndex) score(other *similarityIndex) int {
 	return matching * 100 / maxLines
 }
 
-// toYAMLNode converts a parsed YAML value to a yaml.Node tree.
-func toYAMLNode(v interface{}) *yaml.Node {
-	switch val := v.(type) {
-	case *OrderedMap:
-		node := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
-		for _, key := range val.Keys {
-			keyNode := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: key}
-			valNode := toYAMLNode(val.Values[key])
-			node.Content = append(node.Content, keyNode, valNode)
-		}
-		return node
-	case map[string]interface{}:
-		node := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
-		keys := make([]string, 0, len(val))
-		for k := range val {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-		for _, key := range keys {
-			keyNode := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: key}
-			valNode := toYAMLNode(val[key])
-			node.Content = append(node.Content, keyNode, valNode)
-		}
-		return node
-	case []interface{}:
-		node := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
-		for _, item := range val {
-			node.Content = append(node.Content, toYAMLNode(item))
-		}
-		return node
-	case string:
-		return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: val}
-	case int:
-		return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!int", Value: fmt.Sprintf("%d", val)}
-	case float64:
-		return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!float", Value: fmt.Sprintf("%g", val)}
-	case bool:
-		return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!bool", Value: fmt.Sprintf("%t", val)}
-	case nil:
-		return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!null", Value: "null"}
-	default:
-		return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: fmt.Sprintf("%v", val)}
-	}
-}
-
 // serializeDocument converts a parsed YAML document to YAML bytes for similarity comparison.
 func serializeDocument(doc interface{}) ([]byte, error) {
-	node := toYAMLNode(doc)
+	node := valueToYAMLNode(doc)
 	return yaml.Marshal(node)
 }
 

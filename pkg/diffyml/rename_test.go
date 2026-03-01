@@ -151,6 +151,19 @@ func TestSimilarityIndex_EmptyDocs(t *testing.T) {
 
 // Task 1.3: Rename detection orchestrator tests
 
+func mkMinK8sDoc(name string) *OrderedMap {
+	meta := NewOrderedMap()
+	meta.Keys = append(meta.Keys, "name")
+	meta.Values["name"] = name
+
+	doc := NewOrderedMap()
+	doc.Keys = append(doc.Keys, "apiVersion", "kind", "metadata")
+	doc.Values["apiVersion"] = "v1"
+	doc.Values["kind"] = "ConfigMap"
+	doc.Values["metadata"] = meta
+	return doc
+}
+
 func mkK8sConfigMap(name string, dataKeys []string) *OrderedMap {
 	meta := NewOrderedMap()
 	meta.Keys = append(meta.Keys, "name")
@@ -253,19 +266,6 @@ func TestDetectRenames_BelowThreshold(t *testing.T) {
 }
 
 func TestDetectRenames_ExceedsLimit(t *testing.T) {
-	mkMinK8sDoc := func(name string) *OrderedMap {
-		meta := NewOrderedMap()
-		meta.Keys = append(meta.Keys, "name")
-		meta.Values["name"] = name
-
-		doc := NewOrderedMap()
-		doc.Keys = append(doc.Keys, "apiVersion", "kind", "metadata")
-		doc.Values["apiVersion"] = "v1"
-		doc.Values["kind"] = "ConfigMap"
-		doc.Values["metadata"] = meta
-		return doc
-	}
-
 	// 51 documents exceeds rename limit of 50
 	from := make([]interface{}, 51)
 	to := make([]interface{}, 51)
@@ -384,7 +384,7 @@ func TestDetectRenames_NonK8sFiltered(t *testing.T) {
 	}
 }
 
-func TestToYAMLNode_MapStringInterface(t *testing.T) {
+func TestSerializeDocument_MapStringInterface(t *testing.T) {
 	doc := map[string]interface{}{
 		"beta": "two",
 		"alpha": "one",
@@ -402,8 +402,8 @@ func TestToYAMLNode_MapStringInterface(t *testing.T) {
 	}
 }
 
-func TestToYAMLNode_UnknownType(t *testing.T) {
-	// Pass a type not in the switch (e.g., struct) — should fall through to default
+func TestSerializeDocument_UnknownType(t *testing.T) {
+	// Pass a type not in the switch (e.g., struct) — should fall through to Encode
 	type custom struct{ X int }
 	data, err := serializeDocument(custom{X: 42})
 	if err != nil {
@@ -411,7 +411,7 @@ func TestToYAMLNode_UnknownType(t *testing.T) {
 	}
 	result := string(data)
 	if !strings.Contains(result, "42") {
-		t.Errorf("expected default fmt.Sprintf output containing 42, got: %s", result)
+		t.Errorf("expected encoded output containing 42, got: %s", result)
 	}
 }
 
@@ -509,19 +509,6 @@ func TestNewSimilarityIndex_NoTrailingNewline(t *testing.T) {
 }
 
 func TestDetectRenames_ExactlyAtLimit(t *testing.T) {
-	mkMinK8sDoc := func(name string) *OrderedMap {
-		meta := NewOrderedMap()
-		meta.Keys = append(meta.Keys, "name")
-		meta.Values["name"] = name
-
-		doc := NewOrderedMap()
-		doc.Keys = append(doc.Keys, "apiVersion", "kind", "metadata")
-		doc.Values["apiVersion"] = "v1"
-		doc.Values["kind"] = "ConfigMap"
-		doc.Values["metadata"] = meta
-		return doc
-	}
-
 	// Exactly 50 documents should be allowed (limit is >50, not >=50)
 	from := make([]interface{}, 50)
 	to := make([]interface{}, 50)
@@ -544,19 +531,6 @@ func TestDetectRenames_ExactlyAtLimit(t *testing.T) {
 }
 
 func TestDetectRenames_AsymmetricLimitFromSmall(t *testing.T) {
-	mkMinK8sDoc := func(name string) *OrderedMap {
-		meta := NewOrderedMap()
-		meta.Keys = append(meta.Keys, "name")
-		meta.Values["name"] = name
-
-		doc := NewOrderedMap()
-		doc.Keys = append(doc.Keys, "apiVersion", "kind", "metadata")
-		doc.Values["apiVersion"] = "v1"
-		doc.Values["kind"] = "ConfigMap"
-		doc.Values["metadata"] = meta
-		return doc
-	}
-
 	// k8sFrom=1, k8sTo=51 — max is 51, exceeds limit
 	from := make([]interface{}, 1)
 	to := make([]interface{}, 51)

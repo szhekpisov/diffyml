@@ -149,7 +149,7 @@ In `parseDocIndexPrefix`, the prior check `!strings.HasPrefix(path, "[")` ensure
 ### Pattern 10: DJB hash arithmetic (1 mutant)
 
 **File:** `rename.go`
-**Mutation:** `ARITHMETIC_BASE` at line 49:14 — `h*33 + uint32(b)` mutated
+**Mutation:** `ARITHMETIC_BASE` at line 48:14 — `h*33 + uint32(b)` mutated
 
 The DJB hash function is applied symmetrically to both documents being compared. Changing the hash arithmetic (e.g., `+` to `-`) produces different hash values, but *both* documents are hashed with the same mutated function. Identical lines still hash identically, and different lines still hash differently. The similarity score is unchanged.
 
@@ -164,8 +164,8 @@ When the two operands are equal, the boundary mutation (`<` → `<=` or `>` → 
 
 | Line | Code | Why equivalent |
 |------|------|----------------|
-| 63:20 | `other.numLines > maxLines` → `>=` | When equal, `maxLines` is already correct (same value assigned either way) |
-| 73:17 | `selfCount < count` → `<=` | When equal, `matching += selfCount` or `matching += count` adds the same number |
+| 62:20 | `other.numLines > maxLines` → `>=` | When equal, `maxLines` is already correct (same value assigned either way) |
+| 72:17 | `selfCount < count` → `<=` | When equal, `matching += selfCount` or `matching += count` adds the same number |
 
 ---
 
@@ -176,8 +176,8 @@ When the two operands are equal, the boundary mutation (`<` → `<=` or `>` → 
 
 | Line | Code | Why equivalent |
 |------|------|----------------|
-| 170:16 | `len(k8sTo) > maxCandidates` → `>=` | When equal, assigning `maxCandidates = len(k8sTo)` is a no-op |
-| 233:14 | `minLen > maxLen` → `>=` | When equal, swapping identical values is a no-op |
+| 124:16 | `len(k8sTo) > maxCandidates` → `>=` | When equal, assigning `maxCandidates = len(k8sTo)` is a no-op |
+| 187:14 | `minLen > maxLen` → `>=` | When equal, swapping identical values is a no-op |
 
 ---
 
@@ -189,11 +189,11 @@ The size-ratio check (`minLen*100/maxLen < renameScoreThreshold`) is an optimiza
 
 | Line | Mutation | Code | Why equivalent |
 |------|----------|------|----------------|
-| 233:14 | `NEGATION` | `minLen > maxLen` → `<=` | Swaps values incorrectly, making ratio > 100 (never rejects). Fallback similarity score still rejects. |
-| 236:14 | `BOUNDARY` | `maxLen > 0` → `>=` | Always true for real documents; condition is already always true |
-| 236:14 | `NEGATION` | `maxLen > 0` → `<= 0` | Always false; disables size-ratio check. Fallback similarity score still rejects. |
-| 236:31 | `ARITHMETIC` | `minLen*100/maxLen` mutated | Produces wrong ratio; disables size-ratio check. Fallback similarity score still rejects. |
-| 236:39 | `BOUNDARY` | `< renameScoreThreshold` → `<=` | Only matters when ratio == 60, which means size ratio is borderline and similarity score will make the same accept/reject decision |
+| 187:14 | `NEGATION` | `minLen > maxLen` → `<=` | Swaps values incorrectly, making ratio > 100 (never rejects). Fallback similarity score still rejects. |
+| 190:14 | `BOUNDARY` | `maxLen > 0` → `>=` | Always true for real documents; condition is already always true |
+| 190:14 | `NEGATION` | `maxLen > 0` → `<= 0` | Always false; disables size-ratio check. Fallback similarity score still rejects. |
+| 190:31 | `ARITHMETIC` | `minLen*100/maxLen` mutated | Produces wrong ratio; disables size-ratio check. Fallback similarity score still rejects. |
+| 190:39 | `BOUNDARY` | `< renameScoreThreshold` → `<=` | Only matters when ratio == 60, which means size ratio is borderline and similarity score will make the same accept/reject decision |
 
 ---
 
@@ -205,10 +205,10 @@ The sort comparator in `detectRenames` sorts scored rename pairs descending by s
 
 | Line | Mutation | Code |
 |------|----------|------|
-| 250:26 | `BOUNDARY` | `pairs[i].score > pairs[j].score` → `>=` |
-| 252:23 | `NEGATION` | `pairs[i].fromIdx < pairs[j].fromIdx` → `>=` |
-| 253:28 | `BOUNDARY` | `pairs[i].fromIdx != pairs[j].fromIdx` → boundary mutation |
-| 255:25 | `BOUNDARY` | `pairs[i].toIdx < pairs[j].toIdx` → `<=` |
+| 204:26 | `BOUNDARY` | `pairs[i].score > pairs[j].score` → `>=` |
+| 207:23 | `NEGATION` | `pairs[i].fromIdx < pairs[j].fromIdx` → `>=` |
+| 206:28 | `BOUNDARY` | `pairs[i].fromIdx != pairs[j].fromIdx` → boundary mutation |
+| 209:25 | `BOUNDARY` | `pairs[i].toIdx < pairs[j].toIdx` → `<=` |
 
 ---
 

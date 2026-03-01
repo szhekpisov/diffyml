@@ -1,0 +1,21 @@
+Found one difference
+
+data.tls.crt
+  ± value change in multiline text (six inserts, six deletions)
+      -----BEGIN CERTIFICATE-----
+    - MIIBIjCByqADAgECAgQaKzxNMAoGCCqGSM49BAMCMBoxGDAWBgNVBAMTD2FwcC5l
+    - eGFtcGxlLmNvbTAeFw0yNTAxMDEwMDAwMDBaFw0yNjAxMDEwMDAwMDBaMBoxGDAW
+    + MIIBIzCByqADAgECAgReb3qLMAoGCCqGSM49BAMCMBoxGDAWBgNVBAMTD2FwcC5l
+    + eGFtcGxlLmNvbTAeFw0yNjAxMDEwMDAwMDBaFw0yNzAxMDEwMDAwMDBaMBoxGDAW
+      BgNVBAMTD2FwcC5leGFtcGxlLmNvbTBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IA
+    - BA7Fpccr2henJ4h37Xome78gx5AegdH6cXMwWW2cnh16jisf6k7wAGc14d+qHOOB
+    - w8pzc6y8w9SxAwBrdM8MInAwCgYIKoZIzj0EAwIDRwAwRAIgQL373Pq5DEiOITYd
+    - utWQ1PBg9AJ4OzUsbgU3PAuZWQ8CIGWOh6ON9WxOKqLr+zf0lXj51v2cblBwKPg2
+    - zLiTRAML
+    + BCz4JThmiHTQMywbvzSS88FRKofJCkAezD5/WpWsM92n8W48NMUNhEcikyDWM9fz
+    + BOQCMllPT4c9SiRDcOFdHPYwCgYIKoZIzj0EAwIDSAAwRQIhAIF7coLnR8+6/OcF
+    + AhBzHtLkizhLK7+vjSVyEM7vbRz/AiBQCJSA+u/QELBw6vQi86vpQVMejHt/KcU1
+    + 89FdLy8KKA==
+      -----END CERTIFICATE-----
+      
+

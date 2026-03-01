@@ -1,0 +1,7 @@
+Found one difference
+
+data.tls.crt
+  ± value change
+    - Certificate(CN=app.example.com, Issuer=app.example.com, Valid=2025-01-01..2026-01-01, Serial=1a2b3c4d)
+    + Certificate(CN=app.example.com, Issuer=app.example.com, Valid=2026-01-01..2027-01-01, Serial=5e6f7a8b)
+

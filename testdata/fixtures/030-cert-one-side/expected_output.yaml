@@ -1,0 +1,16 @@
+Found one difference
+
+data.tls.crt
+  ± value change in multiline text (ten inserts, one deletion)
+    - some-base64-encoded-data
+    + -----BEGIN CERTIFICATE-----
+    + MIIBIjCByqADAgECAgQaKzxNMAoGCCqGSM49BAMCMBoxGDAWBgNVBAMTD2FwcC5l
+    + eGFtcGxlLmNvbTAeFw0yNTAxMDEwMDAwMDBaFw0yNjAxMDEwMDAwMDBaMBoxGDAW
+    + BgNVBAMTD2FwcC5leGFtcGxlLmNvbTBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IA
+    + BA7Fpccr2henJ4h37Xome78gx5AegdH6cXMwWW2cnh16jisf6k7wAGc14d+qHOOB
+    + w8pzc6y8w9SxAwBrdM8MInAwCgYIKoZIzj0EAwIDRwAwRAIgQL373Pq5DEiOITYd
+    + utWQ1PBg9AJ4OzUsbgU3PAuZWQ8CIGWOh6ON9WxOKqLr+zf0lXj51v2cblBwKPg2
+    + zLiTRAML
+    + -----END CERTIFICATE-----
+    + 
+

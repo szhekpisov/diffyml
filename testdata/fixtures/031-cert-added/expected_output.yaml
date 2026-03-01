@@ -1,0 +1,6 @@
+Found one difference
+
+data.tls.crt
+  + one map entry added:
+    crt: Certificate(CN=api.example.com, Issuer=api.example.com, Valid=2025-06-01..2026-06-01, Serial=deadbeef)
+

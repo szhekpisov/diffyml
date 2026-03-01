@@ -1,0 +1,2 @@
+data:
+  tls.crt: some-base64-encoded-data

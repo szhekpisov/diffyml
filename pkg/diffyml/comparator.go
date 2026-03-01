@@ -466,9 +466,11 @@ func compareListsByIdentifier(path string, from, to []interface{}, opts *Options
 	// Build index of to items by identifier.
 	toIndex := make(map[interface{}]int)
 	toNoID := make([]int, 0)
+	toIDCount := 0
 	for i, item := range to {
 		id := getIdentifier(item, opts)
 		if isComparableIdentifier(id) {
+			toIDCount++
 			toIndex[id] = i
 			continue
 		}
@@ -477,8 +479,8 @@ func compareListsByIdentifier(path string, from, to []interface{}, opts *Options
 
 	// Detect order changes among matched identifiers.
 	// Only when identifiers are unique in both lists (duplicates make order comparison meaningless).
-	hasUniqueIDs := len(fromIDs) == len(fromIndex) && len(toIndex) == countToIDs(to, opts)
-	if hasUniqueIDs && !(opts != nil && opts.IgnoreOrderChanges) {
+	hasUniqueIDs := len(fromIDs) == len(fromIndex) && len(toIndex) == toIDCount
+	if hasUniqueIDs && (opts == nil || !opts.IgnoreOrderChanges) {
 		// Collect identifiers that exist in both, in from-order
 		var commonFromOrder []interface{}
 		for _, id := range fromIDs {
@@ -512,8 +514,6 @@ func compareListsByIdentifier(path string, from, to []interface{}, opts *Options
 			}
 
 			if orderChanged {
-				fromOrder := make([]interface{}, len(commonFromOrder))
-				copy(fromOrder, commonFromOrder)
 				toOrder := make([]interface{}, len(toSorted))
 				for i, s := range toSorted {
 					toOrder[i] = s.id
@@ -521,7 +521,7 @@ func compareListsByIdentifier(path string, from, to []interface{}, opts *Options
 				diffs = append(diffs, Difference{
 					Path: cleanPath(path),
 					Type: DiffOrderChanged,
-					From: fromOrder,
+					From: commonFromOrder,
 					To:   toOrder,
 				})
 			}
@@ -696,13 +696,3 @@ func cleanPath(path string) string {
 
 // countToIDs counts the total number of items with comparable identifiers in a list.
 // Used to detect duplicate identifiers (if count != len(toIndex), there are duplicates).
-func countToIDs(list []interface{}, opts *Options) int {
-	count := 0
-	for _, item := range list {
-		id := getIdentifier(item, opts)
-		if isComparableIdentifier(id) {
-			count++
-		}
-	}
-	return count
-}

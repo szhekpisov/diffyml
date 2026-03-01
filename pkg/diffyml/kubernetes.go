@@ -11,6 +11,9 @@ import (
 	"sort"
 )
 
+// k8sDocumentPath is the diff path used for document-level changes (e.g. order).
+const k8sDocumentPath = "(document)"
+
 // IsKubernetesResource checks if a document has the structure of a Kubernetes resource.
 // A Kubernetes resource must have apiVersion, kind, and metadata fields,
 // where metadata is a map containing at least a name field.
@@ -235,54 +238,38 @@ func compareK8sDocs(from, to []interface{}, opts *Options) []Difference {
 	ignoreApiVersion := opts != nil && opts.IgnoreApiVersion
 
 	// Detect document order changes
-	if !(opts != nil && opts.IgnoreOrderChanges) && len(matched) > 1 {
-		// Collect matched fromIdx values sorted by fromIdx
-		fromIndices := make([]int, 0, len(matched))
-		for fromIdx := range matched {
-			fromIndices = append(fromIndices, fromIdx)
+	if (opts == nil || !opts.IgnoreOrderChanges) && len(matched) > 1 {
+		// Build sorted (fromIdx, toIdx) pairs in one pass
+		type idxPair struct{ fromIdx, toIdx int }
+		pairs := make([]idxPair, 0, len(matched))
+		for fromIdx, toIdx := range matched {
+			pairs = append(pairs, idxPair{fromIdx, toIdx})
 		}
-		sort.Ints(fromIndices)
+		sort.Slice(pairs, func(i, j int) bool { return pairs[i].fromIdx < pairs[j].fromIdx })
 
-		// Check if the toIdx values are in increasing order
+		// Check if toIdx values are monotonically increasing
 		orderChanged := false
-		prevToIdx := -1
-		for _, fromIdx := range fromIndices {
-			toIdx := matched[fromIdx]
-			if toIdx < prevToIdx {
+		for i := 1; i < len(pairs); i++ {
+			if pairs[i].toIdx < pairs[i-1].toIdx {
 				orderChanged = true
 				break
 			}
-			prevToIdx = toIdx
 		}
 
 		if orderChanged {
-			// Build identifier lists in from-order and to-order
-			fromOrder := make([]interface{}, 0, len(fromIndices))
-			for _, fromIdx := range fromIndices {
-				id := GetK8sResourceIdentifier(from[fromIdx], ignoreApiVersion)
-				fromOrder = append(fromOrder, id)
+			fromOrder := make([]interface{}, len(pairs))
+			for i, p := range pairs {
+				fromOrder[i] = GetK8sResourceIdentifier(from[p.fromIdx], ignoreApiVersion)
 			}
-
-			// Sort by toIdx to get to-order
-			toIndices := make([]int, 0, len(matched))
-			for _, toIdx := range matched {
-				toIndices = append(toIndices, toIdx)
-			}
-			sort.Ints(toIndices)
-			// Build reverse map: toIdx -> fromIdx
-			toToFrom := make(map[int]int)
-			for fromIdx, toIdx := range matched {
-				toToFrom[toIdx] = fromIdx
-			}
-			toOrder := make([]interface{}, 0, len(toIndices))
-			for _, toIdx := range toIndices {
-				fromIdx := toToFrom[toIdx]
-				id := GetK8sResourceIdentifier(from[fromIdx], ignoreApiVersion)
-				toOrder = append(toOrder, id)
+			// Re-sort by toIdx for to-order
+			sort.Slice(pairs, func(i, j int) bool { return pairs[i].toIdx < pairs[j].toIdx })
+			toOrder := make([]interface{}, len(pairs))
+			for i, p := range pairs {
+				toOrder[i] = GetK8sResourceIdentifier(from[p.fromIdx], ignoreApiVersion)
 			}
 
 			diffs = append(diffs, Difference{
-				Path: "(document)",
+				Path: k8sDocumentPath,
 				Type: DiffOrderChanged,
 				From: fromOrder,
 				To:   toOrder,

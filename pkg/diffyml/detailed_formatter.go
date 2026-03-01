@@ -108,7 +108,7 @@ func (f *DetailedFormatter) formatPathHeading(sb *strings.Builder, path string, 
 		if isMultiDoc {
 			heading = fmt.Sprintf("(document %d)", idx+1)
 		} else {
-			heading = "(document)"
+			heading = k8sDocumentPath
 		}
 	} else if idx, rest, ok := parseDocIndexPrefix(path); ok {
 		if opts.UseGoPatchStyle {
@@ -616,20 +616,19 @@ func formatTimestamp(t time.Time) string {
 // For scalars, renders as a single line.
 func (f *DetailedFormatter) writeTypeChangeValue(sb *strings.Builder, val interface{}, symbol string, colorCode string, opts *FormatOptions) {
 	if isStructured(val) {
-		lines := formatValueAsYAML(val, "      ")
-		for _, line := range strings.Split(lines, "\n") {
-			f.writeColoredLine(sb, fmt.Sprintf("    %s %s", symbol, strings.TrimPrefix(line, "      ")), colorCode, opts)
+		for _, line := range formatValueAsYAMLLines(val) {
+			f.writeColoredLine(sb, fmt.Sprintf("    %s %s", symbol, line), colorCode, opts)
 		}
 	} else {
 		f.writeColoredLine(sb, fmt.Sprintf("    %s %v", symbol, formatDetailedValue(val)), colorCode, opts)
 	}
 }
 
-// formatValueAsYAML formats a structured value as indented YAML lines for type-change display.
-func formatValueAsYAML(val interface{}, indent string) string {
+// formatValueAsYAMLLines formats a structured value as YAML lines for type-change display.
+func formatValueAsYAMLLines(val interface{}) []string {
 	var lines []string
-	formatValueAsYAMLRecurse(val, indent, &lines)
-	return strings.Join(lines, "\n")
+	formatValueAsYAMLRecurse(val, "", &lines)
+	return lines
 }
 
 func formatValueAsYAMLRecurse(val interface{}, indent string, lines *[]string) {

@@ -1,0 +1,7 @@
+Found one difference
+
+AWSTemplateFormatVersion
+  ± type change from time.Time to string
+    - 2010-09-09 00:00:00 +0000 UTC
+    + 2010-09-09
+

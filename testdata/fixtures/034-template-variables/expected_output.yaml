@@ -1,0 +1,12 @@
+Found two differences
+
+example_one
+  ± value change
+    - %{one}
+    + one
+
+example_two
+  ± value change
+    - two
+    + %{two}
+

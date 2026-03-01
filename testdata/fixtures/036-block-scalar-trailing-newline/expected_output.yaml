@@ -1,0 +1,7 @@
+Found one difference
+
+foo
+  ± whitespace only change
+    - bar↵
+    + bar↵↵
+

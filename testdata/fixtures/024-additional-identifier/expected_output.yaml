@@ -1,4 +1,9 @@
-Found one difference
+Found two differences
+
+items
+  ⇆ order changed
+    - alpha, beta, gamma
+    + gamma, alpha, beta
 
 items.alpha.value
   ± value change

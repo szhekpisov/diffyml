@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // DetailedFormatter implements the Formatter interface for detailed output.
@@ -358,8 +359,8 @@ func (f *DetailedFormatter) formatModified(sb *strings.Builder, diff Difference,
 		} else {
 			f.writeDescriptorLine(sb, fmt.Sprintf("  ± type change from %s to %s", fromType, toType), f.colorModified, opts)
 		}
-		f.writeColoredLine(sb, fmt.Sprintf("    - %v", formatDetailedValue(diff.From)), f.colorRemoved(opts), opts)
-		f.writeColoredLine(sb, fmt.Sprintf("    + %v", formatDetailedValue(diff.To)), f.colorAdded(opts), opts)
+		f.writeTypeChangeValue(sb, diff.From, "-", f.colorRemoved(opts), opts)
+		f.writeTypeChangeValue(sb, diff.To, "+", f.colorAdded(opts), opts)
 		sb.WriteString("\n")
 		return
 	}
@@ -569,6 +570,8 @@ func yamlTypeName(v interface{}) string {
 		return "map"
 	case []interface{}:
 		return "list"
+	case time.Time:
+		return "timestamp"
 	case nil:
 		return "null"
 	default:
@@ -594,7 +597,83 @@ func formatDetailedValue(val interface{}) string {
 	if val == nil {
 		return "<nil>"
 	}
+	if t, ok := val.(time.Time); ok {
+		return formatTimestamp(t)
+	}
 	return fmt.Sprintf("%v", val)
+}
+
+// formatTimestamp formats a time.Time as a YAML-friendly date or datetime string.
+func formatTimestamp(t time.Time) string {
+	if t.Hour() == 0 && t.Minute() == 0 && t.Second() == 0 && t.Nanosecond() == 0 {
+		return t.Format("2006-01-02")
+	}
+	return t.Format(time.RFC3339)
+}
+
+// writeTypeChangeValue renders a value for type-change display.
+// For structured values (maps, lists), renders as indented YAML lines.
+// For scalars, renders as a single line.
+func (f *DetailedFormatter) writeTypeChangeValue(sb *strings.Builder, val interface{}, symbol string, colorCode string, opts *FormatOptions) {
+	if isStructured(val) {
+		lines := formatValueAsYAML(val, "      ")
+		for _, line := range strings.Split(lines, "\n") {
+			f.writeColoredLine(sb, fmt.Sprintf("    %s %s", symbol, strings.TrimPrefix(line, "      ")), colorCode, opts)
+		}
+	} else {
+		f.writeColoredLine(sb, fmt.Sprintf("    %s %v", symbol, formatDetailedValue(val)), colorCode, opts)
+	}
+}
+
+// formatValueAsYAML formats a structured value as indented YAML lines for type-change display.
+func formatValueAsYAML(val interface{}, indent string) string {
+	var lines []string
+	formatValueAsYAMLRecurse(val, indent, &lines)
+	return strings.Join(lines, "\n")
+}
+
+func formatValueAsYAMLRecurse(val interface{}, indent string, lines *[]string) {
+	switch v := val.(type) {
+	case *OrderedMap:
+		for _, key := range v.Keys {
+			child := v.Values[key]
+			if isStructured(child) {
+				*lines = append(*lines, fmt.Sprintf("%s%s:", indent, key))
+				formatValueAsYAMLRecurse(child, indent+"  ", lines)
+			} else {
+				*lines = append(*lines, fmt.Sprintf("%s%s: %v", indent, key, formatDetailedValue(child)))
+			}
+		}
+	case map[string]interface{}:
+		for key, child := range v {
+			if isStructured(child) {
+				*lines = append(*lines, fmt.Sprintf("%s%s:", indent, key))
+				formatValueAsYAMLRecurse(child, indent+"  ", lines)
+			} else {
+				*lines = append(*lines, fmt.Sprintf("%s%s: %v", indent, key, formatDetailedValue(child)))
+			}
+		}
+	case []interface{}:
+		for _, item := range v {
+			if isStructured(item) {
+				*lines = append(*lines, fmt.Sprintf("%s- ...", indent))
+				formatValueAsYAMLRecurse(item, indent+"  ", lines)
+			} else {
+				*lines = append(*lines, fmt.Sprintf("%s- %v", indent, formatDetailedValue(item)))
+			}
+		}
+	default:
+		*lines = append(*lines, fmt.Sprintf("%s%v", indent, formatDetailedValue(val)))
+	}
+}
+
+func isStructured(val interface{}) bool {
+	switch val.(type) {
+	case *OrderedMap, map[string]interface{}, []interface{}:
+		return true
+	default:
+		return false
+	}
 }
 
 // formatCount returns a human-readable count string.

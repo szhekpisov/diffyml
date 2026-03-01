@@ -8,6 +8,7 @@ package diffyml
 import (
 	"fmt"
 	"reflect"
+	"sort"
 )
 
 // IsKubernetesResource checks if a document has the structure of a Kubernetes resource.
@@ -231,6 +232,63 @@ func compareK8sDocs(from, to []interface{}, opts *Options) []Difference {
 	var diffs []Difference
 
 	matched, unmatchedFrom, unmatchedTo := matchK8sDocuments(from, to, opts)
+	ignoreApiVersion := opts != nil && opts.IgnoreApiVersion
+
+	// Detect document order changes
+	if !(opts != nil && opts.IgnoreOrderChanges) && len(matched) > 1 {
+		// Collect matched fromIdx values sorted by fromIdx
+		fromIndices := make([]int, 0, len(matched))
+		for fromIdx := range matched {
+			fromIndices = append(fromIndices, fromIdx)
+		}
+		sort.Ints(fromIndices)
+
+		// Check if the toIdx values are in increasing order
+		orderChanged := false
+		prevToIdx := -1
+		for _, fromIdx := range fromIndices {
+			toIdx := matched[fromIdx]
+			if toIdx < prevToIdx {
+				orderChanged = true
+				break
+			}
+			prevToIdx = toIdx
+		}
+
+		if orderChanged {
+			// Build identifier lists in from-order and to-order
+			fromOrder := make([]interface{}, 0, len(fromIndices))
+			for _, fromIdx := range fromIndices {
+				id := GetK8sResourceIdentifier(from[fromIdx], ignoreApiVersion)
+				fromOrder = append(fromOrder, id)
+			}
+
+			// Sort by toIdx to get to-order
+			toIndices := make([]int, 0, len(matched))
+			for _, toIdx := range matched {
+				toIndices = append(toIndices, toIdx)
+			}
+			sort.Ints(toIndices)
+			// Build reverse map: toIdx -> fromIdx
+			toToFrom := make(map[int]int)
+			for fromIdx, toIdx := range matched {
+				toToFrom[toIdx] = fromIdx
+			}
+			toOrder := make([]interface{}, 0, len(toIndices))
+			for _, toIdx := range toIndices {
+				fromIdx := toToFrom[toIdx]
+				id := GetK8sResourceIdentifier(from[fromIdx], ignoreApiVersion)
+				toOrder = append(toOrder, id)
+			}
+
+			diffs = append(diffs, Difference{
+				Path: "(document)",
+				Type: DiffOrderChanged,
+				From: fromOrder,
+				To:   toOrder,
+			})
+		}
+	}
 
 	// Compare matched documents
 	for fromIdx, toIdx := range matched {

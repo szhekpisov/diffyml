@@ -1,4 +1,9 @@
-Found two differences
+Found three differences
+
+scrape_configs
+  ⇆ order changed
+    - kubernetes-nodes, kubernetes-apiservers, kubernetes-cadvisor
+    + kubernetes-apiservers, kubernetes-nodes, kubernetes-cadvisor
 
 scrape_configs.kubernetes-apiservers.scheme
   ± value change

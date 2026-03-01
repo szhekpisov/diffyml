@@ -475,6 +475,59 @@ func compareListsByIdentifier(path string, from, to []interface{}, opts *Options
 		toNoID = append(toNoID, i)
 	}
 
+	// Detect order changes among matched identifiers.
+	// Only when identifiers are unique in both lists (duplicates make order comparison meaningless).
+	hasUniqueIDs := len(fromIDs) == len(fromIndex) && len(toIndex) == countToIDs(to, opts)
+	if hasUniqueIDs && !(opts != nil && opts.IgnoreOrderChanges) {
+		// Collect identifiers that exist in both, in from-order
+		var commonFromOrder []interface{}
+		for _, id := range fromIDs {
+			if _, ok := toIndex[id]; ok {
+				commonFromOrder = append(commonFromOrder, id)
+			}
+		}
+
+		if len(commonFromOrder) > 1 {
+			// Build to-order for the common identifiers
+			// Collect (toIdx, id) pairs for common IDs, then sort by toIdx
+			type idxID struct {
+				idx int
+				id  interface{}
+			}
+			var toSorted []idxID
+			for _, id := range commonFromOrder {
+				toSorted = append(toSorted, idxID{toIndex[id], id})
+			}
+			sort.Slice(toSorted, func(i, j int) bool {
+				return toSorted[i].idx < toSorted[j].idx
+			})
+
+			// Check if from-order and to-order differ
+			orderChanged := false
+			for i, id := range commonFromOrder {
+				if id != toSorted[i].id {
+					orderChanged = true
+					break
+				}
+			}
+
+			if orderChanged {
+				fromOrder := make([]interface{}, len(commonFromOrder))
+				copy(fromOrder, commonFromOrder)
+				toOrder := make([]interface{}, len(toSorted))
+				for i, s := range toSorted {
+					toOrder[i] = s.id
+				}
+				diffs = append(diffs, Difference{
+					Path: cleanPath(path),
+					Type: DiffOrderChanged,
+					From: fromOrder,
+					To:   toOrder,
+				})
+			}
+		}
+	}
+
 	// Compare items with matching identifiers (in order they appear in 'from')
 	for _, id := range fromIDs {
 		fromIdx := fromIndex[id]
@@ -639,4 +692,17 @@ func joinPath(base, key string) string {
 // cleanPath removes leading dots from path.
 func cleanPath(path string) string {
 	return strings.TrimPrefix(path, ".")
+}
+
+// countToIDs counts the total number of items with comparable identifiers in a list.
+// Used to detect duplicate identifiers (if count != len(toIndex), there are duplicates).
+func countToIDs(list []interface{}, opts *Options) int {
+	count := 0
+	for _, item := range list {
+		id := getIdentifier(item, opts)
+		if isComparableIdentifier(id) {
+			count++
+		}
+	}
+	return count
 }

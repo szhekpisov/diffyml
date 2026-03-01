@@ -1090,7 +1090,7 @@ items:
 	}
 }
 
-func TestCompare_AdditionalIdentifierReorder_NoDiff(t *testing.T) {
+func TestCompare_AdditionalIdentifierReorder_OrderChanged(t *testing.T) {
 	from := yml(`items:
   - key: a
     value: 1
@@ -1110,8 +1110,37 @@ func TestCompare_AdditionalIdentifierReorder_NoDiff(t *testing.T) {
 	if err != nil {
 		t.Fatalf("compare() failed: %v", err)
 	}
+	if len(diffs) != 1 {
+		t.Fatalf("expected 1 diff (order change), got %d", len(diffs))
+	}
+	if diffs[0].Type != diffyml.DiffOrderChanged {
+		t.Errorf("expected DiffOrderChanged, got %v", diffs[0].Type)
+	}
+}
+
+func TestCompare_AdditionalIdentifierReorder_IgnoredWhenConfigured(t *testing.T) {
+	from := yml(`items:
+  - key: a
+    value: 1
+  - key: b
+    value: 2
+`)
+	to := yml(`items:
+  - key: b
+    value: 2
+  - key: a
+    value: 1
+`)
+
+	diffs, err := compare(from, to, &diffyml.Options{
+		AdditionalIdentifiers: []string{"key"},
+		IgnoreOrderChanges:    true,
+	})
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
 	if len(diffs) != 0 {
-		t.Fatalf("expected no diffs with additional identifier, got %d", len(diffs))
+		t.Fatalf("expected no diffs with IgnoreOrderChanges, got %d", len(diffs))
 	}
 }
 

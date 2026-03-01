@@ -10,6 +10,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strings"
+	"time"
 )
 
 // Formatter formats differences for output.
@@ -248,6 +249,9 @@ func (f *CompactFormatter) formatValuesInline(sb *strings.Builder, diff Differen
 func formatValue(val interface{}, opts *FormatOptions) string {
 	if val == nil {
 		return "<nil>"
+	}
+	if t, ok := val.(time.Time); ok {
+		return formatTimestamp(t)
 	}
 
 	return fmt.Sprintf("%v", val)

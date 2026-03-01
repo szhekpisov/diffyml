@@ -1,0 +1,7 @@
+Found one difference
+
+(document)
+  ⇆ order changed
+    - apps/v1:Deployment:x, v1:Service:y
+    + v1:Service:y, apps/v1:Deployment:x
+

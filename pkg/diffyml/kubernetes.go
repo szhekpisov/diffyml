@@ -251,8 +251,28 @@ func compareK8sDocs(from, to []interface{}, opts *Options) []Difference {
 		diffs = append(diffs, nodeDiffs...)
 	}
 
-	// Report removed documents (in 'from' but not matched in 'to')
-	for _, fromIdx := range unmatchedFrom {
+	// Detect renames among unmatched documents
+	renameMatched, remainingFrom, remainingTo := detectRenames(from, to, unmatchedFrom, unmatchedTo, opts)
+
+	// Compare rename-matched pairs using "to" index for path context
+	for fromIdx, toIdx := range renameMatched {
+		fromDoc := from[fromIdx]
+		toDoc := to[toIdx]
+
+		pathPrefix := ""
+		if len(from) > 1 || len(to) > 1 {
+			pathPrefix = fmt.Sprintf("[%d]", toIdx)
+		}
+
+		nodeDiffs := compareNodes(pathPrefix, fromDoc, toDoc, opts)
+		for i := range nodeDiffs {
+			nodeDiffs[i].DocumentIndex = toIdx
+		}
+		diffs = append(diffs, nodeDiffs...)
+	}
+
+	// Report removed documents (in 'from' but not matched or rename-matched in 'to')
+	for _, fromIdx := range remainingFrom {
 		if from[fromIdx] == nil {
 			continue
 		}
@@ -266,8 +286,8 @@ func compareK8sDocs(from, to []interface{}, opts *Options) []Difference {
 		})
 	}
 
-	// Report added documents (in 'to' but not matched from 'from')
-	for _, toIdx := range unmatchedTo {
+	// Report added documents (in 'to' but not matched or rename-matched from 'from')
+	for _, toIdx := range remainingTo {
 		if to[toIdx] == nil {
 			continue
 		}

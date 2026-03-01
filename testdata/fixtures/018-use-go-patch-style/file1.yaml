@@ -1,0 +1,9 @@
+servers:
+- name: web
+  config:
+    host: localhost
+    port: 8080
+- name: api
+  config:
+    host: localhost
+    port: 3000

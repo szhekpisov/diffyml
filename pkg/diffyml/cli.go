@@ -28,12 +28,9 @@ type CLIConfig struct {
 	TrueColor string // always, never, auto
 
 	// Display options
-	FixedWidth            int
 	OmitHeader            bool
-	NoTableStyle          bool
 	UseGoPatchStyle       bool
 	MultiLineContextLines int
-	MinorChangeThreshold  float64
 
 	// Comparison options
 	IgnoreOrderChanges      bool
@@ -76,11 +73,9 @@ func NewCLIConfig() *CLIConfig {
 		Output:                "detailed",
 		Color:                 "auto",
 		TrueColor:             "auto",
-		FixedWidth:            -1,
 		DetectKubernetes:      true,
 		DetectRenames:         true,
 		MultiLineContextLines: 4,
-		MinorChangeThreshold:  0.1,
 	}
 	cfg.initFlags()
 	return cfg
@@ -99,16 +94,11 @@ func (c *CLIConfig) initFlags() {
 	c.fs.StringVar(&c.TrueColor, "truecolor", c.TrueColor, "specify true color usage: always, never, or auto")
 
 	// Display options
-	c.fs.IntVar(&c.FixedWidth, "w", c.FixedWidth, "")
-	c.fs.IntVar(&c.FixedWidth, "fixed-width", c.FixedWidth, "disable terminal width detection and use provided fixed value")
 	c.fs.BoolVar(&c.OmitHeader, "b", c.OmitHeader, "")
 	c.fs.BoolVar(&c.OmitHeader, "omit-header", c.OmitHeader, "omit the diffyml summary header")
-	c.fs.BoolVar(&c.NoTableStyle, "l", c.NoTableStyle, "")
-	c.fs.BoolVar(&c.NoTableStyle, "no-table-style", c.NoTableStyle, "do not place blocks next to each other")
 	c.fs.BoolVar(&c.UseGoPatchStyle, "g", c.UseGoPatchStyle, "")
 	c.fs.BoolVar(&c.UseGoPatchStyle, "use-go-patch-style", c.UseGoPatchStyle, "use Go-Patch style paths in outputs")
 	c.fs.IntVar(&c.MultiLineContextLines, "multi-line-context-lines", c.MultiLineContextLines, "multi-line context lines")
-	c.fs.Float64Var(&c.MinorChangeThreshold, "minor-change-threshold", c.MinorChangeThreshold, "minor change threshold")
 
 	// Comparison options
 	c.fs.BoolVar(&c.IgnoreOrderChanges, "i", c.IgnoreOrderChanges, "")
@@ -277,12 +267,9 @@ func (c *CLIConfig) ToFilterOptions() *FilterOptions {
 // ToFormatOptions converts CLI config to FormatOptions.
 func (c *CLIConfig) ToFormatOptions() *FormatOptions {
 	return &FormatOptions{
-		OmitHeader:           c.OmitHeader,
-		NoTableStyle:         c.NoTableStyle,
-		UseGoPatchStyle:      c.UseGoPatchStyle,
-		ContextLines:         c.MultiLineContextLines,
-		MinorChangeThreshold: c.MinorChangeThreshold,
-		Width:                c.FixedWidth,
+		OmitHeader:      c.OmitHeader,
+		UseGoPatchStyle: c.UseGoPatchStyle,
+		ContextLines:    c.MultiLineContextLines,
 	}
 }
 
@@ -299,7 +286,6 @@ func (c *CLIConfig) Usage() string {
 	sb.WriteString("  -o, --output string                 specify output style: compact, brief, github, gitlab, gitea, detailed (default \"detailed\")\n")
 	sb.WriteString("  -c, --color string                  specify color usage: always, never, or auto (default \"auto\")\n")
 	sb.WriteString("  -t, --truecolor string              specify true color usage: always, never, or auto (default \"auto\")\n")
-	sb.WriteString("  -w, --fixed-width int               disable terminal width detection and use provided fixed value (default -1)\n")
 	sb.WriteString("\n")
 
 	// Comparison options
@@ -323,10 +309,8 @@ func (c *CLIConfig) Usage() string {
 
 	// Display options
 	sb.WriteString("  -b, --omit-header                   omit the diffyml summary header\n")
-	sb.WriteString("  -l, --no-table-style                do not place blocks next to each other\n")
 	sb.WriteString("  -g, --use-go-patch-style            use Go-Patch style paths in outputs\n")
 	sb.WriteString("      --multi-line-context-lines int  multi-line context lines (default 4)\n")
-	sb.WriteString("      --minor-change-threshold float  minor change threshold (default 0.1)\n")
 	sb.WriteString("\n")
 
 	// Chroot options
@@ -615,7 +599,7 @@ func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
 	// Apply color configuration
 	colorMode, _ := ParseColorMode(cfg.Color)
 	trueColorMode, _ := ParseColorMode(cfg.TrueColor)
-	colorCfg := NewColorConfig(colorMode, trueColorMode == ColorModeAlways, cfg.FixedWidth)
+	colorCfg := NewColorConfig(colorMode, trueColorMode == ColorModeAlways)
 	colorCfg.DetectTerminal()
 	colorCfg.ToFormatOptions(formatOpts)
 

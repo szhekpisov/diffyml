@@ -1,0 +1,4 @@
+app:
+  name: myapp
+  version: "1.0"
+  debug: true

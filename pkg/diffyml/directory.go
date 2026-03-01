@@ -229,7 +229,7 @@ func runDirectory(cfg *CLIConfig, rc *RunConfig, fromDir, toDir string) *ExitRes
 	// Apply color configuration
 	colorMode, _ := ParseColorMode(cfg.Color)
 	trueColorMode, _ := ParseColorMode(cfg.TrueColor)
-	colorCfg := NewColorConfig(colorMode, trueColorMode == ColorModeAlways, cfg.FixedWidth)
+	colorCfg := NewColorConfig(colorMode, trueColorMode == ColorModeAlways)
 	colorCfg.DetectTerminal()
 	colorCfg.ToFormatOptions(formatOpts)
 

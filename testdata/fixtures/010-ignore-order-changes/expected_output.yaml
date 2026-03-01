@@ -1,0 +1,7 @@
+Found one difference
+
+spec.template.spec.containers.sidecar.image
+  ± value change
+    - envoy:1.28
+    + envoy:1.29
+

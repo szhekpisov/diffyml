@@ -1,0 +1,7 @@
+app:
+  name: myapp-v2
+  settings:
+    timeout: 60
+    retries: 5
+  logging:
+    level: debug

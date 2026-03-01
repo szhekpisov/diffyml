@@ -1,0 +1,12 @@
+Found two differences
+
+server.http_port
+  ± value change
+    - 8080
+    + 9090
+
+server.grpc_port
+  ± value change
+    - 9090
+    + 50051
+

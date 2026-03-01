@@ -1,0 +1,15 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-app
+spec:
+  template:
+    spec:
+      containers:
+      - name: sidecar
+        image: envoy:1.29
+      - name: nginx
+        image: nginx:1.21
+        ports:
+        - containerPort: 443
+        - containerPort: 80

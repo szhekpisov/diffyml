@@ -24,17 +24,11 @@ func TestCLIConfig_Defaults(t *testing.T) {
 	if cfg.TrueColor != "auto" {
 		t.Errorf("expected default TrueColor='auto', got %q", cfg.TrueColor)
 	}
-	if cfg.FixedWidth != -1 {
-		t.Errorf("expected default FixedWidth=-1, got %d", cfg.FixedWidth)
-	}
 	if !cfg.DetectKubernetes {
 		t.Error("expected default DetectKubernetes=true")
 	}
 	if !cfg.DetectRenames {
 		t.Error("expected default DetectRenames=true")
-	}
-	if cfg.MinorChangeThreshold != 0.1 {
-		t.Errorf("expected default MinorChangeThreshold=0.1, got %f", cfg.MinorChangeThreshold)
 	}
 	if cfg.MultiLineContextLines != 4 {
 		t.Errorf("expected default MultiLineContextLines=4, got %d", cfg.MultiLineContextLines)
@@ -341,27 +335,19 @@ func TestCLIConfig_ToFilterOptions(t *testing.T) {
 func TestCLIConfig_ToFormatOptions(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.OmitHeader = true
-	cfg.NoTableStyle = true
 	cfg.UseGoPatchStyle = true
 	cfg.MultiLineContextLines = 10
-	cfg.MinorChangeThreshold = 0.2
 
 	opts := cfg.ToFormatOptions()
 
 	if !opts.OmitHeader {
 		t.Error("expected OmitHeader=true")
 	}
-	if !opts.NoTableStyle {
-		t.Error("expected NoTableStyle=true")
-	}
 	if !opts.UseGoPatchStyle {
 		t.Error("expected UseGoPatchStyle=true")
 	}
 	if opts.ContextLines != 10 {
 		t.Errorf("expected ContextLines=10, got %d", opts.ContextLines)
-	}
-	if opts.MinorChangeThreshold != 0.2 {
-		t.Errorf("expected MinorChangeThreshold=0.2, got %f", opts.MinorChangeThreshold)
 	}
 }
 

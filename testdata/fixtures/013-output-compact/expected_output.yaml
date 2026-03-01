@@ -1,0 +1,5 @@
+Found 3 difference(s) (1 added, 1 removed, 1 modified)
+
+± app.version : 1.0 → 2.0
+- app.debug : true
++ app.replicas : 3

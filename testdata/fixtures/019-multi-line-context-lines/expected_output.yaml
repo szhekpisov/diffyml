@@ -1,0 +1,13 @@
+Found one difference
+
+config.script
+  ± value change in multiline text (one insert, one deletion)
+    [2 lines unchanged]
+      line 3
+      line 4
+    - line 5
+    + line CHANGED
+      line 6
+      line 7
+    [4 lines unchanged]
+

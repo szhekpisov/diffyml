@@ -1,0 +1,12 @@
+Found two differences
+
+app.settings.timeout
+  ± value change
+    - 30
+    + 60
+
+app.settings.retries
+  ± value change
+    - 3
+    + 5
+

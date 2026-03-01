@@ -1,0 +1,7 @@
+Found one difference
+
+data.query
+  ± value change
+    - SELECT * FROM users
+    + SELECT * FROM orders
+

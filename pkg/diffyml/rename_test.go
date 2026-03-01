@@ -165,9 +165,7 @@ func mkMinK8sDoc(name string) *OrderedMap {
 }
 
 func mkK8sConfigMap(name string, dataKeys []string) *OrderedMap {
-	meta := NewOrderedMap()
-	meta.Keys = append(meta.Keys, "name")
-	meta.Values["name"] = name
+	doc := mkMinK8sDoc(name)
 
 	dataMap := NewOrderedMap()
 	for _, k := range dataKeys {
@@ -175,11 +173,7 @@ func mkK8sConfigMap(name string, dataKeys []string) *OrderedMap {
 		dataMap.Values[k] = "value"
 	}
 
-	doc := NewOrderedMap()
-	doc.Keys = append(doc.Keys, "apiVersion", "kind", "metadata", "data")
-	doc.Values["apiVersion"] = "v1"
-	doc.Values["kind"] = "ConfigMap"
-	doc.Values["metadata"] = meta
+	doc.Keys = append(doc.Keys, "data")
 	doc.Values["data"] = dataMap
 	return doc
 }
@@ -386,7 +380,7 @@ func TestDetectRenames_NonK8sFiltered(t *testing.T) {
 
 func TestSerializeDocument_MapStringInterface(t *testing.T) {
 	doc := map[string]interface{}{
-		"beta": "two",
+		"beta":  "two",
 		"alpha": "one",
 	}
 	data, err := serializeDocument(doc)

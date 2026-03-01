@@ -16,12 +16,14 @@ const (
 type similarityIndex struct {
 	hashes   map[uint32]int
 	numLines int
+	numBytes int
 }
 
 // newSimilarityIndex builds a similarity index from raw bytes by hashing each non-empty line.
 func newSimilarityIndex(data []byte) *similarityIndex {
 	idx := &similarityIndex{
-		hashes: make(map[uint32]int),
+		hashes:   make(map[uint32]int),
+		numBytes: len(data),
 	}
 
 	start := 0
@@ -30,22 +32,17 @@ func newSimilarityIndex(data []byte) *similarityIndex {
 			line := data[start:i]
 			start = i + 1
 
-			// Skip empty/whitespace-only lines
-			empty := true
-			for _, b := range line {
-				if b != ' ' && b != '\t' && b != '\r' {
-					empty = false
-					break
-				}
-			}
-			if empty {
-				continue
-			}
-
-			// DJB hash
+			// DJB hash with integrated whitespace-only check
 			var h uint32 = 5381
+			hasContent := false
 			for _, b := range line {
 				h = h*33 + uint32(b)
+				if !hasContent && b != ' ' && b != '\t' && b != '\r' {
+					hasContent = true
+				}
+			}
+			if !hasContent {
+				continue
 			}
 
 			idx.hashes[h]++
@@ -58,10 +55,7 @@ func newSimilarityIndex(data []byte) *similarityIndex {
 
 // score computes similarity score (0–100) between two indices.
 func (s *similarityIndex) score(other *similarityIndex) int {
-	maxLines := s.numLines
-	if other.numLines > maxLines {
-		maxLines = other.numLines
-	}
+	maxLines := max(s.numLines, other.numLines)
 	if maxLines == 0 {
 		return 0
 	}
@@ -69,11 +63,7 @@ func (s *similarityIndex) score(other *similarityIndex) int {
 	matching := 0
 	for h, count := range other.hashes {
 		if selfCount, ok := s.hashes[h]; ok {
-			if selfCount < count {
-				matching += selfCount
-			} else {
-				matching += count
-			}
+			matching += min(selfCount, count)
 		}
 	}
 
@@ -120,10 +110,7 @@ func detectRenames(from, to []interface{}, unmatchedFrom, unmatchedTo []int, opt
 	}
 
 	// Check rename limit
-	maxCandidates := len(k8sFrom)
-	if len(k8sTo) > maxCandidates {
-		maxCandidates = len(k8sTo)
-	}
+	maxCandidates := max(len(k8sFrom), len(k8sTo))
 	if maxCandidates > renameLimit {
 		remainingFrom = append(remainingFrom, k8sFrom...)
 		remainingTo = append(remainingTo, k8sTo...)
@@ -138,13 +125,8 @@ func detectRenames(from, to []interface{}, unmatchedFrom, unmatchedTo []int, opt
 	}
 
 	// Serialize candidates and build similarity indices
-	type candidateInfo struct {
-		idx     *similarityIndex
-		byteLen int
-	}
-
-	fromCandidates := make(map[int]*candidateInfo)
-	toCandidates := make(map[int]*candidateInfo)
+	fromCandidates := make(map[int]*similarityIndex)
+	toCandidates := make(map[int]*similarityIndex)
 
 	var validK8sFrom []int
 	for _, idx := range k8sFrom {
@@ -153,10 +135,7 @@ func detectRenames(from, to []interface{}, unmatchedFrom, unmatchedTo []int, opt
 			remainingFrom = append(remainingFrom, idx)
 			continue
 		}
-		fromCandidates[idx] = &candidateInfo{
-			idx:     newSimilarityIndex(data),
-			byteLen: len(data),
-		}
+		fromCandidates[idx] = newSimilarityIndex(data)
 		validK8sFrom = append(validK8sFrom, idx)
 	}
 
@@ -167,10 +146,7 @@ func detectRenames(from, to []interface{}, unmatchedFrom, unmatchedTo []int, opt
 			remainingTo = append(remainingTo, idx)
 			continue
 		}
-		toCandidates[idx] = &candidateInfo{
-			idx:     newSimilarityIndex(data),
-			byteLen: len(data),
-		}
+		toCandidates[idx] = newSimilarityIndex(data)
 		validK8sTo = append(validK8sTo, idx)
 	}
 
@@ -182,16 +158,13 @@ func detectRenames(from, to []interface{}, unmatchedFrom, unmatchedTo []int, opt
 			tc := toCandidates[toIdx]
 
 			// Size ratio early rejection
-			minLen := fc.byteLen
-			maxLen := tc.byteLen
-			if minLen > maxLen {
-				minLen, maxLen = maxLen, minLen
-			}
+			minLen := min(fc.numBytes, tc.numBytes)
+			maxLen := max(fc.numBytes, tc.numBytes)
 			if maxLen > 0 && minLen*100/maxLen < renameScoreThreshold {
 				continue
 			}
 
-			s := fc.idx.score(tc.idx)
+			s := fc.score(tc)
 			if s >= renameScoreThreshold {
 				pairs = append(pairs, renamePair{fromIdx: fromIdx, toIdx: toIdx, score: s})
 			}

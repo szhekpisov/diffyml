@@ -20,10 +20,7 @@ func TestSerializeDocument_OrderedMap(t *testing.T) {
 	doc.Values["kind"] = "ConfigMap"
 	doc.Values["metadata"] = meta
 
-	data, err := serializeDocument(doc)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	data := serializeDocument(doc)
 
 	result := string(data)
 
@@ -54,10 +51,7 @@ func TestSerializeDocument_Scalars(t *testing.T) {
 	doc.Values["flag"] = true
 	doc.Values["empty"] = nil
 
-	data, err := serializeDocument(doc)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	data := serializeDocument(doc)
 
 	result := string(data)
 	if !strings.Contains(result, "hello") {
@@ -87,10 +81,7 @@ func TestSerializeDocument_NestedSequence(t *testing.T) {
 	doc.Keys = append(doc.Keys, "items")
 	doc.Values["items"] = []interface{}{item1, item2}
 
-	data, err := serializeDocument(doc)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	data := serializeDocument(doc)
 
 	result := string(data)
 	if !strings.Contains(result, "item-a") || !strings.Contains(result, "item-b") {
@@ -383,10 +374,7 @@ func TestSerializeDocument_MapStringInterface(t *testing.T) {
 		"beta":  "two",
 		"alpha": "one",
 	}
-	data, err := serializeDocument(doc)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	data := serializeDocument(doc)
 	result := string(data)
 	// Keys should be sorted alphabetically
 	alphaIdx := strings.Index(result, "alpha")
@@ -399,10 +387,7 @@ func TestSerializeDocument_MapStringInterface(t *testing.T) {
 func TestSerializeDocument_UnknownType(t *testing.T) {
 	// Pass a type not in the switch (e.g., struct) — should fall through to Encode
 	type custom struct{ X int }
-	data, err := serializeDocument(custom{X: 42})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	data := serializeDocument(custom{X: 42})
 	result := string(data)
 	if !strings.Contains(result, "42") {
 		t.Errorf("expected encoded output containing 42, got: %s", result)
@@ -585,8 +570,8 @@ func TestDetectRenames_ScoreExactlyAtThreshold(t *testing.T) {
 	to := []interface{}{mkDoc("bbb-to", "ns-to")}
 
 	// Verify the score is indeed 60
-	fromData, _ := serializeDocument(from[0])
-	toData, _ := serializeDocument(to[0])
+	fromData := serializeDocument(from[0])
+	toData := serializeDocument(to[0])
 	fromIdx := newSimilarityIndex(fromData)
 	toIdx := newSimilarityIndex(toData)
 	actualScore := fromIdx.score(toIdx)

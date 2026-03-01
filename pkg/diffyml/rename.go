@@ -71,9 +71,11 @@ func (s *similarityIndex) score(other *similarityIndex) int {
 }
 
 // serializeDocument converts a parsed YAML document to YAML bytes for similarity comparison.
-func serializeDocument(doc interface{}) ([]byte, error) {
+// valueToYAMLNode always produces a valid *yaml.Node, so yaml.Marshal cannot fail here.
+func serializeDocument(doc interface{}) []byte {
 	node := valueToYAMLNode(doc)
-	return yaml.Marshal(node)
+	data, _ := yaml.Marshal(node)
+	return data
 }
 
 // renamePair holds a scored rename candidate pair.
@@ -128,33 +130,19 @@ func detectRenames(from, to []interface{}, unmatchedFrom, unmatchedTo []int, opt
 	fromCandidates := make(map[int]*similarityIndex)
 	toCandidates := make(map[int]*similarityIndex)
 
-	var validK8sFrom []int
 	for _, idx := range k8sFrom {
-		data, err := serializeDocument(from[idx])
-		if err != nil {
-			remainingFrom = append(remainingFrom, idx)
-			continue
-		}
-		fromCandidates[idx] = newSimilarityIndex(data)
-		validK8sFrom = append(validK8sFrom, idx)
+		fromCandidates[idx] = newSimilarityIndex(serializeDocument(from[idx]))
 	}
 
-	var validK8sTo []int
 	for _, idx := range k8sTo {
-		data, err := serializeDocument(to[idx])
-		if err != nil {
-			remainingTo = append(remainingTo, idx)
-			continue
-		}
-		toCandidates[idx] = newSimilarityIndex(data)
-		validK8sTo = append(validK8sTo, idx)
+		toCandidates[idx] = newSimilarityIndex(serializeDocument(to[idx]))
 	}
 
 	// Build scored pairs with size-ratio early rejection
 	var pairs []renamePair
-	for _, fromIdx := range validK8sFrom {
+	for _, fromIdx := range k8sFrom {
 		fc := fromCandidates[fromIdx]
-		for _, toIdx := range validK8sTo {
+		for _, toIdx := range k8sTo {
 			tc := toCandidates[toIdx]
 
 			// Size ratio early rejection
@@ -195,12 +183,12 @@ func detectRenames(from, to []interface{}, unmatchedFrom, unmatchedTo []int, opt
 	}
 
 	// Remaining = non-K8s passthrough (already added) + unassigned K8s candidates
-	for _, idx := range validK8sFrom {
+	for _, idx := range k8sFrom {
 		if !assignedFrom[idx] {
 			remainingFrom = append(remainingFrom, idx)
 		}
 	}
-	for _, idx := range validK8sTo {
+	for _, idx := range k8sTo {
 		if !assignedTo[idx] {
 			remainingTo = append(remainingTo, idx)
 		}

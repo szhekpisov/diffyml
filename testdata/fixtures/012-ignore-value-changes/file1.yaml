@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  database_url: postgres://db:5432/myapp
+  log_level: info
+  cache_ttl: "300"

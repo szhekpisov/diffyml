@@ -1,6 +1,7 @@
 package diffyml
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -854,6 +855,96 @@ func TestCompareK8sDocs_AgnosticDuplicates_ReportedAsAddedRemoved(t *testing.T) 
 	}
 	if !hasAdded {
 		t.Error("expected unmatched duplicate to be reported as DiffAdded")
+	}
+}
+
+func TestCompareK8sDocs_RenameDetection_SingleDoc(t *testing.T) {
+	// Single doc per side: rename-matched pair should have no path prefix
+	fromDoc := map[string]interface{}{
+		"apiVersion": "v1",
+		"kind":       "ConfigMap",
+		"metadata":   map[string]interface{}{"name": "app-config-abc123"},
+		"data":       map[string]interface{}{"key": "value"},
+	}
+	toDoc := map[string]interface{}{
+		"apiVersion": "v1",
+		"kind":       "ConfigMap",
+		"metadata":   map[string]interface{}{"name": "app-config-def456"},
+		"data":       map[string]interface{}{"key": "value"},
+	}
+
+	opts := &Options{
+		DetectKubernetes: true,
+		DetectRenames:    true,
+	}
+	diffs := compareK8sDocs([]interface{}{fromDoc}, []interface{}{toDoc}, opts)
+
+	// Should produce field-level diffs (rename matched), not bulk add/remove
+	hasNameChange := false
+	hasBulkAdd := false
+	hasBulkRemove := false
+	for _, d := range diffs {
+		if d.Type == DiffModified && d.From == "app-config-abc123" && d.To == "app-config-def456" {
+			hasNameChange = true
+			// Path should not have document index prefix for single-doc
+			if strings.HasPrefix(d.Path, "[") {
+				t.Errorf("single-doc rename should not have document index prefix, got path %q", d.Path)
+			}
+		}
+		if d.Type == DiffAdded && d.Path == "[0]" {
+			hasBulkAdd = true
+		}
+		if d.Type == DiffRemoved && d.Path == "[0]" {
+			hasBulkRemove = true
+		}
+	}
+	if !hasNameChange {
+		t.Error("expected metadata.name field-level diff (rename detection)")
+	}
+	if hasBulkAdd || hasBulkRemove {
+		t.Error("expected no bulk add/remove for rename-matched single-doc pair")
+	}
+}
+
+func TestCompareK8sDocs_RenameDetection_MultiDoc(t *testing.T) {
+	// Multi-doc: rename-matched pair should have path prefix [toIdx]
+	sharedDoc := map[string]interface{}{
+		"apiVersion": "v1",
+		"kind":       "Service",
+		"metadata":   map[string]interface{}{"name": "my-service"},
+		"spec":       map[string]interface{}{"port": 80},
+	}
+	fromDoc := map[string]interface{}{
+		"apiVersion": "v1",
+		"kind":       "ConfigMap",
+		"metadata":   map[string]interface{}{"name": "app-config-abc123"},
+		"data":       map[string]interface{}{"key": "value"},
+	}
+	toDoc := map[string]interface{}{
+		"apiVersion": "v1",
+		"kind":       "ConfigMap",
+		"metadata":   map[string]interface{}{"name": "app-config-def456"},
+		"data":       map[string]interface{}{"key": "value"},
+	}
+
+	opts := &Options{
+		DetectKubernetes: true,
+		DetectRenames:    true,
+	}
+	diffs := compareK8sDocs([]interface{}{sharedDoc, fromDoc}, []interface{}{sharedDoc, toDoc}, opts)
+
+	// Renamed doc should have diffs with [1] prefix (toIdx)
+	hasNameChange := false
+	for _, d := range diffs {
+		if d.Type == DiffModified && d.From == "app-config-abc123" && d.To == "app-config-def456" {
+			hasNameChange = true
+			if !strings.HasPrefix(d.Path, "[1]") {
+				t.Errorf("multi-doc rename should have [1] prefix, got path %q", d.Path)
+			}
+		}
+	}
+	if !hasNameChange {
+		t.Error("expected metadata.name field-level diff for rename-matched pair")
 	}
 }
 

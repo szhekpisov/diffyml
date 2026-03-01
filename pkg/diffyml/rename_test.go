@@ -470,8 +470,7 @@ func TestDetectRenames_SizeRatioRejection(t *testing.T) {
 }
 
 func TestDetectRenames_SortTiebreaker(t *testing.T) {
-	// Create 3 docs on each side with identical content except names.
-	// All pairs will have the same high score, so tiebreaker (ascending fromIdx, toIdx) decides.
+	// All pairs have the same high score, so tiebreaker (ascending fromIdx, toIdx) decides.
 	from := []interface{}{
 		mkK8sConfigMap("from-0", []string{"shared1", "shared2", "shared3"}),
 		mkK8sConfigMap("from-1", []string{"shared1", "shared2", "shared3"}),
@@ -493,5 +492,179 @@ func TestDetectRenames_SortTiebreaker(t *testing.T) {
 	}
 	if matched[1] != 1 {
 		t.Errorf("expected from[1]→to[1], got from[1]→to[%d]", matched[1])
+	}
+}
+
+func TestNewSimilarityIndex_NoTrailingNewline(t *testing.T) {
+	// Data without trailing newline — last line must still be hashed
+	withNewline := newSimilarityIndex([]byte("line1\nline2\n"))
+	withoutNewline := newSimilarityIndex([]byte("line1\nline2"))
+
+	if withNewline.numLines != withoutNewline.numLines {
+		t.Errorf("expected same line count, got %d vs %d", withNewline.numLines, withoutNewline.numLines)
+	}
+	if withNewline.score(withoutNewline) != 100 {
+		t.Errorf("expected score 100, got %d", withNewline.score(withoutNewline))
+	}
+}
+
+func TestDetectRenames_ExactlyAtLimit(t *testing.T) {
+	mkMinK8sDoc := func(name string) *OrderedMap {
+		meta := NewOrderedMap()
+		meta.Keys = append(meta.Keys, "name")
+		meta.Values["name"] = name
+
+		doc := NewOrderedMap()
+		doc.Keys = append(doc.Keys, "apiVersion", "kind", "metadata")
+		doc.Values["apiVersion"] = "v1"
+		doc.Values["kind"] = "ConfigMap"
+		doc.Values["metadata"] = meta
+		return doc
+	}
+
+	// Exactly 50 documents should be allowed (limit is >50, not >=50)
+	from := make([]interface{}, 50)
+	to := make([]interface{}, 50)
+	unmatchedFrom := make([]int, 50)
+	unmatchedTo := make([]int, 50)
+	for i := 0; i < 50; i++ {
+		from[i] = mkMinK8sDoc(fmt.Sprintf("config-%d", i))
+		to[i] = mkMinK8sDoc(fmt.Sprintf("config-%d", i))
+		unmatchedFrom[i] = i
+		unmatchedTo[i] = i
+	}
+
+	opts := &Options{DetectRenames: true}
+	matched, _, _ := detectRenames(from, to, unmatchedFrom, unmatchedTo, opts)
+
+	// With 50 identical docs, all should be matched
+	if len(matched) != 50 {
+		t.Errorf("expected 50 matches at limit, got %d", len(matched))
+	}
+}
+
+func TestDetectRenames_AsymmetricLimitFromSmall(t *testing.T) {
+	mkMinK8sDoc := func(name string) *OrderedMap {
+		meta := NewOrderedMap()
+		meta.Keys = append(meta.Keys, "name")
+		meta.Values["name"] = name
+
+		doc := NewOrderedMap()
+		doc.Keys = append(doc.Keys, "apiVersion", "kind", "metadata")
+		doc.Values["apiVersion"] = "v1"
+		doc.Values["kind"] = "ConfigMap"
+		doc.Values["metadata"] = meta
+		return doc
+	}
+
+	// k8sFrom=1, k8sTo=51 — max is 51, exceeds limit
+	from := make([]interface{}, 1)
+	to := make([]interface{}, 51)
+	from[0] = mkMinK8sDoc("from-0")
+	for i := 0; i < 51; i++ {
+		to[i] = mkMinK8sDoc(fmt.Sprintf("to-%d", i))
+	}
+
+	unmatchedTo := make([]int, 51)
+	for i := 0; i < 51; i++ {
+		unmatchedTo[i] = i
+	}
+
+	opts := &Options{DetectRenames: true}
+	matched, remainFrom, remainTo := detectRenames(from, to, []int{0}, unmatchedTo, opts)
+
+	// Should be skipped because max(1, 51) > 50
+	if len(matched) != 0 {
+		t.Errorf("expected 0 matches when to-side exceeds limit, got %d", len(matched))
+	}
+	if len(remainFrom) != 1 {
+		t.Errorf("expected 1 remaining from, got %d", len(remainFrom))
+	}
+	if len(remainTo) != 51 {
+		t.Errorf("expected 51 remaining to, got %d", len(remainTo))
+	}
+}
+
+func TestDetectRenames_ScoreExactlyAtThreshold(t *testing.T) {
+	// Craft docs so similarity score is exactly 60%.
+	// We need matching*100/maxLines = 60, i.e., 3 out of 5 lines match.
+	// Serialized K8s ConfigMap has lines: apiVersion, kind, metadata, name, data entries.
+	// A doc with 2 data entries has ~7 non-empty lines. We need exactly 5.
+	// Use a non-K8s-aware approach: build docs where exactly 3/5 lines match.
+
+	// Build two K8s docs with controlled content. Each has:
+	// apiVersion: v1          (match)
+	// kind: ConfigMap         (match)
+	// metadata:               (match)
+	//   name: xxx             (differ)
+	//   namespace: yyy        (differ)
+	// That's 5 non-empty lines, 3 matching → score = 60%
+	mkDoc := func(name, ns string) *OrderedMap {
+		meta := NewOrderedMap()
+		meta.Keys = append(meta.Keys, "name", "namespace")
+		meta.Values["name"] = name
+		meta.Values["namespace"] = ns
+
+		doc := NewOrderedMap()
+		doc.Keys = append(doc.Keys, "apiVersion", "kind", "metadata")
+		doc.Values["apiVersion"] = "v1"
+		doc.Values["kind"] = "ConfigMap"
+		doc.Values["metadata"] = meta
+		return doc
+	}
+
+	from := []interface{}{mkDoc("aaa-from", "ns-from")}
+	to := []interface{}{mkDoc("bbb-to", "ns-to")}
+
+	// Verify the score is indeed 60
+	fromData, _ := serializeDocument(from[0])
+	toData, _ := serializeDocument(to[0])
+	fromIdx := newSimilarityIndex(fromData)
+	toIdx := newSimilarityIndex(toData)
+	actualScore := fromIdx.score(toIdx)
+	if actualScore != 60 {
+		t.Fatalf("precondition: expected score 60, got %d (from lines=%d, to lines=%d)\nfrom:\n%s\nto:\n%s",
+			actualScore, fromIdx.numLines, toIdx.numLines, string(fromData), string(toData))
+	}
+
+	opts := &Options{DetectRenames: true}
+	matched, remainFrom, remainTo := detectRenames(from, to, []int{0}, []int{0}, opts)
+
+	// Score 60 == threshold → should match (>= 60, not > 60)
+	if len(matched) != 1 {
+		t.Errorf("expected 1 match at score exactly 60%%, got %d", len(matched))
+	}
+	if len(remainFrom) != 0 {
+		t.Errorf("expected 0 remaining from, got %d", len(remainFrom))
+	}
+	if len(remainTo) != 0 {
+		t.Errorf("expected 0 remaining to, got %d", len(remainTo))
+	}
+}
+
+func TestDetectRenames_SizeRatioSwapOrder(t *testing.T) {
+	// Ensure size ratio check works correctly when from is larger than to
+	// (exercises the minLen/maxLen swap at line 233)
+	largeDoc := mkK8sConfigMap("large", []string{
+		"a", "b", "c", "d", "e", "f", "g", "h", "i", "j",
+		"k", "l", "m", "n", "o", "p", "q", "r", "s", "t",
+	})
+	smallDoc := mkK8sConfigMap("small", []string{"a"})
+
+	// from=large, to=small (opposite order from SizeRatioRejection test)
+	from := []interface{}{largeDoc}
+	to := []interface{}{smallDoc}
+
+	opts := &Options{DetectRenames: true}
+	matched, remainFrom, remainTo := detectRenames(from, to, []int{0}, []int{0}, opts)
+
+	if len(matched) != 0 {
+		t.Errorf("expected 0 matches due to size ratio rejection (from larger), got %d", len(matched))
+	}
+	if len(remainFrom) != 1 {
+		t.Errorf("expected 1 remaining from, got %d", len(remainFrom))
+	}
+	if len(remainTo) != 1 {
+		t.Errorf("expected 1 remaining to, got %d", len(remainTo))
 	}
 }

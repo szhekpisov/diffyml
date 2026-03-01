@@ -3626,3 +3626,136 @@ func TestDetailedFormatter_CertInspection_NonStringValues(t *testing.T) {
 		t.Errorf("expected normal value change output, got:\n%s", output)
 	}
 }
+
+func TestFormatTimestamp(t *testing.T) {
+	t.Run("date only", func(t *testing.T) {
+		ts := time.Date(2010, 9, 9, 0, 0, 0, 0, time.UTC)
+		got := formatTimestamp(ts)
+		if got != "2010-09-09" {
+			t.Errorf("expected 2010-09-09, got %s", got)
+		}
+	})
+
+	t.Run("datetime uses RFC3339", func(t *testing.T) {
+		ts := time.Date(2023, 6, 15, 14, 30, 0, 0, time.UTC)
+		got := formatTimestamp(ts)
+		if got != "2023-06-15T14:30:00Z" {
+			t.Errorf("expected 2023-06-15T14:30:00Z, got %s", got)
+		}
+	})
+}
+
+func TestFormatDetailedValue_Timestamp(t *testing.T) {
+	ts := time.Date(2010, 9, 9, 0, 0, 0, 0, time.UTC)
+	got := formatDetailedValue(ts)
+	if got != "2010-09-09" {
+		t.Errorf("expected 2010-09-09, got %s", got)
+	}
+}
+
+func TestFormatValueAsYAMLLines(t *testing.T) {
+	t.Run("map[string]interface{}", func(t *testing.T) {
+		val := map[string]interface{}{"key": "val"}
+		lines := formatValueAsYAMLLines(val)
+		if len(lines) != 1 || lines[0] != "key: val" {
+			t.Errorf("expected [key: val], got %v", lines)
+		}
+	})
+
+	t.Run("map with nested structured child", func(t *testing.T) {
+		val := map[string]interface{}{
+			"parent": map[string]interface{}{"child": 1},
+		}
+		lines := formatValueAsYAMLLines(val)
+		if len(lines) != 2 {
+			t.Errorf("expected 2 lines, got %d: %v", len(lines), lines)
+		}
+		if lines[0] != "parent:" {
+			t.Errorf("expected 'parent:', got %s", lines[0])
+		}
+		if lines[1] != "  child: 1" {
+			t.Errorf("expected '  child: 1', got %s", lines[1])
+		}
+	})
+
+	t.Run("list with structured items", func(t *testing.T) {
+		val := []interface{}{
+			map[string]interface{}{"name": "a"},
+		}
+		lines := formatValueAsYAMLLines(val)
+		if len(lines) != 2 {
+			t.Errorf("expected 2 lines, got %d: %v", len(lines), lines)
+		}
+		if lines[0] != "- ..." {
+			t.Errorf("expected '- ...', got %s", lines[0])
+		}
+		if lines[1] != "  name: a" {
+			t.Errorf("expected '  name: a', got %s", lines[1])
+		}
+	})
+
+	t.Run("default scalar fallback", func(t *testing.T) {
+		lines := formatValueAsYAMLLines(42)
+		if len(lines) != 1 || lines[0] != "42" {
+			t.Errorf("expected [42], got %v", lines)
+		}
+	})
+}
+
+func TestDetailedFormatter_TypeChange_Structured(t *testing.T) {
+	f, _ := GetFormatter("detailed")
+	opts := DefaultFormatOptions()
+	opts.OmitHeader = true
+
+	t.Run("map to list", func(t *testing.T) {
+		om := &OrderedMap{
+			Keys:   []string{"a", "b"},
+			Values: map[string]interface{}{"a": 1, "b": 2},
+		}
+		diffs := []Difference{
+			{Path: "foo", Type: DiffModified, From: om, To: []interface{}{1, 2}},
+		}
+		output := f.Format(diffs, opts)
+		if !strings.Contains(output, "type change from map to list") {
+			t.Errorf("expected type change descriptor, got:\n%s", output)
+		}
+		if !strings.Contains(output, "- a: 1") {
+			t.Errorf("expected '- a: 1' in output, got:\n%s", output)
+		}
+		if !strings.Contains(output, "+ - 1") {
+			t.Errorf("expected '+ - 1' in output, got:\n%s", output)
+		}
+	})
+
+	t.Run("timestamp to string", func(t *testing.T) {
+		ts := time.Date(2010, 9, 9, 0, 0, 0, 0, time.UTC)
+		diffs := []Difference{
+			{Path: "ver", Type: DiffModified, From: ts, To: "2010-09-09"},
+		}
+		output := f.Format(diffs, opts)
+		if !strings.Contains(output, "type change from timestamp to string") {
+			t.Errorf("expected 'timestamp' type name, got:\n%s", output)
+		}
+		if !strings.Contains(output, "- 2010-09-09") {
+			t.Errorf("expected formatted date, got:\n%s", output)
+		}
+	})
+}
+
+func TestIsStructured(t *testing.T) {
+	if !isStructured(map[string]interface{}{"a": 1}) {
+		t.Error("map[string]interface{} should be structured")
+	}
+	if !isStructured(&OrderedMap{}) {
+		t.Error("*OrderedMap should be structured")
+	}
+	if !isStructured([]interface{}{1}) {
+		t.Error("[]interface{} should be structured")
+	}
+	if isStructured("hello") {
+		t.Error("string should not be structured")
+	}
+	if isStructured(42) {
+		t.Error("int should not be structured")
+	}
+}

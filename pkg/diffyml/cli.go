@@ -267,9 +267,9 @@ func (c *CLIConfig) ToFilterOptions() *FilterOptions {
 // ToFormatOptions converts CLI config to FormatOptions.
 func (c *CLIConfig) ToFormatOptions() *FormatOptions {
 	return &FormatOptions{
-		OmitHeader:           c.OmitHeader,
-		UseGoPatchStyle:      c.UseGoPatchStyle,
-		ContextLines:         c.MultiLineContextLines,
+		OmitHeader:      c.OmitHeader,
+		UseGoPatchStyle: c.UseGoPatchStyle,
+		ContextLines:    c.MultiLineContextLines,
 	}
 }
 

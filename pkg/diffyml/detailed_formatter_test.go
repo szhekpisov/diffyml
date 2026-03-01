@@ -3211,12 +3211,12 @@ func TestParseDocIndexPrefix(t *testing.T) {
 		{"[0].spec.field", 0, "spec.field", true},
 		{"[2].metadata.name", 2, "metadata.name", true},
 		{"[12].x", 12, "x", true},
-		{"[0]", 0, "[0]", false},           // bare index — handled by parseBareDocIndex
-		{"items[0]", 0, "items[0]", false},  // not a leading index
-		{"name", 0, "name", false},          // no bracket
-		{"", 0, "", false},                  // empty
+		{"[0]", 0, "[0]", false},               // bare index — handled by parseBareDocIndex
+		{"items[0]", 0, "items[0]", false},     // not a leading index
+		{"name", 0, "name", false},             // no bracket
+		{"", 0, "", false},                     // empty
 		{"[abc].spec", 0, "[abc].spec", false}, // non-numeric
-		{"[].", 0, "[].", false},             // empty brackets
+		{"[].", 0, "[].", false},               // empty brackets
 	}
 	for _, tt := range tests {
 		idx, rest, ok := parseDocIndexPrefix(tt.path)

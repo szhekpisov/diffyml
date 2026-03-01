@@ -53,11 +53,11 @@ type StructuredFormatter interface {
 // DefaultFormatOptions returns FormatOptions with default values.
 func DefaultFormatOptions() *FormatOptions {
 	return &FormatOptions{
-		Color:                false,
-		TrueColor:            false,
-		OmitHeader:           false,
-		UseGoPatchStyle:      false,
-		ContextLines:         4,
+		Color:           false,
+		TrueColor:       false,
+		OmitHeader:      false,
+		UseGoPatchStyle: false,
+		ContextLines:    4,
 	}
 }
 

@@ -506,8 +506,8 @@ func TestFilterDiffsRegex_CombinedIncludePathAndRegex(t *testing.T) {
 	}
 
 	opts := &FilterOptions{
-		IncludePaths:  []string{"config"},        // matches config.name
-		IncludeRegexp: []string{`^spec\.`},        // matches spec.replicas
+		IncludePaths:  []string{"config"},  // matches config.name
+		IncludeRegexp: []string{`^spec\.`}, // matches spec.replicas
 	}
 
 	result, err := FilterDiffsWithRegexp(diffs, opts)
@@ -540,8 +540,8 @@ func TestFilterDiffsRegex_CombinedExcludePathAndRegex(t *testing.T) {
 	}
 
 	opts := &FilterOptions{
-		ExcludePaths:  []string{"config.secret"},   // excludes config.secret via path
-		ExcludeRegexp: []string{`password`},         // excludes metadata.password via regex
+		ExcludePaths:  []string{"config.secret"}, // excludes config.secret via path
+		ExcludeRegexp: []string{`password`},      // excludes metadata.password via regex
 	}
 
 	result, err := FilterDiffsWithRegexp(diffs, opts)

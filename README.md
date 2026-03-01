@@ -171,8 +171,6 @@ The summary is appended after the standard diff output. If the API call fails, a
 | `-o, --output <style>` | Output style: `detailed`, `compact`, `brief`, `github`, `gitlab`, `gitea` (default `detailed`) |
 | `-c, --color <mode>` | Color usage: `always`, `never`, `auto` (default `auto`) |
 | `-t, --truecolor <mode>` | True color (24-bit): `always`, `never`, `auto` (default `auto`) |
-| `-w, --fixed-width <int>` | Fixed terminal width instead of auto-detection |
-
 **Comparison**
 
 | Flag | Description |
@@ -201,7 +199,6 @@ The summary is appended after the standard diff output. If the API call fails, a
 | Flag | Description |
 |------|-------------|
 | `-b, --omit-header` | Omit summary header |
-| `-l, --no-table-style` | Display blocks vertically instead of side-by-side |
 | `-g, --use-go-patch-style` | Use Go-Patch style paths |
 | `--multi-line-context-lines <int>` | Context lines for multi-line strings (default `4`) |
 | `--minor-change-threshold <float>` | Minor change threshold (default `0.1`) |

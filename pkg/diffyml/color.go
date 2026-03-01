@@ -23,12 +23,6 @@ const (
 	ColorModeNever
 )
 
-// Default terminal width when auto-detection is not possible.
-const defaultTerminalWidth = 80
-
-// Minimum terminal width to enforce.
-const minTerminalWidth = 40
-
 // ParseColorMode parses a color mode string (always, never, auto).
 // Empty string defaults to auto.
 func ParseColorMode(s string) (ColorMode, error) {
@@ -58,19 +52,6 @@ func ResolveColorMode(mode ColorMode, isTerminal bool) bool {
 	}
 }
 
-// GetTerminalWidth returns the terminal width to use.
-// If override is positive, it returns that value (with minimum bound).
-// If override is 0, it returns a default width.
-func GetTerminalWidth(override int) int {
-	if override > 0 {
-		if override < minTerminalWidth {
-			return minTerminalWidth
-		}
-		return override
-	}
-	return defaultTerminalWidth
-}
-
 // stdoutStatFn is an injectable function for os.Stdout.Stat(), enabling
 // terminal-mode mocking in tests without a real TTY.
 var stdoutStatFn = func() (os.FileInfo, error) {
@@ -91,16 +72,14 @@ func IsTerminal(fd uintptr) bool {
 type ColorConfig struct {
 	mode       ColorMode
 	trueColor  bool
-	width      int
 	isTerminal bool
 }
 
 // NewColorConfig creates a new color configuration.
-func NewColorConfig(mode ColorMode, trueColor bool, width int) *ColorConfig {
+func NewColorConfig(mode ColorMode, trueColor bool) *ColorConfig {
 	return &ColorConfig{
 		mode:       mode,
 		trueColor:  trueColor,
-		width:      width,
 		isTerminal: false, // Default, can be set via SetIsTerminal
 	}
 }
@@ -140,11 +119,6 @@ func (c *ColorConfig) ShouldUseTrueColor() bool {
 	return c.trueColor
 }
 
-// GetWidth returns the terminal width to use.
-func (c *ColorConfig) GetWidth() int {
-	return GetTerminalWidth(c.width)
-}
-
 // ToFormatOptions applies the color config to FormatOptions.
 func (c *ColorConfig) ToFormatOptions(opts *FormatOptions) {
 	if opts == nil {
@@ -152,9 +126,6 @@ func (c *ColorConfig) ToFormatOptions(opts *FormatOptions) {
 	}
 	opts.Color = c.ShouldUseColor()
 	opts.TrueColor = c.ShouldUseTrueColor()
-	if c.width > 0 {
-		opts.Width = c.width
-	}
 }
 
 // Detailed color palette constants (24-bit RGB values)

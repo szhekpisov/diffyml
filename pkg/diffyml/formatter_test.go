@@ -113,14 +113,8 @@ func containsSubstr(s, substr string) bool {
 func TestFormatOptions_Defaults(t *testing.T) {
 	opts := DefaultFormatOptions()
 
-	if opts.Width != 0 {
-		t.Errorf("expected default Width 0 (auto-detect), got %d", opts.Width)
-	}
 	if opts.OmitHeader {
 		t.Error("expected default OmitHeader to be false")
-	}
-	if opts.NoTableStyle {
-		t.Error("expected default NoTableStyle to be false")
 	}
 	if opts.UseGoPatchStyle {
 		t.Error("expected default UseGoPatchStyle to be false")
@@ -332,39 +326,15 @@ func TestParseColorMode_Empty(t *testing.T) {
 	}
 }
 
-func TestTerminalWidth_Default(t *testing.T) {
-	// When width is 0, should return default
-	width := GetTerminalWidth(0)
-	if width <= 0 {
-		t.Error("GetTerminalWidth(0) should return a positive default")
-	}
-}
-
-func TestTerminalWidth_Override(t *testing.T) {
-	// When width is set, should return that value
-	width := GetTerminalWidth(120)
-	if width != 120 {
-		t.Errorf("GetTerminalWidth(120) = %d, want 120", width)
-	}
-}
-
-func TestTerminalWidth_MinimumBound(t *testing.T) {
-	// Should enforce minimum width
-	width := GetTerminalWidth(10)
-	if width < 40 {
-		t.Errorf("GetTerminalWidth should enforce minimum width, got %d", width)
-	}
-}
-
 func TestColorConfig_New(t *testing.T) {
-	cfg := NewColorConfig(ColorModeAuto, false, 0)
+	cfg := NewColorConfig(ColorModeAuto, false)
 	if cfg == nil {
 		t.Fatal("NewColorConfig should not return nil")
 	}
 }
 
 func TestColorConfig_EnableColorForTerminal(t *testing.T) {
-	cfg := NewColorConfig(ColorModeAuto, false, 0)
+	cfg := NewColorConfig(ColorModeAuto, false)
 	cfg.SetIsTerminal(true)
 
 	if !cfg.ShouldUseColor() {
@@ -373,7 +343,7 @@ func TestColorConfig_EnableColorForTerminal(t *testing.T) {
 }
 
 func TestColorConfig_DisableColorForNonTerminal(t *testing.T) {
-	cfg := NewColorConfig(ColorModeAuto, false, 0)
+	cfg := NewColorConfig(ColorModeAuto, false)
 	cfg.SetIsTerminal(false)
 
 	if cfg.ShouldUseColor() {
@@ -382,7 +352,7 @@ func TestColorConfig_DisableColorForNonTerminal(t *testing.T) {
 }
 
 func TestColorConfig_TrueColor(t *testing.T) {
-	cfg := NewColorConfig(ColorModeAlways, true, 0)
+	cfg := NewColorConfig(ColorModeAlways, true)
 	cfg.SetIsTerminal(true)
 
 	if !cfg.ShouldUseTrueColor() {
@@ -391,29 +361,11 @@ func TestColorConfig_TrueColor(t *testing.T) {
 }
 
 func TestColorConfig_TrueColorDisabled(t *testing.T) {
-	cfg := NewColorConfig(ColorModeAlways, false, 0)
+	cfg := NewColorConfig(ColorModeAlways, false)
 	cfg.SetIsTerminal(true)
 
 	if cfg.ShouldUseTrueColor() {
 		t.Error("ColorConfig without truecolor flag should not use true color")
-	}
-}
-
-func TestColorConfig_Width(t *testing.T) {
-	cfg := NewColorConfig(ColorModeAlways, false, 100)
-
-	width := cfg.GetWidth()
-	if width != 100 {
-		t.Errorf("ColorConfig.GetWidth() = %d, want 100", width)
-	}
-}
-
-func TestColorConfig_DefaultWidth(t *testing.T) {
-	cfg := NewColorConfig(ColorModeAlways, false, 0)
-
-	width := cfg.GetWidth()
-	if width <= 0 {
-		t.Error("ColorConfig.GetWidth() should return positive default when not set")
 	}
 }
 
@@ -1698,40 +1650,6 @@ func TestCompactFormatter_FormatSingle_NilOpts(t *testing.T) {
 	output := f.FormatSingle(diff, nil)
 	if output == "" {
 		t.Error("FormatSingle with nil opts should produce output")
-	}
-}
-
-// NoTableStyle tests
-
-func TestCompactFormatter_NoTableStyle(t *testing.T) {
-	f := &CompactFormatter{}
-
-	diffs := []Difference{
-		{Path: "key.a", Type: DiffAdded, To: "new"},
-		{Path: "key.r", Type: DiffRemoved, From: "old"},
-		{Path: "key.m", Type: DiffModified, From: "old", To: "new"},
-		{Path: "key.o", Type: DiffOrderChanged},
-	}
-
-	// Test without color
-	opts := DefaultFormatOptions()
-	opts.NoTableStyle = true
-	output := f.Format(diffs, opts)
-	if !strings.Contains(output, "  + new") {
-		t.Errorf("expected added value in output, got: %s", output)
-	}
-	if !strings.Contains(output, "  - old") {
-		t.Errorf("expected removed value in output, got: %s", output)
-	}
-
-	// Test with color to cover color branches in formatValuesSingleRow
-	opts.Color = true
-	colorOutput := f.Format(diffs, opts)
-	if !strings.Contains(colorOutput, colorGreen) {
-		t.Errorf("expected green color code in output, got: %s", colorOutput)
-	}
-	if !strings.Contains(colorOutput, colorRed) {
-		t.Errorf("expected red color code in output, got: %s", colorOutput)
 	}
 }
 

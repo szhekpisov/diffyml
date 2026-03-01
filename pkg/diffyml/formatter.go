@@ -24,12 +24,8 @@ type FormatOptions struct {
 	Color bool
 	// TrueColor enables 24-bit true color if supported.
 	TrueColor bool
-	// Width sets fixed terminal width (0 for auto-detect).
-	Width int
 	// OmitHeader skips the summary header in output.
 	OmitHeader bool
-	// NoTableStyle displays one text block per row instead of side-by-side.
-	NoTableStyle bool
 	// UseGoPatchStyle uses Go-Patch style paths in output.
 	UseGoPatchStyle bool
 	// ContextLines is the number of context lines for multi-line values.
@@ -61,9 +57,7 @@ func DefaultFormatOptions() *FormatOptions {
 	return &FormatOptions{
 		Color:                false,
 		TrueColor:            false,
-		Width:                0, // Auto-detect
 		OmitHeader:           false,
-		NoTableStyle:         false,
 		UseGoPatchStyle:      false,
 		ContextLines:         4,
 		MinorChangeThreshold: 0.1,
@@ -198,12 +192,7 @@ func (f *CompactFormatter) formatDiff(sb *strings.Builder, diff Difference, opts
 
 	sb.WriteString(path)
 
-	// Format values based on table style preference
-	if opts.NoTableStyle {
-		f.formatValuesSingleRow(sb, diff, opts)
-	} else {
-		f.formatValuesInline(sb, diff, opts)
-	}
+	f.formatValuesInline(sb, diff, opts)
 
 	sb.WriteString("\n")
 }
@@ -252,56 +241,6 @@ func (f *CompactFormatter) formatValuesInline(sb *strings.Builder, diff Differen
 		}
 	case DiffOrderChanged:
 		sb.WriteString(" (order changed)")
-	}
-}
-
-func (f *CompactFormatter) formatValuesSingleRow(sb *strings.Builder, diff Difference, opts *FormatOptions) {
-	// Single-row display mode - one block per change
-	sb.WriteString("\n")
-
-	switch diff.Type {
-	case DiffModified:
-		fromStr := formatValue(diff.From, opts)
-		toStr := formatValue(diff.To, opts)
-
-		if opts.Color {
-			sb.WriteString(colorRed)
-		}
-		sb.WriteString("  - ")
-		sb.WriteString(fromStr)
-		if opts.Color {
-			sb.WriteString(colorReset)
-		}
-		sb.WriteString("\n")
-
-		if opts.Color {
-			sb.WriteString(colorGreen)
-		}
-		sb.WriteString("  + ")
-		sb.WriteString(toStr)
-		if opts.Color {
-			sb.WriteString(colorReset)
-		}
-	case DiffAdded:
-		toStr := formatValue(diff.To, opts)
-		if opts.Color {
-			sb.WriteString(colorGreen)
-		}
-		sb.WriteString("  + ")
-		sb.WriteString(toStr)
-		if opts.Color {
-			sb.WriteString(colorReset)
-		}
-	case DiffRemoved:
-		fromStr := formatValue(diff.From, opts)
-		if opts.Color {
-			sb.WriteString(colorRed)
-		}
-		sb.WriteString("  - ")
-		sb.WriteString(fromStr)
-		if opts.Color {
-			sb.WriteString(colorReset)
-		}
 	}
 }
 

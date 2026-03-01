@@ -2377,7 +2377,7 @@ func TestDetailedFormatter_Integration_TrueColorBoldItalicCombination(t *testing
 func TestDetailedFormatter_Integration_AutoColorModeNoTerminal(t *testing.T) {
 	// When auto color mode resolves to no-color (stdout is not a terminal),
 	// the output should contain zero ANSI escape sequences
-	cfg := NewColorConfig(ColorModeAuto, true, 0)
+	cfg := NewColorConfig(ColorModeAuto, true)
 	cfg.SetIsTerminal(false)
 
 	opts := DefaultFormatOptions()

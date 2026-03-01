@@ -24,9 +24,6 @@ func TestCLIConfig_Defaults(t *testing.T) {
 	if cfg.TrueColor != "auto" {
 		t.Errorf("expected default TrueColor='auto', got %q", cfg.TrueColor)
 	}
-	if cfg.FixedWidth != -1 {
-		t.Errorf("expected default FixedWidth=-1, got %d", cfg.FixedWidth)
-	}
 	if !cfg.DetectKubernetes {
 		t.Error("expected default DetectKubernetes=true")
 	}
@@ -341,7 +338,6 @@ func TestCLIConfig_ToFilterOptions(t *testing.T) {
 func TestCLIConfig_ToFormatOptions(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.OmitHeader = true
-	cfg.NoTableStyle = true
 	cfg.UseGoPatchStyle = true
 	cfg.MultiLineContextLines = 10
 	cfg.MinorChangeThreshold = 0.2
@@ -350,9 +346,6 @@ func TestCLIConfig_ToFormatOptions(t *testing.T) {
 
 	if !opts.OmitHeader {
 		t.Error("expected OmitHeader=true")
-	}
-	if !opts.NoTableStyle {
-		t.Error("expected NoTableStyle=true")
 	}
 	if !opts.UseGoPatchStyle {
 		t.Error("expected UseGoPatchStyle=true")

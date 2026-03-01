@@ -30,8 +30,6 @@ type FormatOptions struct {
 	UseGoPatchStyle bool
 	// ContextLines is the number of context lines for multi-line values.
 	ContextLines int
-	// MinorChangeThreshold is the threshold for minor change detection.
-	MinorChangeThreshold float64
 	// FilePath is the source file path set by the CLI layer.
 	// Used by GitLabFormatter for location.path and fingerprint generation.
 	// Defaults to empty string (backward compatible).
@@ -60,7 +58,6 @@ func DefaultFormatOptions() *FormatOptions {
 		OmitHeader:           false,
 		UseGoPatchStyle:      false,
 		ContextLines:         4,
-		MinorChangeThreshold: 0.1,
 	}
 }
 

@@ -31,7 +31,6 @@ type CLIConfig struct {
 	OmitHeader            bool
 	UseGoPatchStyle       bool
 	MultiLineContextLines int
-	MinorChangeThreshold  float64
 
 	// Comparison options
 	IgnoreOrderChanges      bool
@@ -77,7 +76,6 @@ func NewCLIConfig() *CLIConfig {
 		DetectKubernetes:      true,
 		DetectRenames:         true,
 		MultiLineContextLines: 4,
-		MinorChangeThreshold:  0.1,
 	}
 	cfg.initFlags()
 	return cfg
@@ -101,7 +99,6 @@ func (c *CLIConfig) initFlags() {
 	c.fs.BoolVar(&c.UseGoPatchStyle, "g", c.UseGoPatchStyle, "")
 	c.fs.BoolVar(&c.UseGoPatchStyle, "use-go-patch-style", c.UseGoPatchStyle, "use Go-Patch style paths in outputs")
 	c.fs.IntVar(&c.MultiLineContextLines, "multi-line-context-lines", c.MultiLineContextLines, "multi-line context lines")
-	c.fs.Float64Var(&c.MinorChangeThreshold, "minor-change-threshold", c.MinorChangeThreshold, "minor change threshold")
 
 	// Comparison options
 	c.fs.BoolVar(&c.IgnoreOrderChanges, "i", c.IgnoreOrderChanges, "")
@@ -273,7 +270,6 @@ func (c *CLIConfig) ToFormatOptions() *FormatOptions {
 		OmitHeader:           c.OmitHeader,
 		UseGoPatchStyle:      c.UseGoPatchStyle,
 		ContextLines:         c.MultiLineContextLines,
-		MinorChangeThreshold: c.MinorChangeThreshold,
 	}
 }
 
@@ -315,7 +311,6 @@ func (c *CLIConfig) Usage() string {
 	sb.WriteString("  -b, --omit-header                   omit the diffyml summary header\n")
 	sb.WriteString("  -g, --use-go-patch-style            use Go-Patch style paths in outputs\n")
 	sb.WriteString("      --multi-line-context-lines int  multi-line context lines (default 4)\n")
-	sb.WriteString("      --minor-change-threshold float  minor change threshold (default 0.1)\n")
 	sb.WriteString("\n")
 
 	// Chroot options

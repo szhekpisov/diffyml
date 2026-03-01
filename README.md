@@ -201,7 +201,6 @@ The summary is appended after the standard diff output. If the API call fails, a
 | `-b, --omit-header` | Omit summary header |
 | `-g, --use-go-patch-style` | Use Go-Patch style paths |
 | `--multi-line-context-lines <int>` | Context lines for multi-line strings (default `4`) |
-| `--minor-change-threshold <float>` | Minor change threshold (default `0.1`) |
 
 **Chroot**
 

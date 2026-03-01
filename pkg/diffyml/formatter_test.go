@@ -122,9 +122,6 @@ func TestFormatOptions_Defaults(t *testing.T) {
 	if opts.ContextLines != 4 {
 		t.Errorf("expected default ContextLines 4, got %d", opts.ContextLines)
 	}
-	if opts.MinorChangeThreshold != 0.1 {
-		t.Errorf("expected default MinorChangeThreshold 0.1, got %f", opts.MinorChangeThreshold)
-	}
 	if opts.FilePath != "" {
 		t.Errorf("expected default FilePath to be empty, got %q", opts.FilePath)
 	}

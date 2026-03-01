@@ -30,9 +30,6 @@ func TestCLIConfig_Defaults(t *testing.T) {
 	if !cfg.DetectRenames {
 		t.Error("expected default DetectRenames=true")
 	}
-	if cfg.MinorChangeThreshold != 0.1 {
-		t.Errorf("expected default MinorChangeThreshold=0.1, got %f", cfg.MinorChangeThreshold)
-	}
 	if cfg.MultiLineContextLines != 4 {
 		t.Errorf("expected default MultiLineContextLines=4, got %d", cfg.MultiLineContextLines)
 	}
@@ -340,7 +337,6 @@ func TestCLIConfig_ToFormatOptions(t *testing.T) {
 	cfg.OmitHeader = true
 	cfg.UseGoPatchStyle = true
 	cfg.MultiLineContextLines = 10
-	cfg.MinorChangeThreshold = 0.2
 
 	opts := cfg.ToFormatOptions()
 
@@ -352,9 +348,6 @@ func TestCLIConfig_ToFormatOptions(t *testing.T) {
 	}
 	if opts.ContextLines != 10 {
 		t.Errorf("expected ContextLines=10, got %d", opts.ContextLines)
-	}
-	if opts.MinorChangeThreshold != 0.2 {
-		t.Errorf("expected MinorChangeThreshold=0.2, got %f", opts.MinorChangeThreshold)
 	}
 }
 

@@ -239,6 +239,17 @@ func TestIsPEMCertificate_CorruptedDER(t *testing.T) {
 	}
 }
 
+func TestFormatCertificate_CorruptedDER_ReturnsOriginal(t *testing.T) {
+	// Valid PEM structure but invalid DER data — FormatCertificate should return original
+	block := &pem.Block{Type: "CERTIFICATE", Bytes: []byte("not-a-real-der-cert")}
+	original := string(pem.EncodeToMemory(block))
+
+	result := FormatCertificate(original)
+	if result != original {
+		t.Errorf("expected original string returned for corrupted DER, got: %s", result)
+	}
+}
+
 func TestFormatCertificate_IssuerFallback(t *testing.T) {
 	// When issuer CN is empty but issuer org is set, the issuer should use org
 	// Since generateTestCert creates self-signed certs, we test with empty CN + org

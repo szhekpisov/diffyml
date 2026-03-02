@@ -1,7 +1,8 @@
 package diffyml
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"gopkg.in/yaml.v3"
 )
@@ -148,7 +149,7 @@ func detectRenames(from, to []interface{}, unmatchedFrom, unmatchedTo []int, opt
 			// Size ratio early rejection
 			minLen := min(fc.numBytes, tc.numBytes)
 			maxLen := max(fc.numBytes, tc.numBytes)
-			if maxLen > 0 && minLen*100/maxLen < renameScoreThreshold {
+			if maxLen != 0 && minLen*100/maxLen < renameScoreThreshold {
 				continue
 			}
 
@@ -160,14 +161,12 @@ func detectRenames(from, to []interface{}, unmatchedFrom, unmatchedTo []int, opt
 	}
 
 	// Sort descending by score, tiebreak by ascending fromIdx then toIdx
-	sort.SliceStable(pairs, func(i, j int) bool {
-		if pairs[i].score != pairs[j].score {
-			return pairs[i].score > pairs[j].score
-		}
-		if pairs[i].fromIdx != pairs[j].fromIdx {
-			return pairs[i].fromIdx < pairs[j].fromIdx
-		}
-		return pairs[i].toIdx < pairs[j].toIdx
+	slices.SortStableFunc(pairs, func(a, b renamePair) int {
+		return cmp.Or(
+			cmp.Compare(b.score, a.score),     // descending score
+			cmp.Compare(a.fromIdx, b.fromIdx), // ascending fromIdx
+			cmp.Compare(a.toIdx, b.toIdx),     // ascending toIdx
+		)
 	})
 
 	// Greedy assignment

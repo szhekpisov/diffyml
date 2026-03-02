@@ -6,9 +6,10 @@
 package diffyml
 
 import (
+	"cmp"
 	"fmt"
 	"reflect"
-	"sort"
+	"slices"
 )
 
 // k8sDocumentPath is the diff path used for document-level changes (e.g. order).
@@ -238,23 +239,17 @@ func compareK8sDocs(from, to []interface{}, opts *Options) []Difference {
 	ignoreApiVersion := opts != nil && opts.IgnoreApiVersion
 
 	// Detect document order changes
-	if (opts == nil || !opts.IgnoreOrderChanges) && len(matched) > 1 {
+	if !opts.IgnoreOrderChanges && len(matched) >= 2 {
 		// Build sorted (fromIdx, toIdx) pairs in one pass
 		type idxPair struct{ fromIdx, toIdx int }
 		pairs := make([]idxPair, 0, len(matched))
 		for fromIdx, toIdx := range matched {
 			pairs = append(pairs, idxPair{fromIdx, toIdx})
 		}
-		sort.Slice(pairs, func(i, j int) bool { return pairs[i].fromIdx < pairs[j].fromIdx })
+		slices.SortFunc(pairs, func(a, b idxPair) int { return cmp.Compare(a.fromIdx, b.fromIdx) })
 
 		// Check if toIdx values are monotonically increasing
-		orderChanged := false
-		for i := 1; i < len(pairs); i++ {
-			if pairs[i].toIdx < pairs[i-1].toIdx {
-				orderChanged = true
-				break
-			}
-		}
+		orderChanged := !slices.IsSortedFunc(pairs, func(a, b idxPair) int { return cmp.Compare(a.toIdx, b.toIdx) })
 
 		if orderChanged {
 			fromOrder := make([]interface{}, len(pairs))
@@ -262,7 +257,7 @@ func compareK8sDocs(from, to []interface{}, opts *Options) []Difference {
 				fromOrder[i] = GetK8sResourceIdentifier(from[p.fromIdx], ignoreApiVersion)
 			}
 			// Re-sort by toIdx for to-order
-			sort.Slice(pairs, func(i, j int) bool { return pairs[i].toIdx < pairs[j].toIdx })
+			slices.SortFunc(pairs, func(a, b idxPair) int { return cmp.Compare(a.toIdx, b.toIdx) })
 			toOrder := make([]interface{}, len(pairs))
 			for i, p := range pairs {
 				toOrder[i] = GetK8sResourceIdentifier(from[p.fromIdx], ignoreApiVersion)

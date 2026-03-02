@@ -6,6 +6,7 @@ package diffyml
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -492,10 +493,8 @@ func computeLineDiff(fromLines, toLines []string) []editOp {
 			//nolint:gocritic // if-else kept intentionally: switch/case conditions fall outside Go coverage blocks, causing gremlins to misclassify mutations as NOT COVERED
 			if fromLines[i-1] == toLines[j-1] {
 				dp[i][j] = dp[i-1][j-1] + 1
-			} else if dp[i-1][j] >= dp[i][j-1] {
-				dp[i][j] = dp[i-1][j]
 			} else {
-				dp[i][j] = dp[i][j-1]
+				dp[i][j] = max(dp[i-1][j], dp[i][j-1])
 			}
 		}
 	}
@@ -519,9 +518,7 @@ func computeLineDiff(fromLines, toLines []string) []editOp {
 	}
 
 	// Reverse to get correct order
-	for left, right := 0, len(ops)-1; left < right; left, right = left+1, right-1 {
-		ops[left], ops[right] = ops[right], ops[left]
-	}
+	slices.Reverse(ops)
 
 	return ops
 }
@@ -741,7 +738,7 @@ func parseDocIndexPrefix(path string) (int, string, bool) {
 		return 0, path, false
 	}
 	closeBracket := strings.Index(path, "]")
-	if closeBracket < 0 {
+	if closeBracket == -1 {
 		return 0, path, false
 	}
 	// Must have a dot after the closing bracket

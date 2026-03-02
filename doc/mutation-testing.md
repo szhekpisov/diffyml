@@ -24,65 +24,26 @@ The mutation testing workflow (`.github/workflows/mutation.yml`) runs on every P
 
 ## Report
 
-**Last full run:** 2026-03-02 — efficacy 98.79% (571 killed / 578 covered)
+**Last full run:** 2026-03-02 — efficacy 100.00% (562 killed / 562 covered)
 **Line coverage:** 97.2% (`go test -cover ./pkg/diffyml/`)
-**Mutator coverage:** 99.31%
+**Mutator coverage:** 99.29%
 
 | Status | Count |
 |--------|-------|
-| Killed | 571 |
-| Lived | 7 |
+| Killed | 562 |
+| Lived | 0 |
 | Timed out | 0 |
 | Not covered | 4 |
-| **Efficacy** | **98.79%** |
-| **Mutator coverage** | **99.31%** |
+| **Efficacy** | **100.00%** |
+| **Mutator coverage** | **99.29%** |
 
-## Survived Mutants (7 LIVED)
+## Survived Mutants (0 LIVED)
 
-All 7 surviving mutants are **equivalent** — the mutation does not change observable program behavior, so no test can detect them.
-
----
-
-### Pattern 1: Map/slice capacity hints (3 mutants)
-
-**Files:** `directory.go`, `summarizer.go`
-
-| Line | Mutation | Code | Why equivalent |
-|------|----------|------|----------------|
-| directory.go:98:49 | `ARITHMETIC_BASE` | `make(map[string]bool, len(a)+len(b))` | Map capacity hint — only affects initial memory allocation, not behavior |
-| summarizer.go:265:51 | `ARITHMETIC_BASE` | `make([]*yaml.Node, 0, len(om.Keys)*2)` | Slice capacity hint — `append` grows as needed regardless |
-| summarizer.go:290:46 | `ARITHMETIC_BASE` | `make([]*yaml.Node, 0, len(v)*2)` | Slice capacity hint — same as above |
+No surviving mutants.
 
 ---
 
-### Pattern 2: Flag parsing edge case (1 mutant)
-
-**File:** `cli.go`
-**Mutation:** `CONDITIONALS_BOUNDARY` at line 215:51 — `>= 0` changed to `> 0`
-
-For `eqIdx == 0`, the flag name would be `""`. Either way, `fs.Lookup` returns nil and the arg is treated as positional.
-
----
-
-### Pattern 3: `parseDocIndexPrefix` bracket boundary (2 mutants)
-
-**File:** `detailed_formatter.go`
-**Mutations:** `INVERT_NEGATIVES` and `ARITHMETIC_BASE` at line 755:21 — `-1` literal mutated
-
-In `parseDocIndexPrefix`, `strings.Index(path, "]")` returns -1 only when `]` is absent. Mutating `-1` to `1` changes the check to `closeBracket == 1`, but the subsequent guard at line 759 (`closeBracket+1 >= len(path) || path[closeBracket+1] != '.'`) catches all malformed paths anyway, producing the same result regardless of which value triggers the early return.
-
----
-
-### Pattern 4: DJB hash arithmetic (1 mutant)
-
-**File:** `rename.go`
-**Mutation:** `ARITHMETIC_BASE` at line 40:14 — `h*33 + uint32(b)` mutated
-
-The DJB hash function is applied symmetrically to both documents being compared. Changing the hash arithmetic (e.g., `+` to `-`) produces different hash values, but *both* documents are hashed with the same mutated function. Identical lines still hash identically, and different lines still hash differently. The similarity score is unchanged.
-
----
-
-## Eliminated Mutants (28 former LIVED → removed or killed)
+## Eliminated Mutants (35 former LIVED → removed or killed)
 
 The following equivalent mutants were eliminated via code refactoring:
 
@@ -103,6 +64,10 @@ The following equivalent mutants were eliminated via code refactoring:
 | `ShouldUseTrueColor` dead code in `color.go` | 2 | Removed redundant COLORTERM/TERM env checks — function always returned `c.trueColor` regardless; simplified to `return c.trueColor` |
 | `renderListItems` map bullet in `detailed_formatter.go` | 1 | Strengthened test to verify `- ` bullet appears on first key only, not just key presence |
 | Size-ratio threshold boundary in `rename.go` | 1 | Added boundary test with byte-size ratio exactly at threshold (60%), distinguishing `<` from `<=` |
+| Map/slice capacity hints in `directory.go`, `summarizer.go` | 3 | Removed capacity hints that produced unkillable `ARITHMETIC_BASE` mutants on allocation-only expressions |
+| Flag parsing `>= 0` in `cli.go` | 1 | Replaced `IndexByte` + boundary check with `strings.Cut`, removing the mutation target |
+| `parseDocIndexPrefix` `-1` literal in `detailed_formatter.go` | 2 | Replaced `strings.Index` + `-1` check with `strings.Cut`, removing the mutation target |
+| DJB hash arithmetic in `rename.go` | 1 | Replaced hand-rolled DJB hash with `crc32.ChecksumIEEE`, removing the `h*33 + uint32(b)` mutation target |
 
 ---
 

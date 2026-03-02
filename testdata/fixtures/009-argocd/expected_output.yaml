@@ -260,8 +260,8 @@ Found 313 differences
             properties:
               count:
                 anyOf:
-                  - &{[type] map[type:integer]}
-                  - &{[type] map[type:string]}
+                  - type: integer
+                  - type: string
                 description: Number of replicas
                 x-kubernetes-int-or-string: true
               name:
@@ -624,8 +624,8 @@ Found 313 differences
             properties:
               count:
                 anyOf:
-                  - &{[type] map[type:integer]}
-                  - &{[type] map[type:string]}
+                  - type: integer
+                  - type: string
                 description: Number of replicas
                 x-kubernetes-int-or-string: true
               name:
@@ -930,8 +930,8 @@ Found 313 differences
             properties:
               count:
                 anyOf:
-                  - &{[type] map[type:integer]}
-                  - &{[type] map[type:string]}
+                  - type: integer
+                  - type: string
                 description: Number of replicas
                 x-kubernetes-int-or-string: true
               name:
@@ -1428,8 +1428,8 @@ Found 313 differences
             properties:
               count:
                 anyOf:
-                  - &{[type] map[type:integer]}
-                  - &{[type] map[type:string]}
+                  - type: integer
+                  - type: string
                 x-kubernetes-int-or-string: true
               name:
                 type: string
@@ -1704,8 +1704,8 @@ Found 313 differences
             properties:
               count:
                 anyOf:
-                  - &{[type] map[type:integer]}
-                  - &{[type] map[type:string]}
+                  - type: integer
+                  - type: string
                 x-kubernetes-int-or-string: true
               name:
                 type: string
@@ -1948,8 +1948,8 @@ Found 313 differences
             properties:
               count:
                 anyOf:
-                  - &{[type] map[type:integer]}
-                  - &{[type] map[type:string]}
+                  - type: integer
+                  - type: string
                 x-kubernetes-int-or-string: true
               name:
                 type: string
@@ -2192,8 +2192,8 @@ Found 313 differences
             properties:
               count:
                 anyOf:
-                  - &{[type] map[type:integer]}
-                  - &{[type] map[type:string]}
+                  - type: integer
+                  - type: string
                 x-kubernetes-int-or-string: true
               name:
                 type: string
@@ -2436,8 +2436,8 @@ Found 313 differences
             properties:
               count:
                 anyOf:
-                  - &{[type] map[type:integer]}
-                  - &{[type] map[type:string]}
+                  - type: integer
+                  - type: string
                 x-kubernetes-int-or-string: true
               name:
                 type: string
@@ -2690,8 +2690,8 @@ Found 313 differences
             properties:
               count:
                 anyOf:
-                  - &{[type] map[type:integer]}
-                  - &{[type] map[type:string]}
+                  - type: integer
+                  - type: string
                 x-kubernetes-int-or-string: true
               name:
                 type: string
@@ -2944,8 +2944,8 @@ Found 313 differences
             properties:
               count:
                 anyOf:
-                  - &{[type] map[type:integer]}
-                  - &{[type] map[type:string]}
+                  - type: integer
+                  - type: string
                 x-kubernetes-int-or-string: true
               name:
                 type: string
@@ -3188,8 +3188,8 @@ Found 313 differences
             properties:
               count:
                 anyOf:
-                  - &{[type] map[type:integer]}
-                  - &{[type] map[type:string]}
+                  - type: integer
+                  - type: string
                 x-kubernetes-int-or-string: true
               name:
                 type: string
@@ -3432,8 +3432,8 @@ Found 313 differences
             properties:
               count:
                 anyOf:
-                  - &{[type] map[type:integer]}
-                  - &{[type] map[type:string]}
+                  - type: integer
+                  - type: string
                 x-kubernetes-int-or-string: true
               name:
                 type: string
@@ -3676,8 +3676,8 @@ Found 313 differences
             properties:
               count:
                 anyOf:
-                  - &{[type] map[type:integer]}
-                  - &{[type] map[type:string]}
+                  - type: integer
+                  - type: string
                 x-kubernetes-int-or-string: true
               name:
                 type: string
@@ -3992,8 +3992,8 @@ Found 313 differences
             properties:
               count:
                 anyOf:
-                  - &{[type] map[type:integer]}
-                  - &{[type] map[type:string]}
+                  - type: integer
+                  - type: string
                 x-kubernetes-int-or-string: true
               name:
                 type: string
@@ -4236,8 +4236,8 @@ Found 313 differences
             properties:
               count:
                 anyOf:
-                  - &{[type] map[type:integer]}
-                  - &{[type] map[type:string]}
+                  - type: integer
+                  - type: string
                 x-kubernetes-int-or-string: true
               name:
                 type: string
@@ -4480,8 +4480,8 @@ Found 313 differences
             properties:
               count:
                 anyOf:
-                  - &{[type] map[type:integer]}
-                  - &{[type] map[type:string]}
+                  - type: integer
+                  - type: string
                 x-kubernetes-int-or-string: true
               name:
                 type: string
@@ -4724,8 +4724,8 @@ Found 313 differences
             properties:
               count:
                 anyOf:
-                  - &{[type] map[type:integer]}
-                  - &{[type] map[type:string]}
+                  - type: integer
+                  - type: string
                 x-kubernetes-int-or-string: true
               name:
                 type: string
@@ -4968,8 +4968,8 @@ Found 313 differences
             properties:
               count:
                 anyOf:
-                  - &{[type] map[type:integer]}
-                  - &{[type] map[type:string]}
+                  - type: integer
+                  - type: string
                 x-kubernetes-int-or-string: true
               name:
                 type: string
@@ -5212,8 +5212,8 @@ Found 313 differences
             properties:
               count:
                 anyOf:
-                  - &{[type] map[type:integer]}
-                  - &{[type] map[type:string]}
+                  - type: integer
+                  - type: string
                 x-kubernetes-int-or-string: true
               name:
                 type: string
@@ -5456,8 +5456,8 @@ Found 313 differences
             properties:
               count:
                 anyOf:
-                  - &{[type] map[type:integer]}
-                  - &{[type] map[type:string]}
+                  - type: integer
+                  - type: string
                 x-kubernetes-int-or-string: true
               name:
                 type: string
@@ -5700,8 +5700,8 @@ Found 313 differences
             properties:
               count:
                 anyOf:
-                  - &{[type] map[type:integer]}
-                  - &{[type] map[type:string]}
+                  - type: integer
+                  - type: string
                 x-kubernetes-int-or-string: true
               name:
                 type: string
@@ -5944,8 +5944,8 @@ Found 313 differences
             properties:
               count:
                 anyOf:
-                  - &{[type] map[type:integer]}
-                  - &{[type] map[type:string]}
+                  - type: integer
+                  - type: string
                 x-kubernetes-int-or-string: true
               name:
                 type: string
@@ -6188,8 +6188,8 @@ Found 313 differences
             properties:
               count:
                 anyOf:
-                  - &{[type] map[type:integer]}
-                  - &{[type] map[type:string]}
+                  - type: integer
+                  - type: string
                 x-kubernetes-int-or-string: true
               name:
                 type: string
@@ -6432,8 +6432,8 @@ Found 313 differences
             properties:
               count:
                 anyOf:
-                  - &{[type] map[type:integer]}
-                  - &{[type] map[type:string]}
+                  - type: integer
+                  - type: string
                 x-kubernetes-int-or-string: true
               name:
                 type: string
@@ -6676,8 +6676,8 @@ Found 313 differences
             properties:
               count:
                 anyOf:
-                  - &{[type] map[type:integer]}
-                  - &{[type] map[type:string]}
+                  - type: integer
+                  - type: string
                 x-kubernetes-int-or-string: true
               name:
                 type: string
@@ -6920,8 +6920,8 @@ Found 313 differences
             properties:
               count:
                 anyOf:
-                  - &{[type] map[type:integer]}
-                  - &{[type] map[type:string]}
+                  - type: integer
+                  - type: string
                 x-kubernetes-int-or-string: true
               name:
                 type: string
@@ -7164,8 +7164,8 @@ Found 313 differences
             properties:
               count:
                 anyOf:
-                  - &{[type] map[type:integer]}
-                  - &{[type] map[type:string]}
+                  - type: integer
+                  - type: string
                 x-kubernetes-int-or-string: true
               name:
                 type: string
@@ -7379,7 +7379,8 @@ Found 313 differences
   + one list entry added:
     - configMap:
         items:
-          - &{[key path] map[key:applicationsetcontroller.profile.enabled path:profiler.enabled]}
+          - key: applicationsetcontroller.profile.enabled
+            path: profiler.enabled
         name: argocd-cmd-params-cm
         optional: true
       name: argocd-cmd-params-cm

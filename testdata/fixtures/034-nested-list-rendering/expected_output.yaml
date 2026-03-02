@@ -1,0 +1,46 @@
+Found eight differences
+
+spec.replicas
+  ± value change
+    - 1
+    + 2
+
+spec.template.spec.containers.web.image
+  ± value change
+    - nginx:1.25
+    + nginx:1.26
+
+spec.template.spec.containers.web.ports
+  + one list entry added:
+    - name: https
+      containerPort: 443
+
+spec.template.spec.containers.web.volumeMounts
+  + one list entry added:
+    - name: tls
+      mountPath: /etc/tls
+
+spec.template.spec.containers.web.env
+  + one list entry added:
+    - name: LOG_LEVEL
+      valueFrom:
+        configMapKeyRef:
+          name: app-config
+          key: log-level
+
+spec.template.spec.containers.web.env.ENV.value
+  ± value change
+    - production
+    + staging
+
+spec.template.spec.volumes
+  + one list entry added:
+    - name: tls
+      secret:
+        secretName: tls-cert
+
+spec.template.spec.containers.web.envFrom.1
+  + one list entry added:
+    - secretRef:
+        name: app-secret
+

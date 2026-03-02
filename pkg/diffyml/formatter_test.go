@@ -1196,7 +1196,7 @@ func TestGitLabFormatter_FingerprintUnchangedWhenNoFilePath(t *testing.T) {
 	fp := extractFingerprint(t, output)
 
 	// Should match the old fingerprint formula: sha256(description)
-	desc := gitLabDescription(diffs[0])
+	desc := diffDescription(diffs[0])
 	expectedFP := gitLabFingerprint("", desc)
 	if fp != expectedFP {
 		t.Errorf("fingerprint with empty FilePath should match legacy formula\ngot:  %s\nwant: %s", fp, expectedFP)
@@ -1472,7 +1472,7 @@ func TestGitLabFormatter_BackwardCompat_EmptyFilePath(t *testing.T) {
 	// Verify fingerprints match the legacy formula: sha256(description only)
 	for i, entry := range result {
 		fp := entry["fingerprint"].(string)
-		desc := gitLabDescription(diffs[i])
+		desc := diffDescription(diffs[i])
 		expectedFP := gitLabFingerprint("", desc)
 		if fp != expectedFP {
 			t.Errorf("entry %d: fingerprint mismatch with legacy formula\ngot:  %s\nwant: %s", i, fp, expectedFP)
@@ -1485,7 +1485,7 @@ func TestGitLabFormatter_BackwardCompat_FingerprintStability(t *testing.T) {
 	// the exact pre-change formula: sha256(description).
 	// This guards against accidental changes to the hash input format.
 	diff := Difference{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"}
-	desc := gitLabDescription(diff)
+	desc := diffDescription(diff)
 
 	// Compute expected fingerprint manually
 	expectedFP := gitLabFingerprint("", desc)
@@ -1710,7 +1710,7 @@ func TestFormatValue_Nil(t *testing.T) {
 	f := &CompactFormatter{}
 	opts := DefaultFormatOptions()
 
-	// Modified diff with nil From value exercises formatValue(nil, opts)
+	// Modified diff with nil From value exercises formatValue(nil)
 	diff := Difference{Path: "key", Type: DiffModified, From: nil, To: "new"}
 	output := f.FormatSingle(diff, opts)
 	if !strings.Contains(output, "<nil>") {
@@ -1952,5 +1952,70 @@ func TestBriefFormatter_OnlyModified(t *testing.T) {
 	}
 	if strings.Contains(output, "removed") {
 		t.Errorf("output should not contain 'removed' when there are none, got: %s", output)
+	}
+}
+
+// Tests for formatValue with structured types
+
+func TestFormatValue_OrderedMap(t *testing.T) {
+	om := NewOrderedMap()
+	om.Keys = append(om.Keys, "name", "port")
+	om.Values["name"] = "http"
+	om.Values["port"] = 8080
+
+	result := formatValue(om)
+
+	if strings.Contains(result, "&{") {
+		t.Errorf("formatValue should not produce Go struct repr for *OrderedMap, got: %s", result)
+	}
+	if !strings.Contains(result, "name: http") {
+		t.Errorf("expected 'name: http' in YAML output, got: %s", result)
+	}
+	if !strings.Contains(result, "port: 8080") {
+		t.Errorf("expected 'port: 8080' in YAML output, got: %s", result)
+	}
+}
+
+func TestFormatValue_ListWithOrderedMaps(t *testing.T) {
+	item := NewOrderedMap()
+	item.Keys = append(item.Keys, "name", "value")
+	item.Values["name"] = "FOO"
+	item.Values["value"] = "bar"
+
+	val := []interface{}{item}
+	result := formatValue(val)
+
+	if strings.Contains(result, "&{") {
+		t.Errorf("formatValue should not produce Go struct repr for []interface{} with *OrderedMap, got: %s", result)
+	}
+	if strings.Contains(result, "0x") {
+		t.Errorf("formatValue should not produce pointer addresses, got: %s", result)
+	}
+	if !strings.Contains(result, "name: FOO") {
+		t.Errorf("expected 'name: FOO' in YAML output, got: %s", result)
+	}
+}
+
+func TestFormatValue_MapStringInterface(t *testing.T) {
+	val := map[string]interface{}{"key": "value", "count": 42}
+	result := formatValue(val)
+
+	if !strings.Contains(result, "key: value") {
+		t.Errorf("expected 'key: value' in YAML output, got: %s", result)
+	}
+	if !strings.Contains(result, "count: 42") {
+		t.Errorf("expected 'count: 42' in YAML output, got: %s", result)
+	}
+}
+
+func TestFormatValue_ScalarUnchanged(t *testing.T) {
+	if got := formatValue("hello"); got != "hello" {
+		t.Errorf("expected 'hello', got: %s", got)
+	}
+	if got := formatValue(42); got != "42" {
+		t.Errorf("expected '42', got: %s", got)
+	}
+	if got := formatValue(nil); got != "<nil>" {
+		t.Errorf("expected '<nil>', got: %s", got)
 	}
 }

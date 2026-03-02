@@ -6,6 +6,7 @@ package diffyml
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -227,35 +228,13 @@ func (f *DetailedFormatter) renderEntryValue(sb *strings.Builder, val interface{
 		return
 	}
 
-	// List entries: use "- " prefix for scalars, YAML block with dash prefix for structured
-	pad := strings.Repeat(" ", indent)
-	switch v := val.(type) {
-	case *OrderedMap:
-		for i, key := range v.Keys {
-			if i == 0 {
-				// First key: "    - key: value" (dash prefix at indent level)
-				f.renderFirstKeyValueYAML(sb, key, v.Values[key], indent, colorCode, opts)
-			} else {
-				// Continuation keys: indent+2 to align under first key's content
-				f.renderKeyValueYAML(sb, key, v.Values[key], indent+2, colorCode, opts)
-			}
-		}
-	case map[string]interface{}:
-		first := true
-		for key, value := range v {
-			if first {
-				f.renderFirstKeyValueYAML(sb, key, value, indent, colorCode, opts)
-				first = false
-			} else {
-				f.renderKeyValueYAML(sb, key, value, indent+2, colorCode, opts)
-			}
-		}
-	case []interface{}:
-		for _, item := range v {
-			f.writeColoredLine(sb, fmt.Sprintf("%s- %v", pad, formatDetailedValue(item)), colorCode, opts)
-		}
-	default:
-		f.writeColoredLine(sb, fmt.Sprintf("%s- %v", pad, formatDetailedValue(val)), colorCode, opts)
+	// List entries: delegate to renderListItems which handles *OrderedMap,
+	// map[string]interface{}, and scalar fallback uniformly.
+	// For []interface{} values, pass items directly; otherwise wrap as single item.
+	if v, ok := val.([]interface{}); ok {
+		f.renderListItems(sb, v, indent, colorCode, opts)
+	} else {
+		f.renderListItems(sb, []interface{}{val}, indent, colorCode, opts)
 	}
 }
 
@@ -271,14 +250,12 @@ func (f *DetailedFormatter) renderKeyValueYAML(sb *strings.Builder, key string, 
 		}
 	case map[string]interface{}:
 		f.writeColoredLine(sb, fmt.Sprintf("%s%s:", pad, key), colorCode, opts)
-		for k, value := range v {
-			f.renderKeyValueYAML(sb, k, value, indent+2, colorCode, opts)
+		for _, k := range sortedMapKeys(v) {
+			f.renderKeyValueYAML(sb, k, v[k], indent+2, colorCode, opts)
 		}
 	case []interface{}:
 		f.writeColoredLine(sb, fmt.Sprintf("%s%s:", pad, key), colorCode, opts)
-		for _, item := range v {
-			f.writeColoredLine(sb, fmt.Sprintf("%s  - %v", pad, formatDetailedValue(item)), colorCode, opts)
-		}
+		f.renderListItems(sb, v, indent+2, colorCode, opts)
 	default:
 		if str, ok := val.(string); ok && strings.Contains(str, "\n") {
 			f.renderMultilineValue(sb, fmt.Sprintf("%s%s:", pad, key), str, colorCode, indent, opts)
@@ -301,19 +278,56 @@ func (f *DetailedFormatter) renderFirstKeyValueYAML(sb *strings.Builder, key str
 		}
 	case map[string]interface{}:
 		f.writeColoredLine(sb, fmt.Sprintf("%s- %s:", pad, key), colorCode, opts)
-		for k, value := range v {
-			f.renderKeyValueYAML(sb, k, value, indent+4, colorCode, opts)
+		for _, k := range sortedMapKeys(v) {
+			f.renderKeyValueYAML(sb, k, v[k], indent+4, colorCode, opts)
 		}
 	case []interface{}:
 		f.writeColoredLine(sb, fmt.Sprintf("%s- %s:", pad, key), colorCode, opts)
-		for _, item := range v {
-			f.writeColoredLine(sb, fmt.Sprintf("%s    - %v", pad, formatDetailedValue(item)), colorCode, opts)
-		}
+		f.renderListItems(sb, v, indent+4, colorCode, opts)
 	default:
 		if str, ok := val.(string); ok && strings.Contains(str, "\n") {
 			f.renderMultilineValue(sb, fmt.Sprintf("%s- %s:", pad, key), str, colorCode, indent+2, opts)
 		} else {
 			f.writeColoredLine(sb, fmt.Sprintf("%s- %s: %v", pad, key, formatDetailedValue(val)), colorCode, opts)
+		}
+	}
+}
+
+// sortedMapKeys returns the keys of a map[string]interface{} in sorted order.
+func sortedMapKeys(m map[string]interface{}) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+// renderListItems renders items of a []interface{} list with proper type dispatch.
+// Structured items (*OrderedMap, map[string]interface{}) are rendered using YAML-style
+// key-value methods. Scalars use formatDetailedValue().
+func (f *DetailedFormatter) renderListItems(sb *strings.Builder, items []interface{}, indent int, colorCode string, opts *FormatOptions) {
+	for _, item := range items {
+		switch v := item.(type) {
+		case *OrderedMap:
+			for i, key := range v.Keys {
+				if i == 0 {
+					f.renderFirstKeyValueYAML(sb, key, v.Values[key], indent, colorCode, opts)
+				} else {
+					f.renderKeyValueYAML(sb, key, v.Values[key], indent+2, colorCode, opts)
+				}
+			}
+		case map[string]interface{}:
+			for i, key := range sortedMapKeys(v) {
+				if i == 0 {
+					f.renderFirstKeyValueYAML(sb, key, v[key], indent, colorCode, opts)
+				} else {
+					f.renderKeyValueYAML(sb, key, v[key], indent+2, colorCode, opts)
+				}
+			}
+		default:
+			pad := strings.Repeat(" ", indent)
+			f.writeColoredLine(sb, fmt.Sprintf("%s- %v", pad, formatDetailedValue(item)), colorCode, opts)
 		}
 	}
 }

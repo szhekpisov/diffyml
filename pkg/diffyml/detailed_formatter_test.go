@@ -3626,3 +3626,184 @@ func TestDetailedFormatter_CertInspection_NonStringValues(t *testing.T) {
 		t.Errorf("expected normal value change output, got:\n%s", output)
 	}
 }
+
+// Tests for nested list rendering (renderListItems and fixed []interface{} branches)
+
+func TestDetailedFormatter_RenderListItems_OrderedMapInList(t *testing.T) {
+	f, _ := GetFormatter("detailed")
+	opts := DefaultFormatOptions()
+	opts.OmitHeader = true
+
+	// Simulate volumeMounts-style data: list of *OrderedMap items
+	mount1 := NewOrderedMap()
+	mount1.Keys = append(mount1.Keys, "name", "mountPath")
+	mount1.Values["name"] = "config-vol"
+	mount1.Values["mountPath"] = "/config"
+
+	mount2 := NewOrderedMap()
+	mount2.Keys = append(mount2.Keys, "name", "mountPath")
+	mount2.Values["name"] = "data-vol"
+	mount2.Values["mountPath"] = "/data"
+
+	container := NewOrderedMap()
+	container.Keys = append(container.Keys, "name", "volumeMounts")
+	container.Values["name"] = "app"
+	container.Values["volumeMounts"] = []interface{}{mount1, mount2}
+
+	diffs := []Difference{
+		{Path: "containers.0", Type: DiffAdded, To: container},
+	}
+	output := f.Format(diffs, opts)
+
+	// Must NOT contain raw Go struct representation
+	if strings.Contains(output, "&{") {
+		t.Errorf("output contains raw Go struct '&{', got:\n%s", output)
+	}
+	if strings.Contains(output, "0x") {
+		t.Errorf("output contains pointer address '0x', got:\n%s", output)
+	}
+	// Must contain properly rendered YAML
+	if !strings.Contains(output, "- name: config-vol") {
+		t.Errorf("expected '- name: config-vol', got:\n%s", output)
+	}
+	if !strings.Contains(output, "  mountPath: /config") {
+		t.Errorf("expected '  mountPath: /config', got:\n%s", output)
+	}
+	if !strings.Contains(output, "- name: data-vol") {
+		t.Errorf("expected '- name: data-vol', got:\n%s", output)
+	}
+}
+
+func TestDetailedFormatter_RenderListItems_NestedOrderedMapInList(t *testing.T) {
+	f, _ := GetFormatter("detailed")
+	opts := DefaultFormatOptions()
+	opts.OmitHeader = true
+
+	// Simulate env with nested valueFrom.fieldRef
+	fieldRef := NewOrderedMap()
+	fieldRef.Keys = append(fieldRef.Keys, "fieldPath")
+	fieldRef.Values["fieldPath"] = "status.hostIP"
+
+	valueFrom := NewOrderedMap()
+	valueFrom.Keys = append(valueFrom.Keys, "fieldRef")
+	valueFrom.Values["fieldRef"] = fieldRef
+
+	envVar := NewOrderedMap()
+	envVar.Keys = append(envVar.Keys, "name", "valueFrom")
+	envVar.Values["name"] = "DD_AGENT_HOST"
+	envVar.Values["valueFrom"] = valueFrom
+
+	container := NewOrderedMap()
+	container.Keys = append(container.Keys, "name", "env")
+	container.Values["name"] = "app"
+	container.Values["env"] = []interface{}{envVar}
+
+	diffs := []Difference{
+		{Path: "containers.0", Type: DiffAdded, To: container},
+	}
+	output := f.Format(diffs, opts)
+
+	if strings.Contains(output, "&{") {
+		t.Errorf("output contains raw Go struct, got:\n%s", output)
+	}
+	if strings.Contains(output, "0x") {
+		t.Errorf("output contains pointer address, got:\n%s", output)
+	}
+	if !strings.Contains(output, "- name: DD_AGENT_HOST") {
+		t.Errorf("expected '- name: DD_AGENT_HOST', got:\n%s", output)
+	}
+	if !strings.Contains(output, "fieldPath: status.hostIP") {
+		t.Errorf("expected 'fieldPath: status.hostIP', got:\n%s", output)
+	}
+}
+
+func TestDetailedFormatter_RenderKeyValueYAML_ListWithStructuredItems(t *testing.T) {
+	f, _ := GetFormatter("detailed")
+	opts := DefaultFormatOptions()
+	opts.OmitHeader = true
+
+	// renderKeyValueYAML []interface{} branch: map entry whose value is a list of structured items
+	item := NewOrderedMap()
+	item.Keys = append(item.Keys, "name", "port")
+	item.Values["name"] = "http"
+	item.Values["port"] = 8080
+
+	diffs := []Difference{
+		{Path: "spec.ports", Type: DiffAdded, To: []interface{}{item}},
+	}
+	output := f.Format(diffs, opts)
+
+	if strings.Contains(output, "&{") {
+		t.Errorf("output contains raw Go struct, got:\n%s", output)
+	}
+	if !strings.Contains(output, "- name: http") {
+		t.Errorf("expected '- name: http', got:\n%s", output)
+	}
+	if !strings.Contains(output, "port: 8080") {
+		t.Errorf("expected 'port: 8080', got:\n%s", output)
+	}
+}
+
+func TestDetailedFormatter_RenderFirstKeyValueYAML_ListWithStructuredItems(t *testing.T) {
+	f, _ := GetFormatter("detailed")
+	opts := DefaultFormatOptions()
+	opts.OmitHeader = true
+
+	// renderFirstKeyValueYAML []interface{} branch: first key of a list entry has structured list value
+	secretRef := NewOrderedMap()
+	secretRef.Keys = append(secretRef.Keys, "name")
+	secretRef.Values["name"] = "my-secret"
+
+	envFromItem := NewOrderedMap()
+	envFromItem.Keys = append(envFromItem.Keys, "secretRef")
+	envFromItem.Values["secretRef"] = secretRef
+
+	container := NewOrderedMap()
+	container.Keys = append(container.Keys, "envFrom")
+	container.Values["envFrom"] = []interface{}{envFromItem}
+
+	diffs := []Difference{
+		{Path: "containers.0", Type: DiffAdded, To: container},
+	}
+	output := f.Format(diffs, opts)
+
+	if strings.Contains(output, "&{") {
+		t.Errorf("output contains raw Go struct, got:\n%s", output)
+	}
+	if strings.Contains(output, "0x") {
+		t.Errorf("output contains pointer address, got:\n%s", output)
+	}
+	if !strings.Contains(output, "secretRef:") {
+		t.Errorf("expected 'secretRef:', got:\n%s", output)
+	}
+	if !strings.Contains(output, "name: my-secret") {
+		t.Errorf("expected 'name: my-secret', got:\n%s", output)
+	}
+}
+
+func TestDetailedFormatter_RenderEntryValue_ListWithMixedItems(t *testing.T) {
+	f, _ := GetFormatter("detailed")
+	opts := DefaultFormatOptions()
+	opts.OmitHeader = true
+
+	// renderEntryValue []interface{} branch with mixed scalar and structured items
+	item := NewOrderedMap()
+	item.Keys = append(item.Keys, "key", "value")
+	item.Values["key"] = "foo"
+	item.Values["value"] = "bar"
+
+	diffs := []Difference{
+		{Path: "items.0", Type: DiffAdded, To: []interface{}{"scalar-val", item}},
+	}
+	output := f.Format(diffs, opts)
+
+	if strings.Contains(output, "&{") {
+		t.Errorf("output contains raw Go struct, got:\n%s", output)
+	}
+	if !strings.Contains(output, "- scalar-val") {
+		t.Errorf("expected '- scalar-val', got:\n%s", output)
+	}
+	if !strings.Contains(output, "- key: foo") {
+		t.Errorf("expected '- key: foo', got:\n%s", output)
+	}
+}

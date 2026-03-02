@@ -6,8 +6,10 @@
 package diffyml
 
 import (
+	"cmp"
 	"fmt"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -23,12 +25,9 @@ func compareDocs(from, to []interface{}, opts *Options) []Difference {
 
 	// For simplicity, compare document by document
 	// If document counts differ, that's handled by comparing indices
-	maxLen := len(from)
-	if len(to) > maxLen {
-		maxLen = len(to)
-	}
+	maxLen := max(len(from), len(to))
 
-	for i := 0; i < maxLen; i++ {
+	for i := range maxLen {
 		var fromDoc, toDoc interface{}
 		if i < len(from) {
 			fromDoc = from[i]
@@ -333,43 +332,32 @@ func areListItemsHeterogeneous(from, to []interface{}) bool {
 func compareListsPositional(path string, from, to []interface{}, opts *Options) []Difference {
 	var diffs []Difference
 
-	maxLen := len(from)
-	if len(to) > maxLen {
-		maxLen = len(to)
-	}
+	minLen := min(len(from), len(to))
 
-	for i := 0; i < maxLen; i++ {
+	// Compare elements present in both lists
+	for i := range minLen {
 		childPath := fmt.Sprintf("%s.%d", path, i)
-		var fromVal, toVal interface{}
-
-		if i < len(from) {
-			fromVal = from[i]
-		}
-		if i < len(to) {
-			toVal = to[i]
-		}
-
-		//nolint:gocritic // if-else kept intentionally: switch/case conditions fall outside Go coverage blocks, causing gremlins to misclassify mutations as NOT COVERED
-		if i >= len(from) {
-			// Item was added
-			diffs = append(diffs, Difference{
-				Path: cleanPath(childPath),
-				Type: DiffAdded,
-				From: nil,
-				To:   toVal,
-			})
-		} else if i >= len(to) {
-			// Item was removed
-			diffs = append(diffs, Difference{
-				Path: cleanPath(childPath),
-				Type: DiffRemoved,
-				From: fromVal,
-				To:   nil,
-			})
-		} else {
-			// Both exist - recurse
-			diffs = append(diffs, compareNodes(childPath, fromVal, toVal, opts)...)
-		}
+		diffs = append(diffs, compareNodes(childPath, from[i], to[i], opts)...)
+	}
+	// Items added (present in 'to' but not 'from')
+	for i := minLen; i < len(to); i++ {
+		childPath := fmt.Sprintf("%s.%d", path, i)
+		diffs = append(diffs, Difference{
+			Path: cleanPath(childPath),
+			Type: DiffAdded,
+			From: nil,
+			To:   to[i],
+		})
+	}
+	// Items removed (present in 'from' but not 'to')
+	for i := minLen; i < len(from); i++ {
+		childPath := fmt.Sprintf("%s.%d", path, i)
+		diffs = append(diffs, Difference{
+			Path: cleanPath(childPath),
+			Type: DiffRemoved,
+			From: from[i],
+			To:   nil,
+		})
 	}
 
 	return diffs
@@ -466,13 +454,66 @@ func compareListsByIdentifier(path string, from, to []interface{}, opts *Options
 	// Build index of to items by identifier.
 	toIndex := make(map[interface{}]int)
 	toNoID := make([]int, 0)
+	toIDCount := 0
 	for i, item := range to {
 		id := getIdentifier(item, opts)
 		if isComparableIdentifier(id) {
+			toIDCount++
 			toIndex[id] = i
 			continue
 		}
 		toNoID = append(toNoID, i)
+	}
+
+	// Detect order changes among matched identifiers.
+	// Only when identifiers are unique in both lists (duplicates make order comparison meaningless).
+	hasUniqueIDs := len(fromIDs) == len(fromIndex) && len(toIndex) == toIDCount
+	if hasUniqueIDs && (opts == nil || !opts.IgnoreOrderChanges) {
+		// Collect identifiers that exist in both, in from-order
+		var commonFromOrder []interface{}
+		for _, id := range fromIDs {
+			if _, ok := toIndex[id]; ok {
+				commonFromOrder = append(commonFromOrder, id)
+			}
+		}
+
+		if len(commonFromOrder) >= 2 {
+			// Build to-order for the common identifiers
+			// Collect (toIdx, id) pairs for common IDs, then sort by toIdx
+			type idxID struct {
+				idx int
+				id  interface{}
+			}
+			var toSorted []idxID
+			for _, id := range commonFromOrder {
+				toSorted = append(toSorted, idxID{toIndex[id], id})
+			}
+			slices.SortFunc(toSorted, func(a, b idxID) int {
+				return cmp.Compare(a.idx, b.idx)
+			})
+
+			// Check if from-order and to-order differ
+			orderChanged := false
+			for i, id := range commonFromOrder {
+				if id != toSorted[i].id {
+					orderChanged = true
+					break
+				}
+			}
+
+			if orderChanged {
+				toOrder := make([]interface{}, len(toSorted))
+				for i, s := range toSorted {
+					toOrder[i] = s.id
+				}
+				diffs = append(diffs, Difference{
+					Path: cleanPath(path),
+					Type: DiffOrderChanged,
+					From: commonFromOrder,
+					To:   toOrder,
+				})
+			}
+		}
 	}
 
 	// Compare items with matching identifiers (in order they appear in 'from')
@@ -640,3 +681,6 @@ func joinPath(base, key string) string {
 func cleanPath(path string) string {
 	return strings.TrimPrefix(path, ".")
 }
+
+// countToIDs counts the total number of items with comparable identifiers in a list.
+// Used to detect duplicate identifiers (if count != len(toIndex), there are duplicates).

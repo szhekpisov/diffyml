@@ -10,6 +10,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strings"
+	"time"
 )
 
 // Formatter formats differences for output.
@@ -250,6 +251,9 @@ func (f *CompactFormatter) formatValuesInline(sb *strings.Builder, diff Differen
 func formatValue(val interface{}) string {
 	if val == nil {
 		return "<nil>"
+	}
+	if t, ok := val.(time.Time); ok {
+		return formatTimestamp(t)
 	}
 
 	if s, ok := marshalStructuredYAML(val); ok {

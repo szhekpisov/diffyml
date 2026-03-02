@@ -1,0 +1,14 @@
+Found three differences
+
+global_defaults.2
+  + one list entry added:
+    - x10
+
+cluster-1.0.2
+  + one list entry added:
+    - x10
+
+cluster-1.1
+  + one list entry added:
+    - x999
+

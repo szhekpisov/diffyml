@@ -1012,8 +1012,18 @@ spec:
 	if !hasImageChange {
 		t.Error("expected hook-b- image modification to be detected")
 	}
-	if len(diffs) != 1 {
-		t.Errorf("expected exactly 1 diff (image change), got %d", len(diffs))
+	// 2 diffs: 1 order change (documents reordered) + 1 image change
+	hasOrderChange := false
+	for _, d := range diffs {
+		if d.Type == DiffOrderChanged {
+			hasOrderChange = true
+		}
+	}
+	if !hasOrderChange {
+		t.Error("expected order change to be detected for reordered K8s documents")
+	}
+	if len(diffs) != 2 {
+		t.Errorf("expected exactly 2 diffs (order change + image change), got %d", len(diffs))
 	}
 }
 

@@ -1,0 +1,15 @@
+Found two differences
+
+foo
+  ± type change from map to list
+    - a: 1
+    - b: 2
+    + - 1
+    + - 2
+
+bar
+  ± type change from map to null
+    - c: 3
+    - d: 4
+    + <nil>
+

@@ -6,9 +6,14 @@
 package diffyml
 
 import (
+	"cmp"
 	"fmt"
 	"reflect"
+	"slices"
 )
+
+// k8sDocumentPath is the diff path used for document-level changes (e.g. order).
+const k8sDocumentPath = "(document)"
 
 // IsKubernetesResource checks if a document has the structure of a Kubernetes resource.
 // A Kubernetes resource must have apiVersion, kind, and metadata fields,
@@ -231,6 +236,41 @@ func compareK8sDocs(from, to []interface{}, opts *Options) []Difference {
 	var diffs []Difference
 
 	matched, unmatchedFrom, unmatchedTo := matchK8sDocuments(from, to, opts)
+	ignoreApiVersion := opts != nil && opts.IgnoreApiVersion
+
+	// Detect document order changes
+	if !opts.IgnoreOrderChanges && len(matched) >= 2 {
+		// Build sorted (fromIdx, toIdx) pairs in one pass
+		type idxPair struct{ fromIdx, toIdx int }
+		pairs := make([]idxPair, 0, len(matched))
+		for fromIdx, toIdx := range matched {
+			pairs = append(pairs, idxPair{fromIdx, toIdx})
+		}
+		slices.SortFunc(pairs, func(a, b idxPair) int { return cmp.Compare(a.fromIdx, b.fromIdx) })
+
+		// Check if toIdx values are monotonically increasing
+		orderChanged := !slices.IsSortedFunc(pairs, func(a, b idxPair) int { return cmp.Compare(a.toIdx, b.toIdx) })
+
+		if orderChanged {
+			fromOrder := make([]interface{}, len(pairs))
+			for i, p := range pairs {
+				fromOrder[i] = GetK8sResourceIdentifier(from[p.fromIdx], ignoreApiVersion)
+			}
+			// Re-sort by toIdx for to-order
+			slices.SortFunc(pairs, func(a, b idxPair) int { return cmp.Compare(a.toIdx, b.toIdx) })
+			toOrder := make([]interface{}, len(pairs))
+			for i, p := range pairs {
+				toOrder[i] = GetK8sResourceIdentifier(from[p.fromIdx], ignoreApiVersion)
+			}
+
+			diffs = append(diffs, Difference{
+				Path: k8sDocumentPath,
+				Type: DiffOrderChanged,
+				From: fromOrder,
+				To:   toOrder,
+			})
+		}
+	}
 
 	// Compare matched documents
 	for fromIdx, toIdx := range matched {

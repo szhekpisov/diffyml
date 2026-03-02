@@ -1090,7 +1090,7 @@ items:
 	}
 }
 
-func TestCompare_AdditionalIdentifierReorder_NoDiff(t *testing.T) {
+func TestCompare_AdditionalIdentifierReorder_OrderChanged(t *testing.T) {
 	from := yml(`items:
   - key: a
     value: 1
@@ -1110,8 +1110,37 @@ func TestCompare_AdditionalIdentifierReorder_NoDiff(t *testing.T) {
 	if err != nil {
 		t.Fatalf("compare() failed: %v", err)
 	}
+	if len(diffs) != 1 {
+		t.Fatalf("expected 1 diff (order change), got %d", len(diffs))
+	}
+	if diffs[0].Type != diffyml.DiffOrderChanged {
+		t.Errorf("expected DiffOrderChanged, got %v", diffs[0].Type)
+	}
+}
+
+func TestCompare_AdditionalIdentifierReorder_IgnoredWhenConfigured(t *testing.T) {
+	from := yml(`items:
+  - key: a
+    value: 1
+  - key: b
+    value: 2
+`)
+	to := yml(`items:
+  - key: b
+    value: 2
+  - key: a
+    value: 1
+`)
+
+	diffs, err := compare(from, to, &diffyml.Options{
+		AdditionalIdentifiers: []string{"key"},
+		IgnoreOrderChanges:    true,
+	})
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
 	if len(diffs) != 0 {
-		t.Fatalf("expected no diffs with additional identifier, got %d", len(diffs))
+		t.Fatalf("expected no diffs with IgnoreOrderChanges, got %d", len(diffs))
 	}
 }
 
@@ -1490,5 +1519,384 @@ func TestCompare_UnorderedListNullVsValue(t *testing.T) {
 	// "hello" removed and null added — at least 1 diff expected
 	if len(diffs) == 0 {
 		t.Fatal("expected diffs when replacing a value with null, got 0")
+	}
+}
+
+// --- Tests adapted from dyff edge cases ---
+
+func TestCompare_BooleanNormalization(t *testing.T) {
+	// dyff issue: different representations of true (true vs True) should be identical.
+	from := yml(`---
+key: true`)
+	to := yml(`---
+key: True`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if len(diffs) != 0 {
+		t.Errorf("expected 0 diffs for boolean normalization (true vs True), got %d", len(diffs))
+	}
+}
+
+func TestCompare_BooleanNormalizationFalse(t *testing.T) {
+	from := yml(`---
+key: false`)
+	to := yml(`---
+key: False`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if len(diffs) != 0 {
+		t.Errorf("expected 0 diffs for boolean normalization (false vs False), got %d", len(diffs))
+	}
+}
+
+func TestCompare_DeterministicResults(t *testing.T) {
+	// dyff issue-525: comparison must produce deterministic results regardless
+	// of Go map iteration order.
+	from := yml(`name: a-type-of-file
+allowed:
+  - digest: sha256:1111111111111111111111111111111111111111111111111111111111111111
+    image: name/container
+    registry: ghcr.io
+    tag: 1.2.3
+    field:
+      - test
+  - digest: sha256:22222222222222222222222222222222222222222222222222222222222222222
+    image: yes/i-am-an-image
+    registry: docker.io
+    tag: 1.2.3-test_with.symbols
+  - digest: sha256:33333333333333333333333333333333333333333333333333333333333333333
+    image: another/image
+    registry: gcr.io
+    tag: 3.2.1
+  - digest: sha256:4444444444444444444444444444444444444444444444444444444444444444
+    image: oh-look/another-image
+    registry: quay.io
+    tag: 3.1.2-test-with-dashes
+  - digest: sha256:5555555555555555555555555555555555555555555555555555555555555555
+    image: you-would-not/guess
+    registry: docker.io
+    tag: 1.3.2
+  - digest: sha256:6666666666666666666666666666666666666666666666666666666666666666
+    image: no-way/this-is-an-image
+    registry: guess.io
+    tag: latest`)
+	to := yml(`name: a-type-of-file
+allowed:
+  - digest: sha256:1111111111111111111111111111111111111111111111111111111111111111
+    image: name/container
+    registry: ghcr.io
+    tag: 1.2.4
+    field:
+      - test
+  - digest: sha256:22222222222222222222222222222222222222222222222222222222222222222
+    image: yes/i-am-an-image
+    registry: docker.io
+    tag: 1.2.4-test_with.symbols
+  - digest: sha256:33333333333333333333333333333333333333333333333333333333333333333
+    image: another/image
+    registry: gcr.io
+    tag: 3.2.1
+  - digest: sha256:4444444444444444444444444444444444444444444444444444444444444444
+    image: oh-look/another-flaky
+    registry: quay.io
+    tag: 3.1.2-test-with-dashes
+  - digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+    image: you-would-not/guess
+    registry: docker.io
+    tag: 1.3.2
+  - digest: sha256:6666666666666666666666666666666666666666666666666666666666666666
+    image: no-way/this-is-an-image
+    registry: guess.io
+    tag: latest
+  - digest: sha256:6666666666666666666666666666666666666666666666666666666666666666
+    image: additional/image
+    registry: new.io
+    tag: 9.8.7`)
+
+	// Run 100 times to catch non-deterministic map iteration order.
+	var expectedCount int
+	for i := range 100 {
+		diffs, err := compare(from, to, nil)
+		if err != nil {
+			t.Fatalf("compare() failed on iteration %d: %v", i, err)
+		}
+		if i == 0 {
+			expectedCount = len(diffs)
+			if expectedCount == 0 {
+				t.Fatal("expected at least 1 diff")
+			}
+		} else if len(diffs) != expectedCount {
+			t.Fatalf("non-deterministic: iteration %d got %d diffs, expected %d",
+				i, len(diffs), expectedCount)
+		}
+	}
+}
+
+func TestCompare_DateStringEdgeCases(t *testing.T) {
+	// dyff issue-217: various date-like strings must not be modified or misinterpreted.
+	from := yml(`---
+Datestring: 2033-12-20
+ThirteenthMonth: 2033-13-20
+FortyDays: 2033-13-40
+TheYear9999: 9999-11-20
+OneShortDatestring: 999-99-99
+ExtDatestring: 2021-01-01-04-05
+DatestringFake: 9999-99-99
+DatestringNonHyphenated: 99999999
+DatestringOneHyphen: 9999-9999
+DatestringSlashes: 2022/01/01`)
+	to := yml(`---
+Datestring: 2033-12-20
+ThirteenthMonth: 2033-13-20
+FortyDays: 2033-13-40
+TheYear9999: 9999-11-20
+OneShortDatestring: 999-99-99
+ExtDatestring: 2021-01-01-04-05
+DatestringFake: 9999-99-99
+DatestringNonHyphenated: 99999999
+DatestringOneHyphen: 9999-9999
+DatestringSlashes: 2022/01/01`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if len(diffs) != 0 {
+		t.Errorf("expected 0 diffs for identical date strings, got %d", len(diffs))
+		for _, d := range diffs {
+			t.Logf("  diff: path=%q type=%v from=%v to=%v", d.Path, d.Type, d.From, d.To)
+		}
+	}
+}
+
+func TestCompare_YAMLAnchorsAndAliases(t *testing.T) {
+	// dyff issue-76: YAML anchors and aliases must be resolved before comparison.
+	from := yml(`---
+global_defaults: &global_defaults
+  - x1
+  - x5
+cluster-1:
+  - *global_defaults`)
+	to := yml(`---
+global_defaults: &global_defaults
+  - x1
+  - x5
+  - x10
+cluster-1:
+  - *global_defaults
+  - x999`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if len(diffs) == 0 {
+		t.Fatal("expected diffs for YAML anchor changes, got 0")
+	}
+	// Should detect the added x10 in global_defaults and x999 in cluster-1
+	hasGlobalAdd := false
+	hasClusterAdd := false
+	for _, d := range diffs {
+		if d.Type == diffyml.DiffAdded {
+			if strings.HasPrefix(d.Path, "global_defaults") {
+				hasGlobalAdd = true
+			}
+			if strings.HasPrefix(d.Path, "cluster-1") {
+				hasClusterAdd = true
+			}
+		}
+	}
+	if !hasGlobalAdd {
+		t.Error("expected addition in global_defaults")
+	}
+	if !hasClusterAdd {
+		t.Error("expected addition in cluster-1")
+	}
+}
+
+func TestCompare_TypeChangeMapToList(t *testing.T) {
+	// dyff issue-89: type change from map to list must be reported.
+	from := yml(`---
+foo:
+  a: 1
+  b: 2`)
+	to := yml(`---
+foo:
+  - 1
+  - 2`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if len(diffs) == 0 {
+		t.Fatal("expected diffs for map-to-list type change, got 0")
+	}
+	if !hasDiffType(diffs, diffyml.DiffModified) {
+		t.Error("expected DiffModified for type change from map to list")
+	}
+}
+
+func TestCompare_TypeChangeMapToNull(t *testing.T) {
+	// dyff issue-89: type change from map to null must be reported.
+	from := yml(`---
+bar:
+  c: 3
+  d: 4`)
+	to := yml(`---
+bar:`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if len(diffs) == 0 {
+		t.Fatal("expected diffs for map-to-null type change, got 0")
+	}
+}
+
+func TestCompare_EmptyDocumentsIgnored(t *testing.T) {
+	// Empty documents (extra --- separators) are filtered by the CLI pipeline.
+	// At the Compare level, they cause positional mismatches.
+	// This test verifies Compare doesn't crash on empty documents.
+	// The fixture test 044-empty-documents-ignored verifies the full CLI behavior.
+	from := yml(`apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: x
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: y`)
+	to := yml(`apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: x
+---
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: y
+---`)
+
+	_, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() should not error on empty documents: %v", err)
+	}
+}
+
+func TestCompare_K8sDocumentAdded(t *testing.T) {
+	// dyff compare_test: adding a new K8s document should be reported.
+	from := yml(`apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: x`)
+	to := yml(`apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: x
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: y`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if !hasDiffType(diffs, diffyml.DiffAdded) {
+		t.Error("expected DiffAdded for new K8s document")
+	}
+}
+
+func TestCompare_K8sDocumentRemoved(t *testing.T) {
+	// Removing a K8s document should be reported as a diff.
+	// At the Compare level, a document present in from but not in to is
+	// reported as DiffModified (from=doc, to=nil).
+	from := yml(`apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: x
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: y`)
+	to := yml(`apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: x`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if len(diffs) == 0 {
+		t.Fatal("expected diffs for removed K8s document, got 0")
+	}
+	// The removed document should appear in the diff path as [1]
+	found := false
+	for _, d := range diffs {
+		if strings.HasPrefix(d.Path, "[1]") {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected diff for second document [1]")
+	}
+}
+
+func TestCompare_TemplateVariablesPreserved(t *testing.T) {
+	// dyff issue-132: template variables must not be evaluated.
+	from := yml(`---
+example_one: "%{one}"
+example_two: "two"`)
+	to := yml(`---
+example_one: "one"
+example_two: "%{two}"`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if len(diffs) != 2 {
+		t.Fatalf("expected 2 diffs (both values changed), got %d", len(diffs))
+	}
+	if !hasModification(diffs, "%{one}", "one") {
+		t.Error("expected modification from '%{one}' to 'one'")
+	}
+	if !hasModification(diffs, "two", "%{two}") {
+		t.Error("expected modification from 'two' to '%{two}'")
+	}
+}
+
+func TestCompare_DuplicateListEntries(t *testing.T) {
+	// dyff issue-143: lists with duplicate entries must be handled correctly.
+	from := yml(`keys:
+  - value1
+  - value2`)
+	to := yml(`keys:
+  - value1
+  - value2
+  - value1`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if len(diffs) != 1 {
+		t.Fatalf("expected 1 diff (added duplicate), got %d", len(diffs))
+	}
+	if diffs[0].Type != diffyml.DiffAdded {
+		t.Errorf("expected DiffAdded, got %v", diffs[0].Type)
 	}
 }

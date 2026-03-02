@@ -621,3 +621,98 @@ func TestDetectRenames_SizeRatioSwapOrder(t *testing.T) {
 		t.Errorf("expected 1 remaining to, got %d", len(remainTo))
 	}
 }
+
+func TestDetectRenames_SizeRatioBypassGuard(t *testing.T) {
+	// Targets mutations that disable the size-ratio early rejection:
+	//   - NEGATION on `maxLen > 0` → `<= 0` (makes condition always false)
+	//   - ARITHMETIC on `minLen*100/maxLen` (produces wrong ratio)
+	//
+	// We construct a pair where byte-size ratio < 60% but line similarity >= 60%.
+	// The small doc shares most lines with the large doc, but the large doc
+	// has extra entries with very long values that inflate its byte count.
+	// Without the size-ratio guard, similarity scoring would match them.
+
+	smallDoc := mkK8sConfigMap("small-cfg", []string{"k1", "k2", "k3", "k4", "k5"})
+
+	// Large doc: same shared keys + extra entries with very long values
+	largeDoc := mkMinK8sDoc("large-cfg")
+	dataMap := NewOrderedMap()
+	for _, k := range []string{"k1", "k2", "k3", "k4", "k5"} {
+		dataMap.Keys = append(dataMap.Keys, k)
+		dataMap.Values[k] = "value"
+	}
+	for i := 0; i < 5; i++ {
+		key := fmt.Sprintf("long%d", i)
+		dataMap.Keys = append(dataMap.Keys, key)
+		dataMap.Values[key] = strings.Repeat("x", 300)
+	}
+	largeDoc.Keys = append(largeDoc.Keys, "data")
+	largeDoc.Values["data"] = dataMap
+
+	// Verify preconditions: size ratio < 60% but similarity >= 60%
+	fromData := serializeDocument(smallDoc)
+	toData := serializeDocument(largeDoc)
+	fromIdx := newSimilarityIndex(fromData)
+	toIdx := newSimilarityIndex(toData)
+
+	sizeRatio := min(len(fromData), len(toData)) * 100 / max(len(fromData), len(toData))
+	similarity := fromIdx.score(toIdx)
+
+	if sizeRatio >= renameScoreThreshold {
+		t.Fatalf("precondition failed: size ratio %d%% >= threshold %d%%, need < threshold",
+			sizeRatio, renameScoreThreshold)
+	}
+	if similarity < renameScoreThreshold {
+		t.Fatalf("precondition failed: similarity %d%% < threshold %d%%, need >= threshold",
+			similarity, renameScoreThreshold)
+	}
+
+	from := []interface{}{smallDoc}
+	to := []interface{}{largeDoc}
+	opts := &Options{DetectRenames: true}
+	matched, _, _ := detectRenames(from, to, []int{0}, []int{0}, opts)
+
+	// Size-ratio check should reject this pair despite high similarity
+	if len(matched) != 0 {
+		t.Errorf("expected 0 matches (size-ratio rejection), got %d; "+
+			"size ratio=%d%%, similarity=%d%%", len(matched), sizeRatio, similarity)
+	}
+}
+
+func TestDetectRenames_SortTiebreaker_LargeInput(t *testing.T) {
+	// Targets BOUNDARY mutants on the sort comparator (lines 163-171):
+	//   - `score > score` → `>=` (non-irreflexive)
+	//   - `toIdx < toIdx` → `<=` (non-irreflexive)
+	// Non-irreflexive comparators can cause Go's pdqsort (used for n > 12)
+	// to produce incorrect sort results.
+	//
+	// We use 5×5 = 25 rename pairs (all same score) so that pdqsort is
+	// exercised instead of insertionSort, and verify deterministic assignment.
+
+	n := 5
+	from := make([]interface{}, n)
+	to := make([]interface{}, n)
+	unmatchedFrom := make([]int, n)
+	unmatchedTo := make([]int, n)
+
+	sharedKeys := []string{"shared1", "shared2", "shared3", "shared4", "shared5"}
+	for i := 0; i < n; i++ {
+		from[i] = mkK8sConfigMap(fmt.Sprintf("from-%d", i), sharedKeys)
+		to[i] = mkK8sConfigMap(fmt.Sprintf("to-%d", i), sharedKeys)
+		unmatchedFrom[i] = i
+		unmatchedTo[i] = i
+	}
+
+	opts := &Options{DetectRenames: true}
+	matched, _, _ := detectRenames(from, to, unmatchedFrom, unmatchedTo, opts)
+
+	if len(matched) != n {
+		t.Fatalf("expected %d matches, got %d", n, len(matched))
+	}
+	// With ascending fromIdx/toIdx tiebreaker: from[i]→to[i]
+	for i := 0; i < n; i++ {
+		if matched[i] != i {
+			t.Errorf("expected from[%d]→to[%d], got from[%d]→to[%d]", i, i, i, matched[i])
+		}
+	}
+}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestGetFormatter_Compact(t *testing.T) {
@@ -2018,4 +2019,22 @@ func TestFormatValue_ScalarUnchanged(t *testing.T) {
 	if got := formatValue(nil); got != "<nil>" {
 		t.Errorf("expected '<nil>', got: %s", got)
 	}
+}
+
+func TestFormatValue_Timestamp(t *testing.T) {
+	t.Run("date only", func(t *testing.T) {
+		ts := time.Date(2010, 9, 9, 0, 0, 0, 0, time.UTC)
+		got := formatValue(ts)
+		if got != "2010-09-09" {
+			t.Errorf("expected 2010-09-09, got %s", got)
+		}
+	})
+
+	t.Run("datetime", func(t *testing.T) {
+		ts := time.Date(2023, 6, 15, 14, 30, 0, 0, time.UTC)
+		got := formatValue(ts)
+		if got != "2023-06-15T14:30:00Z" {
+			t.Errorf("expected 2023-06-15T14:30:00Z, got %s", got)
+		}
+	})
 }

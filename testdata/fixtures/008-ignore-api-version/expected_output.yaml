@@ -1,4 +1,9 @@
-Found four differences
+Found five differences
+
+(document)
+  ⇆ order changed
+    - Deployment:production/web-app, ConfigMap:production/app-config
+    + ConfigMap:production/app-config, Deployment:production/web-app
 
 0:apiVersion
   ± value change

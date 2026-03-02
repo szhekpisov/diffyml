@@ -1,0 +1,17 @@
+Found three differences
+
+scrape_configs
+  ⇆ order changed
+    - kubernetes-nodes, kubernetes-apiservers, kubernetes-cadvisor
+    + kubernetes-apiservers, kubernetes-nodes, kubernetes-cadvisor
+
+scrape_configs.kubernetes-apiservers.scheme
+  ± value change
+    - http
+    + https
+
+scrape_configs.kubernetes-apiservers.relabel_configs.0.regex
+  ± value change
+    - default;kubernetes;http
+    + default;kubernetes;https
+

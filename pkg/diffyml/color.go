@@ -209,13 +209,7 @@ func GetColorReset() string {
 	return colorReset
 }
 
-// clamp restricts a value to the range [min, max].
-func clamp(val, min, max int) int {
-	if val < min {
-		return min
-	}
-	if val > max {
-		return max
-	}
-	return val
+// clamp restricts a value to the range [lo, hi].
+func clamp(val, lo, hi int) int {
+	return max(lo, min(val, hi))
 }

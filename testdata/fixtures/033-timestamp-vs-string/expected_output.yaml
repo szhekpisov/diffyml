@@ -1,0 +1,7 @@
+Found one difference
+
+AWSTemplateFormatVersion
+  ± type change from timestamp to string
+    - 2010-09-09
+    + 2010-09-09
+

@@ -264,6 +264,32 @@ alpha:
 	}
 }
 
+func TestSortDiffsWithOrder_OneHasOrderOtherNot(t *testing.T) {
+	// Exercises the branch where within the same root, one path has a
+	// pathOrder entry and the other doesn't. The one with order should
+	// come first regardless of alphabetical ordering.
+	pathOrder := map[string]int{
+		"root":       0,
+		"root.zebra": 1,
+		// "root.apple" intentionally absent from pathOrder
+	}
+
+	diffs := []Difference{
+		{Path: "root.apple", Type: DiffModified, From: "a", To: "b"},
+		{Path: "root.zebra", Type: DiffModified, From: "c", To: "d"},
+	}
+
+	sortDiffsWithOrder(diffs, pathOrder)
+
+	// root.zebra has pathOrder entry → should come first
+	if diffs[0].Path != "root.zebra" {
+		t.Errorf("expected root.zebra first (has order), got %s", diffs[0].Path)
+	}
+	if diffs[1].Path != "root.apple" {
+		t.Errorf("expected root.apple second (no order), got %s", diffs[1].Path)
+	}
+}
+
 func TestSortDiffsWithOrder_MultipleRoots(t *testing.T) {
 	// Exercises multiple roots with document-order sorting.
 	// Kills mutant at line 305 (orderI < orderJ).

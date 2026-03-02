@@ -2,7 +2,9 @@
 package diffyml
 
 import (
+	"cmp"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -219,21 +221,19 @@ func isListEntryDiff(diff Difference) bool {
 	}
 
 	// Check for dot notation .0, .1, etc. (path ends with .digit)
-	if len(path) > 1 {
-		lastDot := strings.LastIndex(path, ".")
-		if lastDot >= 0 && lastDot < len(path)-1 {
-			suffix := path[lastDot+1:]
-			// Check if suffix is all digits
-			isDigit := true
-			for _, c := range suffix {
-				if c < '0' || c > '9' {
-					isDigit = false
-					break
-				}
+	lastDot := strings.LastIndex(path, ".")
+	if lastDot >= 0 && lastDot < len(path)-1 {
+		suffix := path[lastDot+1:]
+		// Check if suffix is all digits
+		isDigit := true
+		for _, c := range suffix {
+			if c < '0' || c > '9' {
+				isDigit = false
+				break
 			}
-			if isDigit {
-				return true
-			}
+		}
+		if isDigit {
+			return true
 		}
 	}
 
@@ -269,11 +269,24 @@ func isListEntryDiff(diff Difference) bool {
 }
 
 func sortDiffsWithOrder(diffs []Difference, pathOrder map[string]int) {
-	sort.SliceStable(diffs, func(i, j int) bool {
-		pathI := diffs[i].Path
-		pathJ := diffs[j].Path
-		diffI := diffs[i]
-		diffJ := diffs[j]
+	// findParentOrder walks up the path hierarchy to find a parent with a known order.
+	findParentOrder := func(path string) (int, bool) {
+		for {
+			if order, ok := pathOrder[path]; ok {
+				return order, true
+			}
+			lastDot := strings.LastIndex(path, ".")
+			if lastDot == -1 {
+				break
+			}
+			path = path[:lastDot]
+		}
+		return 0, false
+	}
+
+	slices.SortStableFunc(diffs, func(diffI, diffJ Difference) int {
+		pathI := diffI.Path
+		pathJ := diffJ.Path
 
 		// Root-level additions (will be displayed as "(root level)") always come first
 		// These are DiffAdded with no dots in path and not list entries
@@ -281,10 +294,10 @@ func sortDiffsWithOrder(diffs []Difference, pathOrder map[string]int) {
 		isRootAddJ := diffJ.Type == DiffAdded && !strings.Contains(pathJ, ".") && !isListEntryDiff(diffJ)
 
 		if isRootAddI && !isRootAddJ {
-			return true
+			return -1
 		}
 		if !isRootAddI && isRootAddJ {
-			return false
+			return 1
 		}
 
 		// Extract root component (first segment before dot)
@@ -302,9 +315,9 @@ func sortDiffsWithOrder(diffs []Difference, pathOrder map[string]int) {
 			orderI, okI := pathOrder[rootI]
 			orderJ, okJ := pathOrder[rootJ]
 			if okI && okJ {
-				return orderI < orderJ
+				return cmp.Compare(orderI, orderJ)
 			}
-			return rootI < rootJ // Fallback to alphabetical
+			return cmp.Compare(rootI, rootJ) // Fallback to alphabetical
 		}
 
 		// Within same root component, use path order from document
@@ -312,46 +325,31 @@ func sortDiffsWithOrder(diffs []Difference, pathOrder map[string]int) {
 		orderI, okI := pathOrder[pathI]
 		orderJ, okJ := pathOrder[pathJ]
 		if okI && okJ {
-			return orderI < orderJ
+			return cmp.Compare(orderI, orderJ)
 		}
 
 		// If one has order and other doesn't, prefer the one with order
 		if okI && !okJ {
-			return true
+			return -1
 		}
 		if !okI && okJ {
-			return false
-		}
-
-		// Try to find a parent path that has order
-		findParentOrder := func(path string) (int, bool) {
-			for {
-				if order, ok := pathOrder[path]; ok {
-					return order, true
-				}
-				lastDot := strings.LastIndex(path, ".")
-				if lastDot == -1 {
-					break
-				}
-				path = path[:lastDot]
-			}
-			return 0, false
+			return 1
 		}
 
 		parentOrderI, okI := findParentOrder(pathI)
 		parentOrderJ, okJ := findParentOrder(pathJ)
-		if okI && okJ && parentOrderI != parentOrderJ {
-			return parentOrderI < parentOrderJ
+		if okI && okJ {
+			if c := cmp.Compare(parentOrderI, parentOrderJ); c != 0 {
+				return c
+			}
 		}
 
 		// Within same parent, sort by depth first
-		depthI := strings.Count(pathI, ".")
-		depthJ := strings.Count(pathJ, ".")
-		if depthI != depthJ {
-			return depthI < depthJ
+		if c := cmp.Compare(strings.Count(pathI, "."), strings.Count(pathJ, ".")); c != 0 {
+			return c
 		}
 
 		// Then sort alphabetically as last resort
-		return pathI < pathJ
+		return cmp.Compare(pathI, pathJ)
 	})
 }

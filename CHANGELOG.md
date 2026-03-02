@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-03-01
+
+### Added
+
+- Use dyff-style colon notation for multi-document paths (#29) ([#29](https://github.com/szhekpisov/diffyml/pull/29))
+- Implement x509 certificate inspection for PEM certs in YAML diffs (#33) ([#33](https://github.com/szhekpisov/diffyml/pull/33))
+- Implement rename detection for Kubernetes resources in multi-document YAML diffs (#34) ([#34](https://github.com/szhekpisov/diffyml/pull/34))
+
 ## [1.4.0] - 2026-02-27
 
 ### Added
@@ -63,6 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add GOPATH/bin PATH hint to Go Install section (#3) ([#3](https://github.com/szhekpisov/diffyml/pull/3))
 - Cleanup (#6) ([#6](https://github.com/szhekpisov/diffyml/pull/6))
 
+[1.5.0]: https://github.com/szhekpisov/diffyml/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/szhekpisov/diffyml/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/szhekpisov/diffyml/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/szhekpisov/diffyml/compare/v1.1.1...v1.2.0

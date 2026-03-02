@@ -768,6 +768,53 @@ func TestSummarize_ServerError502(t *testing.T) {
 
 // --- remote.go: constant value assertions (remote.go:14,16) ---
 
+func TestComputeLineDiff_MatchAtLastPosition(t *testing.T) {
+	// Kills CONDITIONALS_BOUNDARY at detailed_formatter.go:490 (j <= n → j < n)
+	// With j < n, dp[*][n] stays 0 — the LCS match at the last position of toLines is lost.
+	from := []string{"a", "b"}
+	to := []string{"c", "a"}
+	ops := computeLineDiff(from, to)
+
+	keeps := 0
+	for _, op := range ops {
+		if op.Type == editKeep {
+			keeps++
+		}
+	}
+	if keeps != 1 {
+		t.Errorf("expected 1 keep (LCS match at last position), got %d", keeps)
+	}
+}
+
+func TestDetectRenames_AsymmetricTiebreaker(t *testing.T) {
+	// Kills sort tiebreaker mutations in rename.go (lines 165, 167-168)
+	// With 3×2 identical ConfigMaps, all 6 pairs have the same score.
+	// Mutations that invert the fromIdx tiebreaker change greedy assignment:
+	// normal → {0:0, 1:1}, remaining=[2]; reversed → {2:0, 1:1}, remaining=[0]
+	from := []interface{}{
+		mkK8sConfigMap("cm", []string{"key1", "key2", "key3"}),
+		mkK8sConfigMap("cm", []string{"key1", "key2", "key3"}),
+		mkK8sConfigMap("cm", []string{"key1", "key2", "key3"}),
+	}
+	to := []interface{}{
+		mkK8sConfigMap("cm", []string{"key1", "key2", "key3"}),
+		mkK8sConfigMap("cm", []string{"key1", "key2", "key3"}),
+	}
+
+	opts := &Options{DetectRenames: true}
+	matched, remainingFrom, _ := detectRenames(from, to, []int{0, 1, 2}, []int{0, 1}, opts)
+
+	if len(matched) != 2 {
+		t.Fatalf("expected 2 matches, got %d", len(matched))
+	}
+	if _, ok := matched[0]; !ok {
+		t.Error("expected from[0] to be matched")
+	}
+	if len(remainingFrom) != 1 || remainingFrom[0] != 2 {
+		t.Errorf("expected remaining=[2], got %v", remainingFrom)
+	}
+}
+
 func TestRemoteConstants(t *testing.T) {
 	if MaxResponseSize != 10*1024*1024 {
 		t.Errorf("MaxResponseSize should be 10485760, got %d", MaxResponseSize)

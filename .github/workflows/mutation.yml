@@ -40,7 +40,7 @@ jobs:
         run: |
           EFFICACY=$(jq '.test_efficacy' mutation-report.json)
           echo "Test efficacy: ${EFFICACY}%"
-          THRESHOLD=98
+          THRESHOLD=100
           if [ "$(echo "$EFFICACY < $THRESHOLD" | bc -l)" -eq 1 ]; then
             echo "::error::Mutation test efficacy ${EFFICACY}% is below ${THRESHOLD}% threshold"
             exit 1

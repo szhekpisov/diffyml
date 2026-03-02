@@ -100,22 +100,8 @@ func (c *ColorConfig) ShouldUseColor() bool {
 }
 
 // ShouldUseTrueColor returns whether 24-bit true color should be used.
-// Only returns true if both truecolor is requested and terminal supports it.
+// trueColor is only set for "always" mode, so the explicit request is honored.
 func (c *ColorConfig) ShouldUseTrueColor() bool {
-	if !c.trueColor {
-		return false
-	}
-	// Check for true color support via COLORTERM environment variable
-	colorTerm := os.Getenv("COLORTERM")
-	if colorTerm == "truecolor" || colorTerm == "24bit" {
-		return true
-	}
-	// Also check TERM for common true color terminals
-	term := os.Getenv("TERM")
-	if strings.Contains(term, "256color") || strings.Contains(term, "truecolor") {
-		return true
-	}
-	// trueColor is only set for "always" mode, so honor the explicit request
 	return c.trueColor
 }
 

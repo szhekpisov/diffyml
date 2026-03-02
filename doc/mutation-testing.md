@@ -24,46 +24,38 @@ The mutation testing workflow (`.github/workflows/mutation.yml`) runs on every P
 
 ## Report
 
-**Last full run:** 2026-03-02 — efficacy 98.61% (568 killed / 576 covered)
+**Last full run:** 2026-03-02 — efficacy 98.79% (571 killed / 578 covered)
 **Line coverage:** 97.2% (`go test -cover ./pkg/diffyml/`)
 **Mutator coverage:** 99.31%
 
 | Status | Count |
 |--------|-------|
-| Killed | 568 |
-| Lived | 8 |
+| Killed | 571 |
+| Lived | 7 |
 | Timed out | 0 |
 | Not covered | 4 |
-| **Efficacy** | **98.61%** |
+| **Efficacy** | **98.79%** |
 | **Mutator coverage** | **99.31%** |
 
-## Survived Mutants (8 LIVED)
+## Survived Mutants (7 LIVED)
 
-All 8 surviving mutants are **equivalent** — the mutation does not change observable program behavior, so no test can detect them.
+All 7 surviving mutants are **equivalent** — the mutation does not change observable program behavior, so no test can detect them.
 
 ---
 
-### Pattern 1: Color mode detection (2 mutants)
+### Pattern 1: Map/slice capacity hints (3 mutants)
 
-**File:** `color.go`
+**Files:** `directory.go`, `summarizer.go`
 
 | Line | Mutation | Code | Why equivalent |
 |------|----------|------|----------------|
-| 110:15 | `NEGATION` | `colorTerm == "truecolor"` | Guarded by `\|\| colorTerm == "24bit"` — both branches enable truecolor |
-| 110:43 | `NEGATION` | `colorTerm == "24bit"` | Guarded by `\|\| colorTerm == "truecolor"` — same as above |
+| directory.go:98:49 | `ARITHMETIC_BASE` | `make(map[string]bool, len(a)+len(b))` | Map capacity hint — only affects initial memory allocation, not behavior |
+| summarizer.go:265:51 | `ARITHMETIC_BASE` | `make([]*yaml.Node, 0, len(om.Keys)*2)` | Slice capacity hint — `append` grows as needed regardless |
+| summarizer.go:290:46 | `ARITHMETIC_BASE` | `make([]*yaml.Node, 0, len(v)*2)` | Slice capacity hint — same as above |
 
 ---
 
-### Pattern 2: Map capacity hint (1 mutant)
-
-**File:** `directory.go`
-**Mutation:** `ARITHMETIC_BASE` at line 98:49 — `len(a) + len(b)` mutated
-
-The capacity hint only affects initial memory allocation, not map behavior.
-
----
-
-### Pattern 3: Flag parsing edge case (1 mutant)
+### Pattern 2: Flag parsing edge case (1 mutant)
 
 **File:** `cli.go`
 **Mutation:** `CONDITIONALS_BOUNDARY` at line 215:51 — `>= 0` changed to `> 0`
@@ -72,16 +64,16 @@ For `eqIdx == 0`, the flag name would be `""`. Either way, `fs.Lookup` returns n
 
 ---
 
-### Pattern 4: `parseDocIndexPrefix` bracket boundary (2 mutants)
+### Pattern 3: `parseDocIndexPrefix` bracket boundary (2 mutants)
 
 **File:** `detailed_formatter.go`
-**Mutations:** `INVERT_NEGATIVES` and `ARITHMETIC_BASE` at line 741:21 — `-1` literal mutated
+**Mutations:** `INVERT_NEGATIVES` and `ARITHMETIC_BASE` at line 755:21 — `-1` literal mutated
 
-In `parseDocIndexPrefix`, `strings.Index(path, "]")` returns -1 only when `]` is absent. Mutating `-1` to `1` (INVERT_NEGATIVES) changes the check to `closeBracket == 1`, which would only matter for paths like `[]` where `closeBracket` is 1 — but in that case the subsequent `strconv.Atoi("")` returns an error, producing the same result. ARITHMETIC_BASE similarly mutates the constant without changing observable behavior.
+In `parseDocIndexPrefix`, `strings.Index(path, "]")` returns -1 only when `]` is absent. Mutating `-1` to `1` changes the check to `closeBracket == 1`, but the subsequent guard at line 759 (`closeBracket+1 >= len(path) || path[closeBracket+1] != '.'`) catches all malformed paths anyway, producing the same result regardless of which value triggers the early return.
 
 ---
 
-### Pattern 5: DJB hash arithmetic (1 mutant)
+### Pattern 4: DJB hash arithmetic (1 mutant)
 
 **File:** `rename.go`
 **Mutation:** `ARITHMETIC_BASE` at line 40:14 — `h*33 + uint32(b)` mutated
@@ -90,18 +82,7 @@ The DJB hash function is applied symmetrically to both documents being compared.
 
 ---
 
-### Pattern 6: Size-ratio threshold boundary (1 mutant)
-
-**File:** `rename.go`
-**Mutation:** `CONDITIONALS_BOUNDARY` at line 152:40 — `< renameScoreThreshold` changed to `<=`
-
-Only matters when ratio == 60, which means size ratio is borderline and similarity score will make the same accept/reject decision.
-
-*Previously 2 mutants. The `maxLen > 0` guard was changed to `maxLen != 0`, replacing the boundary mutation with a killable negation mutation.*
-
----
-
-## Eliminated Mutants (24 former LIVED → removed or killed)
+## Eliminated Mutants (28 former LIVED → removed or killed)
 
 The following equivalent mutants were eliminated via code refactoring:
 
@@ -119,6 +100,9 @@ The following equivalent mutants were eliminated via code refactoring:
 | Sort tiebreakers in `rename.go` | 4 | Replaced `sort.SliceStable` with `slices.SortStableFunc` + `cmp.Or(cmp.Compare(...), ...)` |
 | K8s order detection in `kubernetes.go` | 5 | Removed dead nil guard, replaced `sort.Slice` with `slices.SortFunc` + `cmp.Compare`, used `slices.IsSortedFunc` for monotonicity check |
 | List order detection in `comparator.go` | 1 | Replaced `sort.Slice` with `slices.SortFunc` + `cmp.Compare` |
+| `ShouldUseTrueColor` dead code in `color.go` | 2 | Removed redundant COLORTERM/TERM env checks — function always returned `c.trueColor` regardless; simplified to `return c.trueColor` |
+| `renderListItems` map bullet in `detailed_formatter.go` | 1 | Strengthened test to verify `- ` bullet appears on first key only, not just key presence |
+| Size-ratio threshold boundary in `rename.go` | 1 | Added boundary test with byte-size ratio exactly at threshold (60%), distinguishing `<` from `<=` |
 
 ---
 

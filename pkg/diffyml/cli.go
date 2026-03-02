@@ -212,9 +212,7 @@ func reorderArgs(args []string, fs *flag.FlagSet) []string {
 
 		// Extract flag name: strip leading dashes, remove =value.
 		name := strings.TrimLeft(arg, "-")
-		if eqIdx := strings.IndexByte(name, '='); eqIdx >= 0 {
-			name = name[:eqIdx]
-		}
+		name, _, _ = strings.Cut(name, "=")
 
 		f := fs.Lookup(name)
 		if f == nil {

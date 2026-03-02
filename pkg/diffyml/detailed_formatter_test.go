@@ -3347,13 +3347,20 @@ func TestDetailedFormatter_RenderEntryValue_MapEntry(t *testing.T) {
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
-	// map[string]interface{} branch of renderEntryValue for isList=true
+	// map[string]interface{} branch of renderListItems: first key must have "- " bullet,
+	// second key must NOT have bullet. Keys are sorted: "name" < "value".
 	diffs := []Difference{
 		{Path: "items.0", Type: DiffAdded, To: map[string]interface{}{"name": "test", "value": "123"}},
 	}
 	output := f.Format(diffs, opts)
-	if !strings.Contains(output, "name") || !strings.Contains(output, "value") {
-		t.Errorf("expected map keys in output, got: %q", output)
+	if !strings.Contains(output, "- name:") {
+		t.Errorf("expected first key to have bullet prefix '- name:', got:\n%s", output)
+	}
+	if strings.Contains(output, "- value:") {
+		t.Errorf("expected second key WITHOUT bullet prefix, but found '- value:' in:\n%s", output)
+	}
+	if !strings.Contains(output, "value: 123") {
+		t.Errorf("expected second key rendered as 'value: 123', got:\n%s", output)
 	}
 }
 

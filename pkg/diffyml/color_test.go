@@ -8,53 +8,17 @@ import (
 
 // --- Mutation testing: color.go ---
 
-func TestShouldUseTrueColor_COLORTERM(t *testing.T) {
-	// When COLORTERM=truecolor, ShouldUseTrueColor should return true
-	t.Setenv("COLORTERM", "truecolor")
-	t.Setenv("TERM", "") // clear TERM to isolate
-
+func TestShouldUseTrueColor_Requested(t *testing.T) {
 	cfg := NewColorConfig(ColorModeAlways, true)
-	cfg.SetIsTerminal(false) // not a terminal, but trueColor requested
-
 	if !cfg.ShouldUseTrueColor() {
-		t.Error("ShouldUseTrueColor() should return true when COLORTERM=truecolor")
-	}
-}
-
-func TestShouldUseTrueColor_24bit(t *testing.T) {
-	t.Setenv("COLORTERM", "24bit")
-	t.Setenv("TERM", "")
-
-	cfg := NewColorConfig(ColorModeAlways, true)
-	cfg.SetIsTerminal(false)
-
-	if !cfg.ShouldUseTrueColor() {
-		t.Error("ShouldUseTrueColor() should return true when COLORTERM=24bit")
+		t.Error("ShouldUseTrueColor() should return true when trueColor is requested")
 	}
 }
 
 func TestShouldUseTrueColor_NotRequested(t *testing.T) {
-	// When trueColor is false, ShouldUseTrueColor should return false
-	// regardless of environment
-	t.Setenv("COLORTERM", "truecolor")
-
 	cfg := NewColorConfig(ColorModeAlways, false)
-	cfg.SetIsTerminal(true)
-
 	if cfg.ShouldUseTrueColor() {
 		t.Error("ShouldUseTrueColor() should return false when trueColor is not requested")
-	}
-}
-
-func TestShouldUseTrueColor_TERM256color(t *testing.T) {
-	t.Setenv("COLORTERM", "")
-	t.Setenv("TERM", "xterm-256color")
-
-	cfg := NewColorConfig(ColorModeAlways, true)
-	cfg.SetIsTerminal(false)
-
-	if !cfg.ShouldUseTrueColor() {
-		t.Error("ShouldUseTrueColor() should return true when TERM contains 256color")
 	}
 }
 

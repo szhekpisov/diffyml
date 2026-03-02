@@ -716,3 +716,108 @@ func TestDetectRenames_SortTiebreaker_LargeInput(t *testing.T) {
 		}
 	}
 }
+
+func TestDetectRenames_SizeRatioBoundaryExact(t *testing.T) {
+	// Targets CONDITIONALS_BOUNDARY mutant at rename.go:152
+	// which changes `minLen*100/maxLen < threshold` to `<= threshold`.
+	//
+	// We construct two K8s docs where the byte-size ratio is exactly 60%
+	// (the threshold). With `<`, ratio 60 < 60 is false → pair passes.
+	// With `<=`, ratio 60 <= 60 is true → pair is rejected (mutant behavior).
+	// Both docs share enough lines for similarity >= 60%.
+
+	// Build small doc: shared structure + small data
+	smallDoc := mkMinK8sDoc("cfg-small")
+	smallData := NewOrderedMap()
+	smallData.Keys = append(smallData.Keys, "key1")
+	smallData.Values["key1"] = "val"
+	smallDoc.Keys = append(smallDoc.Keys, "data")
+	smallDoc.Values["data"] = smallData
+
+	smallBytes := serializeDocument(smallDoc)
+	smallLen := len(smallBytes)
+
+	// We need maxLen such that smallLen*100/maxLen == 60 (integer division).
+	// That means maxLen = smallLen*100/60 (rounded so integer div gives 60).
+	targetMaxLen := smallLen * 100 / 60
+
+	// Build large doc: same shared keys + extra padding in a data value
+	largeDoc := mkMinK8sDoc("cfg-large")
+	largeData := NewOrderedMap()
+	largeData.Keys = append(largeData.Keys, "key1")
+	largeData.Values["key1"] = "val"
+
+	// Start with a padding key and adjust length
+	padValue := ""
+	largeData.Keys = append(largeData.Keys, "pad")
+	largeData.Values["pad"] = padValue
+	largeDoc.Keys = append(largeDoc.Keys, "data")
+	largeDoc.Values["data"] = largeData
+
+	// Binary search for the right padding length
+	lo, hi := 0, 1000
+	for lo < hi {
+		mid := (lo + hi) / 2
+		largeData.Values["pad"] = strings.Repeat("x", mid)
+		largeBytes := serializeDocument(largeDoc)
+		if len(largeBytes) < targetMaxLen {
+			lo = mid + 1
+		} else {
+			hi = mid
+		}
+	}
+
+	// Fine-tune: try values around lo to find exact ratio=60
+	found := false
+	for delta := -2; delta <= 2; delta++ {
+		padLen := lo + delta
+		if padLen < 0 {
+			continue
+		}
+		largeData.Values["pad"] = strings.Repeat("x", padLen)
+		largeBytes := serializeDocument(largeDoc)
+		ratio := smallLen * 100 / len(largeBytes)
+		if ratio == renameScoreThreshold {
+			found = true
+			break
+		}
+	}
+	if !found {
+		// Fallback: adjust smallDoc padding to hit exact ratio
+		t.Fatalf("could not construct docs with byte-size ratio exactly %d%%; smallLen=%d, targetMaxLen=%d",
+			renameScoreThreshold, smallLen, targetMaxLen)
+	}
+
+	// Verify preconditions
+	largeBytes := serializeDocument(largeDoc)
+	minLen := min(smallLen, len(largeBytes))
+	maxLen := max(smallLen, len(largeBytes))
+	sizeRatio := minLen * 100 / maxLen
+	if sizeRatio != renameScoreThreshold {
+		t.Fatalf("precondition: size ratio = %d%%, want exactly %d%%", sizeRatio, renameScoreThreshold)
+	}
+
+	fromIdx := newSimilarityIndex(smallBytes)
+	toIdx := newSimilarityIndex(largeBytes)
+	similarity := fromIdx.score(toIdx)
+	if similarity < renameScoreThreshold {
+		t.Fatalf("precondition: similarity %d%% < %d%%, need >= threshold", similarity, renameScoreThreshold)
+	}
+
+	// Size ratio == threshold → original code passes (60 < 60 = false), mutant rejects (60 <= 60 = true)
+	from := []interface{}{smallDoc}
+	to := []interface{}{largeDoc}
+	opts := &Options{DetectRenames: true}
+	matched, remainFrom, remainTo := detectRenames(from, to, []int{0}, []int{0}, opts)
+
+	if len(matched) != 1 {
+		t.Errorf("expected 1 match at size ratio exactly %d%% (passes < check), got %d; "+
+			"sizeRatio=%d%%, similarity=%d%%", renameScoreThreshold, len(matched), sizeRatio, similarity)
+	}
+	if len(remainFrom) != 0 {
+		t.Errorf("expected 0 remaining from, got %d", len(remainFrom))
+	}
+	if len(remainTo) != 0 {
+		t.Errorf("expected 0 remaining to, got %d", len(remainTo))
+	}
+}

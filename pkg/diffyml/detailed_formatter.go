@@ -751,20 +751,19 @@ func parseDocIndexPrefix(path string) (int, string, bool) {
 	if !strings.HasPrefix(path, "[") {
 		return 0, path, false
 	}
-	closeBracket := strings.Index(path, "]")
-	if closeBracket == -1 {
+	inner, afterBracket, found := strings.Cut(path[1:], "]")
+	if !found {
 		return 0, path, false
 	}
 	// Must have a dot after the closing bracket
-	if closeBracket+1 >= len(path) || path[closeBracket+1] != '.' {
+	if !strings.HasPrefix(afterBracket, ".") {
 		return 0, path, false
 	}
-	inner := path[1:closeBracket]
 	idx, err := strconv.Atoi(inner)
 	if err != nil {
 		return 0, path, false
 	}
-	rest := path[closeBracket+2:] // skip "]."
+	rest := afterBracket[1:] // skip "."
 	return idx, rest, true
 }
 

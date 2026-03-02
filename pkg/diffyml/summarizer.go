@@ -262,7 +262,7 @@ func marshalStructuredYAML(val interface{}) (string, bool) {
 // structure that preserves key order.
 func orderedMapToGeneric(om *OrderedMap) *yaml.Node {
 	node := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
-	node.Content = make([]*yaml.Node, 0, len(om.Keys)*2)
+	node.Content = make([]*yaml.Node, 0)
 	for _, key := range om.Keys {
 		keyNode := &yaml.Node{Kind: yaml.ScalarNode, Value: key, Tag: "!!str"}
 		valNode := valueToYAMLNode(om.Values[key])
@@ -287,7 +287,7 @@ func valueToYAMLNode(val interface{}) *yaml.Node {
 		return node
 	case map[string]interface{}:
 		node := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
-		node.Content = make([]*yaml.Node, 0, len(v)*2)
+		node.Content = make([]*yaml.Node, 0)
 		for _, k := range sortedMapKeys(v) {
 			keyNode := &yaml.Node{Kind: yaml.ScalarNode, Value: k, Tag: "!!str"}
 			valNode := valueToYAMLNode(v[k])

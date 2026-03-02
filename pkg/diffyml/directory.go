@@ -95,7 +95,7 @@ func BuildFilePairPlan(fromDir, toDir string) ([]FilePair, error) {
 	}
 
 	// Compute union of filenames
-	nameSet := make(map[string]bool, len(fromFiles)+len(toFiles))
+	nameSet := make(map[string]bool)
 	for _, f := range fromFiles {
 		nameSet[f] = true
 	}

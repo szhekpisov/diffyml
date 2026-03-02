@@ -2,6 +2,7 @@ package diffyml
 
 import (
 	"cmp"
+	"hash/crc32"
 	"slices"
 
 	"gopkg.in/yaml.v3"
@@ -13,7 +14,7 @@ const (
 )
 
 // similarityIndex hashes lines of text for content similarity comparison.
-// Uses DJB hash (hash * 33 + byte) on each line, storing counts in a table.
+// Uses CRC32 on each line, storing counts in a table.
 type similarityIndex struct {
 	hashes   map[uint32]int
 	numLines int
@@ -33,20 +34,19 @@ func newSimilarityIndex(data []byte) *similarityIndex {
 			line := data[start:i]
 			start = i + 1
 
-			// DJB hash with integrated whitespace-only check
-			var h uint32 = 5381
+			// Skip whitespace-only lines
 			hasContent := false
 			for _, b := range line {
-				h = h*33 + uint32(b)
-				if !hasContent && b != ' ' && b != '\t' && b != '\r' {
+				if b != ' ' && b != '\t' && b != '\r' {
 					hasContent = true
+					break
 				}
 			}
 			if !hasContent {
 				continue
 			}
 
-			idx.hashes[h]++
+			idx.hashes[crc32.ChecksumIEEE(line)]++
 			idx.numLines++
 		}
 	}

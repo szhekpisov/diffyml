@@ -3209,6 +3209,31 @@ func TestComputeLineDiff_TieBreakingDeterminism(t *testing.T) {
 	}
 }
 
+func TestComputeLineDiff_LastColumnDP(t *testing.T) {
+	// Targets mutation: line 490 `j <= n` → `j < n` (CONDITIONALS_BOUNDARY).
+	// When the inner loop skips j=n, dp[i][n]=0 for all i, and the
+	// backtracking cannot find the optimal LCS through the last column.
+	//
+	// With from=["A","B","C"], to=["C","A","B"]:
+	//   Normal: LCS = {"A","B"} (length 2) → [insert C, keep A, keep B, delete C]
+	//   Mutant: dp[*][3]=0 → LCS degrades to {"C"} (length 1)
+	//           → [delete A, delete B, keep C, insert A, insert B]
+	fromLines := []string{"A", "B", "C"}
+	toLines := []string{"C", "A", "B"}
+
+	ops := computeLineDiff(fromLines, toLines)
+
+	keeps := 0
+	for _, op := range ops {
+		if op.Type == editKeep {
+			keeps++
+		}
+	}
+	if keeps != 2 {
+		t.Errorf("expected 2 keep operations (optimal LCS length 2), got %d keeps out of %d ops", keeps, len(ops))
+	}
+}
+
 func TestParseDocIndexPrefix(t *testing.T) {
 	tests := []struct {
 		path     string

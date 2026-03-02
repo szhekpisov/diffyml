@@ -20,26 +20,26 @@ A surviving mutant means either the test suite has a gap, or the mutation is **e
 
 ## CI Integration
 
-The mutation testing workflow (`.github/workflows/mutation.yml`) runs on every PR targeting `main`. It checks out the PR branch directly (not the merge commit) and runs full mutation testing on `./pkg/diffyml/`. Efficacy is enforced by parsing the JSON report and failing CI if below 96% — gremlins' built-in `--threshold-efficacy` flag does not actually enforce the threshold (v0.6.0 bug).
+The mutation testing workflow (`.github/workflows/mutation.yml`) runs on every PR targeting `main`. It uses `--diff` to only mutate changed code and enforces a 96% efficacy threshold via `--threshold-efficacy`.
 
 ## Report
 
-**Last full run:** 2026-03-01 — efficacy 94.51% (602 killed / 637 covered)
-**Line coverage:** 97.3% (`go test -cover ./pkg/diffyml/`)
-**Mutator coverage:** 99.38%
+**Last full run:** 2026-03-02 — efficacy 95.87% (581 killed / 606 covered)
+**Line coverage:** 97.2% (`go test -cover ./pkg/diffyml/`)
+**Mutator coverage:** 99.34%
 
 | Status | Count |
 |--------|-------|
-| Killed | 602 |
-| Lived | 35 |
+| Killed | 581 |
+| Lived | 25 |
 | Timed out | 0 |
 | Not covered | 4 |
-| **Efficacy** | **94.51%** |
-| **Mutator coverage** | **99.38%** |
+| **Efficacy** | **95.87%** |
+| **Mutator coverage** | **99.34%** |
 
-## Survived Mutants (35 LIVED)
+## Survived Mutants (25 LIVED)
 
-All 35 surviving mutants are **equivalent** — the mutation does not change
+All 25 surviving mutants are **equivalent** — the mutation does not change
 observable program behavior, so no test can detect them.
 
 ---
@@ -73,7 +73,7 @@ In `sortDiffsWithOrder`, each `<` comparison is guarded by a prior `!=` check th
 
 ---
 
-### Pattern 3: `maxLen` and list-bounds boundaries in comparator (6 mutants)
+### Pattern 3: `maxLen` and list-bounds boundaries in comparator (4 mutants)
 
 **File:** `comparator.go`
 **Mutation:** `CONDITIONALS_BOUNDARY`
@@ -84,8 +84,6 @@ In `sortDiffsWithOrder`, each `<` comparison is guarded by a prior `!=` check th
 | 31:16 | `i < maxLen` → `<=` | Extra iteration with both nil docs is a no-op |
 | 337:13 | `len(to) > maxLen` → `>=` | Same pattern as line 27 |
 | 353:8 | `i >= len(from)` → `>` | At `i == len(from)`: `fromVal` is nil (prior `if i < len(from)` failed), so the `else` branch calls `compareNodes(path, nil, toVal)` which produces `DiffAdded` — same result |
-| 492:27 | `len(commonFromOrder) > 1` → `>=` | With exactly 1 common item, order comparison loop finds no difference (single element is always in order) |
-| 504:28 | `toSorted[i].idx < toSorted[j].idx` → `<=` | Sort comparator for unique indices; equal indices can't occur, so `<` and `<=` are identical |
 
 ---
 
@@ -98,7 +96,7 @@ For a single-character path, `LastIndex` returns -1 (no dot), and the inner `las
 
 ---
 
-### Pattern 5: LCS tie-breaking (2 mutants)
+### Pattern 5: LCS tie-breaking (1 mutant)
 
 **File:** `detailed_formatter.go`
 **Mutation:** `CONDITIONALS_BOUNDARY`
@@ -107,8 +105,9 @@ When `dp[i-1][j] == dp[i][j-1]`, both branches assign the same value. The DP tab
 
 | Line | Code | Why equivalent |
 |------|------|----------------|
-| 490:17 | `j <= n` → `j < n` | Inner loop boundary; at `j == n` the DP cell is already computed by the outer structure |
 | 494:25 | `dp[i-1][j] >= dp[i][j-1]` → `>` | When equal, both branches assign the same max LCS value |
+
+*Previously 2 mutants. The `j <= n` → `j < n` boundary mutant (line 490) was killed by `TestComputeLineDiff_LastColumnDP`, which detects that skipping the last DP column degrades LCS quality (e.g., `["A","B","C"]` vs `["C","A","B"]` drops from 2 keeps to 1).*
 
 ---
 
@@ -142,28 +141,13 @@ For `eqIdx == 0`, the flag name would be `""`. Either way, `fs.Lookup` returns n
 ### Pattern 9: `parseDocIndexPrefix` bracket boundary (1 mutant)
 
 **File:** `detailed_formatter.go`
-**Mutation:** `CONDITIONALS_BOUNDARY` at line 744:18 — `< 0` changed to `<= 0`
+**Mutation:** `CONDITIONALS_BOUNDARY` at line 666:18 — `< 0` changed to `<= 0`
 
 In `parseDocIndexPrefix`, the prior check `!strings.HasPrefix(path, "[")` ensures `path[0] == '['`. Therefore `strings.Index(path, "]")` can never return 0 (the first `]` is always at index >= 1). Changing `< 0` to `<= 0` has no effect.
 
 ---
 
-### Pattern 10: K8s document order detection boundaries (5 mutants)
-
-**File:** `kubernetes.go`
-**Mutation:** `CONDITIONALS_BOUNDARY` and `CONDITIONALS_NEGATION`
-
-| Line | Mutation | Code | Why equivalent |
-|------|----------|------|----------------|
-| 241:11 | `NEGATION` | `opts == nil` → `!= nil` | When `opts != nil` and `IgnoreOrderChanges` is false, negating the nil check still enters the block (short-circuit `\|\|` evaluates the second operand) |
-| 241:63 | `BOUNDARY` | `len(matched) > 1` → `>=` | With exactly 1 match, the order check loop finds no reordering (single element is trivially ordered) |
-| 248:67 | `BOUNDARY` | `pairs[i].fromIdx < pairs[j].fromIdx` → `<=` | Sort comparator for unique from-indices; equal values can't occur |
-| 253:22 | `BOUNDARY` | `pairs[i].toIdx < pairs[i-1].toIdx` → `<=` | Equal to-indices can't occur with unique matches, so `<` and `<=` are identical |
-| 265:66 | `BOUNDARY` | `pairs[i].toIdx < pairs[j].toIdx` → `<=` | Sort comparator for unique to-indices; equal values can't occur |
-
----
-
-### Pattern 11: DJB hash arithmetic (1 mutant)
+### Pattern 10: DJB hash arithmetic (1 mutant)
 
 **File:** `rename.go`
 **Mutation:** `ARITHMETIC_BASE` at line 39:14 — `h*33 + uint32(b)` mutated
@@ -172,33 +156,31 @@ The DJB hash function is applied symmetrically to both documents being compared.
 
 ---
 
-### Pattern 12: Size-ratio early rejection — correlated with similarity score (4 mutants)
+### Pattern 11: Size-ratio boundary conditions (2 mutants)
 
 **File:** `rename.go`
-
-The size-ratio check (`minLen*100/maxLen < renameScoreThreshold`) is an optimization that skips the full similarity computation for documents with very different sizes. Mutations that break or disable this check do not change the final result because the full similarity score (which follows immediately) is mathematically correlated with the size ratio — documents with a size ratio below 60% also have similarity scores below 60%, so they would be rejected by the score threshold check anyway.
 
 | Line | Mutation | Code | Why equivalent |
 |------|----------|------|----------------|
-| 151:14 | `BOUNDARY` | `maxLen > 0` → `>=` | Always true for real documents; condition is already always true |
-| 151:14 | `NEGATION` | `maxLen > 0` → `<= 0` | Always false; disables size-ratio check. Fallback similarity score still rejects. |
-| 151:31 | `ARITHMETIC` | `minLen*100/maxLen` mutated | Produces wrong ratio; disables size-ratio check. Fallback similarity score still rejects. |
+| 151:14 | `BOUNDARY` | `maxLen > 0` → `>=` | Always true for real documents; `maxLen` is always positive for non-empty serialized YAML |
 | 151:39 | `BOUNDARY` | `< renameScoreThreshold` → `<=` | Only matters when ratio == 60, which means size ratio is borderline and similarity score will make the same accept/reject decision |
+
+*Previously 9 mutants across Patterns 11–13. The `min()`/`max()` builtins (Go 1.21) replaced manual comparisons, eliminating those mutation targets. The `NEGATION` on `maxLen > 0` and `ARITHMETIC` on `minLen*100/maxLen` were killed by `TestDetectRenames_SizeRatioBypassGuard`, which constructs K8s documents where byte-size ratio < 60% but line similarity >= 60% (long values inflate byte count without proportionally increasing line count).*
 
 ---
 
-### Pattern 13: Sort tiebreaker with invalid comparators (4 mutants)
+### Pattern 12: Sort tiebreaker equivalences (4 mutants)
 
 **File:** `rename.go`
 
-The sort comparator in `detectRenames` sorts scored rename pairs descending by score, with deterministic tiebreaking by ascending `fromIdx` then `toIdx`. Mutations to the tiebreaker produce invalid (non-irreflexive) comparators for `sort.SliceStable`, making the sort output undefined. In practice, Go's merge sort implementation with small inputs may happen to produce correct results even with an invalid comparator.
+The sort comparator in `detectRenames` sorts scored rename pairs descending by score, with deterministic tiebreaking by ascending `fromIdx` then `toIdx`. Pairs are generated by a nested loop (fromIdx outer, toIdx inner), producing a natural ascending fromIdx/toIdx order. All mutations below are equivalent due to the interplay between generation order, `sort.SliceStable` stability guarantees, and greedy assignment:
 
-| Line | Mutation | Code |
-|------|----------|------|
-| 165:26 | `BOUNDARY` | `pairs[i].score > pairs[j].score` → `>=` |
-| 167:23 | `NEGATION` | `pairs[i].fromIdx < pairs[j].fromIdx` → `>=` |
-| 168:28 | `BOUNDARY` | `pairs[i].fromIdx != pairs[j].fromIdx` → boundary mutation |
-| 170:25 | `BOUNDARY` | `pairs[i].toIdx < pairs[j].toIdx` → `<=` |
+| Line | Mutation | Code | Why equivalent |
+|------|----------|------|----------------|
+| 165:26 | `BOUNDARY` | `score > score` → `>=` | Non-irreflexive, but `sort.SliceStable` with insertionSort (n ≤ 20) never compares an element with itself |
+| 167:23 | `NEGATION` | `fromIdx != fromIdx` → `==` | Flips from "sort by fromIdx" to "sort by toIdx", but stable sort preserves the original fromIdx-ascending generation order within each toIdx group, producing identical greedy assignments |
+| 168:28 | `BOUNDARY` | `fromIdx < fromIdx` → `<=` | Only differs when fromIdx values are equal, but the `!=` guard above prevents this line from being reached with equal values |
+| 170:25 | `BOUNDARY` | `toIdx < toIdx` → `<=` | Only differs when toIdx values are equal, but within the same fromIdx group each toIdx is unique |
 
 ---
 

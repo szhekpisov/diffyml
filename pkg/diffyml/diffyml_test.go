@@ -269,8 +269,8 @@ func TestSortDiffsWithOrder_OneHasOrderOtherNot(t *testing.T) {
 	// pathOrder entry and the other doesn't. The one with order should
 	// come first regardless of alphabetical ordering.
 	pathOrder := map[string]int{
-		"root":        0,
-		"root.zebra":  1,
+		"root":       0,
+		"root.zebra": 1,
 		// "root.apple" intentionally absent from pathOrder
 	}
 

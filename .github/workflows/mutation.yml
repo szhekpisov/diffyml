@@ -8,6 +8,8 @@ concurrency:
   cancel-in-progress: true
 
 on:
+  push:
+    branches: [main]
   pull_request:
     branches: [main]
 
@@ -19,7 +21,7 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
-          ref: ${{ github.head_ref }}
+          ref: ${{ github.head_ref || github.ref }}
 
       - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
@@ -37,14 +39,29 @@ jobs:
           ./pkg/diffyml/
 
       - name: Check efficacy threshold
+        id: efficacy
         run: |
           EFFICACY=$(jq '.test_efficacy' mutation-report.json)
           echo "Test efficacy: ${EFFICACY}%"
-          THRESHOLD=96
+          echo "value=$EFFICACY" >> "$GITHUB_OUTPUT"
+          THRESHOLD=98
           if [ "$(echo "$EFFICACY < $THRESHOLD" | bc -l)" -eq 1 ]; then
             echo "::error::Mutation test efficacy ${EFFICACY}% is below ${THRESHOLD}% threshold"
             exit 1
           fi
+
+      - name: Update mutation badge
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: schneegans/dynamic-badges-action@e9a478b16159b4d31420099ba146cdc50f134483 # v1.7.0
+        with:
+          auth: ${{ secrets.GIST_TOKEN }}
+          gistID: ${{ vars.MUTATION_BADGE_GIST_ID }}
+          filename: mutation-badge.json
+          label: mutation testing
+          message: "${{ steps.efficacy.outputs.value }}%"
+          valColorRange: ${{ steps.efficacy.outputs.value }}
+          minColorRange: 90
+          maxColorRange: 100
 
       - name: Clean build cache
         if: always()

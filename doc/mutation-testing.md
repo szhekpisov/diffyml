@@ -20,7 +20,7 @@ A surviving mutant means either the test suite has a gap, or the mutation is **e
 
 ## CI Integration
 
-The mutation testing workflow (`.github/workflows/mutation.yml`) runs on every PR targeting `main`. It uses `--diff` to only mutate changed code and enforces a 96% efficacy threshold via `--threshold-efficacy`.
+The mutation testing workflow (`.github/workflows/mutation.yml`) runs on every PR targeting `main`. It uses `--diff` to only mutate changed code and enforces a 98% efficacy threshold.
 
 ## Report
 

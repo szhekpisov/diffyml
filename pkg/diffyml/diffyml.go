@@ -123,9 +123,7 @@ func Compare(from, to []byte, opts *Options) ([]Difference, error) {
 	return diffs, nil
 }
 
-// sortDiffs sorts differences by path for consistent output.
-// Sorts root-level additions first, then by path depth and alphabetically.
-// extractPathOrder extracts the order of all paths from parsed documents
+// extractPathOrder extracts the order of all paths from parsed documents.
 func extractPathOrder(fromDocs, toDocs []interface{}, opts *Options) map[string]int {
 	pathOrder := make(map[string]int)
 	index := 0
@@ -268,6 +266,8 @@ func isListEntryDiff(diff Difference) bool {
 	return false
 }
 
+// sortDiffsWithOrder sorts differences for consistent output.
+// Sorts root-level removals first, then by path depth and alphabetically.
 func sortDiffsWithOrder(diffs []Difference, pathOrder map[string]int) {
 	// findParentOrder walks up the path hierarchy to find a parent with a known order.
 	findParentOrder := func(path string) (int, bool) {
@@ -288,15 +288,15 @@ func sortDiffsWithOrder(diffs []Difference, pathOrder map[string]int) {
 		pathI := diffI.Path
 		pathJ := diffJ.Path
 
-		// Root-level additions (will be displayed as "(root level)") always come first
-		// These are DiffAdded with no dots in path and not list entries
-		isRootAddI := diffI.Type == DiffAdded && !strings.Contains(pathI, ".") && !isListEntryDiff(diffI)
-		isRootAddJ := diffJ.Type == DiffAdded && !strings.Contains(pathJ, ".") && !isListEntryDiff(diffJ)
+		// Root-level removals (will be displayed as "(root level)") always come first
+		// These are DiffRemoved with no dots in path and not list entries
+		isRootRemI := diffI.Type == DiffRemoved && !strings.Contains(pathI, ".") && !isListEntryDiff(diffI)
+		isRootRemJ := diffJ.Type == DiffRemoved && !strings.Contains(pathJ, ".") && !isListEntryDiff(diffJ)
 
-		if isRootAddI && !isRootAddJ {
+		if isRootRemI && !isRootRemJ {
 			return -1
 		}
-		if !isRootAddI && isRootAddJ {
+		if !isRootRemI && isRootRemJ {
 			return 1
 		}
 

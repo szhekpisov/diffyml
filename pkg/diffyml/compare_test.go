@@ -1367,10 +1367,14 @@ newroot: added`)
 	if len(diffs) < 2 {
 		t.Fatalf("expected at least 2 diffs, got %d", len(diffs))
 	}
-	// Root-level addition should come first
-	if diffs[0].Type != diffyml.DiffAdded || diffs[0].Path != "newroot" {
-		t.Errorf("expected first diff to be root-level addition 'newroot', got type=%v path=%q",
+	// Document-order: existing (from doc) comes before newroot (to doc addition)
+	if diffs[0].Type != diffyml.DiffModified || diffs[0].Path != "existing.nested" {
+		t.Errorf("expected first diff to be modification 'existing.nested', got type=%v path=%q",
 			diffs[0].Type, diffs[0].Path)
+	}
+	if diffs[1].Type != diffyml.DiffAdded || diffs[1].Path != "newroot" {
+		t.Errorf("expected second diff to be root-level addition 'newroot', got type=%v path=%q",
+			diffs[1].Type, diffs[1].Path)
 	}
 }
 
@@ -1401,12 +1405,13 @@ func TestCompare_SortFallbackBehaviors(t *testing.T) {
 	}
 }
 
-func TestCompare_RootAddBeforeRootModify(t *testing.T) {
-	// A root-level addition must be sorted before a root-level modification,
-	// even when document order would place the modification first.
-	from := yml(`z_modified: old`)
-	to := yml(`a_added: new
-z_modified: changed`)
+func TestCompare_RootRemoveBeforeRootAdd(t *testing.T) {
+	// A root-level removal must be sorted before a root-level addition,
+	// following the conventional diff convention (deletions before additions).
+	from := yml(`z_removed: old
+a_existing: value`)
+	to := yml(`a_existing: value
+b_added: new`)
 
 	diffs, err := compare(from, to, nil)
 	if err != nil {
@@ -1415,13 +1420,13 @@ z_modified: changed`)
 	if len(diffs) != 2 {
 		t.Fatalf("expected 2 diffs, got %d", len(diffs))
 	}
-	// Root-level addition must come before root-level modification
-	if diffs[0].Type != diffyml.DiffAdded || diffs[0].Path != "a_added" {
-		t.Errorf("expected first diff to be added 'a_added', got type=%v path=%q",
+	// Root-level removal must come before root-level addition
+	if diffs[0].Type != diffyml.DiffRemoved || diffs[0].Path != "z_removed" {
+		t.Errorf("expected first diff to be removed 'z_removed', got type=%v path=%q",
 			diffs[0].Type, diffs[0].Path)
 	}
-	if diffs[1].Type != diffyml.DiffModified || diffs[1].Path != "z_modified" {
-		t.Errorf("expected second diff to be modified 'z_modified', got type=%v path=%q",
+	if diffs[1].Type != diffyml.DiffAdded || diffs[1].Path != "b_added" {
+		t.Errorf("expected second diff to be added 'b_added', got type=%v path=%q",
 			diffs[1].Type, diffs[1].Path)
 	}
 }

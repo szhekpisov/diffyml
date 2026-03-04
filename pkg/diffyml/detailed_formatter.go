@@ -7,7 +7,6 @@ package diffyml
 import (
 	"fmt"
 	"slices"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -293,16 +292,6 @@ func (f *DetailedFormatter) renderFirstKeyValueYAML(sb *strings.Builder, key str
 			f.writeColoredLine(sb, fmt.Sprintf("%s- %s: %v", pad, key, formatDetailedValue(val)), colorCode, opts)
 		}
 	}
-}
-
-// sortedMapKeys returns the keys of a map[string]interface{} in sorted order.
-func sortedMapKeys(m map[string]interface{}) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return keys
 }
 
 // renderListItems renders items of a []interface{} list with proper type dispatch.

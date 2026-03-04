@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
+	"sync"
 )
 
 // IsDirectory reports whether path is an existing directory.
@@ -228,7 +230,17 @@ func loadPairContent(pair FilePair, rc *RunConfig) (from, to []byte, err error) 
 	return from, to, nil
 }
 
-// runDirectory executes directory-mode comparison.
+// pairResult holds the per-file result of loading and comparing a file pair.
+type pairResult struct {
+	pair     FilePair
+	from, to []byte
+	diffs    []Difference
+	loadErr  error
+	cmpErr   error
+}
+
+// runDirectory executes directory-mode comparison using a 3-phase pipeline:
+// sequential load, parallel compare, sequential format.
 // Unexported; called from Run() when both arguments are directories.
 func runDirectory(cfg *CLIConfig, rc *RunConfig, fromDir, toDir string) *ExitResult {
 	// Handle swap: swap directories before planning to avoid double-swap
@@ -259,46 +271,83 @@ func runDirectory(cfg *CLIConfig, rc *RunConfig, fromDir, toDir string) *ExitRes
 		opts.compare.Swap = false
 	}
 
-	// Check if formatter supports structured (aggregated) output
+	// Phase 1: Load content sequentially (preserves disk order)
+	results := make([]pairResult, len(pairs))
+	for i, pair := range pairs {
+		results[i].pair = pair
+		from, to, err := loadPairContent(pair, rc)
+		if err != nil {
+			results[i].loadErr = err
+			continue
+		}
+		results[i].from = from
+		results[i].to = to
+	}
+
+	// Phase 2: Compare in parallel (stateless, safe for concurrent use)
+	if len(pairs) > 1 {
+		sem := make(chan struct{}, runtime.NumCPU())
+		var wg sync.WaitGroup
+		for i := range results {
+			if results[i].loadErr != nil {
+				continue
+			}
+			wg.Add(1)
+			sem <- struct{}{}
+			go func(idx int) {
+				defer wg.Done()
+				defer func() { <-sem }()
+				diffs, err := compareAndFilter(results[idx].from, results[idx].to, opts.compare, opts.filter)
+				results[idx].diffs = diffs
+				results[idx].cmpErr = err
+			}(i)
+		}
+		wg.Wait()
+	} else {
+		for i := range results {
+			if results[i].loadErr != nil {
+				continue
+			}
+			diffs, err := compareAndFilter(results[i].from, results[i].to, opts.compare, opts.filter)
+			results[i].diffs = diffs
+			results[i].cmpErr = err
+		}
+	}
+
+	// Phase 3: Format sequentially (preserves output order)
 	sf, isStructured := opts.formatter.(StructuredFormatter)
 
 	hasDiffs := false
 	hasErrors := false
-
-	// Collect all diff groups (used by both structured and non-structured paths)
 	var groups []DiffGroup
-	// Parallel slice of pair types (only used for non-structured brief+summary fallback)
 	var pairTypes []FilePairType
 
-	for _, pair := range pairs {
-		fromContent, toContent, err := loadPairContent(pair, rc)
-		if err != nil {
-			fmt.Fprintf(rc.Stderr, "Error reading %s: %v\n", pair.Name, err)
+	for i := range results {
+		r := &results[i]
+		if r.loadErr != nil {
+			fmt.Fprintf(rc.Stderr, "Error reading %s: %v\n", r.pair.Name, r.loadErr)
+			hasErrors = true
+			continue
+		}
+		if r.cmpErr != nil {
+			fmt.Fprintf(rc.Stderr, "Error processing %s: %v\n", r.pair.Name, r.cmpErr)
 			hasErrors = true
 			continue
 		}
 
-		// Compare and filter
-		diffs, err := compareAndFilter(fromContent, toContent, opts.compare, opts.filter)
-		if err != nil {
-			fmt.Fprintf(rc.Stderr, "Error processing %s: %v\n", pair.Name, err)
-			hasErrors = true
-			continue
-		}
-
-		if len(diffs) == 0 {
+		if len(r.diffs) == 0 {
 			continue
 		}
 
 		hasDiffs = true
-		filePath := normalizeFilePath(pair.Name, nil)
-		groups = append(groups, DiffGroup{FilePath: filePath, Diffs: diffs})
-		pairTypes = append(pairTypes, pair.Type)
+		filePath := normalizeFilePath(r.pair.Name, nil)
+		groups = append(groups, DiffGroup{FilePath: filePath, Diffs: r.diffs})
+		pairTypes = append(pairTypes, r.pair.Type)
 
 		// Non-structured: per-file header + format (skip for brief+summary)
 		if !isStructured && !cfg.isBriefSummary() {
-			fmt.Fprint(rc.Stdout, FormatFileHeader(filePath, pair.Type, opts.format))
-			fmt.Fprint(rc.Stdout, opts.formatter.Format(diffs, opts.format))
+			fmt.Fprint(rc.Stdout, FormatFileHeader(filePath, r.pair.Type, opts.format))
+			fmt.Fprint(rc.Stdout, opts.formatter.Format(r.diffs, opts.format))
 		}
 	}
 

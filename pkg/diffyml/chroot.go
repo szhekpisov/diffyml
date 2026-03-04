@@ -1,99 +1,31 @@
 // chroot.go - Path navigation to focus comparison on YAML subsections.
-//
-// Allows comparing only specific parts of YAML documents using dot-notation paths.
-// Supports array indexing (e.g., "items[0].name") and separate paths for from/to files.
-// Key functions: ApplyChroot(), applyChrootToDocs().
 package diffyml
 
 import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/szhekpisov/diffyml/pkg/diffyml/internal/compare"
+	"github.com/szhekpisov/diffyml/pkg/diffyml/internal/types"
 )
 
-// ChrootError represents an error navigating to a chroot path.
-type ChrootError struct {
-	Path    string
-	Message string
-	Err     error
-}
+type ChrootError = types.ChrootError
 
-// Error implements the error interface.
-func (e *ChrootError) Error() string {
-	return fmt.Sprintf("chroot path %q: %s", e.Path, e.Message)
-}
-
-// Unwrap returns the underlying error, if any.
-func (e *ChrootError) Unwrap() error {
-	return e.Err
-}
-
-// navigateToPath navigates to the specified dot-notation path within a document.
-// Path format: "level1.level2.key" or "items[0].name" for list access.
-// Returns the value at the path, or an error if path doesn't exist.
 func navigateToPath(doc interface{}, path string) (interface{}, error) {
-	if path == "" {
-		return doc, nil
-	}
+	return compare.NavigateToPath(doc, path)
+}
 
-	// Parse and navigate path segments
-	segments, err := parsePath(path)
-	if err != nil {
-		return nil, &ChrootError{
-			Path:    path,
-			Message: err.Error(),
-		}
-	}
-	current := doc
+func applyChroot(doc interface{}, path string, listToDocuments bool) ([]interface{}, error) {
+	return compare.ApplyChroot(doc, path, listToDocuments)
+}
 
-	for _, seg := range segments {
-		if seg.isIndex {
-			// Array index access
-			list, ok := current.([]interface{})
-			if !ok {
-				return nil, &ChrootError{
-					Path:    path,
-					Message: fmt.Sprintf("expected list at %q, got %T", seg.key, current),
-				}
-			}
-			if seg.index < 0 || seg.index >= len(list) {
-				return nil, &ChrootError{
-					Path:    path,
-					Message: fmt.Sprintf("index %d out of bounds (list has %d items)", seg.index, len(list)),
-				}
-			}
-			current = list[seg.index]
-		} else {
-			// Map key access - support both OrderedMap and regular map
-			var val interface{}
-			var exists bool
-
-			switch m := current.(type) {
-			case *OrderedMap:
-				val, exists = m.Values[seg.key]
-			case map[string]interface{}:
-				val, exists = m[seg.key]
-			default:
-				return nil, &ChrootError{
-					Path:    path,
-					Message: fmt.Sprintf("expected map at %q, got %T", seg.key, current),
-				}
-			}
-
-			if !exists {
-				return nil, &ChrootError{
-					Path:    path,
-					Message: fmt.Sprintf("key %q not found", seg.key),
-				}
-			}
-			current = val
-		}
-	}
-
-	return current, nil
+func applyChrootToDocs(docs []interface{}, path string, listToDocuments bool) ([]interface{}, error) {
+	return compare.ApplyChrootToDocs(docs, path, listToDocuments)
 }
 
 // pathSegment represents a single segment in a path.
+// Kept locally so that tests in package diffyml can access the unexported key field.
 type pathSegment struct {
 	key     string // The key name (for maps)
 	index   int    // The index (for lists)
@@ -108,7 +40,6 @@ func parsePath(path string) ([]pathSegment, error) {
 		return segments, nil
 	}
 
-	// Split by dots, but handle bracket notation
 	parts, err := splitPath(path)
 	if err != nil {
 		return nil, err
@@ -119,31 +50,26 @@ func parsePath(path string) ([]pathSegment, error) {
 			continue
 		}
 
-		// Check for bracket notation: key[index]
 		if idx := strings.Index(part, "["); idx >= 0 {
 			if strings.Count(part, "[") != 1 || strings.Count(part, "]") != 1 || !strings.HasSuffix(part, "]") {
 				return nil, fmt.Errorf("invalid list index syntax %q", part)
 			}
-			// Has index accessor
 			key := part[:idx]
-			indexStr := part[idx+1 : len(part)-1] // Remove [ and ]
+			indexStr := part[idx+1 : len(part)-1]
 			if indexStr == "" {
 				return nil, fmt.Errorf("empty list index in %q", part)
 			}
 
 			if key != "" {
-				// First add the key segment
 				segments = append(segments, pathSegment{key: key})
 			}
 
-			// Then add the index segment
 			index, err := strconv.Atoi(indexStr)
 			if err != nil {
 				return nil, fmt.Errorf("invalid list index %q", indexStr)
 			}
 			segments = append(segments, pathSegment{index: index, isIndex: true})
 		} else {
-			// Simple key
 			segments = append(segments, pathSegment{key: part})
 		}
 	}
@@ -189,44 +115,4 @@ func splitPath(path string) ([]string, error) {
 	}
 
 	return parts, nil
-}
-
-// applyChroot applies chroot path scoping to a document.
-// If listToDocuments is true and the path points to a list,
-// each list item is returned as a separate document.
-func applyChroot(doc interface{}, path string, listToDocuments bool) ([]interface{}, error) {
-	if path == "" {
-		return []interface{}{doc}, nil
-	}
-
-	result, err := navigateToPath(doc, path)
-	if err != nil {
-		return nil, err
-	}
-
-	// Check if result is a list and listToDocuments is enabled
-	if list, ok := result.([]interface{}); ok && listToDocuments {
-		return list, nil
-	}
-
-	// Return as single document
-	return []interface{}{result}, nil
-}
-
-// applyChrootToDocs applies chroot to multiple documents.
-func applyChrootToDocs(docs []interface{}, path string, listToDocuments bool) ([]interface{}, error) {
-	if path == "" {
-		return docs, nil
-	}
-
-	var result []interface{}
-	for _, doc := range docs {
-		chrootDocs, err := applyChroot(doc, path, listToDocuments)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, chrootDocs...)
-	}
-
-	return result, nil
 }

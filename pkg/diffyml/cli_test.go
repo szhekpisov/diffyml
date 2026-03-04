@@ -710,7 +710,7 @@ func TestDetermineExitCode_WithoutSetExitCode_HasError(t *testing.T) {
 }
 
 func TestExitResult_Success(t *testing.T) {
-	result := &ExitResult{ExitCodeSuccess, nil}
+	result := &ExitResult{Code: ExitCodeSuccess, Err: nil}
 	if result.Code != ExitCodeSuccess {
 		t.Errorf("expected code %d, got %d", ExitCodeSuccess, result.Code)
 	}
@@ -721,7 +721,7 @@ func TestExitResult_Success(t *testing.T) {
 
 func TestExitResult_WithError(t *testing.T) {
 	err := fmt.Errorf("test error")
-	result := &ExitResult{ExitCodeError, err}
+	result := &ExitResult{Code: ExitCodeError, Err: err}
 	if result.Code != ExitCodeError {
 		t.Errorf("expected code %d, got %d", ExitCodeError, result.Code)
 	}
@@ -731,7 +731,7 @@ func TestExitResult_WithError(t *testing.T) {
 }
 
 func TestExitResult_HasDifferences(t *testing.T) {
-	result := &ExitResult{ExitCodeDifferences, nil}
+	result := &ExitResult{Code: ExitCodeDifferences, Err: nil}
 	if result.Code != ExitCodeDifferences {
 		t.Errorf("expected code %d, got %d", ExitCodeDifferences, result.Code)
 	}

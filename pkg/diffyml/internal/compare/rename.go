@@ -1,30 +1,31 @@
-package diffyml
+package compare
 
 import (
 	"cmp"
 	"hash/crc32"
 	"slices"
 
-	"github.com/szhekpisov/diffyml/pkg/diffyml/internal/compare"
+	"github.com/szhekpisov/diffyml/pkg/diffyml/internal/parse"
+	"github.com/szhekpisov/diffyml/pkg/diffyml/internal/types"
+	"gopkg.in/yaml.v3"
 )
 
 const (
-	renameScoreThreshold = compare.RenameScoreThreshold
-	renameLimit          = compare.RenameLimit
+	RenameScoreThreshold = 60 // Minimum similarity % for rename match
+	RenameLimit          = 50 // Max unmatched docs before skipping detection
 )
 
-// similarityIndex hashes lines of text for content similarity comparison.
+// SimilarityIndex hashes lines of text for content similarity comparison.
 // Uses CRC32 on each line, storing counts in a table.
-// Kept as a local type so tests in package diffyml can access internal fields.
-type similarityIndex struct {
+type SimilarityIndex struct {
 	hashes   map[uint32]int
 	numLines int
 	numBytes int
 }
 
-// newSimilarityIndex builds a similarity index from raw bytes by hashing each non-empty line.
-func newSimilarityIndex(data []byte) *similarityIndex {
-	idx := &similarityIndex{
+// NewSimilarityIndex builds a similarity index from raw bytes by hashing each non-empty line.
+func NewSimilarityIndex(data []byte) *SimilarityIndex {
+	idx := &SimilarityIndex{
 		hashes:   make(map[uint32]int),
 		numBytes: len(data),
 	}
@@ -55,8 +56,8 @@ func newSimilarityIndex(data []byte) *similarityIndex {
 	return idx
 }
 
-// score computes similarity score (0-100) between two indices.
-func (s *similarityIndex) score(other *similarityIndex) int {
+// Score computes similarity score (0–100) between two indices.
+func (s *SimilarityIndex) Score(other *SimilarityIndex) int {
 	maxLines := max(s.numLines, other.numLines)
 	if maxLines == 0 {
 		return 0
@@ -72,20 +73,23 @@ func (s *similarityIndex) score(other *similarityIndex) int {
 	return matching * 100 / maxLines
 }
 
-// serializeDocument converts a parsed YAML document to YAML bytes for similarity comparison.
-func serializeDocument(doc interface{}) []byte {
-	return compare.SerializeDocument(doc)
+// SerializeDocument converts a parsed YAML document to YAML bytes for similarity comparison.
+// parse.ValueToYAMLNode always produces a valid *yaml.Node, so yaml.Marshal cannot fail here.
+func SerializeDocument(doc interface{}) []byte {
+	node := parse.ValueToYAMLNode(doc)
+	data, _ := yaml.Marshal(node)
+	return data
 }
 
-// renamePair holds a scored rename candidate pair.
-type renamePair struct {
-	fromIdx int
-	toIdx   int
-	score   int
+// RenamePair holds a scored rename candidate pair.
+type RenamePair struct {
+	FromIdx int
+	ToIdx   int
+	Score   int
 }
 
-// detectRenames finds renamed documents among unmatched K8s resources.
-func detectRenames(from, to []interface{}, unmatchedFrom, unmatchedTo []int, opts *Options) (renameMatched map[int]int, remainingFrom, remainingTo []int) {
+// DetectRenames finds renamed documents among unmatched K8s resources.
+func DetectRenames(from, to []interface{}, unmatchedFrom, unmatchedTo []int, opts *types.Options) (renameMatched map[int]int, remainingFrom, remainingTo []int) {
 	renameMatched = make(map[int]int)
 
 	// Early return if disabled or either list is empty
@@ -112,7 +116,7 @@ func detectRenames(from, to []interface{}, unmatchedFrom, unmatchedTo []int, opt
 
 	// Check rename limit
 	maxCandidates := max(len(k8sFrom), len(k8sTo))
-	if maxCandidates > renameLimit {
+	if maxCandidates > RenameLimit {
 		remainingFrom = append(remainingFrom, k8sFrom...)
 		remainingTo = append(remainingTo, k8sTo...)
 		return renameMatched, remainingFrom, remainingTo
@@ -126,19 +130,19 @@ func detectRenames(from, to []interface{}, unmatchedFrom, unmatchedTo []int, opt
 	}
 
 	// Serialize candidates and build similarity indices
-	fromCandidates := make(map[int]*similarityIndex)
-	toCandidates := make(map[int]*similarityIndex)
+	fromCandidates := make(map[int]*SimilarityIndex)
+	toCandidates := make(map[int]*SimilarityIndex)
 
 	for _, idx := range k8sFrom {
-		fromCandidates[idx] = newSimilarityIndex(serializeDocument(from[idx]))
+		fromCandidates[idx] = NewSimilarityIndex(SerializeDocument(from[idx]))
 	}
 
 	for _, idx := range k8sTo {
-		toCandidates[idx] = newSimilarityIndex(serializeDocument(to[idx]))
+		toCandidates[idx] = NewSimilarityIndex(SerializeDocument(to[idx]))
 	}
 
 	// Build scored pairs with size-ratio early rejection
-	var pairs []renamePair
+	var pairs []RenamePair
 	for _, fromIdx := range k8sFrom {
 		fc := fromCandidates[fromIdx]
 		for _, toIdx := range k8sTo {
@@ -147,23 +151,23 @@ func detectRenames(from, to []interface{}, unmatchedFrom, unmatchedTo []int, opt
 			// Size ratio early rejection
 			minLen := min(fc.numBytes, tc.numBytes)
 			maxLen := max(fc.numBytes, tc.numBytes)
-			if maxLen != 0 && minLen*100/maxLen < renameScoreThreshold {
+			if maxLen != 0 && minLen*100/maxLen < RenameScoreThreshold {
 				continue
 			}
 
-			s := fc.score(tc)
-			if s >= renameScoreThreshold {
-				pairs = append(pairs, renamePair{fromIdx: fromIdx, toIdx: toIdx, score: s})
+			s := fc.Score(tc)
+			if s >= RenameScoreThreshold {
+				pairs = append(pairs, RenamePair{FromIdx: fromIdx, ToIdx: toIdx, Score: s})
 			}
 		}
 	}
 
 	// Sort descending by score, tiebreak by ascending fromIdx then toIdx
-	slices.SortStableFunc(pairs, func(a, b renamePair) int {
+	slices.SortStableFunc(pairs, func(a, b RenamePair) int {
 		return cmp.Or(
-			cmp.Compare(b.score, a.score),
-			cmp.Compare(a.fromIdx, b.fromIdx),
-			cmp.Compare(a.toIdx, b.toIdx),
+			cmp.Compare(b.Score, a.Score),     // descending score
+			cmp.Compare(a.FromIdx, b.FromIdx), // ascending fromIdx
+			cmp.Compare(a.ToIdx, b.ToIdx),     // ascending toIdx
 		)
 	})
 
@@ -171,12 +175,12 @@ func detectRenames(from, to []interface{}, unmatchedFrom, unmatchedTo []int, opt
 	assignedFrom := make(map[int]bool)
 	assignedTo := make(map[int]bool)
 	for _, pair := range pairs {
-		if assignedFrom[pair.fromIdx] || assignedTo[pair.toIdx] {
+		if assignedFrom[pair.FromIdx] || assignedTo[pair.ToIdx] {
 			continue
 		}
-		renameMatched[pair.fromIdx] = pair.toIdx
-		assignedFrom[pair.fromIdx] = true
-		assignedTo[pair.toIdx] = true
+		renameMatched[pair.FromIdx] = pair.ToIdx
+		assignedFrom[pair.FromIdx] = true
+		assignedTo[pair.ToIdx] = true
 	}
 
 	// Remaining = non-K8s passthrough (already added) + unassigned K8s candidates

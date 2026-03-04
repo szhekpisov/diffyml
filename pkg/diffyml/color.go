@@ -1,239 +1,81 @@
 // color.go - Terminal color detection and ANSI escape codes.
-//
-// Detects terminal capabilities (color, true color, width) from environment.
-// Provides ANSI color codes for diff output highlighting.
-// Key types: ColorMode, ColorConfig.
 package diffyml
 
 import (
-	"fmt"
 	"os"
-	"strings"
+
+	"github.com/szhekpisov/diffyml/pkg/diffyml/internal/types"
 )
 
-// ColorMode represents the color output mode.
-type ColorMode int
+// Type aliases
+type ColorMode = types.ColorMode
+type ColorConfig = types.ColorConfig
+type Colorizer = types.Colorizer
 
+// Constants
 const (
-	// ColorModeAuto automatically detects terminal capability.
-	ColorModeAuto ColorMode = iota
-	// ColorModeAlways always enables color output.
-	ColorModeAlways
-	// ColorModeNever always disables color output.
-	ColorModeNever
+	ColorModeAuto   = types.ColorModeAuto
+	ColorModeAlways = types.ColorModeAlways
+	ColorModeNever  = types.ColorModeNever
 )
 
-// ParseColorMode parses a color mode string (always, never, auto).
-// Empty string defaults to auto.
-func ParseColorMode(s string) (ColorMode, error) {
-	switch strings.ToLower(s) {
-	case "", "auto":
-		return ColorModeAuto, nil
-	case "always":
-		return ColorModeAlways, nil
-	case "never":
-		return ColorModeNever, nil
-	default:
-		return ColorModeAuto, fmt.Errorf("invalid color mode %q, valid modes: always, never, auto", s)
-	}
-}
+// ANSI color codes (unexported in facade, exported in types)
+const (
+	colorReset  = types.ColorReset
+	colorRed    = types.ColorRed
+	colorGreen  = types.ColorGreen
+	colorYellow = types.ColorYellow
+	colorCyan   = types.ColorCyan
+	colorWhite  = types.ColorWhite
+	colorGray   = types.ColorGray
+)
 
-// ResolveColorMode determines if color should be enabled based on mode and terminal state.
-func ResolveColorMode(mode ColorMode, isTerminal bool) bool {
-	switch mode {
-	case ColorModeAlways:
-		return true
-	case ColorModeNever:
-		return false
-	case ColorModeAuto:
-		return isTerminal
-	default:
-		return isTerminal
-	}
-}
+// ANSI style codes
+const (
+	styleBold      = types.StyleBold
+	styleBoldOff   = types.StyleBoldOff
+	styleItalic    = types.StyleItalic
+	styleItalicOff = types.StyleItalicOff
+)
 
-// stdoutStatFn is an injectable function for os.Stdout.Stat(), enabling
-// terminal-mode mocking in tests without a real TTY.
+// Detailed color palette constants
+const (
+	DetailedYellowR = types.DetailedYellowR
+	DetailedYellowG = types.DetailedYellowG
+	DetailedYellowB = types.DetailedYellowB
+	DetailedRedR    = types.DetailedRedR
+	DetailedRedG    = types.DetailedRedG
+	DetailedRedB    = types.DetailedRedB
+	DetailedGreenR  = types.DetailedGreenR
+	DetailedGreenG  = types.DetailedGreenG
+	DetailedGreenB  = types.DetailedGreenB
+	DetailedGrayR   = types.DetailedGrayR
+	DetailedGrayG   = types.DetailedGrayG
+	DetailedGrayB   = types.DetailedGrayB
+)
+
+// stdoutStatFn is injectable for testing. Must be a local var so tests in
+// package diffyml can reassign it. IsTerminal below reads this var.
 var stdoutStatFn = func() (os.FileInfo, error) {
 	return os.Stdout.Stat()
 }
 
 // IsTerminal checks if the given file descriptor is a terminal.
+// Uses the local stdoutStatFn so that tests can override it.
 func IsTerminal(fd uintptr) bool {
 	stat, err := stdoutStatFn()
 	if err != nil {
 		return false
 	}
-	// Check if it's a character device (terminal)
 	return (stat.Mode() & os.ModeCharDevice) != 0
 }
 
-// ColorConfig holds color and terminal configuration.
-type ColorConfig struct {
-	mode       ColorMode
-	trueColor  bool
-	isTerminal bool
-}
-
-// NewColorConfig creates a new color configuration.
-func NewColorConfig(mode ColorMode, trueColor bool) *ColorConfig {
-	return &ColorConfig{
-		mode:       mode,
-		trueColor:  trueColor,
-		isTerminal: false, // Default, can be set via SetIsTerminal
-	}
-}
-
-// SetIsTerminal sets whether output is to a terminal.
-func (c *ColorConfig) SetIsTerminal(isTerminal bool) {
-	c.isTerminal = isTerminal
-}
-
-// DetectTerminal automatically detects if stdout is a terminal.
-func (c *ColorConfig) DetectTerminal() {
-	c.isTerminal = IsTerminal(os.Stdout.Fd())
-}
-
-// ShouldUseColor returns whether color output should be used.
-func (c *ColorConfig) ShouldUseColor() bool {
-	return ResolveColorMode(c.mode, c.isTerminal)
-}
-
-// ShouldUseTrueColor returns whether 24-bit true color should be used.
-// trueColor is only set for "always" mode, so the explicit request is honored.
-func (c *ColorConfig) ShouldUseTrueColor() bool {
-	return c.trueColor
-}
-
-// ToFormatOptions applies the color config to FormatOptions.
-func (c *ColorConfig) ToFormatOptions(opts *FormatOptions) {
-	if opts == nil {
-		return
-	}
-	opts.Color = c.ShouldUseColor()
-	opts.TrueColor = c.ShouldUseTrueColor()
-}
-
-// Detailed color palette constants (24-bit RGB values)
-const (
-	// DetailedYellowR, DetailedYellowG, DetailedYellowB - Yellow for change indicators
-	DetailedYellowR, DetailedYellowG, DetailedYellowB = 199, 196, 63
-	// DetailedRedR, DetailedRedG, DetailedRedB - Red for removed values
-	DetailedRedR, DetailedRedG, DetailedRedB = 185, 49, 27
-	// DetailedGreenR, DetailedGreenG, DetailedGreenB - Green for added values
-	DetailedGreenR, DetailedGreenG, DetailedGreenB = 88, 191, 56
-	// DetailedGrayR, DetailedGrayG, DetailedGrayB - Gray for context lines
-	DetailedGrayR, DetailedGrayG, DetailedGrayB = 105, 105, 105
-)
-
-// ANSI color codes (8-color fallback)
-const (
-	colorReset  = "\033[0m"
-	colorRed    = "\033[31m"
-	colorGreen  = "\033[32m"
-	colorYellow = "\033[33m"
-	colorCyan   = "\033[36m"
-	colorWhite  = "\033[37m"
-	colorGray   = "\033[90m" // Bright black
-)
-
-// ANSI style codes (bold, italic)
-const (
-	styleBold      = "\033[1m"
-	styleBoldOff   = "\033[22m"
-	styleItalic    = "\033[3m"
-	styleItalicOff = "\033[23m"
-)
-
-// GetTrueColorCode returns an ANSI escape sequence for 24-bit RGB color.
-// RGB values are clamped to the valid range [0, 255].
-func GetTrueColorCode(r, g, b int) string {
-	r = clamp(r, 0, 255)
-	g = clamp(g, 0, 255)
-	b = clamp(b, 0, 255)
-	return fmt.Sprintf("\033[38;2;%d;%d;%dm", r, g, b)
-}
-
-// GetDetailedColorCode returns the appropriate color code for a diff type.
-// Uses the detailed palette when useTrueColor is true,
-// otherwise falls back to standard 8-color ANSI codes.
-func GetDetailedColorCode(diffType DiffType, useTrueColor bool) string {
-	if useTrueColor {
-		switch diffType {
-		case DiffAdded:
-			return GetTrueColorCode(DetailedGreenR, DetailedGreenG, DetailedGreenB)
-		case DiffRemoved:
-			return GetTrueColorCode(DetailedRedR, DetailedRedG, DetailedRedB)
-		case DiffModified, DiffOrderChanged:
-			return GetTrueColorCode(DetailedYellowR, DetailedYellowG, DetailedYellowB)
-		}
-	}
-	// Fallback to 8-color ANSI
-	switch diffType {
-	case DiffAdded:
-		return colorGreen
-	case DiffRemoved:
-		return colorRed
-	case DiffModified, DiffOrderChanged:
-		return colorYellow
-	}
-	return ""
-}
-
-// GetContextColorCode returns gray color for context lines.
-// Uses the detailed gray RGB value when useTrueColor is true,
-// otherwise uses bright black (gray) ANSI code.
-func GetContextColorCode(useTrueColor bool) string {
-	if useTrueColor {
-		return GetTrueColorCode(DetailedGrayR, DetailedGrayG, DetailedGrayB)
-	}
-	return colorGray
-}
-
-// GetColorReset returns the ANSI reset code to clear all formatting.
-func GetColorReset() string {
-	return colorReset
-}
-
-// Colorizer provides diff-type-aware color codes for formatters.
-// Uses the detailed palette (true color or 8-color fallback).
-type Colorizer struct {
-	TrueColor bool
-}
-
-// Added returns the color code for added items.
-func (c Colorizer) Added() string { return GetDetailedColorCode(DiffAdded, c.TrueColor) }
-
-// Removed returns the color code for removed items.
-func (c Colorizer) Removed() string { return GetDetailedColorCode(DiffRemoved, c.TrueColor) }
-
-// Modified returns the color code for modified items.
-func (c Colorizer) Modified() string { return GetDetailedColorCode(DiffModified, c.TrueColor) }
-
-// Context returns the color code for context lines.
-func (c Colorizer) Context() string { return GetContextColorCode(c.TrueColor) }
-
-// Reset returns the ANSI reset code.
-func (c Colorizer) Reset() string { return colorReset }
-
-// Bold returns the ANSI bold code.
-func (c Colorizer) Bold() string { return styleBold }
-
-// CompactColor returns the 8-color ANSI code for a diff type.
-func CompactColor(dt DiffType) string {
-	switch dt {
-	case DiffAdded:
-		return colorGreen
-	case DiffRemoved:
-		return colorRed
-	case DiffModified, DiffOrderChanged:
-		return colorYellow
-	default:
-		return ""
-	}
-}
-
-// clamp restricts a value to the range [lo, hi].
-func clamp(val, lo, hi int) int {
-	return max(lo, min(val, hi))
-}
+func ParseColorMode(s string) (ColorMode, error)                               { return types.ParseColorMode(s) }
+func ResolveColorMode(mode ColorMode, isTerminal bool) bool                     { return types.ResolveColorMode(mode, isTerminal) }
+func NewColorConfig(mode ColorMode, trueColor bool) *ColorConfig                { return types.NewColorConfig(mode, trueColor) }
+func GetTrueColorCode(r, g, b int) string                                       { return types.GetTrueColorCode(r, g, b) }
+func GetDetailedColorCode(diffType DiffType, useTrueColor bool) string          { return types.GetDetailedColorCode(diffType, useTrueColor) }
+func GetContextColorCode(useTrueColor bool) string                              { return types.GetContextColorCode(useTrueColor) }
+func GetColorReset() string                                                     { return types.GetColorReset() }
+func CompactColor(dt DiffType) string                                           { return types.CompactColor(dt) }
+func clamp(val, lo, hi int) int                                                 { return types.Clamp(val, lo, hi) }

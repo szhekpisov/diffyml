@@ -94,9 +94,8 @@ func FuzzCompareWithOptions(f *testing.F) {
 			IgnoreValueChanges:      flags&(1<<2) != 0,
 			DetectKubernetes:        flags&(1<<3) != 0,
 			DetectRenames:           flags&(1<<4) != 0,
-			NoCertInspection:        flags&(1<<5) != 0,
-			Swap:                    flags&(1<<6) != 0,
-			ChrootListToDocuments:   flags&(1<<7) != 0,
+			Swap:                    flags&(1<<5) != 0,
+			ChrootListToDocuments:   flags&(1<<6) != 0,
 			Chroot:                  chroot,
 		}
 		Compare(from, to, opts) //nolint:errcheck

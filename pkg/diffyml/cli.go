@@ -11,6 +11,18 @@ import (
 	"strings"
 )
 
+// ValidationError represents a CLI configuration validation error.
+type ValidationError struct {
+	Field   string
+	Value   string
+	Message string
+}
+
+// Error implements the error interface.
+func (e *ValidationError) Error() string {
+	return e.Message
+}
+
 // CLIConfig holds all command-line configuration options.
 type CLIConfig struct {
 	// File arguments
@@ -311,10 +323,10 @@ Flags:
 func (c *CLIConfig) Validate() error {
 	// Validate file arguments
 	if c.FromFile == "" {
-		return fmt.Errorf("missing 'from' file argument")
+		return &ValidationError{Field: "from", Message: "missing 'from' file argument"}
 	}
 	if c.ToFile == "" {
-		return fmt.Errorf("missing 'to' file argument")
+		return &ValidationError{Field: "to", Message: "missing 'to' file argument"}
 	}
 
 	// Validate output format
@@ -324,12 +336,20 @@ func (c *CLIConfig) Validate() error {
 
 	// Validate color mode
 	if _, err := ParseColorMode(c.Color); err != nil {
-		return fmt.Errorf("invalid color mode %q, valid modes: always, never, auto", c.Color)
+		return &ValidationError{
+			Field:   "color",
+			Value:   c.Color,
+			Message: fmt.Sprintf("invalid color mode %q, valid modes: always, never, auto", c.Color),
+		}
 	}
 
 	// Validate truecolor mode
 	if _, err := ParseColorMode(c.TrueColor); err != nil {
-		return fmt.Errorf("invalid truecolor mode %q, valid modes: always, never, auto", c.TrueColor)
+		return &ValidationError{
+			Field:   "truecolor",
+			Value:   c.TrueColor,
+			Message: fmt.Sprintf("invalid truecolor mode %q, valid modes: always, never, auto", c.TrueColor),
+		}
 	}
 
 	// Validate regex patterns
@@ -352,8 +372,11 @@ func ValidateOutputFormat(format string) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("unknown output format %q, valid formats: %s",
-		format, strings.Join(validFormatterNames, ", "))
+	return &ValidationError{
+		Field:   "output",
+		Value:   format,
+		Message: fmt.Sprintf("unknown output format %q, valid formats: %s", format, strings.Join(validFormatterNames, ", ")),
+	}
 }
 
 // ValidateRegexPatterns validates a list of regex patterns.
@@ -362,7 +385,11 @@ func ValidateRegexPatterns(patterns []string, flagName string) error {
 	for _, pattern := range patterns {
 		_, err := regexp.Compile(pattern)
 		if err != nil {
-			return fmt.Errorf("invalid regex pattern %q in --%s: %w", pattern, flagName, err)
+			return &ValidationError{
+				Field:   flagName,
+				Value:   pattern,
+				Message: fmt.Sprintf("invalid regex pattern %q in --%s: %v", pattern, flagName, err),
+			}
 		}
 	}
 	return nil

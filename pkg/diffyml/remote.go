@@ -16,6 +16,24 @@ const (
 	DefaultTimeout = 30 * time.Second
 )
 
+// RemoteError represents an error fetching content from a remote URL.
+type RemoteError struct {
+	URL        string
+	StatusCode int
+	Message    string
+	Err        error
+}
+
+// Error implements the error interface.
+func (e *RemoteError) Error() string {
+	return e.Message
+}
+
+// Unwrap returns the underlying error, if any.
+func (e *RemoteError) Unwrap() error {
+	return e.Err
+}
+
 // ValidateFileExists checks if a file exists and is not a directory.
 // Returns an error with the file path if validation fails.
 func ValidateFileExists(path string) error {
@@ -61,22 +79,37 @@ func fetchURL(url string) ([]byte, error) {
 
 	resp, err := client.Get(url)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch %s: %w", url, err)
+		return nil, &RemoteError{
+			URL:     url,
+			Message: fmt.Sprintf("failed to fetch %s: %v", url, err),
+			Err:     err,
+		}
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("failed to fetch %s: HTTP %d", url, resp.StatusCode)
+		return nil, &RemoteError{
+			URL:        url,
+			StatusCode: resp.StatusCode,
+			Message:    fmt.Sprintf("failed to fetch %s: HTTP %d", url, resp.StatusCode),
+		}
 	}
 
 	limited := io.LimitReader(resp.Body, int64(MaxResponseSize)+1)
 	data, err := io.ReadAll(limited)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response from %s: %w", url, err)
+		return nil, &RemoteError{
+			URL:     url,
+			Message: fmt.Sprintf("failed to read response from %s: %v", url, err),
+			Err:     err,
+		}
 	}
 
 	if len(data) > MaxResponseSize {
-		return nil, fmt.Errorf("response too large from %s: exceeds 10 MB limit", url)
+		return nil, &RemoteError{
+			URL:     url,
+			Message: fmt.Sprintf("response too large from %s: exceeds 10 MB limit", url),
+		}
 	}
 
 	return data, nil

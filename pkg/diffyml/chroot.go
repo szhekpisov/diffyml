@@ -15,11 +15,17 @@ import (
 type ChrootError struct {
 	Path    string
 	Message string
+	Err     error
 }
 
 // Error implements the error interface.
 func (e *ChrootError) Error() string {
 	return fmt.Sprintf("chroot path %q: %s", e.Path, e.Message)
+}
+
+// Unwrap returns the underlying error, if any.
+func (e *ChrootError) Unwrap() error {
+	return e.Err
 }
 
 // navigateToPath navigates to the specified dot-notation path within a document.

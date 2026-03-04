@@ -16,14 +16,14 @@ import (
 // OrderedMap is a map that preserves insertion order of keys.
 type OrderedMap struct {
 	Keys   []string
-	Values map[string]interface{}
+	Values map[string]YAMLValue
 }
 
 // NewOrderedMap creates an empty OrderedMap.
 func NewOrderedMap() *OrderedMap {
 	return &OrderedMap{
 		Keys:   nil,
-		Values: make(map[string]interface{}),
+		Values: make(map[string]YAMLValue),
 	}
 }
 
@@ -112,6 +112,25 @@ func nodeToInterfaceWithCycleDetection(node *yaml.Node, seen map[*yaml.Node]bool
 		delete(seen, node.Alias)
 		return result
 
+	default:
+		return nil
+	}
+}
+
+// toOrderedMap converts a map[string]interface{} to an *OrderedMap with
+// alphabetically sorted keys. If the value is already an *OrderedMap it is
+// returned as-is. Returns nil for any other type.
+func toOrderedMap(v interface{}) *OrderedMap {
+	switch m := v.(type) {
+	case *OrderedMap:
+		return m
+	case map[string]interface{}:
+		om := NewOrderedMap()
+		om.Keys = sortedMapKeys(m)
+		for k, val := range m {
+			om.Values[k] = val
+		}
+		return om
 	default:
 		return nil
 	}

@@ -5,9 +5,56 @@ import (
 	"cmp"
 	"fmt"
 	"slices"
-	"sort"
 	"strings"
+	"time"
 )
+
+// YAMLValue is an alias for interface{} that documents the expected types
+// from YAML parsing: string, int, int64, float64, bool, time.Time,
+// *OrderedMap, []interface{}, or nil.
+type YAMLValue = interface{}
+
+// YAMLKind classifies a parsed YAML value into its runtime type category.
+type YAMLKind int
+
+const (
+	KindNull      YAMLKind = iota // nil
+	KindString                    // string
+	KindInt                       // int or int64
+	KindFloat                     // float64
+	KindBool                      // bool
+	KindTimestamp                  // time.Time
+	KindMap                       // *OrderedMap
+	KindList                      // []interface{}
+	KindUnknown                   // anything else
+)
+
+// yamlKindOf returns the YAMLKind for a parsed YAML value.
+func yamlKindOf(v YAMLValue) YAMLKind {
+	switch v.(type) {
+	case nil:
+		return KindNull
+	case string:
+		return KindString
+	case int, int64:
+		return KindInt
+	case float64:
+		return KindFloat
+	case bool:
+		return KindBool
+	case time.Time:
+		return KindTimestamp
+	case *OrderedMap:
+		return KindMap
+	case []interface{}:
+		return KindList
+	default:
+		if toOrderedMap(v) != nil {
+			return KindMap
+		}
+		return KindUnknown
+	}
+}
 
 // DiffType represents the kind of difference detected between YAML documents.
 type DiffType int
@@ -30,9 +77,9 @@ type Difference struct {
 	// Type indicates the kind of change (added, removed, modified, order changed).
 	Type DiffType
 	// From is the original value (nil for additions).
-	From interface{}
+	From YAMLValue
 	// To is the new value (nil for removals).
-	To interface{}
+	To YAMLValue
 	// DocumentIndex indicates which document in a multi-document YAML file (0-based).
 	DocumentIndex int
 }
@@ -60,8 +107,6 @@ type Options struct {
 	IgnoreApiVersion bool
 	// AdditionalIdentifiers specifies additional fields to use as identifiers in named entry lists.
 	AdditionalIdentifiers []string
-	// NoCertInspection disables x509 certificate inspection, comparing as raw text.
-	NoCertInspection bool
 	// Swap reverses the from/to comparison.
 	Swap bool
 	// Chroot changes the comparison root to this path for both files.
@@ -135,18 +180,20 @@ func extractPathOrder(fromDocs, toDocs []interface{}, opts *Options) map[string]
 	pathOrder := make(map[string]int)
 	index := 0
 
+	registerPrefix := func(prefix string) {
+		if prefix != "" {
+			if _, exists := pathOrder[prefix]; !exists {
+				pathOrder[prefix] = index
+				index++
+			}
+		}
+	}
+
 	var extractFromValue func(prefix string, val interface{})
 	extractFromValue = func(prefix string, val interface{}) {
 		switch v := val.(type) {
 		case *OrderedMap:
-			// Register the prefix itself
-			if prefix != "" {
-				if _, exists := pathOrder[prefix]; !exists {
-					pathOrder[prefix] = index
-					index++
-				}
-			}
-			// Then recurse into children in order
+			registerPrefix(prefix)
 			for _, key := range v.Keys {
 				childPath := key
 				if prefix != "" {
@@ -154,36 +201,8 @@ func extractPathOrder(fromDocs, toDocs []interface{}, opts *Options) map[string]
 				}
 				extractFromValue(childPath, v.Values[key])
 			}
-		case map[string]interface{}:
-			// Register the prefix itself
-			if prefix != "" {
-				if _, exists := pathOrder[prefix]; !exists {
-					pathOrder[prefix] = index
-					index++
-				}
-			}
-			// For regular maps, sort keys alphabetically for deterministic order
-			var keys []string
-			for key := range v {
-				keys = append(keys, key)
-			}
-			sort.Strings(keys)
-			for _, key := range keys {
-				childPath := key
-				if prefix != "" {
-					childPath = prefix + "." + key
-				}
-				extractFromValue(childPath, v[key])
-			}
 		case []interface{}:
-			// Register the prefix itself
-			if prefix != "" {
-				if _, exists := pathOrder[prefix]; !exists {
-					pathOrder[prefix] = index
-					index++
-				}
-			}
-			// For lists, process items by identifier if available
+			registerPrefix(prefix)
 			for i, item := range v {
 				var childPath string
 				if id := getIdentifier(item, opts); isComparableIdentifier(id) {
@@ -194,13 +213,7 @@ func extractPathOrder(fromDocs, toDocs []interface{}, opts *Options) map[string]
 				extractFromValue(childPath, item)
 			}
 		default:
-			// Scalar - just register the path
-			if prefix != "" {
-				if _, exists := pathOrder[prefix]; !exists {
-					pathOrder[prefix] = index
-					index++
-				}
-			}
+			registerPrefix(prefix)
 		}
 	}
 
@@ -250,22 +263,11 @@ func isListEntryDiff(diff Difference) bool {
 		val = diff.From
 	}
 
-	// Check OrderedMap
 	if om, ok := val.(*OrderedMap); ok {
 		if _, hasName := om.Values["name"]; hasName {
 			return true
 		}
 		if _, hasID := om.Values["id"]; hasID {
-			return true
-		}
-	}
-
-	// Check regular map
-	if m, ok := val.(map[string]interface{}); ok {
-		if _, hasName := m["name"]; hasName {
-			return true
-		}
-		if _, hasID := m["id"]; hasID {
 			return true
 		}
 	}

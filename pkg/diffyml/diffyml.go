@@ -37,6 +37,13 @@ type Difference struct {
 	DocumentIndex int
 }
 
+// DiffGroup pairs differences from a single file with its path.
+// Used by StructuredFormatter.FormatAll for aggregated directory-mode output.
+type DiffGroup struct {
+	FilePath string       // Relative file path (e.g., "deploy.yaml")
+	Diffs    []Difference // Differences for this file
+}
+
 // Options configures the comparison behavior.
 type Options struct {
 	// IgnoreOrderChanges ignores list order differences when true.

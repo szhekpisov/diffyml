@@ -39,13 +39,6 @@ type FormatOptions struct {
 	FilePath string
 }
 
-// DiffGroup pairs differences from a single file with its path.
-// Used by StructuredFormatter.FormatAll for aggregated directory-mode output.
-type DiffGroup struct {
-	FilePath string       // Relative file path (e.g., "deploy.yaml")
-	Diffs    []Difference // Differences for this file
-}
-
 // StructuredFormatter is an opt-in interface for formatters that need
 // aggregated output across all files in directory mode.
 // Checked via type assertion in runDirectory.

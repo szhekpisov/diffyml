@@ -242,9 +242,9 @@ type pairResult struct {
 // runDirectory executes directory-mode comparison using a 3-phase pipeline:
 // sequential load, parallel compare, sequential format.
 // Unexported; called from Run() when both arguments are directories.
-func runDirectory(cfg *CLIConfig, rc *RunConfig, fromDir, toDir string) *ExitResult {
+func runDirectory(runOpts *RunOptions, rc *RunConfig, fromDir, toDir string) *ExitResult {
 	// Handle swap: swap directories before planning to avoid double-swap
-	if cfg.Swap {
+	if runOpts.Swap {
 		fromDir, toDir = toDir, fromDir
 	}
 
@@ -262,13 +262,13 @@ func runDirectory(cfg *CLIConfig, rc *RunConfig, fromDir, toDir string) *ExitRes
 	}
 
 	// Build shared options
-	opts, err := cfg.buildRunOpts()
+	ro, err := runOpts.buildRunOpts()
 	if err != nil {
 		return exitError(rc, err)
 	}
 	// Disable swap in compareOpts since we already swapped dirs
-	if cfg.Swap {
-		opts.compare.Swap = false
+	if runOpts.Swap {
+		ro.compare.Swap = false
 	}
 
 	// Phase 1: Load content sequentially (preserves disk order)
@@ -297,7 +297,7 @@ func runDirectory(cfg *CLIConfig, rc *RunConfig, fromDir, toDir string) *ExitRes
 			go func(idx int) {
 				defer wg.Done()
 				defer func() { <-sem }()
-				diffs, err := compareAndFilter(results[idx].from, results[idx].to, opts.compare, opts.filter)
+				diffs, err := compareAndFilter(results[idx].from, results[idx].to, ro.compare, ro.filter)
 				results[idx].diffs = diffs
 				results[idx].cmpErr = err
 			}(i)
@@ -308,14 +308,14 @@ func runDirectory(cfg *CLIConfig, rc *RunConfig, fromDir, toDir string) *ExitRes
 			if results[i].loadErr != nil {
 				continue
 			}
-			diffs, err := compareAndFilter(results[i].from, results[i].to, opts.compare, opts.filter)
+			diffs, err := compareAndFilter(results[i].from, results[i].to, ro.compare, ro.filter)
 			results[i].diffs = diffs
 			results[i].cmpErr = err
 		}
 	}
 
 	// Phase 3: Format sequentially (preserves output order)
-	sf, isStructured := opts.formatter.(StructuredFormatter)
+	sf, isStructured := ro.formatter.(StructuredFormatter)
 
 	hasDiffs := false
 	hasErrors := false
@@ -345,25 +345,25 @@ func runDirectory(cfg *CLIConfig, rc *RunConfig, fromDir, toDir string) *ExitRes
 		pairTypes = append(pairTypes, r.pair.Type)
 
 		// Non-structured: per-file header + format (skip for brief+summary)
-		if !isStructured && !cfg.isBriefSummary() {
-			fmt.Fprint(rc.Stdout, FormatFileHeader(filePath, r.pair.Type, opts.format))
-			fmt.Fprint(rc.Stdout, opts.formatter.Format(r.diffs, opts.format))
+		if !isStructured && !runOpts.isBriefSummary() {
+			fmt.Fprint(rc.Stdout, FormatFileHeader(filePath, r.pair.Type, ro.format))
+			fmt.Fprint(rc.Stdout, ro.formatter.Format(r.diffs, ro.format))
 		}
 	}
 
 	// For structured formatters, always write output (even when empty)
 	if isStructured {
-		fmt.Fprint(rc.Stdout, sf.FormatAll(groups, opts.format))
+		fmt.Fprint(rc.Stdout, sf.FormatAll(groups, ro.format))
 	}
 
 	// AI Summary (unified for both structured and non-structured)
-	if cfg.Summary && len(groups) > 0 {
-		summaryOutput, summaryErr := invokeSummary(cfg, rc, groups, opts.format)
+	if runOpts.Summary && len(groups) > 0 {
+		summaryOutput, summaryErr := invokeSummary(runOpts.SummaryModel, rc, groups, ro.format)
 		if summaryErr != nil {
-			if cfg.isBriefSummary() {
+			if runOpts.isBriefSummary() {
 				for i, g := range groups {
-					fmt.Fprint(rc.Stdout, FormatFileHeader(g.FilePath, pairTypes[i], opts.format))
-					fmt.Fprint(rc.Stdout, opts.formatter.Format(g.Diffs, opts.format))
+					fmt.Fprint(rc.Stdout, FormatFileHeader(g.FilePath, pairTypes[i], ro.format))
+					fmt.Fprint(rc.Stdout, ro.formatter.Format(g.Diffs, ro.format))
 				}
 			}
 			fmt.Fprintf(rc.Stderr, "Warning: AI summary unavailable: %v\n", summaryErr)
@@ -377,7 +377,7 @@ func runDirectory(cfg *CLIConfig, rc *RunConfig, fromDir, toDir string) *ExitRes
 	if hasDiffs {
 		diffCount = 1
 	}
-	if code := DetermineExitCode(cfg.SetExitCode, diffCount, nil); code != ExitCodeSuccess {
+	if code := DetermineExitCode(runOpts.SetExitCode, diffCount, nil); code != ExitCodeSuccess {
 		return &ExitResult{code, nil}
 	}
 	if hasErrors {

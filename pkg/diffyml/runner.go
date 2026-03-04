@@ -96,6 +96,48 @@ func NewRunConfig() *RunConfig {
 	}
 }
 
+// RunOptions holds the library-level options for running a comparison.
+// It decouples the execution flow from CLI parsing, allowing programmatic use
+// without constructing a CLIConfig.
+type RunOptions struct {
+	// File paths
+	FromFile string
+	ToFile   string
+
+	// Behavior
+	SetExitCode bool
+	Swap        bool
+	Output      string // formatter name
+
+	// AI Summary
+	Summary      bool
+	SummaryModel string
+
+	// Resolved options
+	CompareOpts *Options
+	FilterOpts  *FilterOptions
+	FormatOpts  *FormatOptions
+}
+
+// isBriefSummary reports whether the options request brief output with AI summary.
+func (o *RunOptions) isBriefSummary() bool {
+	return o.Output == "brief" && o.Summary
+}
+
+// buildRunOpts creates the internal runOpts from RunOptions.
+func (o *RunOptions) buildRunOpts() (*runOpts, error) {
+	formatter, err := GetFormatter(o.Output)
+	if err != nil {
+		return nil, err
+	}
+	return &runOpts{
+		formatter: formatter,
+		compare:   o.CompareOpts,
+		filter:    o.FilterOpts,
+		format:    o.FormatOpts,
+	}, nil
+}
+
 // Run executes the main comparison flow with the given configuration.
 // Returns an ExitResult with the appropriate exit code and any error.
 func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
@@ -109,7 +151,7 @@ func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
 		return &ExitResult{ExitCodeSuccess, nil}
 	}
 
-	// Validate configuration and detect directories (skip in test mode)
+	// Validate configuration (skip in test mode)
 	if rc.isRealMode() {
 		if err := cfg.Validate(); err != nil {
 			return exitError(rc, err)
@@ -118,57 +160,66 @@ func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
 		if cfg.Summary && os.Getenv("ANTHROPIC_API_KEY") == "" {
 			return exitError(rc, fmt.Errorf("--summary requires ANTHROPIC_API_KEY environment variable to be set"))
 		}
+	}
 
-		// Directory detection
-		fromIsDir := IsDirectory(cfg.FromFile)
-		toIsDir := IsDirectory(cfg.ToFile)
+	runOpts := cfg.ToRunOptions()
+
+	// Directory detection (real mode only)
+	if rc.isRealMode() {
+		fromIsDir := IsDirectory(runOpts.FromFile)
+		toIsDir := IsDirectory(runOpts.ToFile)
 
 		if fromIsDir && toIsDir {
-			return runDirectory(cfg, rc, cfg.FromFile, cfg.ToFile)
+			return runDirectory(runOpts, rc, runOpts.FromFile, runOpts.ToFile)
 		}
 		if fromIsDir != toIsDir {
 			return exitError(rc, fmt.Errorf("both arguments must be the same type (both files or both directories)"))
 		}
 	}
 
-	// Build shared options
-	opts, err := cfg.buildRunOpts()
+	return runWithOpts(runOpts, rc)
+}
+
+// runWithOpts executes the core comparison flow using resolved RunOptions.
+func runWithOpts(opts *RunOptions, rc *RunConfig) *ExitResult {
+	// Build formatter and shared options
+	ro, err := opts.buildRunOpts()
 	if err != nil {
 		return exitError(rc, err)
 	}
 
 	// Load file contents
-	fromContent, err := loadOrUse(rc.FromContent, cfg.FromFile)
+	fromContent, err := loadOrUse(rc.FromContent, opts.FromFile)
 	if err != nil {
 		return exitError(rc, err)
 	}
-	toContent, err := loadOrUse(rc.ToContent, cfg.ToFile)
+	toContent, err := loadOrUse(rc.ToContent, opts.ToFile)
 	if err != nil {
 		return exitError(rc, err)
 	}
 
 	// Compare and filter
-	diffs, err := compareAndFilter(fromContent, toContent, opts.compare, opts.filter)
+	diffs, err := compareAndFilter(fromContent, toContent, ro.compare, ro.filter)
 	if err != nil {
 		return exitError(rc, err)
 	}
 
 	// Set file path for formatters that use it (e.g., GitLab)
-	filePath := normalizeFilePath(cfg.ToFile, rc.Stderr)
-	opts.format.FilePath = filePath
+	filePath := normalizeFilePath(opts.ToFile, rc.Stderr)
+	ro.format.FilePath = filePath
 
 	// Format output (defer printing for brief+summary mode)
-	formatted := opts.formatter.Format(diffs, opts.format)
-	if !cfg.isBriefSummary() {
+	formatted := ro.formatter.Format(diffs, ro.format)
+	if !opts.isBriefSummary() {
 		fmt.Fprint(rc.Stdout, formatted)
 	}
 
 	// AI summary
-	if cfg.Summary && len(diffs) > 0 {
+	if opts.Summary && len(diffs) > 0 {
 		groups := []DiffGroup{{FilePath: filePath, Diffs: diffs}}
-		summaryOutput, err := invokeSummary(cfg, rc, groups, opts.format)
+		summaryOutput, err := invokeSummary(opts.SummaryModel, rc, groups, ro.format)
 		if err != nil {
-			if cfg.isBriefSummary() {
+			if opts.isBriefSummary() {
 				fmt.Fprint(rc.Stdout, formatted)
 			}
 			fmt.Fprintf(rc.Stderr, "Warning: AI summary unavailable: %v\n", err)
@@ -178,7 +229,7 @@ func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
 	}
 
 	// Determine exit code
-	exitCode := DetermineExitCode(cfg.SetExitCode, len(diffs), nil)
+	exitCode := DetermineExitCode(opts.SetExitCode, len(diffs), nil)
 	return &ExitResult{exitCode, nil}
 }
 
@@ -191,28 +242,12 @@ func applyColorConfig(cfg *CLIConfig, formatOpts *FormatOptions) {
 	colorCfg.ToFormatOptions(formatOpts)
 }
 
-// runOpts holds the shared formatter and options built from CLIConfig.
+// runOpts holds the shared formatter and options built from RunOptions.
 type runOpts struct {
 	formatter Formatter
 	compare   *Options
 	filter    *FilterOptions
 	format    *FormatOptions
-}
-
-// buildRunOpts creates shared formatter and options from the CLI config.
-func (cfg *CLIConfig) buildRunOpts() (*runOpts, error) {
-	formatter, err := GetFormatter(cfg.Output)
-	if err != nil {
-		return nil, err
-	}
-	formatOpts := cfg.ToFormatOptions()
-	applyColorConfig(cfg, formatOpts)
-	return &runOpts{
-		formatter: formatter,
-		compare:   cfg.ToCompareOptions(),
-		filter:    cfg.ToFilterOptions(),
-		format:    formatOpts,
-	}, nil
 }
 
 // loadOrUse returns preloaded content if non-nil, otherwise loads from path.
@@ -237,9 +272,9 @@ func compareAndFilter(from, to []byte, compareOpts *Options, filterOpts *FilterO
 }
 
 // invokeSummary runs the AI summarizer and returns the formatted summary string.
-// Callers must check cfg.Summary and non-empty diffs before calling.
-func invokeSummary(cfg *CLIConfig, rc *RunConfig, groups []DiffGroup, formatOpts *FormatOptions) (string, error) {
-	summarizer := NewSummarizer(cfg.SummaryModel)
+// Callers must check Summary flag and non-empty diffs before calling.
+func invokeSummary(model string, rc *RunConfig, groups []DiffGroup, formatOpts *FormatOptions) (string, error) {
+	summarizer := NewSummarizer(model)
 	if rc.SummaryAPIURL != "" {
 		summarizer.apiURL = rc.SummaryAPIURL
 	}

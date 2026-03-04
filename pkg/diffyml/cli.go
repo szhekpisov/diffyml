@@ -239,7 +239,6 @@ func (c *CLIConfig) ToCompareOptions() *Options {
 		DetectRenames:           c.DetectRenames,
 		IgnoreApiVersion:        c.IgnoreApiVersion,
 		AdditionalIdentifiers:   c.AdditionalIdentifiers,
-		NoCertInspection:        c.NoCertInspection,
 		Swap:                    c.Swap,
 		Chroot:                  c.Chroot,
 		ChrootFrom:              c.ChrootFrom,
@@ -265,6 +264,24 @@ func (c *CLIConfig) ToFormatOptions() *FormatOptions {
 		UseGoPatchStyle:  c.UseGoPatchStyle,
 		ContextLines:     c.MultiLineContextLines,
 		NoCertInspection: c.NoCertInspection,
+	}
+}
+
+// ToRunOptions converts CLIConfig to RunOptions with all options resolved.
+func (c *CLIConfig) ToRunOptions() *RunOptions {
+	formatOpts := c.ToFormatOptions()
+	applyColorConfig(c, formatOpts)
+	return &RunOptions{
+		FromFile:     c.FromFile,
+		ToFile:       c.ToFile,
+		SetExitCode:  c.SetExitCode,
+		Swap:         c.Swap,
+		Output:       c.Output,
+		Summary:      c.Summary,
+		SummaryModel: c.SummaryModel,
+		CompareOpts:  c.ToCompareOptions(),
+		FilterOpts:   c.ToFilterOptions(),
+		FormatOpts:   formatOpts,
 	}
 }
 
@@ -394,4 +411,3 @@ func ValidateRegexPatterns(patterns []string, flagName string) error {
 	}
 	return nil
 }
-

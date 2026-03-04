@@ -59,19 +59,18 @@ func TestDeepEqual_Slices_Nested(t *testing.T) {
 	}
 }
 
-// --- extractPathOrder: map[string]interface{} branch ---
+// --- extractPathOrder: OrderedMap branches ---
 
-func TestExtractPathOrder_PlainMap(t *testing.T) {
-	docs := []interface{}{
-		map[string]interface{}{
-			"beta":  "2",
-			"alpha": "1",
-		},
+func TestExtractPathOrder_OrderedMap(t *testing.T) {
+	om := &OrderedMap{
+		Keys:   []string{"beta", "alpha"},
+		Values: map[string]interface{}{"beta": "2", "alpha": "1"},
 	}
+	docs := []interface{}{om}
 	order := extractPathOrder(docs, nil, nil)
 
 	if len(order) == 0 {
-		t.Fatal("expected non-empty path order for plain map")
+		t.Fatal("expected non-empty path order")
 	}
 	if _, ok := order["alpha"]; !ok {
 		t.Error("expected 'alpha' in path order")
@@ -81,12 +80,16 @@ func TestExtractPathOrder_PlainMap(t *testing.T) {
 	}
 }
 
-func TestExtractPathOrder_PlainMapNested(t *testing.T) {
-	docs := []interface{}{
-		map[string]interface{}{
-			"parent": map[string]interface{}{"child": "val"},
-		},
+func TestExtractPathOrder_OrderedMapNested(t *testing.T) {
+	child := &OrderedMap{
+		Keys:   []string{"child"},
+		Values: map[string]interface{}{"child": "val"},
 	}
+	om := &OrderedMap{
+		Keys:   []string{"parent"},
+		Values: map[string]interface{}{"parent": child},
+	}
+	docs := []interface{}{om}
 	order := extractPathOrder(docs, nil, nil)
 
 	if _, ok := order["parent"]; !ok {
@@ -97,27 +100,27 @@ func TestExtractPathOrder_PlainMapNested(t *testing.T) {
 	}
 }
 
-// --- areListItemsHeterogeneous: map[string]interface{} items ---
+// --- areListItemsHeterogeneous: OrderedMap items ---
 
-func TestAreListItemsHeterogeneous_PlainMaps(t *testing.T) {
+func TestAreListItemsHeterogeneous_OrderedMaps(t *testing.T) {
 	from := []interface{}{
-		map[string]interface{}{"namespaceSelector": "ns1"},
+		&OrderedMap{Keys: []string{"namespaceSelector"}, Values: map[string]interface{}{"namespaceSelector": "ns1"}},
 	}
 	to := []interface{}{
-		map[string]interface{}{"ipBlock": "10.0.0.0/8"},
+		&OrderedMap{Keys: []string{"ipBlock"}, Values: map[string]interface{}{"ipBlock": "10.0.0.0/8"}},
 	}
 
 	if !areListItemsHeterogeneous(from, to) {
-		t.Error("expected heterogeneous for plain maps with different single keys")
+		t.Error("expected heterogeneous for maps with different single keys")
 	}
 }
 
-func TestAreListItemsHeterogeneous_PlainMapsMultipleKeys(t *testing.T) {
+func TestAreListItemsHeterogeneous_OrderedMapsMultipleKeys(t *testing.T) {
 	from := []interface{}{
-		map[string]interface{}{"a": "1", "b": "2"},
+		&OrderedMap{Keys: []string{"a", "b"}, Values: map[string]interface{}{"a": "1", "b": "2"}},
 	}
 	to := []interface{}{
-		map[string]interface{}{"c": "3"},
+		&OrderedMap{Keys: []string{"c"}, Values: map[string]interface{}{"c": "3"}},
 	}
 
 	// from item has 2 keys, so checkSingleDistinctKeys returns false
@@ -286,7 +289,7 @@ func TestRunDirectory_RealFilesystem(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	rc := &RunConfig{Stdout: &stdout, Stderr: &stderr}
 
-	result := runDirectory(cfg, rc, fromDir, toDir)
+	result := runDirectory(cfg.ToRunOptions(), rc, fromDir, toDir)
 
 	if result.Code == ExitCodeError {
 		t.Fatalf("runDirectory failed: %v\nstderr: %s", result.Err, stderr.String())
@@ -309,7 +312,7 @@ func TestRunDirectory_RealFilesystem_OnlyFromAndOnlyTo(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	rc := &RunConfig{Stdout: &stdout, Stderr: &stderr}
 
-	result := runDirectory(cfg, rc, fromDir, toDir)
+	result := runDirectory(cfg.ToRunOptions(), rc, fromDir, toDir)
 
 	if result.Code == ExitCodeError {
 		t.Fatalf("runDirectory failed: %v", result.Err)
@@ -336,24 +339,25 @@ func TestGetTrueColorCode_Clamped(t *testing.T) {
 
 // === Section 2: Kill LIVED mutants ===
 
-// --- extractPathOrder: index++ increment (diffyml.go:155) ---
+// --- extractPathOrder: index++ increment ---
 
-func TestExtractPathOrder_PlainMapIndexIncrement(t *testing.T) {
-	// Kills INCREMENT_DECREMENT at diffyml.go:155 (index++ → index--)
-	// Uses nested maps so recursion enters the map[string]interface{} case at line 150,
-	// where index++ (line 155) is executed for each parent path.
+func TestExtractPathOrder_OrderedMapIndexIncrement(t *testing.T) {
+	// Kills INCREMENT_DECREMENT mutation on index++.
+	// Uses nested maps so recursion enters the *OrderedMap case,
+	// where index++ is executed for each parent path.
 	// With the mutation (index--), all parent paths get the same order value (0),
 	// so the strict ordering assertion catches it.
-	docs := []interface{}{
-		map[string]interface{}{
-			"alpha": map[string]interface{}{"child1": "v1"},
-			"beta":  map[string]interface{}{"child2": "v2"},
-			"gamma": map[string]interface{}{"child3": "v3"},
-		},
+	child1 := &OrderedMap{Keys: []string{"child1"}, Values: map[string]interface{}{"child1": "v1"}}
+	child2 := &OrderedMap{Keys: []string{"child2"}, Values: map[string]interface{}{"child2": "v2"}}
+	child3 := &OrderedMap{Keys: []string{"child3"}, Values: map[string]interface{}{"child3": "v3"}}
+	om := &OrderedMap{
+		Keys:   []string{"alpha", "beta", "gamma"},
+		Values: map[string]interface{}{"alpha": child1, "beta": child2, "gamma": child3},
 	}
+	docs := []interface{}{om}
 	order := extractPathOrder(docs, nil, nil)
 
-	// Keys are sorted alphabetically for plain maps, so alpha < beta < gamma
+	// Keys are in OrderedMap insertion order: alpha < beta < gamma
 	if order["alpha"] >= order["beta"] {
 		t.Errorf("expected alpha (%d) < beta (%d)", order["alpha"], order["beta"])
 	}
@@ -491,7 +495,7 @@ func TestRunDirectory_TrueColorMode(t *testing.T) {
 		},
 	}
 
-	_ = runDirectory(cfg, rc, "", "")
+	_ = runDirectory(cfg.ToRunOptions(), rc, "", "")
 
 	output := stdout.String()
 	// True color uses \033[38;2;R;G;Bm format
@@ -528,7 +532,7 @@ func TestRunDirectory_SummaryNotCalledWhenNoDiffs(t *testing.T) {
 		SummaryAPIURL: server.URL,
 	}
 
-	_ = runDirectory(cfg, rc, "", "")
+	_ = runDirectory(cfg.ToRunOptions(), rc, "", "")
 
 	if apiCalled {
 		t.Error("summarizer should not be called when there are no diffs")

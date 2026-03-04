@@ -519,7 +519,7 @@ func TestRunDirectory_IdenticalFiles_Exit0(t *testing.T) {
 		"deploy.yaml": {[]byte("key: value\n"), []byte("key: value\n")},
 	}
 
-	result := runDirectory(cfg, rc, "", "")
+	result := runDirectory(cfg.ToRunOptions(), rc, "", "")
 	if result.Code != ExitCodeSuccess {
 		t.Errorf("expected exit 0, got %d", result.Code)
 	}
@@ -541,7 +541,7 @@ func TestRunDirectory_ModifiedFile_Exit1(t *testing.T) {
 		"deploy.yaml": {[]byte("key: old\n"), []byte("key: new\n")},
 	}
 
-	result := runDirectory(cfg, rc, "", "")
+	result := runDirectory(cfg.ToRunOptions(), rc, "", "")
 	if result.Code != ExitCodeDifferences {
 		t.Errorf("expected exit 1, got %d", result.Code)
 	}
@@ -567,7 +567,7 @@ func TestRunDirectory_AddedFile(t *testing.T) {
 		"new.yaml": {nil, []byte("key: value\n")},
 	}
 
-	result := runDirectory(cfg, rc, "", "")
+	result := runDirectory(cfg.ToRunOptions(), rc, "", "")
 	if result.Code != ExitCodeDifferences {
 		t.Errorf("expected exit 1, got %d", result.Code)
 	}
@@ -593,7 +593,7 @@ func TestRunDirectory_RemovedFile(t *testing.T) {
 		"old.yaml": {[]byte("key: value\n"), nil},
 	}
 
-	result := runDirectory(cfg, rc, "", "")
+	result := runDirectory(cfg.ToRunOptions(), rc, "", "")
 	if result.Code != ExitCodeDifferences {
 		t.Errorf("expected exit 1, got %d", result.Code)
 	}
@@ -622,7 +622,7 @@ func TestRunDirectory_MixedFiles(t *testing.T) {
 		"same.yaml":     {[]byte("no: change\n"), []byte("no: change\n")},
 	}
 
-	result := runDirectory(cfg, rc, "", "")
+	result := runDirectory(cfg.ToRunOptions(), rc, "", "")
 	if result.Code != ExitCodeDifferences {
 		t.Errorf("expected exit 1, got %d", result.Code)
 	}
@@ -654,7 +654,7 @@ func TestRunDirectory_NoDiffs_NoSetExitCode_Exit0(t *testing.T) {
 		"deploy.yaml": {[]byte("key: old\n"), []byte("key: new\n")},
 	}
 
-	result := runDirectory(cfg, rc, "", "")
+	result := runDirectory(cfg.ToRunOptions(), rc, "", "")
 	// Without --set-exit-code, always exit 0
 	if result.Code != ExitCodeSuccess {
 		t.Errorf("expected exit 0 without --set-exit-code, got %d", result.Code)
@@ -672,7 +672,7 @@ func TestRunDirectory_EmptyDirectories_Exit0(t *testing.T) {
 	rc.Stderr = &stderr
 	rc.FilePairs = map[string][2][]byte{}
 
-	result := runDirectory(cfg, rc, "", "")
+	result := runDirectory(cfg.ToRunOptions(), rc, "", "")
 	if result.Code != ExitCodeSuccess {
 		t.Errorf("expected exit 0 for empty directories, got %d", result.Code)
 	}
@@ -692,7 +692,7 @@ func TestRunDirectory_OmitHeader_SuppressesSummaryButKeepsFileHeaders(t *testing
 		"deploy.yaml": {[]byte("key: old\n"), []byte("key: new\n")},
 	}
 
-	result := runDirectory(cfg, rc, "", "")
+	result := runDirectory(cfg.ToRunOptions(), rc, "", "")
 	if result.Code != ExitCodeDifferences {
 		t.Errorf("expected exit 1, got %d", result.Code)
 	}
@@ -717,7 +717,7 @@ func TestRunDirectory_ParseError_ContinuesProcessing(t *testing.T) {
 		"good.yaml": {[]byte("a: 1\n"), []byte("a: 2\n")},
 	}
 
-	result := runDirectory(cfg, rc, "", "")
+	result := runDirectory(cfg.ToRunOptions(), rc, "", "")
 	// good.yaml has diffs, so exit 1 (diffs take precedence over errors)
 	if result.Code != ExitCodeDifferences {
 		t.Errorf("expected exit 1 (diffs found despite error), got %d", result.Code)
@@ -745,7 +745,7 @@ func TestRunDirectory_ParseError_OnlyErrors_Exit255(t *testing.T) {
 		"bad.yaml": {[]byte("key: old\n"), []byte(":\nbad yaml [[[")},
 	}
 
-	result := runDirectory(cfg, rc, "", "")
+	result := runDirectory(cfg.ToRunOptions(), rc, "", "")
 	// Only errors, no diffs → exit 255
 	if result.Code != ExitCodeError {
 		t.Errorf("expected exit 255 (only errors), got %d", result.Code)
@@ -771,7 +771,7 @@ func TestRunDirectory_IgnoreOrderChanges(t *testing.T) {
 		},
 	}
 
-	result := runDirectory(cfg, rc, "", "")
+	result := runDirectory(cfg.ToRunOptions(), rc, "", "")
 	if result.Code != ExitCodeSuccess {
 		t.Errorf("expected exit 0 with --ignore-order-changes, got %d", result.Code)
 	}
@@ -797,7 +797,7 @@ func TestRunDirectory_FilterFlag(t *testing.T) {
 		},
 	}
 
-	result := runDirectory(cfg, rc, "", "")
+	result := runDirectory(cfg.ToRunOptions(), rc, "", "")
 	if result.Code != ExitCodeDifferences {
 		t.Errorf("expected exit 1 with filtered diffs, got %d", result.Code)
 	}
@@ -827,7 +827,7 @@ func TestRunDirectory_ExcludeFlag(t *testing.T) {
 		},
 	}
 
-	result := runDirectory(cfg, rc, "", "")
+	result := runDirectory(cfg.ToRunOptions(), rc, "", "")
 	if result.Code != ExitCodeDifferences {
 		t.Errorf("expected exit 1 with non-excluded diffs, got %d", result.Code)
 	}
@@ -854,7 +854,7 @@ func TestRunDirectory_OutputFormat_Compact(t *testing.T) {
 		"deploy.yaml": {[]byte("key: old\n"), []byte("key: new\n")},
 	}
 
-	result := runDirectory(cfg, rc, "", "")
+	result := runDirectory(cfg.ToRunOptions(), rc, "", "")
 	if result.Code != ExitCodeDifferences {
 		t.Errorf("expected exit 1, got %d", result.Code)
 	}
@@ -879,7 +879,7 @@ func TestRunDirectory_OutputFormat_Brief(t *testing.T) {
 		"deploy.yaml": {[]byte("key: old\n"), []byte("key: new\n")},
 	}
 
-	result := runDirectory(cfg, rc, "", "")
+	result := runDirectory(cfg.ToRunOptions(), rc, "", "")
 	if result.Code != ExitCodeDifferences {
 		t.Errorf("expected exit 1, got %d", result.Code)
 	}
@@ -904,7 +904,7 @@ func TestRunDirectory_OutputFormat_GitHub(t *testing.T) {
 		"deploy.yaml": {[]byte("key: old\n"), []byte("key: new\n")},
 	}
 
-	result := runDirectory(cfg, rc, "", "")
+	result := runDirectory(cfg.ToRunOptions(), rc, "", "")
 	if result.Code != ExitCodeDifferences {
 		t.Errorf("expected exit 1, got %d", result.Code)
 	}
@@ -930,7 +930,7 @@ func TestRunDirectory_SwapDirectories(t *testing.T) {
 		"deploy.yaml": {[]byte("key: from_val\n"), []byte("key: to_val\n")},
 	}
 
-	result := runDirectory(cfg, rc, "", "")
+	result := runDirectory(cfg.ToRunOptions(), rc, "", "")
 	if result.Code != ExitCodeDifferences {
 		t.Errorf("expected exit 1 with swap, got %d", result.Code)
 	}
@@ -962,7 +962,7 @@ func TestRunDirectory_MultipleFilesWithFilter(t *testing.T) {
 		},
 	}
 
-	result := runDirectory(cfg, rc, "", "")
+	result := runDirectory(cfg.ToRunOptions(), rc, "", "")
 	if result.Code != ExitCodeDifferences {
 		t.Errorf("expected exit 1, got %d", result.Code)
 	}
@@ -997,7 +997,7 @@ func TestRunDirectory_ExcludeAllDiffs_Exit0(t *testing.T) {
 		"deploy.yaml": {[]byte("key: old\n"), []byte("key: new\n")},
 	}
 
-	result := runDirectory(cfg, rc, "", "")
+	result := runDirectory(cfg.ToRunOptions(), rc, "", "")
 	// All diffs excluded → exit 0
 	if result.Code != ExitCodeSuccess {
 		t.Errorf("expected exit 0 when all diffs excluded, got %d", result.Code)
@@ -1021,7 +1021,7 @@ func TestRunDirectory_GitLab_SingleJSONArray(t *testing.T) {
 		"service.yaml": {[]byte("port: 80\n"), []byte("port: 443\n")},
 	}
 
-	result := runDirectory(cfg, rc, "", "")
+	result := runDirectory(cfg.ToRunOptions(), rc, "", "")
 	if result.Code != ExitCodeDifferences {
 		t.Errorf("expected exit 1, got %d", result.Code)
 	}
@@ -1051,7 +1051,7 @@ func TestRunDirectory_GitLab_NoFileHeaders(t *testing.T) {
 		"deploy.yaml": {[]byte("key: old\n"), []byte("key: new\n")},
 	}
 
-	runDirectory(cfg, rc, "", "")
+	runDirectory(cfg.ToRunOptions(), rc, "", "")
 
 	output := stdout.String()
 	// Should NOT contain unified-diff-style headers
@@ -1077,7 +1077,7 @@ func TestRunDirectory_GitLab_EmptyProducesEmptyArray(t *testing.T) {
 		"deploy.yaml": {[]byte("key: same\n"), []byte("key: same\n")},
 	}
 
-	result := runDirectory(cfg, rc, "", "")
+	result := runDirectory(cfg.ToRunOptions(), rc, "", "")
 	if result.Code != ExitCodeSuccess {
 		t.Errorf("expected exit 0, got %d", result.Code)
 	}
@@ -1100,7 +1100,7 @@ func TestRunDirectory_GitLab_EmptyDirectoriesProducesEmptyArray(t *testing.T) {
 	rc.Stderr = &stderr
 	rc.FilePairs = map[string][2][]byte{}
 
-	result := runDirectory(cfg, rc, "", "")
+	result := runDirectory(cfg.ToRunOptions(), rc, "", "")
 	if result.Code != ExitCodeSuccess {
 		t.Errorf("expected exit 0, got %d", result.Code)
 	}
@@ -1125,7 +1125,7 @@ func TestRunDirectory_GitLab_LocationPathIsFilePath(t *testing.T) {
 		"deploy.yaml": {[]byte("key: old\n"), []byte("key: new\n")},
 	}
 
-	runDirectory(cfg, rc, "", "")
+	runDirectory(cfg.ToRunOptions(), rc, "", "")
 
 	output := stdout.String()
 	var findings []map[string]interface{}
@@ -1156,7 +1156,7 @@ func TestRunDirectory_GitLab_DescriptionIncludesFilename(t *testing.T) {
 		"deploy.yaml": {[]byte("key: old\n"), []byte("key: new\n")},
 	}
 
-	runDirectory(cfg, rc, "", "")
+	runDirectory(cfg.ToRunOptions(), rc, "", "")
 
 	output := stdout.String()
 	var findings []map[string]interface{}
@@ -1188,7 +1188,7 @@ func TestRunDirectory_GitLab_UniqueFingerprintsAcrossFiles(t *testing.T) {
 		"file2.yaml": {[]byte("key: old\n"), []byte("key: new\n")},
 	}
 
-	runDirectory(cfg, rc, "", "")
+	runDirectory(cfg.ToRunOptions(), rc, "", "")
 
 	output := stdout.String()
 	var findings []map[string]interface{}
@@ -1219,7 +1219,7 @@ func TestRunDirectory_GitLab_StripsDotSlashFromPairName(t *testing.T) {
 		"./deploy.yaml": {[]byte("key: old\n"), []byte("key: new\n")},
 	}
 
-	runDirectory(cfg, rc, "", "")
+	runDirectory(cfg.ToRunOptions(), rc, "", "")
 
 	output := stdout.String()
 	// Should not contain ./ prefix in the output
@@ -1247,7 +1247,7 @@ func TestRunDirectory_NonGitLab_StillHasFileHeaders(t *testing.T) {
 				"deploy.yaml": {[]byte("key: old\n"), []byte("key: new\n")},
 			}
 
-			runDirectory(cfg, rc, "", "")
+			runDirectory(cfg.ToRunOptions(), rc, "", "")
 
 			output := stdout.String()
 			if !strings.Contains(output, "--- a/deploy.yaml") {
@@ -1273,7 +1273,7 @@ func TestRunDirectory_GitLab_ExitCodePrecedence(t *testing.T) {
 		"good.yaml": {[]byte("a: 1\n"), []byte("a: 2\n")},
 	}
 
-	result := runDirectory(cfg, rc, "", "")
+	result := runDirectory(cfg.ToRunOptions(), rc, "", "")
 	// good.yaml has diffs → exit 1 (diffs take precedence)
 	if result.Code != ExitCodeDifferences {
 		t.Errorf("expected exit 1 (diffs found), got %d", result.Code)
@@ -1294,7 +1294,7 @@ func TestRunDirectory_GitLab_OnlyErrors_Exit255(t *testing.T) {
 		"bad.yaml": {[]byte("key: old\n"), []byte(":\nbad yaml [[[")},
 	}
 
-	result := runDirectory(cfg, rc, "", "")
+	result := runDirectory(cfg.ToRunOptions(), rc, "", "")
 	// Only errors, no diffs → exit 255
 	if result.Code != ExitCodeError {
 		t.Errorf("expected exit 255 (only errors), got %d", result.Code)
@@ -1328,7 +1328,7 @@ func TestRunDirectory_NonGitLab_FileHeadersPresent(t *testing.T) {
 				"service.yaml": {[]byte("port: 80\n"), []byte("port: 443\n")},
 			}
 
-			runDirectory(cfg, rc, "", "")
+			runDirectory(cfg.ToRunOptions(), rc, "", "")
 
 			output := stdout.String()
 			// Both file headers should be present
@@ -1415,7 +1415,7 @@ func TestRunDirectory_NonGitLab_PerFileOutput(t *testing.T) {
 		"b.yaml": {[]byte("key: old2\n"), []byte("key: new2\n")},
 	}
 
-	runDirectory(cfg, rc, "", "")
+	runDirectory(cfg.ToRunOptions(), rc, "", "")
 
 	output := stdout.String()
 	// Each file's output should be preceded by its header
@@ -1448,7 +1448,7 @@ func TestRunDirectory_DetailedFormatter_FileHeadersInDirectoryMode(t *testing.T)
 		"config.yaml": {[]byte("app:\n  name: old\n"), []byte("app:\n  name: new\n")},
 	}
 
-	result := runDirectory(cfg, rc, "", "")
+	result := runDirectory(cfg.ToRunOptions(), rc, "", "")
 	if result.Code != ExitCodeDifferences {
 		t.Errorf("expected exit 1, got %d", result.Code)
 	}
@@ -1475,7 +1475,7 @@ func TestRunDirectory_GitHub_StructuredOutput(t *testing.T) {
 		"service.yaml": {[]byte("port: 80\n"), []byte("port: 443\n")},
 	}
 
-	result := runDirectory(cfg, rc, "", "")
+	result := runDirectory(cfg.ToRunOptions(), rc, "", "")
 	if result.Code != ExitCodeDifferences {
 		t.Errorf("expected exit 1, got %d", result.Code)
 	}
@@ -1518,7 +1518,7 @@ func TestRunDirectory_GitHub_EmptyProducesEmptyString(t *testing.T) {
 		"deploy.yaml": {[]byte("key: same\n"), []byte("key: same\n")},
 	}
 
-	result := runDirectory(cfg, rc, "", "")
+	result := runDirectory(cfg.ToRunOptions(), rc, "", "")
 	if result.Code != ExitCodeSuccess {
 		t.Errorf("expected exit 0, got %d", result.Code)
 	}
@@ -1543,7 +1543,7 @@ func TestRunDirectory_Gitea_StructuredOutput(t *testing.T) {
 		"deploy.yaml": {[]byte("key: old\n"), []byte("key: new\n")},
 	}
 
-	result := runDirectory(cfg, rc, "", "")
+	result := runDirectory(cfg.ToRunOptions(), rc, "", "")
 	if result.Code != ExitCodeDifferences {
 		t.Errorf("expected exit 1, got %d", result.Code)
 	}
@@ -1575,7 +1575,7 @@ func TestRunDirectory_GitHub_StripsDotSlashFromPairName(t *testing.T) {
 		"./deploy.yaml": {[]byte("key: old\n"), []byte("key: new\n")},
 	}
 
-	runDirectory(cfg, rc, "", "")
+	runDirectory(cfg.ToRunOptions(), rc, "", "")
 
 	output := stdout.String()
 	if strings.Contains(output, "file=./deploy.yaml") {
@@ -1621,7 +1621,7 @@ func TestRunDirectory_WithSummary_NonStructured(t *testing.T) {
 	}
 	rc.SummaryAPIURL = server.URL
 
-	result := runDirectory(cfg, rc, "", "")
+	result := runDirectory(cfg.ToRunOptions(), rc, "", "")
 	if result.Err != nil {
 		t.Fatalf("unexpected error: %v", result.Err)
 	}
@@ -1663,7 +1663,7 @@ func TestRunDirectory_WithSummary_Structured(t *testing.T) {
 	}
 	rc.SummaryAPIURL = server.URL
 
-	result := runDirectory(cfg, rc, "", "")
+	result := runDirectory(cfg.ToRunOptions(), rc, "", "")
 	if result.Err != nil {
 		t.Fatalf("unexpected error: %v", result.Err)
 	}
@@ -1697,7 +1697,7 @@ func TestRunDirectory_WithSummary_NoDiffs_NoAPICall(t *testing.T) {
 	}
 	rc.SummaryAPIURL = server.URL
 
-	runDirectory(cfg, rc, "", "")
+	runDirectory(cfg.ToRunOptions(), rc, "", "")
 
 	if apiCalled {
 		t.Error("API should not be called when no files have differences")
@@ -1727,7 +1727,7 @@ func TestRunDirectory_WithSummary_APIFailure_Warning(t *testing.T) {
 	}
 	rc.SummaryAPIURL = server.URL
 
-	result := runDirectory(cfg, rc, "", "")
+	result := runDirectory(cfg.ToRunOptions(), rc, "", "")
 
 	// Exit code should not be affected
 	if result.Code == ExitCodeError {
@@ -1766,7 +1766,7 @@ func TestRunDirectory_BriefSummary_ReplacesOutput(t *testing.T) {
 	}
 	rc.SummaryAPIURL = server.URL
 
-	runDirectory(cfg, rc, "", "")
+	runDirectory(cfg.ToRunOptions(), rc, "", "")
 
 	output := stdout.String()
 	// Should have AI summary
@@ -1802,7 +1802,7 @@ func TestRunDirectory_BriefSummary_FallbackOnAPIFailure(t *testing.T) {
 	}
 	rc.SummaryAPIURL = server.URL
 
-	runDirectory(cfg, rc, "", "")
+	runDirectory(cfg.ToRunOptions(), rc, "", "")
 
 	output := stdout.String()
 	// Should fall back to brief output
@@ -1839,7 +1839,7 @@ func TestRunDirectory_WithSummary_PreservesExitCode(t *testing.T) {
 	}
 	rc.SummaryAPIURL = server.URL
 
-	result := runDirectory(cfg, rc, "", "")
+	result := runDirectory(cfg.ToRunOptions(), rc, "", "")
 	if result.Code != ExitCodeDifferences {
 		t.Errorf("expected exit code %d with --set-exit-code, got %d", ExitCodeDifferences, result.Code)
 	}
@@ -1868,7 +1868,7 @@ func TestRunDirectory_WithoutSummary_NoAPICall(t *testing.T) {
 	}
 	rc.SummaryAPIURL = server.URL
 
-	runDirectory(cfg, rc, "", "")
+	runDirectory(cfg.ToRunOptions(), rc, "", "")
 
 	if apiCalled {
 		t.Error("API should not be called when --summary is not set in directory mode")
@@ -1903,7 +1903,7 @@ func TestRunDirectory_WithSummary_GitLab_AppendsSummary(t *testing.T) {
 	}
 	rc.SummaryAPIURL = server.URL
 
-	result := runDirectory(cfg, rc, "", "")
+	result := runDirectory(cfg.ToRunOptions(), rc, "", "")
 	if result.Err != nil {
 		t.Fatalf("unexpected error: %v", result.Err)
 	}
@@ -1957,7 +1957,7 @@ func TestRunDirectory_WithSummary_APIFailure_PreservesExitCodeWithSetExitCode(t 
 	}
 	rc.SummaryAPIURL = server.URL
 
-	result := runDirectory(cfg, rc, "", "")
+	result := runDirectory(cfg.ToRunOptions(), rc, "", "")
 	// Exit code should be 1 (differences), not 255 (error) despite API failure
 	if result.Code != ExitCodeDifferences {
 		t.Errorf("expected exit code %d with --set-exit-code and API failure, got %d",
@@ -2007,7 +2007,7 @@ func TestRunDirectory_WithSummary_MultipleFiles_SingleSummary(t *testing.T) {
 	}
 	rc.SummaryAPIURL = server.URL
 
-	runDirectory(cfg, rc, "", "")
+	runDirectory(cfg.ToRunOptions(), rc, "", "")
 
 	// Both files should be mentioned in the prompt
 	if !strings.Contains(promptContent, "deploy.yaml") {
@@ -2044,7 +2044,7 @@ func TestRunDirectory_StructuredFormatter_ZeroDiffs_ExitCode(t *testing.T) {
 		"same.yaml": {[]byte("key: val\n"), []byte("key: val\n")},
 	}
 
-	result := runDirectory(cfg, rc, "", "")
+	result := runDirectory(cfg.ToRunOptions(), rc, "", "")
 
 	if result.Code != 0 {
 		t.Errorf("expected exit code 0 for identical files, got %d", result.Code)
@@ -2077,7 +2077,7 @@ func TestRunDirectory_WithSummary_Gitea_AppendsSummary(t *testing.T) {
 	}
 	rc.SummaryAPIURL = server.URL
 
-	runDirectory(cfg, rc, "", "")
+	runDirectory(cfg.ToRunOptions(), rc, "", "")
 
 	output := stdout.String()
 	if !strings.Contains(output, "AI Summary:") {

@@ -10,15 +10,18 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
-	"sort"
 	"strings"
 )
+
+// nodeComparerFn is a callback for recursively comparing two YAML nodes.
+// It is injected into compareK8sDocs to break the comparator ↔ kubernetes dependency.
+type nodeComparerFn func(path string, from, to interface{}, opts *Options) []Difference
 
 // compareDocs compares two slices of YAML documents and returns differences.
 func compareDocs(from, to []interface{}, opts *Options) []Difference {
 	// Check if Kubernetes detection is enabled and documents are K8s resources
 	if opts != nil && opts.DetectKubernetes && hasK8sDocuments(from, to) {
-		return compareK8sDocs(from, to, opts)
+		return compareK8sDocs(from, to, opts, compareNodes)
 	}
 
 	var diffs []Difference
@@ -70,6 +73,14 @@ func hasK8sDocuments(from, to []interface{}) bool {
 
 // compareNodes recursively compares two YAML nodes.
 func compareNodes(path string, from, to interface{}, opts *Options) []Difference {
+	// Auto-convert map[string]interface{} to *OrderedMap so there is only one code path.
+	if om := toOrderedMap(from); om != nil {
+		from = om
+	}
+	if om := toOrderedMap(to); om != nil {
+		to = om
+	}
+
 	var diffs []Difference
 
 	// Handle nil cases
@@ -121,13 +132,8 @@ func compareNodes(path string, from, to interface{}, opts *Options) []Difference
 	switch fromVal := from.(type) {
 	case *OrderedMap:
 		// Type-equality guard above ensures to is also *OrderedMap
-		toOrderedMap := to.(*OrderedMap)
-		diffs = append(diffs, compareOrderedMaps(path, fromVal, toOrderedMap, opts)...)
-
-	case map[string]interface{}:
-		// Type-equality guard above ensures to is also map[string]interface{}
-		toMap := to.(map[string]interface{})
-		diffs = append(diffs, compareMaps(path, fromVal, toMap, opts)...)
+		toOM := to.(*OrderedMap)
+		diffs = append(diffs, compareOrderedMaps(path, fromVal, toOM, opts)...)
 
 	case []interface{}:
 		toVal := to.([]interface{})
@@ -195,58 +201,6 @@ func compareOrderedMaps(path string, from, to *OrderedMap, opts *Options) []Diff
 	return diffs
 }
 
-// compareMaps compares two map nodes.
-func compareMaps(path string, from, to map[string]interface{}, opts *Options) []Difference {
-	var diffs []Difference
-
-	// Get all keys from both maps and sort for deterministic output
-	allKeys := make(map[string]bool)
-	for k := range from {
-		allKeys[k] = true
-	}
-	for k := range to {
-		allKeys[k] = true
-	}
-
-	// Sort keys for deterministic output
-	sortedKeys := make([]string, 0, len(allKeys))
-	for k := range allKeys {
-		sortedKeys = append(sortedKeys, k)
-	}
-	sort.Strings(sortedKeys)
-
-	// Iterate over sorted keys
-	for _, key := range sortedKeys {
-		childPath := joinPath(path, key)
-		fromVal, fromOk := from[key]
-		toVal, toOk := to[key]
-
-		switch {
-		case !fromOk:
-			// Key was added
-			diffs = append(diffs, Difference{
-				Path: cleanPath(childPath),
-				Type: DiffAdded,
-				From: nil,
-				To:   toVal,
-			})
-		case !toOk:
-			// Key was removed
-			diffs = append(diffs, Difference{
-				Path: cleanPath(childPath),
-				Type: DiffRemoved,
-				From: fromVal,
-				To:   nil,
-			})
-		default:
-			// Key exists in both - recurse
-			diffs = append(diffs, compareNodes(childPath, fromVal, toVal, opts)...)
-		}
-	}
-
-	return diffs
-}
-
 // compareLists compares two list nodes.
 func compareLists(path string, from, to []interface{}, opts *Options) []Difference {
 	// Try to match items by identifier (for lists of maps with name/id fields)
@@ -277,13 +231,8 @@ func areListItemsHeterogeneous(from, to []interface{}) bool {
 
 	extractKeys := func(list []interface{}) {
 		for _, item := range list {
-			switch v := item.(type) {
-			case *OrderedMap:
+			if v, ok := item.(*OrderedMap); ok {
 				for _, key := range v.Keys {
-					allKeys[key] = true
-				}
-			case map[string]interface{}:
-				for key := range v {
 					allKeys[key] = true
 				}
 			}
@@ -303,16 +252,11 @@ func areListItemsHeterogeneous(from, to []interface{}) bool {
 	// (e.g., {namespaceSelector: ...} vs {ipBlock: ...})
 	checkSingleDistinctKeys := func(list []interface{}) bool {
 		for _, item := range list {
-			switch v := item.(type) {
-			case *OrderedMap:
-				if len(v.Keys) != 1 {
-					return false
-				}
-			case map[string]interface{}:
-				if len(v) != 1 {
-					return false
-				}
-			default:
+			v, ok := item.(*OrderedMap)
+			if !ok {
+				return false
+			}
+			if len(v.Keys) != 1 {
 				return false
 			}
 		}
@@ -418,19 +362,17 @@ func canMatchByIdentifier(list []interface{}, opts *Options) bool {
 	return CanMatchByIdentifierWithAdditional(list, additional)
 }
 
-// getIdentifier gets the identifier value from a map or OrderedMap.
+// getIdentifier gets the identifier value from an OrderedMap.
 func getIdentifier(val interface{}, opts *Options) interface{} {
+	om, ok := val.(*OrderedMap)
+	if !ok {
+		return nil
+	}
 	var additional []string
 	if opts != nil {
 		additional = opts.AdditionalIdentifiers
 	}
-	if om, ok := val.(*OrderedMap); ok {
-		return getIdentifierFromOrderedMap(om, additional)
-	}
-	if m, ok := val.(map[string]interface{}); ok {
-		return GetIdentifierWithAdditional(m, additional)
-	}
-	return nil
+	return getIdentifierFromOrderedMap(om, additional)
 }
 
 // compareListsByIdentifier compares lists matching by identifier field.
@@ -610,6 +552,14 @@ func equalValues(from, to interface{}, opts *Options) bool {
 
 // deepEqual compares two values deeply with options.
 func deepEqual(from, to interface{}, opts *Options) bool {
+	// Auto-convert map[string]interface{} to *OrderedMap.
+	if om := toOrderedMap(from); om != nil {
+		from = om
+	}
+	if om := toOrderedMap(to); om != nil {
+		to = om
+	}
+
 	// Handle nil
 	if from == nil && to == nil {
 		return true
@@ -626,26 +576,12 @@ func deepEqual(from, to interface{}, opts *Options) bool {
 	switch fromVal := from.(type) {
 	case *OrderedMap:
 		// Type-equality guard above ensures to is also *OrderedMap
-		toOrderedMap := to.(*OrderedMap)
-		if len(fromVal.Values) != len(toOrderedMap.Values) {
+		toOM := to.(*OrderedMap)
+		if len(fromVal.Values) != len(toOM.Values) {
 			return false
 		}
 		for k, fv := range fromVal.Values {
-			tv, ok := toOrderedMap.Values[k]
-			if !ok || !deepEqual(fv, tv, opts) {
-				return false
-			}
-		}
-		return true
-
-	case map[string]interface{}:
-		// Type-equality guard above ensures to is also map[string]interface{}
-		toMap := to.(map[string]interface{})
-		if len(fromVal) != len(toMap) {
-			return false
-		}
-		for k, fv := range fromVal {
-			tv, ok := toMap[k]
+			tv, ok := toOM.Values[k]
 			if !ok || !deepEqual(fv, tv, opts) {
 				return false
 			}

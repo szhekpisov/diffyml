@@ -804,7 +804,7 @@ func TestCompareK8sDocs_AgnosticMatch_ReportsApiVersionModified(t *testing.T) {
 		DetectKubernetes: true,
 		IgnoreApiVersion: true,
 	}
-	diffs := compareK8sDocs([]interface{}{fromDoc}, []interface{}{toDoc}, opts)
+	diffs := compareK8sDocs([]interface{}{fromDoc}, []interface{}{toDoc}, opts, compareNodes)
 
 	hasApiVersionDiff := false
 	hasReplicasDiff := false
@@ -845,7 +845,7 @@ func TestCompareK8sDocs_AgnosticDuplicates_ReportedAsAddedRemoved(t *testing.T) 
 		DetectKubernetes: true,
 		IgnoreApiVersion: true,
 	}
-	diffs := compareK8sDocs(fromDocs, toDocs, opts)
+	diffs := compareK8sDocs(fromDocs, toDocs, opts, compareNodes)
 
 	hasAdded := false
 	for _, d := range diffs {
@@ -877,7 +877,7 @@ func TestCompareK8sDocs_RenameDetection_SingleDoc(t *testing.T) {
 		DetectKubernetes: true,
 		DetectRenames:    true,
 	}
-	diffs := compareK8sDocs([]interface{}{fromDoc}, []interface{}{toDoc}, opts)
+	diffs := compareK8sDocs([]interface{}{fromDoc}, []interface{}{toDoc}, opts, compareNodes)
 
 	// Should produce field-level diffs (rename matched), not bulk add/remove
 	hasNameChange := false
@@ -931,7 +931,7 @@ func TestCompareK8sDocs_RenameDetection_MultiDoc(t *testing.T) {
 		DetectKubernetes: true,
 		DetectRenames:    true,
 	}
-	diffs := compareK8sDocs([]interface{}{sharedDoc, fromDoc}, []interface{}{sharedDoc, toDoc}, opts)
+	diffs := compareK8sDocs([]interface{}{sharedDoc, fromDoc}, []interface{}{sharedDoc, toDoc}, opts, compareNodes)
 
 	// Renamed doc should have diffs with [1] prefix (toIdx)
 	hasNameChange := false

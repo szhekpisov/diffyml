@@ -19,115 +19,93 @@ const k8sDocumentPath = "(document)"
 // A Kubernetes resource must have apiVersion, kind, and metadata fields,
 // where metadata is a map containing at least a name field.
 func IsKubernetesResource(doc interface{}) bool {
-	// Get map values from either OrderedMap or regular map
-	getVal := func(doc interface{}, key string) (interface{}, bool) {
-		switch m := doc.(type) {
-		case *OrderedMap:
-			val, ok := m.Values[key]
-			return val, ok
-		case map[string]interface{}:
-			val, ok := m[key]
-			return val, ok
-		default:
-			return nil, false
-		}
+	_, ok := asK8sResource(doc)
+	return ok
+}
+
+// k8sResource holds the pre-validated fields of a Kubernetes resource document.
+type k8sResource struct {
+	om         *OrderedMap
+	apiVersion string
+	kind       string
+	metaOM     *OrderedMap
+}
+
+// asK8sResource validates that doc is a K8s resource and returns its key fields.
+func asK8sResource(doc interface{}) (k8sResource, bool) {
+	om := toOrderedMap(doc)
+	if om == nil {
+		return k8sResource{}, false
 	}
 
-	// Check for apiVersion
-	apiVersion, ok := getVal(doc, "apiVersion")
+	apiVersion, ok := om.Values["apiVersion"]
 	if !ok {
-		return false
+		return k8sResource{}, false
 	}
-	if _, isStr := apiVersion.(string); !isStr {
-		return false
+	apiStr, isStr := apiVersion.(string)
+	if !isStr {
+		return k8sResource{}, false
 	}
 
-	// Check for kind
-	kind, ok := getVal(doc, "kind")
+	kind, ok := om.Values["kind"]
 	if !ok {
-		return false
+		return k8sResource{}, false
 	}
-	if _, isStr := kind.(string); !isStr {
-		return false
+	kindStr, isStr := kind.(string)
+	if !isStr {
+		return k8sResource{}, false
 	}
 
-	// Check for metadata
-	metadata, ok := getVal(doc, "metadata")
+	metadata, ok := om.Values["metadata"]
 	if !ok {
-		return false
+		return k8sResource{}, false
+	}
+	metaOM := toOrderedMap(metadata)
+	if metaOM == nil {
+		return k8sResource{}, false
 	}
 
-	// Check for name or generateName in metadata
-	metaName, hasName := getVal(metadata, "name")
-	metaGenName, hasGenName := getVal(metadata, "generateName")
+	metaName, hasName := metaOM.Values["name"]
+	metaGenName, hasGenName := metaOM.Values["generateName"]
 	if (!hasName || metaName == nil) && (!hasGenName || metaGenName == nil) {
-		return false
+		return k8sResource{}, false
 	}
 
-	return true
+	return k8sResource{om: om, apiVersion: apiStr, kind: kindStr, metaOM: metaOM}, true
 }
 
 // GetK8sResourceIdentifier returns a unique identifier for a Kubernetes resource.
 // When ignoreApiVersion is false: "apiVersion:kind:namespace/name" or "apiVersion:kind:name".
 // When ignoreApiVersion is true: "kind:namespace/name" or "kind:name".
 func GetK8sResourceIdentifier(doc interface{}, ignoreApiVersion bool) string {
-	if !IsKubernetesResource(doc) {
+	res, ok := asK8sResource(doc)
+	if !ok {
 		return ""
 	}
 
-	// Helper to get value from either OrderedMap or regular map
-	getVal := func(doc interface{}, key string) interface{} {
-		switch m := doc.(type) {
-		case *OrderedMap:
-			return m.Values[key]
-		case map[string]interface{}:
-			return m[key]
-		default:
-			return nil
-		}
-	}
-
-	apiVersion := getVal(doc, "apiVersion").(string)
-	kind := getVal(doc, "kind").(string)
-	metadata := getVal(doc, "metadata")
-	nameVal := getVal(metadata, "name")
+	nameVal, _ := res.metaOM.Values["name"]
 	if nameVal == nil {
-		nameVal = getVal(metadata, "generateName")
+		nameVal = res.metaOM.Values["generateName"]
 	}
 	name := fmt.Sprintf("%v", nameVal)
 
 	if ignoreApiVersion {
-		if namespace := getVal(metadata, "namespace"); namespace != nil {
-			return fmt.Sprintf("%s:%v/%s", kind, namespace, name)
+		if namespace := res.metaOM.Values["namespace"]; namespace != nil {
+			return fmt.Sprintf("%s:%v/%s", res.kind, namespace, name)
 		}
-		return fmt.Sprintf("%s:%s", kind, name)
+		return fmt.Sprintf("%s:%s", res.kind, name)
 	}
 
-	if namespace := getVal(metadata, "namespace"); namespace != nil {
-		return fmt.Sprintf("%s:%s:%v/%s", apiVersion, kind, namespace, name)
+	if namespace := res.metaOM.Values["namespace"]; namespace != nil {
+		return fmt.Sprintf("%s:%s:%v/%s", res.apiVersion, res.kind, namespace, name)
 	}
-	return fmt.Sprintf("%s:%s:%s", apiVersion, kind, name)
+	return fmt.Sprintf("%s:%s:%s", res.apiVersion, res.kind, name)
 }
 
 // GetIdentifierWithAdditional gets an identifier value from a map,
 // checking default fields (name, id) and any additional specified fields.
 func GetIdentifierWithAdditional(m map[string]interface{}, additionalIdentifiers []string) interface{} {
-	// Check additional identifiers first (they take priority)
-	for _, field := range additionalIdentifiers {
-		if val, ok := m[field]; ok {
-			return val
-		}
-	}
-
-	// Fall back to default fields
-	if name, ok := m["name"]; ok {
-		return name
-	}
-	if id, ok := m["id"]; ok {
-		return id
-	}
-
-	return nil
+	return getIdentifierFromOrderedMap(toOrderedMap(m), additionalIdentifiers)
 }
 
 // CanMatchByIdentifierWithAdditional checks if list items can be matched by identifier,
@@ -139,22 +117,12 @@ func CanMatchByIdentifierWithAdditional(list []interface{}, additionalIdentifier
 
 	hasIdentifier := false
 	for _, item := range list {
-		// Check for OrderedMap
-		if om, ok := item.(*OrderedMap); ok {
-			id := getIdentifierFromOrderedMap(om, additionalIdentifiers)
-			if isComparableIdentifier(id) {
-				hasIdentifier = true
-			}
-			continue
-		}
-
-		// Check for regular map
-		m, ok := item.(map[string]interface{})
-		if !ok {
-			// Not a map, can't match by identifier
+		om := toOrderedMap(item)
+		if om == nil {
+			// Not a map type, can't match by identifier
 			return false
 		}
-		id := GetIdentifierWithAdditional(m, additionalIdentifiers)
+		id := getIdentifierFromOrderedMap(om, additionalIdentifiers)
 		if isComparableIdentifier(id) {
 			hasIdentifier = true
 		}
@@ -232,7 +200,9 @@ func matchK8sDocuments(from, to []interface{}, opts *Options) (matched map[int]i
 }
 
 // compareK8sDocs compares Kubernetes documents matching by resource identifier.
-func compareK8sDocs(from, to []interface{}, opts *Options) []Difference {
+// The compareFn callback is used for recursive node comparison, breaking the
+// circular dependency between kubernetes.go and comparator.go.
+func compareK8sDocs(from, to []interface{}, opts *Options, compareFn nodeComparerFn) []Difference {
 	var diffs []Difference
 
 	matched, unmatchedFrom, unmatchedTo := matchK8sDocuments(from, to, opts)
@@ -283,7 +253,7 @@ func compareK8sDocs(from, to []interface{}, opts *Options) []Difference {
 			pathPrefix = fmt.Sprintf("[%d]", fromIdx)
 		}
 
-		nodeDiffs := compareNodes(pathPrefix, fromDoc, toDoc, opts)
+		nodeDiffs := compareFn(pathPrefix, fromDoc, toDoc, opts)
 		// Set DocumentIndex for all differences in this document
 		for i := range nodeDiffs {
 			nodeDiffs[i].DocumentIndex = fromIdx
@@ -304,7 +274,7 @@ func compareK8sDocs(from, to []interface{}, opts *Options) []Difference {
 			pathPrefix = fmt.Sprintf("[%d]", toIdx)
 		}
 
-		nodeDiffs := compareNodes(pathPrefix, fromDoc, toDoc, opts)
+		nodeDiffs := compareFn(pathPrefix, fromDoc, toDoc, opts)
 		for i := range nodeDiffs {
 			nodeDiffs[i].DocumentIndex = toIdx
 		}

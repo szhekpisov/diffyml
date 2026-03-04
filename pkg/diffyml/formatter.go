@@ -1,13 +1,13 @@
 // formatter.go - Output formatting for differences.
 //
-// Implements 6 output styles: compact, brief, github, gitlab, gitea, detailed.
-// Key types: Formatter interface, FormatOptions.
-// Each formatter implements Format(diffs, opts) string.
+// Key types: Formatter interface, FormatOptions, StructuredFormatter.
+// Shared helpers: formatValue, convertToGoPatchPath, diffDescription.
+// Small formatters: CompactFormatter, BriefFormatter.
+// Larger formatters live in their own files:
+//   github_formatter.go, gitlab_formatter.go, gitea_formatter.go, detailed_formatter.go.
 package diffyml
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"strings"
 	"time"
@@ -86,6 +86,58 @@ func GetFormatter(name string) (Formatter, error) {
 	}
 }
 
+// --- Shared helpers ---
+
+// formatValue converts a value to string.
+// Shows full values without truncation.
+// Structured types (*OrderedMap, []interface{}) are serialized to inline YAML
+// instead of Go's default %v representation.
+func formatValue(val interface{}) string {
+	if val == nil {
+		return "<nil>"
+	}
+	if t, ok := val.(time.Time); ok {
+		return formatTimestamp(t)
+	}
+
+	if s, ok := marshalStructuredYAML(val); ok {
+		return strings.TrimSpace(s)
+	}
+
+	return fmt.Sprintf("%v", val)
+}
+
+// convertToGoPatchPath converts dot-notation path to Go-Patch style (/a/b/c).
+func convertToGoPatchPath(path string) string {
+	// Replace dots with slashes
+	result := strings.ReplaceAll(path, ".", "/")
+	// Convert array notation [n] to /n
+	result = strings.ReplaceAll(result, "[", "/")
+	result = strings.ReplaceAll(result, "]", "")
+	// Ensure leading slash
+	if !strings.HasPrefix(result, "/") {
+		result = "/" + result
+	}
+	return result
+}
+
+// diffDescription returns a human-readable description of a difference.
+// Shared by GitHub, GitLab, and Gitea formatters.
+func diffDescription(diff Difference) string {
+	switch diff.Type {
+	case DiffAdded:
+		return fmt.Sprintf("Added: %s = %s", diff.Path, formatValue(diff.To))
+	case DiffRemoved:
+		return fmt.Sprintf("Removed: %s = %s", diff.Path, formatValue(diff.From))
+	case DiffModified:
+		return fmt.Sprintf("Modified: %s changed from %s to %s", diff.Path, formatValue(diff.From), formatValue(diff.To))
+	default: // DiffOrderChanged
+		return fmt.Sprintf("Order changed: %s", diff.Path)
+	}
+}
+
+// --- CompactFormatter ---
+
 // CompactFormatter renders differences in compact single-line-per-change format with color support.
 // This was previously named HumanFormatter - preserved for backward compatibility with the compact output style.
 type CompactFormatter struct{}
@@ -139,7 +191,7 @@ func (f *CompactFormatter) formatHeader(sb *strings.Builder, diffs []Difference,
 	}
 
 	if opts.Color {
-		sb.WriteString(colorYellow)
+		sb.WriteString(CompactColor(DiffModified))
 	}
 	fmt.Fprintf(sb, "Found %d difference(s)", len(diffs))
 	if opts.Color {
@@ -155,22 +207,19 @@ func (f *CompactFormatter) formatDiff(sb *strings.Builder, diff Difference, opts
 	}
 
 	var indicator string
-	var colorCode string
 
 	switch diff.Type {
 	case DiffAdded:
 		indicator = "+"
-		colorCode = colorGreen
 	case DiffRemoved:
 		indicator = "-"
-		colorCode = colorRed
 	case DiffModified:
 		indicator = "±"
-		colorCode = colorYellow
 	case DiffOrderChanged:
 		indicator = "⇆"
-		colorCode = colorYellow
 	}
+
+	colorCode := CompactColor(diff.Type)
 
 	// Apply color for the indicator
 	if opts.Color {
@@ -198,7 +247,7 @@ func (f *CompactFormatter) formatValuesInline(sb *strings.Builder, diff Differen
 
 		sb.WriteString(" : ")
 		if opts.Color {
-			sb.WriteString(colorRed)
+			sb.WriteString(CompactColor(DiffRemoved))
 		}
 		sb.WriteString(fromStr)
 		if opts.Color {
@@ -206,7 +255,7 @@ func (f *CompactFormatter) formatValuesInline(sb *strings.Builder, diff Differen
 		}
 		sb.WriteString(" → ")
 		if opts.Color {
-			sb.WriteString(colorGreen)
+			sb.WriteString(CompactColor(DiffAdded))
 		}
 		sb.WriteString(toStr)
 		if opts.Color {
@@ -216,7 +265,7 @@ func (f *CompactFormatter) formatValuesInline(sb *strings.Builder, diff Differen
 		toStr := formatValue(diff.To)
 		sb.WriteString(" : ")
 		if opts.Color {
-			sb.WriteString(colorGreen)
+			sb.WriteString(CompactColor(DiffAdded))
 		}
 		sb.WriteString(toStr)
 		if opts.Color {
@@ -226,7 +275,7 @@ func (f *CompactFormatter) formatValuesInline(sb *strings.Builder, diff Differen
 		fromStr := formatValue(diff.From)
 		sb.WriteString(" : ")
 		if opts.Color {
-			sb.WriteString(colorRed)
+			sb.WriteString(CompactColor(DiffRemoved))
 		}
 		sb.WriteString(fromStr)
 		if opts.Color {
@@ -237,38 +286,7 @@ func (f *CompactFormatter) formatValuesInline(sb *strings.Builder, diff Differen
 	}
 }
 
-// formatValue converts a value to string.
-// Shows full values without truncation.
-// Structured types (*OrderedMap, map[string]interface{}, []interface{}) are
-// serialized to inline YAML instead of Go's default %v representation.
-func formatValue(val interface{}) string {
-	if val == nil {
-		return "<nil>"
-	}
-	if t, ok := val.(time.Time); ok {
-		return formatTimestamp(t)
-	}
-
-	if s, ok := marshalStructuredYAML(val); ok {
-		return strings.TrimSpace(s)
-	}
-
-	return fmt.Sprintf("%v", val)
-}
-
-// convertToGoPatchPath converts dot-notation path to Go-Patch style (/a/b/c).
-func convertToGoPatchPath(path string) string {
-	// Replace dots with slashes
-	result := strings.ReplaceAll(path, ".", "/")
-	// Convert array notation [n] to /n
-	result = strings.ReplaceAll(result, "[", "/")
-	result = strings.ReplaceAll(result, "]", "")
-	// Ensure leading slash
-	if !strings.HasPrefix(result, "/") {
-		result = "/" + result
-	}
-	return result
-}
+// --- BriefFormatter ---
 
 // BriefFormatter renders a concise summary of changes.
 type BriefFormatter struct{}
@@ -317,273 +335,4 @@ func (f *BriefFormatter) Format(diffs []Difference, _ *FormatOptions) string {
 	}
 
 	return strings.Join(parts, ", ") + "\n"
-}
-
-// GitHubFormatter renders output compatible with GitHub Actions workflow commands.
-// Uses differentiated commands (notice/warning/error) and title parameter per diff type.
-type GitHubFormatter struct{}
-
-// gitHubCommand returns the workflow command and title for a diff type.
-func gitHubCommand(dt DiffType) (command, title string) {
-	switch dt {
-	case DiffAdded:
-		return "notice", "YAML Added"
-	case DiffRemoved:
-		return "error", "YAML Removed"
-	case DiffModified:
-		return "warning", "YAML Modified"
-	default: // DiffOrderChanged
-		return "notice", "YAML Order Changed"
-	}
-}
-
-// diffDescription returns a human-readable description of a difference.
-// Shared by GitHub, GitLab, and Gitea formatters.
-func diffDescription(diff Difference) string {
-	switch diff.Type {
-	case DiffAdded:
-		return fmt.Sprintf("Added: %s = %s", diff.Path, formatValue(diff.To))
-	case DiffRemoved:
-		return fmt.Sprintf("Removed: %s = %s", diff.Path, formatValue(diff.From))
-	case DiffModified:
-		return fmt.Sprintf("Modified: %s changed from %s to %s", diff.Path, formatValue(diff.From), formatValue(diff.To))
-	default: // DiffOrderChanged
-		return fmt.Sprintf("Order changed: %s", diff.Path)
-	}
-}
-
-// gitHubAnnotationLimit is the maximum number of annotations per command type
-// per step, as enforced by GitHub Actions.
-const gitHubAnnotationLimit = 10
-
-// FormatSingle renders a single difference in GitHub Actions format.
-func (f *GitHubFormatter) FormatSingle(diff Difference, opts *FormatOptions) string {
-	cmd, title := gitHubCommand(diff.Type)
-	msg := diffDescription(diff)
-	return fmt.Sprintf("::%s title=%s::%s\n", cmd, title, msg)
-}
-
-// Format renders differences in GitHub Actions format.
-// When opts.FilePath is non-empty: ::<cmd> file=<path>,title=<title>::<message>
-// When opts.FilePath is empty:     ::<cmd> title=<title>::<message>
-// Tracks per-type counts; truncates at 10 per command type.
-// Appends summary annotation per truncated type.
-func (f *GitHubFormatter) Format(diffs []Difference, opts *FormatOptions) string {
-	if len(diffs) == 0 {
-		return ""
-	}
-
-	filePath := ""
-	if opts != nil {
-		filePath = opts.FilePath
-	}
-
-	var sb strings.Builder
-	counts := map[string]int{}
-	omitted := map[string]int{}
-
-	for _, diff := range diffs {
-		cmd, title := gitHubCommand(diff.Type)
-		if counts[cmd] < gitHubAnnotationLimit {
-			gitHubWriteCommand(&sb, cmd, title, diffDescription(diff), filePath)
-			counts[cmd]++
-		} else {
-			omitted[cmd]++
-		}
-	}
-
-	gitHubWriteSummaries(&sb, omitted)
-	return sb.String()
-}
-
-// gitHubWriteCommand writes a single GitHub Actions workflow command to the builder.
-func gitHubWriteCommand(sb *strings.Builder, cmd, title, msg, filePath string) {
-	if filePath != "" {
-		fmt.Fprintf(sb, "::%s file=%s,title=%s::%s\n", cmd, filePath, title, msg)
-	} else {
-		fmt.Fprintf(sb, "::%s title=%s::%s\n", cmd, title, msg)
-	}
-}
-
-// gitHubWriteSummaries appends summary annotations for each truncated command type.
-// Summary annotations do not include the file= parameter and do not count toward the limit.
-func gitHubWriteSummaries(sb *strings.Builder, omitted map[string]int) {
-	for _, cmd := range []string{"notice", "warning", "error"} {
-		if n := omitted[cmd]; n > 0 {
-			fmt.Fprintf(sb, "::%s title=diffyml::%d additional %s annotations omitted due to GitHub Actions limit\n", cmd, n, cmd)
-		}
-	}
-}
-
-// FormatAll produces GitHub Actions workflow commands for multiple file groups.
-// Each diff uses file=<group.FilePath> for file-specific annotations.
-// Annotation limits (10 per type) apply across ALL groups combined.
-// Summary annotations omit the file= parameter.
-// Returns empty string when all groups have zero diffs.
-func (f *GitHubFormatter) FormatAll(groups []DiffGroup, opts *FormatOptions) string {
-	var sb strings.Builder
-	counts := map[string]int{}
-	omitted := map[string]int{}
-
-	for _, group := range groups {
-		for _, diff := range group.Diffs {
-			cmd, title := gitHubCommand(diff.Type)
-			if counts[cmd] < gitHubAnnotationLimit {
-				gitHubWriteCommand(&sb, cmd, title, diffDescription(diff), group.FilePath)
-				counts[cmd]++
-			} else {
-				omitted[cmd]++
-			}
-		}
-	}
-
-	gitHubWriteSummaries(&sb, omitted)
-	return sb.String()
-}
-
-// GitLabFormatter renders output compatible with GitLab CI Code Quality format.
-// Complies with the GitLab Code Quality specification: includes check_name,
-// location.lines.begin, unique SHA-256 fingerprints, and severity per diff type.
-type GitLabFormatter struct{}
-
-// gitLabSeverity returns the Code Quality severity for a diff type.
-func gitLabSeverity(dt DiffType) string {
-	switch dt {
-	case DiffAdded:
-		return "info"
-	case DiffRemoved, DiffModified:
-		return "major"
-	default: // DiffOrderChanged
-		return "minor"
-	}
-}
-
-// gitLabCheckName returns the check_name for a diff type.
-func gitLabCheckName(dt DiffType) string {
-	switch dt {
-	case DiffAdded:
-		return "diffyml/added"
-	case DiffRemoved:
-		return "diffyml/removed"
-	case DiffModified:
-		return "diffyml/modified"
-	default: // DiffOrderChanged
-		return "diffyml/order-changed"
-	}
-}
-
-// gitLabFingerprint returns a unique SHA-256 fingerprint.
-// When filePath is non-empty, hashes filePath + ":" + description.
-// When filePath is empty, hashes only description (backward compat).
-func gitLabFingerprint(filePath, description string) string {
-	input := description
-	if filePath != "" {
-		input = filePath + ":" + description
-	}
-	h := sha256.Sum256([]byte(input))
-	return hex.EncodeToString(h[:])
-}
-
-// FormatSingle renders a single difference in GitLab CI JSON format (without array wrapper).
-func (f *GitLabFormatter) FormatSingle(diff Difference, opts *FormatOptions) string {
-	desc := diffDescription(diff)
-	return fmt.Sprintf(
-		`{"description": %q, "check_name": %q, "fingerprint": %q, "severity": %q, "location": {"path": %q, "lines": {"begin": 1}}}`+"\n",
-		desc, gitLabCheckName(diff.Type), gitLabFingerprint("", desc), gitLabSeverity(diff.Type), diff.Path)
-}
-
-// Format renders differences in GitLab CI format.
-func (f *GitLabFormatter) Format(diffs []Difference, opts *FormatOptions) string {
-	if len(diffs) == 0 {
-		return "[]\n"
-	}
-
-	if opts == nil {
-		opts = DefaultFormatOptions()
-	}
-
-	var sb strings.Builder
-	sb.WriteString("[\n")
-
-	for i, diff := range diffs {
-		desc := diffDescription(diff)
-		locationPath := opts.FilePath
-		if locationPath == "" {
-			locationPath = diff.Path
-		}
-		fmt.Fprintf(&sb,
-			`  {"description": %q, "check_name": %q, "fingerprint": %q, "severity": %q, "location": {"path": %q, "lines": {"begin": 1}}}`,
-			desc, gitLabCheckName(diff.Type), gitLabFingerprint(opts.FilePath, desc), gitLabSeverity(diff.Type), locationPath)
-
-		if i < len(diffs)-1 {
-			sb.WriteString(",")
-		}
-		sb.WriteString("\n")
-	}
-
-	sb.WriteString("]\n")
-	return sb.String()
-}
-
-// FormatAll renders all diff groups as a single JSON array for directory mode.
-// Implements StructuredFormatter interface.
-func (f *GitLabFormatter) FormatAll(groups []DiffGroup, _ *FormatOptions) string {
-	// Count total diffs for comma handling
-	total := 0
-	for _, g := range groups {
-		total += len(g.Diffs)
-	}
-
-	if total == 0 {
-		return "[]\n"
-	}
-
-	var sb strings.Builder
-	sb.WriteString("[\n")
-
-	idx := 0
-	for _, group := range groups {
-		for _, diff := range group.Diffs {
-			baseDesc := diffDescription(diff)
-			displayDesc := fmt.Sprintf("[%s] %s", group.FilePath, baseDesc)
-			fmt.Fprintf(&sb,
-				`  {"description": %q, "check_name": %q, "fingerprint": %q, "severity": %q, "location": {"path": %q, "lines": {"begin": 1}}}`,
-				displayDesc, gitLabCheckName(diff.Type), gitLabFingerprint(group.FilePath, baseDesc), gitLabSeverity(diff.Type), group.FilePath)
-
-			if idx < total-1 {
-				sb.WriteString(",")
-			}
-			sb.WriteString("\n")
-			idx++
-		}
-	}
-
-	sb.WriteString("]\n")
-	return sb.String()
-}
-
-// GiteaFormatter renders output compatible with Gitea CI/CD.
-// Uses GitHub Actions compatible format. Note: Gitea Actions silently ignores
-// workflow command annotations (see gitea/gitea#23722), so annotations may not
-// appear in the Gitea UI. The output is still valid for log parsing.
-type GiteaFormatter struct{}
-
-// FormatSingle renders a single difference in Gitea CI format (GitHub Actions compatible).
-func (f *GiteaFormatter) FormatSingle(diff Difference, opts *FormatOptions) string {
-	// Gitea uses GitHub Actions compatible format
-	gh := &GitHubFormatter{}
-	return gh.FormatSingle(diff, opts)
-}
-
-// Format renders differences in Gitea CI format (GitHub Actions compatible).
-func (f *GiteaFormatter) Format(diffs []Difference, opts *FormatOptions) string {
-	// Gitea uses GitHub Actions compatible format
-	gh := &GitHubFormatter{}
-	return gh.Format(diffs, opts)
-}
-
-// FormatAll delegates to GitHubFormatter for directory mode support.
-func (f *GiteaFormatter) FormatAll(groups []DiffGroup, opts *FormatOptions) string {
-	gh := &GitHubFormatter{}
-	return gh.FormatAll(groups, opts)
 }

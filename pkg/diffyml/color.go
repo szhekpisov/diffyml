@@ -195,6 +195,44 @@ func GetColorReset() string {
 	return colorReset
 }
 
+// Colorizer provides diff-type-aware color codes for formatters.
+// Uses the detailed palette (true color or 8-color fallback).
+type Colorizer struct {
+	TrueColor bool
+}
+
+// Added returns the color code for added items.
+func (c Colorizer) Added() string { return GetDetailedColorCode(DiffAdded, c.TrueColor) }
+
+// Removed returns the color code for removed items.
+func (c Colorizer) Removed() string { return GetDetailedColorCode(DiffRemoved, c.TrueColor) }
+
+// Modified returns the color code for modified items.
+func (c Colorizer) Modified() string { return GetDetailedColorCode(DiffModified, c.TrueColor) }
+
+// Context returns the color code for context lines.
+func (c Colorizer) Context() string { return GetContextColorCode(c.TrueColor) }
+
+// Reset returns the ANSI reset code.
+func (c Colorizer) Reset() string { return colorReset }
+
+// Bold returns the ANSI bold code.
+func (c Colorizer) Bold() string { return styleBold }
+
+// CompactColor returns the 8-color ANSI code for a diff type.
+func CompactColor(dt DiffType) string {
+	switch dt {
+	case DiffAdded:
+		return colorGreen
+	case DiffRemoved:
+		return colorRed
+	case DiffModified, DiffOrderChanged:
+		return colorYellow
+	default:
+		return ""
+	}
+}
+
 // clamp restricts a value to the range [lo, hi].
 func clamp(val, lo, hi int) int {
 	return max(lo, min(val, hi))

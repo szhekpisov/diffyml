@@ -64,14 +64,15 @@ func (f *DetailedFormatter) Format(diffs []Difference, opts *FormatOptions) stri
 
 // formatHeader renders a summary header line.
 func (f *DetailedFormatter) formatHeader(sb *strings.Builder, diffs []Difference, opts *FormatOptions) {
+	clr := Colorizer{TrueColor: opts.TrueColor}
 	if opts.Color {
-		sb.WriteString(f.colorModified(opts))
+		sb.WriteString(clr.Modified())
 	}
 	fmt.Fprintf(sb, "Found %s %s",
 		formatCount(len(diffs)),
 		pluralize(len(diffs), "difference", "differences"))
 	if opts.Color {
-		sb.WriteString(GetColorReset())
+		sb.WriteString(clr.Reset())
 	}
 	sb.WriteString("\n\n")
 }
@@ -163,6 +164,7 @@ func (f *DetailedFormatter) formatGroupDiffs(sb *strings.Builder, group pathGrou
 
 // formatEntryBatch renders a group of additions or removals with a count descriptor.
 func (f *DetailedFormatter) formatEntryBatch(sb *strings.Builder, diffs []Difference, action string, opts *FormatOptions) {
+	clr := Colorizer{TrueColor: opts.TrueColor}
 	n := len(diffs)
 	isListEntry := isListEntryDiff(diffs[0])
 	entryType := "map"
@@ -173,17 +175,17 @@ func (f *DetailedFormatter) formatEntryBatch(sb *strings.Builder, diffs []Differ
 	countStr := formatCount(n)
 	noun := pluralize(n, entryType+" entry", entryType+" entries")
 	symbol := "+"
-	colorFn := f.colorAdded
+	cc := clr.Added()
 	if action == "removed" {
 		symbol = "-"
-		colorFn = f.colorRemoved
+		cc = clr.Removed()
 	}
 
 	if opts.Color {
 		sb.WriteString("  ")
-		sb.WriteString(colorFn(opts))
+		sb.WriteString(cc)
 		fmt.Fprintf(sb, "%s %s %s %s:", symbol, countStr, noun, action)
-		sb.WriteString(f.colorReset())
+		sb.WriteString(clr.Reset())
 		sb.WriteString("\n")
 	} else {
 		fmt.Fprintf(sb, "  %s %s %s %s:\n", symbol, countStr, noun, action)
@@ -210,12 +212,13 @@ func (f *DetailedFormatter) formatEntryBatch(sb *strings.Builder, diffs []Differ
 // For list entries, renders values with "- " prefix. For map entries, renders as "key: value".
 // The entire block is colored (green for adds, red for removes).
 func (f *DetailedFormatter) renderEntryValue(sb *strings.Builder, val interface{}, symbol string, indent int, path string, isList bool, opts *FormatOptions) {
+	clr := Colorizer{TrueColor: opts.TrueColor}
 	colorCode := ""
 	if opts.Color {
 		if symbol == "+" {
-			colorCode = f.colorAdded(opts)
+			colorCode = clr.Added()
 		} else {
-			colorCode = f.colorRemoved(opts)
+			colorCode = clr.Removed()
 		}
 	}
 
@@ -229,8 +232,8 @@ func (f *DetailedFormatter) renderEntryValue(sb *strings.Builder, val interface{
 		return
 	}
 
-	// List entries: delegate to renderListItems which handles *OrderedMap,
-	// map[string]interface{}, and scalar fallback uniformly.
+	// List entries: delegate to renderListItems which handles *OrderedMap
+	// and scalar fallback uniformly.
 	// For []interface{} values, pass items directly; otherwise wrap as single item.
 	if v, ok := val.([]interface{}); ok {
 		f.renderListItems(sb, v, indent, colorCode, opts)
@@ -242,17 +245,15 @@ func (f *DetailedFormatter) renderEntryValue(sb *strings.Builder, val interface{
 // renderKeyValueYAML renders a key: value pair in plain YAML style with color.
 // Uses standard YAML indentation (2 spaces per level), no pipe guides.
 func (f *DetailedFormatter) renderKeyValueYAML(sb *strings.Builder, key string, val interface{}, indent int, colorCode string, opts *FormatOptions) {
+	if om := toOrderedMap(val); om != nil {
+		val = om
+	}
 	pad := strings.Repeat(" ", indent)
 	switch v := val.(type) {
 	case *OrderedMap:
 		f.writeColoredLine(sb, fmt.Sprintf("%s%s:", pad, key), colorCode, opts)
 		for _, k := range v.Keys {
 			f.renderKeyValueYAML(sb, k, v.Values[k], indent+2, colorCode, opts)
-		}
-	case map[string]interface{}:
-		f.writeColoredLine(sb, fmt.Sprintf("%s%s:", pad, key), colorCode, opts)
-		for _, k := range sortedMapKeys(v) {
-			f.renderKeyValueYAML(sb, k, v[k], indent+2, colorCode, opts)
 		}
 	case []interface{}:
 		f.writeColoredLine(sb, fmt.Sprintf("%s%s:", pad, key), colorCode, opts)
@@ -270,17 +271,15 @@ func (f *DetailedFormatter) renderKeyValueYAML(sb *strings.Builder, key string, 
 // The key is rendered as "    - key: value" where indent is the base indentation.
 // For nested values, continuation uses indent+2 to align under the key.
 func (f *DetailedFormatter) renderFirstKeyValueYAML(sb *strings.Builder, key string, val interface{}, indent int, colorCode string, opts *FormatOptions) {
+	if om := toOrderedMap(val); om != nil {
+		val = om
+	}
 	pad := strings.Repeat(" ", indent)
 	switch v := val.(type) {
 	case *OrderedMap:
 		f.writeColoredLine(sb, fmt.Sprintf("%s- %s:", pad, key), colorCode, opts)
 		for _, k := range v.Keys {
 			f.renderKeyValueYAML(sb, k, v.Values[k], indent+4, colorCode, opts)
-		}
-	case map[string]interface{}:
-		f.writeColoredLine(sb, fmt.Sprintf("%s- %s:", pad, key), colorCode, opts)
-		for _, k := range sortedMapKeys(v) {
-			f.renderKeyValueYAML(sb, k, v[k], indent+4, colorCode, opts)
 		}
 	case []interface{}:
 		f.writeColoredLine(sb, fmt.Sprintf("%s- %s:", pad, key), colorCode, opts)
@@ -295,28 +294,19 @@ func (f *DetailedFormatter) renderFirstKeyValueYAML(sb *strings.Builder, key str
 }
 
 // renderListItems renders items of a []interface{} list with proper type dispatch.
-// Structured items (*OrderedMap, map[string]interface{}) are rendered using YAML-style
-// key-value methods. Scalars use formatDetailedValue().
+// Structured items (*OrderedMap) are rendered using YAML-style key-value methods.
+// Scalars use formatDetailedValue().
 func (f *DetailedFormatter) renderListItems(sb *strings.Builder, items []interface{}, indent int, colorCode string, opts *FormatOptions) {
 	for _, item := range items {
-		switch v := item.(type) {
-		case *OrderedMap:
-			for i, key := range v.Keys {
+		if om := toOrderedMap(item); om != nil {
+			for i, key := range om.Keys {
 				if i == 0 {
-					f.renderFirstKeyValueYAML(sb, key, v.Values[key], indent, colorCode, opts)
+					f.renderFirstKeyValueYAML(sb, key, om.Values[key], indent, colorCode, opts)
 				} else {
-					f.renderKeyValueYAML(sb, key, v.Values[key], indent+2, colorCode, opts)
+					f.renderKeyValueYAML(sb, key, om.Values[key], indent+2, colorCode, opts)
 				}
 			}
-		case map[string]interface{}:
-			for i, key := range sortedMapKeys(v) {
-				if i == 0 {
-					f.renderFirstKeyValueYAML(sb, key, v[key], indent, colorCode, opts)
-				} else {
-					f.renderKeyValueYAML(sb, key, v[key], indent+2, colorCode, opts)
-				}
-			}
-		default:
+		} else {
 			pad := strings.Repeat(" ", indent)
 			f.writeColoredLine(sb, fmt.Sprintf("%s- %v", pad, formatDetailedValue(item)), colorCode, opts)
 		}
@@ -334,16 +324,17 @@ func (f *DetailedFormatter) renderMultilineValue(sb *strings.Builder, prefix, va
 
 // formatChangeDescriptor renders the descriptor line for a single diff.
 func (f *DetailedFormatter) formatChangeDescriptor(sb *strings.Builder, diff Difference, opts *FormatOptions) {
+	clr := Colorizer{TrueColor: opts.TrueColor}
 	switch diff.Type {
 	case DiffModified:
 		f.formatModified(sb, diff, opts)
 	case DiffOrderChanged:
-		f.writeDescriptorLine(sb, "  ⇆ order changed", f.colorModified, opts)
+		f.writeDescriptorLine(sb, "  ⇆ order changed", clr.Modified(), opts)
 		if diff.From != nil {
-			f.writeColoredLine(sb, fmt.Sprintf("    - %s", formatCommaSeparated(diff.From)), f.colorRemoved(opts), opts)
+			f.writeColoredLine(sb, fmt.Sprintf("    - %s", formatCommaSeparated(diff.From)), clr.Removed(), opts)
 		}
 		if diff.To != nil {
-			f.writeColoredLine(sb, fmt.Sprintf("    + %s", formatCommaSeparated(diff.To)), f.colorAdded(opts), opts)
+			f.writeColoredLine(sb, fmt.Sprintf("    + %s", formatCommaSeparated(diff.To)), clr.Added(), opts)
 		}
 		sb.WriteString("\n")
 	}
@@ -351,6 +342,7 @@ func (f *DetailedFormatter) formatChangeDescriptor(sb *strings.Builder, diff Dif
 
 // formatModified renders a modification descriptor with type change, multiline, and whitespace detection.
 func (f *DetailedFormatter) formatModified(sb *strings.Builder, diff Difference, opts *FormatOptions) {
+	clr := Colorizer{TrueColor: opts.TrueColor}
 	fromType := yamlTypeName(diff.From)
 	toType := yamlTypeName(diff.To)
 
@@ -359,12 +351,12 @@ func (f *DetailedFormatter) formatModified(sb *strings.Builder, diff Difference,
 		if opts.Color {
 			f.writeDescriptorLine(sb, fmt.Sprintf("  ± type change from %s%s%s to %s%s%s",
 				styleItalic, fromType, styleItalicOff,
-				styleItalic, toType, styleItalicOff), f.colorModified, opts)
+				styleItalic, toType, styleItalicOff), clr.Modified(), opts)
 		} else {
-			f.writeDescriptorLine(sb, fmt.Sprintf("  ± type change from %s to %s", fromType, toType), f.colorModified, opts)
+			f.writeDescriptorLine(sb, fmt.Sprintf("  ± type change from %s to %s", fromType, toType), clr.Modified(), opts)
 		}
-		f.writeTypeChangeValue(sb, diff.From, "-", f.colorRemoved(opts), opts)
-		f.writeTypeChangeValue(sb, diff.To, "+", f.colorAdded(opts), opts)
+		f.writeTypeChangeValue(sb, diff.From, "-", clr.Removed(), opts)
+		f.writeTypeChangeValue(sb, diff.To, "+", clr.Added(), opts)
 		sb.WriteString("\n")
 		return
 	}
@@ -382,9 +374,9 @@ func (f *DetailedFormatter) formatModified(sb *strings.Builder, diff Difference,
 
 		// Whitespace-only change detection
 		if isWhitespaceOnlyChange(fromStr, toStr) {
-			f.writeDescriptorLine(sb, "  ± whitespace only change", f.colorModified, opts)
-			f.writeColoredLine(sb, fmt.Sprintf("    - %s", visualizeWhitespace(fromStr)), f.colorRemoved(opts), opts)
-			f.writeColoredLine(sb, fmt.Sprintf("    + %s", visualizeWhitespace(toStr)), f.colorAdded(opts), opts)
+			f.writeDescriptorLine(sb, "  ± whitespace only change", clr.Modified(), opts)
+			f.writeColoredLine(sb, fmt.Sprintf("    - %s", visualizeWhitespace(fromStr)), clr.Removed(), opts)
+			f.writeColoredLine(sb, fmt.Sprintf("    + %s", visualizeWhitespace(toStr)), clr.Added(), opts)
 			sb.WriteString("\n")
 			return
 		}
@@ -396,22 +388,23 @@ func (f *DetailedFormatter) formatModified(sb *strings.Builder, diff Difference,
 		}
 
 		// Scalar string value change (may be cert-transformed)
-		f.writeDescriptorLine(sb, "  ± value change", f.colorModified, opts)
-		f.writeColoredLine(sb, fmt.Sprintf("    - %s", fromStr), f.colorRemoved(opts), opts)
-		f.writeColoredLine(sb, fmt.Sprintf("    + %s", toStr), f.colorAdded(opts), opts)
+		f.writeDescriptorLine(sb, "  ± value change", clr.Modified(), opts)
+		f.writeColoredLine(sb, fmt.Sprintf("    - %s", fromStr), clr.Removed(), opts)
+		f.writeColoredLine(sb, fmt.Sprintf("    + %s", toStr), clr.Added(), opts)
 		sb.WriteString("\n")
 		return
 	}
 
 	// Default: non-string scalar value change
-	f.writeDescriptorLine(sb, "  ± value change", f.colorModified, opts)
-	f.writeColoredLine(sb, fmt.Sprintf("    - %v", formatDetailedValue(diff.From)), f.colorRemoved(opts), opts)
-	f.writeColoredLine(sb, fmt.Sprintf("    + %v", formatDetailedValue(diff.To)), f.colorAdded(opts), opts)
+	f.writeDescriptorLine(sb, "  ± value change", clr.Modified(), opts)
+	f.writeColoredLine(sb, fmt.Sprintf("    - %v", formatDetailedValue(diff.From)), clr.Removed(), opts)
+	f.writeColoredLine(sb, fmt.Sprintf("    + %v", formatDetailedValue(diff.To)), clr.Added(), opts)
 	sb.WriteString("\n")
 }
 
 // formatMultilineDiff renders an inline line-by-line diff for multiline strings.
 func (f *DetailedFormatter) formatMultilineDiff(sb *strings.Builder, from, to string, opts *FormatOptions) {
+	clr := Colorizer{TrueColor: opts.TrueColor}
 	fromLines := strings.Split(from, "\n")
 	toLines := strings.Split(to, "\n")
 	ops := computeLineDiff(fromLines, toLines)
@@ -431,7 +424,7 @@ func (f *DetailedFormatter) formatMultilineDiff(sb *strings.Builder, from, to st
 	descriptor := fmt.Sprintf("  ± value change in multiline text (%s %s, %s %s)",
 		formatCount(additions), pluralize(additions, "insert", "inserts"),
 		formatCount(deletions), pluralize(deletions, "deletion", "deletions"))
-	f.writeDescriptorLine(sb, descriptor, f.colorModified, opts)
+	f.writeDescriptorLine(sb, descriptor, clr.Modified(), opts)
 
 	// Apply context collapsing
 	contextLines := opts.ContextLines
@@ -459,11 +452,11 @@ func (f *DetailedFormatter) formatMultilineDiff(sb *strings.Builder, from, to st
 		if op.Type != editKeep || nearChange[i] {
 			switch op.Type {
 			case editKeep:
-				f.writeColoredLine(sb, fmt.Sprintf("      %s", op.Line), f.colorContext(opts), opts)
+				f.writeColoredLine(sb, fmt.Sprintf("      %s", op.Line), clr.Context(), opts)
 			case editInsert:
-				f.writeColoredLine(sb, fmt.Sprintf("    + %s", op.Line), f.colorAdded(opts), opts)
+				f.writeColoredLine(sb, fmt.Sprintf("    + %s", op.Line), clr.Added(), opts)
 			case editDelete:
-				f.writeColoredLine(sb, fmt.Sprintf("    - %s", op.Line), f.colorRemoved(opts), opts)
+				f.writeColoredLine(sb, fmt.Sprintf("    - %s", op.Line), clr.Removed(), opts)
 			}
 		} else {
 			// Count consecutive non-near-change keep ops
@@ -475,7 +468,7 @@ func (f *DetailedFormatter) formatMultilineDiff(sb *strings.Builder, from, to st
 				collapsed++
 			}
 			skipUntil = i + collapsed
-			f.writeColoredLine(sb, fmt.Sprintf("    [%d %s unchanged]", collapsed, pluralize(collapsed, "line", "lines")), f.colorContext(opts), opts)
+			f.writeColoredLine(sb, fmt.Sprintf("    [%d %s unchanged]", collapsed, pluralize(collapsed, "line", "lines")), clr.Context(), opts)
 		}
 	}
 	sb.WriteString("\n")
@@ -566,7 +559,7 @@ func yamlTypeName(v interface{}) string {
 		return "float"
 	case bool:
 		return "bool"
-	case *OrderedMap, map[string]interface{}:
+	case *OrderedMap:
 		return "map"
 	case []interface{}:
 		return "list"
@@ -575,6 +568,9 @@ func yamlTypeName(v interface{}) string {
 	case nil:
 		return "null"
 	default:
+		if toOrderedMap(v) != nil {
+			return "map"
+		}
 		return fmt.Sprintf("%T", v)
 	}
 }
@@ -632,19 +628,13 @@ func formatValueAsYAMLLines(val interface{}) []string {
 }
 
 func formatValueAsYAMLRecurse(val interface{}, indent string, lines *[]string) {
+	if om := toOrderedMap(val); om != nil {
+		val = om
+	}
 	switch v := val.(type) {
 	case *OrderedMap:
 		for _, key := range v.Keys {
 			child := v.Values[key]
-			if isStructured(child) {
-				*lines = append(*lines, fmt.Sprintf("%s%s:", indent, key))
-				formatValueAsYAMLRecurse(child, indent+"  ", lines)
-			} else {
-				*lines = append(*lines, fmt.Sprintf("%s%s: %v", indent, key, formatDetailedValue(child)))
-			}
-		}
-	case map[string]interface{}:
-		for key, child := range v {
 			if isStructured(child) {
 				*lines = append(*lines, fmt.Sprintf("%s%s:", indent, key))
 				formatValueAsYAMLRecurse(child, indent+"  ", lines)
@@ -668,10 +658,10 @@ func formatValueAsYAMLRecurse(val interface{}, indent string, lines *[]string) {
 
 func isStructured(val interface{}) bool {
 	switch val.(type) {
-	case *OrderedMap, map[string]interface{}, []interface{}:
+	case *OrderedMap, []interface{}:
 		return true
 	default:
-		return false
+		return toOrderedMap(val) != nil
 	}
 }
 
@@ -699,19 +689,19 @@ func (f *DetailedFormatter) writeColoredLine(sb *strings.Builder, text string, c
 	if opts.Color {
 		sb.WriteString(colorCode)
 		sb.WriteString(text)
-		sb.WriteString(f.colorReset())
+		sb.WriteString(colorReset)
 	} else {
 		sb.WriteString(text)
 	}
 	sb.WriteString("\n")
 }
 
-// writeDescriptorLine writes a descriptor line using a color function.
-func (f *DetailedFormatter) writeDescriptorLine(sb *strings.Builder, text string, colorFn func(*FormatOptions) string, opts *FormatOptions) {
+// writeDescriptorLine writes a descriptor line with color.
+func (f *DetailedFormatter) writeDescriptorLine(sb *strings.Builder, text string, colorCode string, opts *FormatOptions) {
 	if opts.Color {
-		sb.WriteString(colorFn(opts))
+		sb.WriteString(colorCode)
 		sb.WriteString(text)
-		sb.WriteString(f.colorReset())
+		sb.WriteString(colorReset)
 	} else {
 		sb.WriteString(text)
 	}
@@ -769,24 +759,3 @@ func (f *DetailedFormatter) detectMultiDoc(diffs []Difference) bool {
 	return false
 }
 
-// Color helper methods for DetailedFormatter
-
-func (f *DetailedFormatter) colorAdded(opts *FormatOptions) string {
-	return GetDetailedColorCode(DiffAdded, opts.TrueColor)
-}
-
-func (f *DetailedFormatter) colorRemoved(opts *FormatOptions) string {
-	return GetDetailedColorCode(DiffRemoved, opts.TrueColor)
-}
-
-func (f *DetailedFormatter) colorModified(opts *FormatOptions) string {
-	return GetDetailedColorCode(DiffModified, opts.TrueColor)
-}
-
-func (f *DetailedFormatter) colorContext(opts *FormatOptions) string {
-	return GetContextColorCode(opts.TrueColor)
-}
-
-func (f *DetailedFormatter) colorReset() string {
-	return GetColorReset()
-}

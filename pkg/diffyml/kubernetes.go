@@ -102,10 +102,15 @@ func GetK8sResourceIdentifier(doc interface{}, ignoreApiVersion bool) string {
 	return fmt.Sprintf("%s:%s:%s", res.apiVersion, res.kind, name)
 }
 
-// GetIdentifierWithAdditional gets an identifier value from a map,
+// GetIdentifierWithAdditional gets an identifier value from a map value,
 // checking default fields (name, id) and any additional specified fields.
-func GetIdentifierWithAdditional(m map[string]interface{}, additionalIdentifiers []string) interface{} {
-	return getIdentifierFromOrderedMap(toOrderedMap(m), additionalIdentifiers)
+// Accepts any value and converts to *OrderedMap internally.
+func GetIdentifierWithAdditional(v interface{}, additionalIdentifiers []string) interface{} {
+	om := toOrderedMap(v)
+	if om == nil {
+		return nil
+	}
+	return getIdentifierFromOrderedMap(om, additionalIdentifiers)
 }
 
 // CanMatchByIdentifierWithAdditional checks if list items can be matched by identifier,

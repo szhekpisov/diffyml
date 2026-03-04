@@ -3,6 +3,7 @@ package diffyml
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -174,21 +175,21 @@ func TestChrootError_Error(t *testing.T) {
 	}
 }
 
-// --- ExitResult.String(): nil error and unknown exit code ---
+// --- exitError helper ---
 
-func TestExitResult_String_ErrorNilErr(t *testing.T) {
-	result := NewExitResult(ExitCodeError, nil)
-	got := result.String()
-	if !strings.Contains(got, "unknown error") {
-		t.Errorf("expected 'unknown error', got %q", got)
+func TestExitError(t *testing.T) {
+	var stderr bytes.Buffer
+	rc := &RunConfig{Stdout: io.Discard, Stderr: &stderr}
+	err := fmt.Errorf("test failure")
+	result := exitError(rc, err)
+	if result.Code != ExitCodeError {
+		t.Errorf("expected code %d, got %d", ExitCodeError, result.Code)
 	}
-}
-
-func TestExitResult_String_UnknownCode(t *testing.T) {
-	result := NewExitResult(99, nil)
-	got := result.String()
-	if !strings.Contains(got, "unknown exit code") || !strings.Contains(got, "99") {
-		t.Errorf("expected 'unknown exit code: 99', got %q", got)
+	if result.Err != err {
+		t.Errorf("expected error %v, got %v", err, result.Err)
+	}
+	if !strings.Contains(stderr.String(), "test failure") {
+		t.Errorf("expected stderr to contain error, got %q", stderr.String())
 	}
 }
 

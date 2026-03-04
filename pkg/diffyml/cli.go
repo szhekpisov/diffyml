@@ -81,6 +81,14 @@ func NewCLIConfig() *CLIConfig {
 	return cfg
 }
 
+// sliceFlag registers a flag that appends each occurrence to the given slice.
+func (c *CLIConfig) sliceFlag(field *[]string, name, usage string) {
+	c.fs.Func(name, usage, func(s string) error {
+		*field = append(*field, s)
+		return nil
+	})
+}
+
 // initFlags sets up the flag definitions.
 func (c *CLIConfig) initFlags() {
 	c.fs = flag.NewFlagSet("diffyml", flag.ContinueOnError)
@@ -114,26 +122,11 @@ func (c *CLIConfig) initFlags() {
 	c.fs.BoolVar(&c.Swap, "swap", c.Swap, "swap 'from' and 'to' for comparison")
 
 	// Filter options - using custom slice vars
-	c.fs.Func("filter", "filter reports to a subset of differences", func(s string) error {
-		c.Filter = append(c.Filter, s)
-		return nil
-	})
-	c.fs.Func("exclude", "exclude reports from a set of differences", func(s string) error {
-		c.Exclude = append(c.Exclude, s)
-		return nil
-	})
-	c.fs.Func("filter-regexp", "filter reports using regular expressions", func(s string) error {
-		c.FilterRegexp = append(c.FilterRegexp, s)
-		return nil
-	})
-	c.fs.Func("exclude-regexp", "exclude reports using regular expressions", func(s string) error {
-		c.ExcludeRegexp = append(c.ExcludeRegexp, s)
-		return nil
-	})
-	c.fs.Func("additional-identifier", "use additional identifier in named entry lists", func(s string) error {
-		c.AdditionalIdentifiers = append(c.AdditionalIdentifiers, s)
-		return nil
-	})
+	c.sliceFlag(&c.Filter, "filter", "filter reports to a subset of differences")
+	c.sliceFlag(&c.Exclude, "exclude", "exclude reports from a set of differences")
+	c.sliceFlag(&c.FilterRegexp, "filter-regexp", "filter reports using regular expressions")
+	c.sliceFlag(&c.ExcludeRegexp, "exclude-regexp", "exclude reports using regular expressions")
+	c.sliceFlag(&c.AdditionalIdentifiers, "additional-identifier", "use additional identifier in named entry lists")
 
 	// Chroot options
 	c.fs.StringVar(&c.Chroot, "chroot", c.Chroot, "change the root level of the input file")
@@ -193,15 +186,11 @@ func isBoolFlag(f *flag.Flag) bool {
 func reorderArgs(args []string, fs *flag.FlagSet) []string {
 	var flags, positional []string
 
-	skip := false
-	for i, arg := range args {
-		if skip {
-			skip = false
-			continue
-		}
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
 
 		if arg == "--" {
-			positional = append(positional, args[i:]...)
+			positional = append(positional, args[i+1:]...)
 			break
 		}
 
@@ -225,8 +214,8 @@ func reorderArgs(args []string, fs *flag.FlagSet) []string {
 
 		// If this is a non-bool flag without "=" form, consume next arg as value.
 		if !strings.Contains(arg, "=") && !isBoolFlag(f) && i+1 < len(args) {
-			flags = append(flags, args[i+1])
-			skip = true
+			i++
+			flags = append(flags, args[i])
 		}
 	}
 
@@ -272,64 +261,54 @@ func (c *CLIConfig) ToFormatOptions() *FormatOptions {
 	}
 }
 
+// isBriefSummary reports whether the config requests brief output with AI summary.
+func (c *CLIConfig) isBriefSummary() bool {
+	return c.Output == "brief" && c.Summary
+}
+
 // Usage returns the usage help text.
 func (c *CLIConfig) Usage() string {
-	var sb strings.Builder
+	return `diffyml - A diff tool for YAML files
 
-	sb.WriteString("diffyml - A diff tool for YAML files\n\n")
-	sb.WriteString("Usage:\n")
-	sb.WriteString("  diffyml [flags] <from> <to>\n\n")
-	sb.WriteString("Flags:\n")
+Usage:
+  diffyml [flags] <from> <to>
 
-	// Output options
-	sb.WriteString("  -o, --output string                 specify output style: compact, brief, github, gitlab, gitea, detailed (default \"detailed\")\n")
-	sb.WriteString("  -c, --color string                  specify color usage: always, never, or auto (default \"auto\")\n")
-	sb.WriteString("  -t, --truecolor string              specify true color usage: always, never, or auto (default \"auto\")\n")
-	sb.WriteString("\n")
+Flags:
+  -o, --output string                 specify output style: compact, brief, github, gitlab, gitea, detailed (default "detailed")
+  -c, --color string                  specify color usage: always, never, or auto (default "auto")
+  -t, --truecolor string              specify true color usage: always, never, or auto (default "auto")
 
-	// Comparison options
-	sb.WriteString("  -i, --ignore-order-changes          ignore order changes in lists\n")
-	sb.WriteString("      --ignore-whitespace-changes     ignore leading or trailing whitespace changes\n")
-	sb.WriteString("  -v, --ignore-value-changes          exclude changes in values\n")
-	sb.WriteString("      --detect-kubernetes             detect kubernetes entities (default true)\n")
-	sb.WriteString("      --detect-renames                enable detection for renames (default true)\n")
-	sb.WriteString("      --ignore-api-version            ignore apiVersion when matching Kubernetes resources\n")
-	sb.WriteString("  -x, --no-cert-inspection            disable x509 certificate inspection\n")
-	sb.WriteString("      --swap                          swap 'from' and 'to' for comparison\n")
-	sb.WriteString("\n")
+  -i, --ignore-order-changes          ignore order changes in lists
+      --ignore-whitespace-changes     ignore leading or trailing whitespace changes
+  -v, --ignore-value-changes          exclude changes in values
+      --detect-kubernetes             detect kubernetes entities (default true)
+      --detect-renames                enable detection for renames (default true)
+      --ignore-api-version            ignore apiVersion when matching Kubernetes resources
+  -x, --no-cert-inspection            disable x509 certificate inspection
+      --swap                          swap 'from' and 'to' for comparison
 
-	// Filter options
-	sb.WriteString("      --filter strings                filter reports to a subset of differences\n")
-	sb.WriteString("      --exclude strings               exclude reports from a set of differences\n")
-	sb.WriteString("      --filter-regexp strings         filter reports using regular expressions\n")
-	sb.WriteString("      --exclude-regexp strings        exclude reports using regular expressions\n")
-	sb.WriteString("      --additional-identifier string  use additional identifier in named entry lists\n")
-	sb.WriteString("\n")
+      --filter strings                filter reports to a subset of differences
+      --exclude strings               exclude reports from a set of differences
+      --filter-regexp strings         filter reports using regular expressions
+      --exclude-regexp strings        exclude reports using regular expressions
+      --additional-identifier string  use additional identifier in named entry lists
 
-	// Display options
-	sb.WriteString("  -b, --omit-header                   omit the diffyml summary header\n")
-	sb.WriteString("  -g, --use-go-patch-style            use Go-Patch style paths in outputs\n")
-	sb.WriteString("      --multi-line-context-lines int  multi-line context lines (default 4)\n")
-	sb.WriteString("\n")
+  -b, --omit-header                   omit the diffyml summary header
+  -g, --use-go-patch-style            use Go-Patch style paths in outputs
+      --multi-line-context-lines int  multi-line context lines (default 4)
 
-	// Chroot options
-	sb.WriteString("      --chroot string                 change the root level of the input file\n")
-	sb.WriteString("      --chroot-of-from string         only change the root level of the from input file\n")
-	sb.WriteString("      --chroot-of-to string           only change the root level of the to input file\n")
-	sb.WriteString("      --chroot-list-to-documents      treat chroot list as set of documents\n")
-	sb.WriteString("\n")
+      --chroot string                 change the root level of the input file
+      --chroot-of-from string         only change the root level of the from input file
+      --chroot-of-to string           only change the root level of the to input file
+      --chroot-list-to-documents      treat chroot list as set of documents
 
-	// AI Summary options
-	sb.WriteString("  -S, --summary                       enable AI-powered summary of differences\n")
-	sb.WriteString("      --summary-model string          specify Anthropic model for summary\n")
-	sb.WriteString("\n")
+  -S, --summary                       enable AI-powered summary of differences
+      --summary-model string          specify Anthropic model for summary
 
-	// Other options
-	sb.WriteString("  -s, --set-exit-code                 set program exit code based on differences\n")
-	sb.WriteString("  -h, --help                          show this help\n")
-	sb.WriteString("  -V, --version                       show version information\n")
-
-	return sb.String()
+  -s, --set-exit-code                 set program exit code based on differences
+  -h, --help                          show this help
+  -V, --version                       show version information
+`
 }
 
 // Validate validates the CLI configuration.
@@ -366,44 +345,20 @@ func (c *CLIConfig) Validate() error {
 		return err
 	}
 
-	// Validate AI summary configuration
-	if c.Summary && os.Getenv("ANTHROPIC_API_KEY") == "" {
-		return fmt.Errorf("--summary requires ANTHROPIC_API_KEY environment variable to be set")
-	}
-
 	return nil
 }
-
-// ValidateFileExists checks if a file exists and is not a directory.
-// Returns an error with the file path if validation fails.
-func ValidateFileExists(path string) error {
-	info, err := os.Stat(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return fmt.Errorf("file not found: %s", path)
-		}
-		return fmt.Errorf("cannot access file %s: %w", path, err)
-	}
-	if info.IsDir() {
-		return fmt.Errorf("path is a directory, not a file: %s", path)
-	}
-	return nil
-}
-
-// validOutputFormats lists all valid output format names.
-var validOutputFormats = []string{"compact", "brief", "github", "gitlab", "gitea", "detailed"}
 
 // ValidateOutputFormat checks if the output format name is valid.
 // Returns an error listing valid options if the format is invalid.
 func ValidateOutputFormat(format string) error {
 	lower := strings.ToLower(format)
-	for _, valid := range validOutputFormats {
+	for _, valid := range validFormatterNames {
 		if lower == valid {
 			return nil
 		}
 	}
 	return fmt.Errorf("unknown output format %q, valid formats: %s",
-		format, strings.Join(validOutputFormats, ", "))
+		format, strings.Join(validFormatterNames, ", "))
 }
 
 // ValidateRegexPatterns validates a list of regex patterns.
@@ -462,39 +417,10 @@ type ExitResult struct {
 	Err  error
 }
 
-// NewExitResult creates a new ExitResult.
-func NewExitResult(code int, err error) *ExitResult {
-	return &ExitResult{
-		Code: code,
-		Err:  err,
-	}
-}
-
-// IsSuccess returns true if the execution was successful (code 0).
-func (r *ExitResult) IsSuccess() bool {
-	return r.Code == ExitCodeSuccess
-}
-
-// HasDifferences returns true if differences were detected (code 1).
-func (r *ExitResult) HasDifferences() bool {
-	return r.Code == ExitCodeDifferences
-}
-
-// String returns a human-readable description of the result.
-func (r *ExitResult) String() string {
-	switch r.Code {
-	case ExitCodeSuccess:
-		return "success: no differences found"
-	case ExitCodeDifferences:
-		return "differences detected"
-	case ExitCodeError:
-		if r.Err != nil {
-			return fmt.Sprintf("error: %v", r.Err)
-		}
-		return "error: unknown error"
-	default:
-		return fmt.Sprintf("unknown exit code: %d", r.Code)
-	}
+// exitError logs an error to stderr and returns an ExitResult with ExitCodeError.
+func exitError(rc *RunConfig, err error) *ExitResult {
+	fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
+	return &ExitResult{ExitCodeError, err}
 }
 
 // RunConfig holds runtime configuration for the Run function.
@@ -516,6 +442,11 @@ type RunConfig struct {
 	SummaryAPIURL string
 }
 
+// isRealMode reports whether the RunConfig has no pre-loaded test content.
+func (rc *RunConfig) isRealMode() bool {
+	return rc.FromContent == nil && rc.ToContent == nil && rc.FilePairs == nil
+}
+
 // NewRunConfig creates a new RunConfig with default values.
 func NewRunConfig() *RunConfig {
 	return &RunConfig{
@@ -534,19 +465,20 @@ func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
 	// Handle help flag
 	if cfg.ShowHelp {
 		fmt.Fprint(rc.Stdout, cfg.Usage())
-		return NewExitResult(ExitCodeSuccess, nil)
+		return &ExitResult{ExitCodeSuccess, nil}
 	}
 
-	// Validate configuration (unless using pre-loaded content for testing)
-	if rc.FromContent == nil && rc.ToContent == nil {
+	// Validate configuration and detect directories (skip in test mode)
+	if rc.isRealMode() {
 		if err := cfg.Validate(); err != nil {
-			fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
-			return NewExitResult(ExitCodeError, err)
+			return exitError(rc, err)
 		}
-	}
 
-	// Directory detection (skip when test content is pre-loaded)
-	if rc.FromContent == nil && rc.ToContent == nil && rc.FilePairs == nil {
+		if cfg.Summary && os.Getenv("ANTHROPIC_API_KEY") == "" {
+			return exitError(rc, fmt.Errorf("--summary requires ANTHROPIC_API_KEY environment variable to be set"))
+		}
+
+		// Directory detection
 		fromIsDir := IsDirectory(cfg.FromFile)
 		toIsDir := IsDirectory(cfg.ToFile)
 
@@ -554,107 +486,127 @@ func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
 			return runDirectory(cfg, rc, cfg.FromFile, cfg.ToFile)
 		}
 		if fromIsDir != toIsDir {
-			err := fmt.Errorf("both arguments must be the same type (both files or both directories)")
-			fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
-			return NewExitResult(ExitCodeError, err)
+			return exitError(rc, fmt.Errorf("both arguments must be the same type (both files or both directories)"))
 		}
 	}
 
-	// Get the formatter
-	formatter, err := GetFormatter(cfg.Output)
+	// Build shared options
+	opts, err := cfg.buildRunOpts()
 	if err != nil {
-		fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
-		return NewExitResult(ExitCodeError, err)
+		return exitError(rc, err)
 	}
 
 	// Load file contents
-	var fromContent, toContent []byte
+	fromContent, err := loadOrUse(rc.FromContent, cfg.FromFile)
+	if err != nil {
+		return exitError(rc, err)
+	}
+	toContent, err := loadOrUse(rc.ToContent, cfg.ToFile)
+	if err != nil {
+		return exitError(rc, err)
+	}
 
-	if rc.FromContent != nil {
-		fromContent = rc.FromContent
-	} else {
-		fromContent, err = LoadContent(cfg.FromFile)
+	// Compare and filter
+	diffs, err := compareAndFilter(fromContent, toContent, opts.compare, opts.filter)
+	if err != nil {
+		return exitError(rc, err)
+	}
+
+	// Set file path for formatters that use it (e.g., GitLab)
+	filePath := normalizeFilePath(cfg.ToFile, rc.Stderr)
+	opts.format.FilePath = filePath
+
+	// Format output (defer printing for brief+summary mode)
+	formatted := opts.formatter.Format(diffs, opts.format)
+	if !cfg.isBriefSummary() {
+		fmt.Fprint(rc.Stdout, formatted)
+	}
+
+	// AI summary
+	if cfg.Summary && len(diffs) > 0 {
+		groups := []DiffGroup{{FilePath: filePath, Diffs: diffs}}
+		summaryOutput, err := invokeSummary(cfg, rc, groups, opts.format)
 		if err != nil {
-			fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
-			return NewExitResult(ExitCodeError, err)
+			if cfg.isBriefSummary() {
+				fmt.Fprint(rc.Stdout, formatted)
+			}
+			fmt.Fprintf(rc.Stderr, "Warning: AI summary unavailable: %v\n", err)
+		} else {
+			fmt.Fprint(rc.Stdout, summaryOutput)
 		}
 	}
 
-	if rc.ToContent != nil {
-		toContent = rc.ToContent
-	} else {
-		toContent, err = LoadContent(cfg.ToFile)
-		if err != nil {
-			fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
-			return NewExitResult(ExitCodeError, err)
-		}
-	}
+	// Determine exit code
+	exitCode := DetermineExitCode(cfg.SetExitCode, len(diffs), nil)
+	return &ExitResult{exitCode, nil}
+}
 
-	// Setup options
-	compareOpts := cfg.ToCompareOptions()
-	filterOpts := cfg.ToFilterOptions()
-	formatOpts := cfg.ToFormatOptions()
-
-	// Apply color configuration
+// applyColorConfig applies color settings to format options.
+func applyColorConfig(cfg *CLIConfig, formatOpts *FormatOptions) {
 	colorMode, _ := ParseColorMode(cfg.Color)
 	trueColorMode, _ := ParseColorMode(cfg.TrueColor)
 	colorCfg := NewColorConfig(colorMode, trueColorMode == ColorModeAlways)
 	colorCfg.DetectTerminal()
 	colorCfg.ToFormatOptions(formatOpts)
+}
 
-	// Compare files
-	diffs, err := Compare(fromContent, toContent, compareOpts)
+// runOpts holds the shared formatter and options built from CLIConfig.
+type runOpts struct {
+	formatter Formatter
+	compare   *Options
+	filter    *FilterOptions
+	format    *FormatOptions
+}
+
+// buildRunOpts creates shared formatter and options from the CLI config.
+func (cfg *CLIConfig) buildRunOpts() (*runOpts, error) {
+	formatter, err := GetFormatter(cfg.Output)
 	if err != nil {
-		err = fmt.Errorf("failed to compare files: %w", err)
-		fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
-		return NewExitResult(ExitCodeError, err)
+		return nil, err
 	}
+	formatOpts := cfg.ToFormatOptions()
+	applyColorConfig(cfg, formatOpts)
+	return &runOpts{
+		formatter: formatter,
+		compare:   cfg.ToCompareOptions(),
+		filter:    cfg.ToFilterOptions(),
+		format:    formatOpts,
+	}, nil
+}
 
-	// Apply filters
+// loadOrUse returns preloaded content if non-nil, otherwise loads from path.
+func loadOrUse(preloaded []byte, path string) ([]byte, error) {
+	if preloaded != nil {
+		return preloaded, nil
+	}
+	return LoadContent(path)
+}
+
+// compareAndFilter runs Compare followed by FilterDiffsWithRegexp.
+func compareAndFilter(from, to []byte, compareOpts *Options, filterOpts *FilterOptions) ([]Difference, error) {
+	diffs, err := Compare(from, to, compareOpts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compare files: %w", err)
+	}
 	diffs, err = FilterDiffsWithRegexp(diffs, filterOpts)
 	if err != nil {
-		err = fmt.Errorf("filter error: %w", err)
-		fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
-		return NewExitResult(ExitCodeError, err)
+		return nil, fmt.Errorf("filter error: %w", err)
 	}
+	return diffs, nil
+}
 
-	// Set file path for formatters that use it (e.g., GitLab)
-	formatOpts.FilePath = normalizeFilePath(cfg.ToFile, rc.Stderr)
-
-	// For brief + summary: defer output until we know if the API call succeeds
-	isBriefSummary := cfg.Output == "brief" && cfg.Summary
-
-	// Format and output
-	if !isBriefSummary {
-		output := formatter.Format(diffs, formatOpts)
-		fmt.Fprint(rc.Stdout, output)
+// invokeSummary runs the AI summarizer and returns the formatted summary string.
+// Callers must check cfg.Summary and non-empty diffs before calling.
+func invokeSummary(cfg *CLIConfig, rc *RunConfig, groups []DiffGroup, formatOpts *FormatOptions) (string, error) {
+	summarizer := NewSummarizer(cfg.SummaryModel)
+	if rc.SummaryAPIURL != "" {
+		summarizer.apiURL = rc.SummaryAPIURL
 	}
-
-	// AI Summary
-	if cfg.Summary && len(diffs) > 0 {
-		summarizer := NewSummarizer(cfg.SummaryModel)
-		if rc.SummaryAPIURL != "" {
-			summarizer.apiURL = rc.SummaryAPIURL
-		}
-		groups := []DiffGroup{{FilePath: normalizeFilePath(cfg.ToFile, rc.Stderr), Diffs: diffs}}
-		summary, err := summarizer.Summarize(context.Background(), groups)
-		if err != nil {
-			if isBriefSummary {
-				// Fallback: show brief output since AI summary failed
-				fmt.Fprint(rc.Stdout, formatter.Format(diffs, formatOpts))
-			}
-			fmt.Fprintf(rc.Stderr, "Warning: AI summary unavailable: %v\n", err)
-		} else {
-			fmt.Fprint(rc.Stdout, formatSummaryOutput(summary, formatOpts))
-		}
-	} else if isBriefSummary {
-		// No diffs but brief+summary: write standard brief output
-		fmt.Fprint(rc.Stdout, formatter.Format(diffs, formatOpts))
+	summary, err := summarizer.Summarize(context.Background(), groups)
+	if err != nil {
+		return "", err
 	}
-
-	// Determine exit code
-	exitCode := DetermineExitCode(cfg.SetExitCode, len(diffs), nil)
-	return NewExitResult(exitCode, nil)
+	return formatSummaryOutput(summary, formatOpts), nil
 }
 
 // normalizeFilePath converts a file path to a clean relative path.

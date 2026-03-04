@@ -5,12 +5,10 @@
 package diffyml
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 )
 
 // IsDirectory reports whether path is an existing directory.
@@ -94,18 +92,15 @@ func BuildFilePairPlan(fromDir, toDir string) ([]FilePair, error) {
 		toSet[f] = true
 	}
 
-	// Compute union of filenames
-	nameSet := make(map[string]bool)
-	for _, f := range fromFiles {
-		nameSet[f] = true
-	}
-	for _, f := range toFiles {
-		nameSet[f] = true
-	}
-
-	names := make([]string, 0, len(nameSet))
-	for name := range nameSet {
+	// Build sorted union of filenames from both sets
+	names := make([]string, 0, len(fromFiles)+len(toFiles))
+	for name := range fromSet {
 		names = append(names, name)
+	}
+	for name := range toSet {
+		if !fromSet[name] {
+			names = append(names, name)
+		}
 	}
 	sort.Strings(names)
 
@@ -188,6 +183,51 @@ func buildFilePairsFromMap(m map[string][2][]byte) []FilePair {
 	return pairs
 }
 
+// loadPairContent loads the from/to content for a file pair.
+// In testing mode (rc.FilePairs != nil), reads from the in-memory map.
+// In real mode, loads from the filesystem based on the pair type.
+func loadPairContent(pair FilePair, rc *RunConfig) (from, to []byte, err error) {
+	if rc.FilePairs != nil {
+		contents := rc.FilePairs[pair.Name]
+		if contents[0] != nil {
+			from = contents[0]
+		} else {
+			from = []byte{}
+		}
+		if contents[1] != nil {
+			to = contents[1]
+		} else {
+			to = []byte{}
+		}
+		return from, to, nil
+	}
+
+	switch pair.Type {
+	case FilePairBothExist:
+		from, err = LoadContent(pair.FromPath)
+		if err != nil {
+			return nil, nil, err
+		}
+		to, err = LoadContent(pair.ToPath)
+		if err != nil {
+			return nil, nil, err
+		}
+	case FilePairOnlyFrom:
+		from, err = LoadContent(pair.FromPath)
+		if err != nil {
+			return nil, nil, err
+		}
+		to = []byte{}
+	case FilePairOnlyTo:
+		from = []byte{}
+		to, err = LoadContent(pair.ToPath)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+	return from, to, nil
+}
+
 // runDirectory executes directory-mode comparison.
 // Unexported; called from Run() when both arguments are directories.
 func runDirectory(cfg *CLIConfig, rc *RunConfig, fromDir, toDir string) *ExitResult {
@@ -205,115 +245,43 @@ func runDirectory(cfg *CLIConfig, rc *RunConfig, fromDir, toDir string) *ExitRes
 		var err error
 		pairs, err = BuildFilePairPlan(fromDir, toDir)
 		if err != nil {
-			fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
-			return NewExitResult(ExitCodeError, err)
+			return exitError(rc, err)
 		}
 	}
 
-	// Get the formatter
-	formatter, err := GetFormatter(cfg.Output)
+	// Build shared options
+	opts, err := cfg.buildRunOpts()
 	if err != nil {
-		fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
-		return NewExitResult(ExitCodeError, err)
+		return exitError(rc, err)
 	}
-
-	// Build options once
-	compareOpts := cfg.ToCompareOptions()
 	// Disable swap in compareOpts since we already swapped dirs
 	if cfg.Swap {
-		compareOpts.Swap = false
+		opts.compare.Swap = false
 	}
-	filterOpts := cfg.ToFilterOptions()
-	formatOpts := cfg.ToFormatOptions()
-
-	// Apply color configuration
-	colorMode, _ := ParseColorMode(cfg.Color)
-	trueColorMode, _ := ParseColorMode(cfg.TrueColor)
-	colorCfg := NewColorConfig(colorMode, trueColorMode == ColorModeAlways)
-	colorCfg.DetectTerminal()
-	colorCfg.ToFormatOptions(formatOpts)
 
 	// Check if formatter supports structured (aggregated) output
-	sf, isStructured := formatter.(StructuredFormatter)
-
-	isBriefSummary := cfg.Output == "brief" && cfg.Summary
+	sf, isStructured := opts.formatter.(StructuredFormatter)
 
 	hasDiffs := false
 	hasErrors := false
 
-	// For structured formatters, collect all diff groups
+	// Collect all diff groups (used by both structured and non-structured paths)
 	var groups []DiffGroup
-
-	// For non-structured summary: collect entries to invoke summarizer after all files
-	type summaryEntry struct {
-		Group    DiffGroup
-		PairType FilePairType
-	}
-	var summaryEntries []summaryEntry
+	// Parallel slice of pair types (only used for non-structured brief+summary fallback)
+	var pairTypes []FilePairType
 
 	for _, pair := range pairs {
-		var fromContent, toContent []byte
-
-		if rc.FilePairs != nil {
-			// Testing mode: read from in-memory map
-			contents := rc.FilePairs[pair.Name]
-			if contents[0] != nil {
-				fromContent = contents[0]
-			} else {
-				fromContent = []byte{}
-			}
-			if contents[1] != nil {
-				toContent = contents[1]
-			} else {
-				toContent = []byte{}
-			}
-		} else {
-			// Real mode: load content from filesystem
-			switch pair.Type {
-			case FilePairBothExist:
-				fromContent, err = LoadContent(pair.FromPath)
-				if err != nil {
-					fmt.Fprintf(rc.Stderr, "Error reading %s: %v\n", pair.Name, err)
-					hasErrors = true
-					continue
-				}
-				toContent, err = LoadContent(pair.ToPath)
-				if err != nil {
-					fmt.Fprintf(rc.Stderr, "Error reading %s: %v\n", pair.Name, err)
-					hasErrors = true
-					continue
-				}
-			case FilePairOnlyFrom:
-				fromContent, err = LoadContent(pair.FromPath)
-				if err != nil {
-					fmt.Fprintf(rc.Stderr, "Error reading %s: %v\n", pair.Name, err)
-					hasErrors = true
-					continue
-				}
-				toContent = []byte{}
-			case FilePairOnlyTo:
-				fromContent = []byte{}
-				toContent, err = LoadContent(pair.ToPath)
-				if err != nil {
-					fmt.Fprintf(rc.Stderr, "Error reading %s: %v\n", pair.Name, err)
-					hasErrors = true
-					continue
-				}
-			}
-		}
-
-		// Compare
-		diffs, err := Compare(fromContent, toContent, compareOpts)
+		fromContent, toContent, err := loadPairContent(pair, rc)
 		if err != nil {
-			fmt.Fprintf(rc.Stderr, "Error comparing %s: %v\n", pair.Name, err)
+			fmt.Fprintf(rc.Stderr, "Error reading %s: %v\n", pair.Name, err)
 			hasErrors = true
 			continue
 		}
 
-		// Filter
-		diffs, err = FilterDiffsWithRegexp(diffs, filterOpts)
+		// Compare and filter
+		diffs, err := compareAndFilter(fromContent, toContent, opts.compare, opts.filter)
 		if err != nil {
-			fmt.Fprintf(rc.Stderr, "Error filtering %s: %v\n", pair.Name, err)
+			fmt.Fprintf(rc.Stderr, "Error processing %s: %v\n", pair.Name, err)
 			hasErrors = true
 			continue
 		}
@@ -323,86 +291,48 @@ func runDirectory(cfg *CLIConfig, rc *RunConfig, fromDir, toDir string) *ExitRes
 		}
 
 		hasDiffs = true
+		filePath := normalizeFilePath(pair.Name, nil)
+		groups = append(groups, DiffGroup{FilePath: filePath, Diffs: diffs})
+		pairTypes = append(pairTypes, pair.Type)
 
-		if isStructured {
-			// Collect diffs into groups for aggregated output
-			filePath := strings.TrimPrefix(pair.Name, "./")
-			groups = append(groups, DiffGroup{
-				FilePath: filePath,
-				Diffs:    diffs,
-			})
-		} else {
-			// Collect for summary if needed
-			if cfg.Summary {
-				summaryEntries = append(summaryEntries, summaryEntry{
-					Group:    DiffGroup{FilePath: pair.Name, Diffs: diffs},
-					PairType: pair.Type,
-				})
-			}
-
-			// Non-structured: per-file header + format (skip for brief+summary)
-			if !isBriefSummary {
-				header := FormatFileHeader(pair.Name, pair.Type, formatOpts)
-				fmt.Fprint(rc.Stdout, header)
-
-				output := formatter.Format(diffs, formatOpts)
-				fmt.Fprint(rc.Stdout, output)
-			}
+		// Non-structured: per-file header + format (skip for brief+summary)
+		if !isStructured && !cfg.isBriefSummary() {
+			fmt.Fprint(rc.Stdout, FormatFileHeader(filePath, pair.Type, opts.format))
+			fmt.Fprint(rc.Stdout, opts.formatter.Format(diffs, opts.format))
 		}
 	}
 
 	// For structured formatters, always write output (even when empty)
 	if isStructured {
-		output := sf.FormatAll(groups, formatOpts)
-		fmt.Fprint(rc.Stdout, output)
-		hasDiffs = len(groups) > 0
+		fmt.Fprint(rc.Stdout, sf.FormatAll(groups, opts.format))
 	}
 
-	// AI Summary for structured formatters
-	if isStructured && cfg.Summary && len(groups) > 0 {
-		summarizer := NewSummarizer(cfg.SummaryModel)
-		if rc.SummaryAPIURL != "" {
-			summarizer.apiURL = rc.SummaryAPIURL
-		}
-		summary, summaryErr := summarizer.Summarize(context.Background(), groups)
+	// AI Summary (unified for both structured and non-structured)
+	if cfg.Summary && len(groups) > 0 {
+		summaryOutput, summaryErr := invokeSummary(cfg, rc, groups, opts.format)
 		if summaryErr != nil {
-			fmt.Fprintf(rc.Stderr, "Warning: AI summary unavailable: %v\n", summaryErr)
-		} else {
-			fmt.Fprint(rc.Stdout, formatSummaryOutput(summary, formatOpts))
-		}
-	}
-
-	// AI Summary for non-structured formatters
-	if !isStructured && cfg.Summary && len(summaryEntries) > 0 {
-		summaryGroups := make([]DiffGroup, len(summaryEntries))
-		for i, e := range summaryEntries {
-			summaryGroups[i] = e.Group
-		}
-		summarizer := NewSummarizer(cfg.SummaryModel)
-		if rc.SummaryAPIURL != "" {
-			summarizer.apiURL = rc.SummaryAPIURL
-		}
-		summary, summaryErr := summarizer.Summarize(context.Background(), summaryGroups)
-		if summaryErr != nil {
-			if isBriefSummary {
-				// Fallback: show brief output for all files since AI summary failed
-				for _, e := range summaryEntries {
-					fmt.Fprint(rc.Stdout, FormatFileHeader(e.Group.FilePath, e.PairType, formatOpts))
-					fmt.Fprint(rc.Stdout, formatter.Format(e.Group.Diffs, formatOpts))
+			if cfg.isBriefSummary() {
+				for i, g := range groups {
+					fmt.Fprint(rc.Stdout, FormatFileHeader(g.FilePath, pairTypes[i], opts.format))
+					fmt.Fprint(rc.Stdout, opts.formatter.Format(g.Diffs, opts.format))
 				}
 			}
 			fmt.Fprintf(rc.Stderr, "Warning: AI summary unavailable: %v\n", summaryErr)
 		} else {
-			fmt.Fprint(rc.Stdout, formatSummaryOutput(summary, formatOpts))
+			fmt.Fprint(rc.Stdout, summaryOutput)
 		}
 	}
 
-	// Compute aggregated exit code (directory-specific precedence)
-	if cfg.SetExitCode && hasDiffs {
-		return NewExitResult(ExitCodeDifferences, nil)
+	// Compute aggregated exit code (diffs take precedence over errors)
+	diffCount := 0
+	if hasDiffs {
+		diffCount = 1
+	}
+	if code := DetermineExitCode(cfg.SetExitCode, diffCount, nil); code != ExitCodeSuccess {
+		return &ExitResult{code, nil}
 	}
 	if hasErrors {
-		return NewExitResult(ExitCodeError, nil)
+		return &ExitResult{ExitCodeError, nil}
 	}
-	return NewExitResult(ExitCodeSuccess, nil)
+	return &ExitResult{ExitCodeSuccess, nil}
 }

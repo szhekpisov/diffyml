@@ -710,59 +710,30 @@ func TestDetermineExitCode_WithoutSetExitCode_HasError(t *testing.T) {
 }
 
 func TestExitResult_Success(t *testing.T) {
-	result := NewExitResult(0, nil)
+	result := &ExitResult{ExitCodeSuccess, nil}
 	if result.Code != ExitCodeSuccess {
 		t.Errorf("expected code %d, got %d", ExitCodeSuccess, result.Code)
 	}
 	if result.Err != nil {
 		t.Errorf("expected nil error, got %v", result.Err)
 	}
-	if !result.IsSuccess() {
-		t.Error("expected IsSuccess() to return true")
-	}
 }
 
 func TestExitResult_WithError(t *testing.T) {
 	err := fmt.Errorf("test error")
-	result := NewExitResult(ExitCodeError, err)
+	result := &ExitResult{ExitCodeError, err}
 	if result.Code != ExitCodeError {
 		t.Errorf("expected code %d, got %d", ExitCodeError, result.Code)
 	}
 	if result.Err != err {
 		t.Errorf("expected error %v, got %v", err, result.Err)
 	}
-	if result.IsSuccess() {
-		t.Error("expected IsSuccess() to return false")
-	}
 }
 
 func TestExitResult_HasDifferences(t *testing.T) {
-	result := NewExitResult(ExitCodeDifferences, nil)
+	result := &ExitResult{ExitCodeDifferences, nil}
 	if result.Code != ExitCodeDifferences {
 		t.Errorf("expected code %d, got %d", ExitCodeDifferences, result.Code)
-	}
-	if result.HasDifferences() != true {
-		t.Error("expected HasDifferences() to return true")
-	}
-}
-
-func TestExitResult_String(t *testing.T) {
-	tests := []struct {
-		code     int
-		err      error
-		contains string
-	}{
-		{ExitCodeSuccess, nil, "success"},
-		{ExitCodeDifferences, nil, "differences"},
-		{ExitCodeError, fmt.Errorf("parse failed"), "parse failed"},
-	}
-
-	for _, tc := range tests {
-		result := NewExitResult(tc.code, tc.err)
-		str := result.String()
-		if !containsSubstr(str, tc.contains) {
-			t.Errorf("expected String() to contain %q, got %q", tc.contains, str)
-		}
 	}
 }
 
@@ -1958,51 +1929,6 @@ func TestCLIConfig_ParseArgs_SummaryDefaultOff(t *testing.T) {
 	}
 	if cfg.SummaryModel != "" {
 		t.Errorf("expected SummaryModel='' by default, got %q", cfg.SummaryModel)
-	}
-}
-
-func TestCLIConfig_Validate_SummaryWithoutAPIKey(t *testing.T) {
-	t.Setenv("ANTHROPIC_API_KEY", "")
-
-	cfg := NewCLIConfig()
-	cfg.FromFile = "from.yaml"
-	cfg.ToFile = "to.yaml"
-	cfg.Summary = true
-
-	err := cfg.Validate()
-	if err == nil {
-		t.Error("expected error when --summary is set but ANTHROPIC_API_KEY is missing")
-	}
-	if !strings.Contains(err.Error(), "ANTHROPIC_API_KEY") {
-		t.Errorf("error should mention ANTHROPIC_API_KEY, got: %v", err)
-	}
-}
-
-func TestCLIConfig_Validate_SummaryWithAPIKey(t *testing.T) {
-	t.Setenv("ANTHROPIC_API_KEY", "test-key-123")
-
-	cfg := NewCLIConfig()
-	cfg.FromFile = "from.yaml"
-	cfg.ToFile = "to.yaml"
-	cfg.Summary = true
-
-	err := cfg.Validate()
-	if err != nil {
-		t.Errorf("expected no error when --summary with API key set, got: %v", err)
-	}
-}
-
-func TestCLIConfig_Validate_NoSummaryNoAPIKey(t *testing.T) {
-	t.Setenv("ANTHROPIC_API_KEY", "")
-
-	cfg := NewCLIConfig()
-	cfg.FromFile = "from.yaml"
-	cfg.ToFile = "to.yaml"
-	cfg.Summary = false
-
-	err := cfg.Validate()
-	if err != nil {
-		t.Errorf("expected no error when --summary is not set, got: %v", err)
 	}
 }
 

@@ -121,35 +121,33 @@ func TestProperty2_BuildSystemSuccess_WithLdflags(t *testing.T) {
 // exactly one executable file with the expected name.
 // **Validates: Requirements 2.3**
 func TestProperty4_SingleBinaryOutput(t *testing.T) {
-	cleanup := chdirToRepoRoot(t)
-	defer cleanup()
-
-	binaryName := "diffyml_single_output_test"
-	os.Remove(binaryName)
-	defer os.Remove(binaryName)
-
-	beforeFiles, err := countFilesInDir(".")
+	repoRoot, err := getRepoRoot()
 	if err != nil {
-		t.Fatalf("Failed to count files before build: %v", err)
+		t.Fatalf("Failed to find repository root: %v", err)
 	}
 
-	cmd := exec.Command("go", "build", "-o", binaryName)
+	// Build into a temp directory to avoid races with parallel tests
+	tmpDir := t.TempDir()
+	binaryName := "diffyml_single_output_test"
+	outputPath := filepath.Join(tmpDir, binaryName)
+
+	cmd := exec.Command("go", "build", "-o", outputPath)
+	cmd.Dir = repoRoot
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("Build failed: %v\nOutput: %s", err, string(output))
 	}
 
-	afterFiles, err := countFilesInDir(".")
+	// Verify exactly one file was created in the temp directory
+	files, err := countFilesInDir(tmpDir)
 	if err != nil {
-		t.Fatalf("Failed to count files after build: %v", err)
+		t.Fatalf("Failed to count files: %v", err)
+	}
+	if files != 1 {
+		t.Fatalf("Expected 1 file in output dir, got %d", files)
 	}
 
-	newFilesCount := afterFiles - beforeFiles
-	if newFilesCount != 1 {
-		t.Fatalf("Expected 1 new file, got %d", newFilesCount)
-	}
-
-	info, err := os.Stat(binaryName)
+	info, err := os.Stat(outputPath)
 	if err != nil {
 		t.Fatalf("Binary not found: %v", err)
 	}
@@ -160,16 +158,6 @@ func TestProperty4_SingleBinaryOutput(t *testing.T) {
 
 	if info.Mode()&0111 == 0 {
 		t.Fatal("Output is not executable")
-	}
-
-	absPath, err := filepath.Abs(binaryName)
-	if err != nil {
-		t.Fatalf("Failed to get absolute path: %v", err)
-	}
-
-	expectedPath := filepath.Join(filepath.Dir(absPath), binaryName)
-	if absPath != expectedPath {
-		t.Fatalf("Binary path mismatch: got %s, expected %s", absPath, expectedPath)
 	}
 }
 

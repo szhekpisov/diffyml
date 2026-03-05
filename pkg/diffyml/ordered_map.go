@@ -25,11 +25,6 @@ func nodeToInterface(node *yaml.Node) interface{} {
 	return iparse.NodeToInterface(node)
 }
 
-// toOrderedMap converts to *OrderedMap.
-func toOrderedMap(v interface{}) *OrderedMap {
-	return types.ToOrderedMap(v)
-}
-
 // resolveScalar converts a scalar yaml.Node into the appropriate Go type.
 func resolveScalar(node *yaml.Node) interface{} {
 	return iparse.ResolveScalar(node)

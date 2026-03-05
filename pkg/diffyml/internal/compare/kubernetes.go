@@ -85,7 +85,7 @@ func GetK8sResourceIdentifier(doc interface{}, ignoreApiVersion bool) string {
 		return ""
 	}
 
-	nameVal, _ := res.metaOM.Values["name"]
+	nameVal := res.metaOM.Values["name"]
 	if nameVal == nil {
 		nameVal = res.metaOM.Values["generateName"]
 	}

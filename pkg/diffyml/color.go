@@ -70,12 +70,18 @@ func IsTerminal(fd uintptr) bool {
 	return (stat.Mode() & os.ModeCharDevice) != 0
 }
 
-func ParseColorMode(s string) (ColorMode, error)                               { return types.ParseColorMode(s) }
-func ResolveColorMode(mode ColorMode, isTerminal bool) bool                     { return types.ResolveColorMode(mode, isTerminal) }
-func NewColorConfig(mode ColorMode, trueColor bool) *ColorConfig                { return types.NewColorConfig(mode, trueColor) }
-func GetTrueColorCode(r, g, b int) string                                       { return types.GetTrueColorCode(r, g, b) }
-func GetDetailedColorCode(diffType DiffType, useTrueColor bool) string          { return types.GetDetailedColorCode(diffType, useTrueColor) }
-func GetContextColorCode(useTrueColor bool) string                              { return types.GetContextColorCode(useTrueColor) }
-func GetColorReset() string                                                     { return types.GetColorReset() }
-func CompactColor(dt DiffType) string                                           { return types.CompactColor(dt) }
-func clamp(val, lo, hi int) int                                                 { return types.Clamp(val, lo, hi) }
+func ParseColorMode(s string) (ColorMode, error) { return types.ParseColorMode(s) }
+func ResolveColorMode(mode ColorMode, isTerminal bool) bool {
+	return types.ResolveColorMode(mode, isTerminal)
+}
+func NewColorConfig(mode ColorMode, trueColor bool) *ColorConfig {
+	return types.NewColorConfig(mode, trueColor)
+}
+func GetTrueColorCode(r, g, b int) string { return types.GetTrueColorCode(r, g, b) }
+func GetDetailedColorCode(diffType DiffType, useTrueColor bool) string {
+	return types.GetDetailedColorCode(diffType, useTrueColor)
+}
+func GetContextColorCode(useTrueColor bool) string { return types.GetContextColorCode(useTrueColor) }
+func GetColorReset() string                        { return types.GetColorReset() }
+func CompactColor(dt DiffType) string              { return types.CompactColor(dt) }
+func clamp(val, lo, hi int) int                    { return types.Clamp(val, lo, hi) }

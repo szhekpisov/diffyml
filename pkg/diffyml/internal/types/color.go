@@ -10,7 +10,7 @@ import (
 type ColorMode int
 
 const (
-	ColorModeAuto   ColorMode = iota
+	ColorModeAuto ColorMode = iota
 	ColorModeAlways
 	ColorModeNever
 )
@@ -105,9 +105,9 @@ func (c *ColorConfig) ToFormatOptions(opts *FormatOptions) {
 // Detailed color palette constants (24-bit RGB values)
 const (
 	DetailedYellowR, DetailedYellowG, DetailedYellowB = 199, 196, 63
-	DetailedRedR, DetailedRedG, DetailedRedB           = 185, 49, 27
-	DetailedGreenR, DetailedGreenG, DetailedGreenB     = 88, 191, 56
-	DetailedGrayR, DetailedGrayG, DetailedGrayB        = 105, 105, 105
+	DetailedRedR, DetailedRedG, DetailedRedB          = 185, 49, 27
+	DetailedGreenR, DetailedGreenG, DetailedGreenB    = 88, 191, 56
+	DetailedGrayR, DetailedGrayG, DetailedGrayB       = 105, 105, 105
 )
 
 // ANSI color codes (8-color fallback)

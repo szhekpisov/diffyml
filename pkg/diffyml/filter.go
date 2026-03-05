@@ -18,18 +18,10 @@ func FilterDiffsWithRegexp(diffs []Difference, opts *FilterOptions) ([]Differenc
 	return compare.FilterDiffsWithRegexp(diffs, opts)
 }
 
-func matchesAnyPath(diffPath string, filterPaths []string) bool {
-	return compare.MatchesAnyPath(diffPath, filterPaths)
-}
-
 func pathMatches(diffPath, filterPath string) bool {
 	return compare.PathMatches(diffPath, filterPath)
 }
 
 func compileRegexPatterns(patterns []string) ([]*regexp.Regexp, error) {
 	return compare.CompileRegexPatterns(patterns)
-}
-
-func matchesAnyRegex(diffPath string, patterns []*regexp.Regexp) bool {
-	return compare.MatchesAnyRegex(diffPath, patterns)
 }

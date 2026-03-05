@@ -9,8 +9,6 @@ import (
 
 type DetailedFormatter = format.DetailedFormatter
 
-// Type aliases for unexported types used in tests.
-type editOpType = format.EditOpType
 type editOp = format.EditOp
 
 const (
@@ -24,13 +22,13 @@ func computeLineDiff(fromLines, toLines []string) []editOp {
 	return format.ComputeLineDiff(fromLines, toLines)
 }
 func isWhitespaceOnlyChange(from, to string) bool { return format.IsWhitespaceOnlyChange(from, to) }
-func stripWhitespace(s string) string              { return format.StripWhitespace(s) }
-func visualizeWhitespace(s string) string          { return format.VisualizeWhitespace(s) }
-func yamlTypeName(v interface{}) string            { return format.YamlTypeName(v) }
-func formatCommaSeparated(val interface{}) string  { return format.FormatCommaSeparated(val) }
-func formatDetailedValue(val interface{}) string   { return format.FormatDetailedValue(val) }
-func formatTimestamp(t time.Time) string           { return format.FormatTimestamp(t) }
-func parseBareDocIndex(path string) (int, bool)    { return format.ParseBareDocIndex(path) }
+func stripWhitespace(s string) string             { return format.StripWhitespace(s) }
+func visualizeWhitespace(s string) string         { return format.VisualizeWhitespace(s) }
+func yamlTypeName(v interface{}) string           { return format.YamlTypeName(v) }
+func formatCommaSeparated(val interface{}) string { return format.FormatCommaSeparated(val) }
+func formatDetailedValue(val interface{}) string  { return format.FormatDetailedValue(val) }
+func formatTimestamp(t time.Time) string          { return format.FormatTimestamp(t) }
+func parseBareDocIndex(path string) (int, bool)   { return format.ParseBareDocIndex(path) }
 func parseDocIndexPrefix(path string) (int, string, bool) {
 	return format.ParseDocIndexPrefix(path)
 }

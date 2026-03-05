@@ -6,8 +6,6 @@
 package diffyml
 
 import (
-	"io"
-
 	"github.com/szhekpisov/diffyml/pkg/diffyml/internal/run"
 	"github.com/szhekpisov/diffyml/pkg/diffyml/internal/types"
 )
@@ -45,9 +43,3 @@ func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult { return run.Run(cfg, rc) }
 // exitError logs an error to stderr and returns an ExitResult with ExitCodeError.
 // Unexported; required by tests in package diffyml.
 func exitError(rc *RunConfig, err error) *ExitResult { return types.ExitError(rc, err) }
-
-// normalizeFilePath converts a file path to a clean relative path.
-// Unexported; used internally and delegated to the run package.
-func normalizeFilePath(path string, stderr io.Writer) string {
-	return run.NormalizeFilePath(path, stderr)
-}

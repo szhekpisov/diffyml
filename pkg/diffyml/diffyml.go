@@ -40,11 +40,6 @@ func Compare(from, to []byte, opts *Options) ([]Difference, error) {
 	return compare.Compare(from, to, opts)
 }
 
-// yamlKindOf returns the YAMLKind for a parsed YAML value.
-func yamlKindOf(v YAMLValue) YAMLKind {
-	return types.YamlKindOf(v)
-}
-
 // extractPathOrder extracts the order of all paths from parsed documents.
 func extractPathOrder(fromDocs, toDocs []interface{}, opts *Options) map[string]int {
 	return compare.ExtractPathOrder(fromDocs, toDocs, opts)
@@ -68,14 +63,4 @@ func formatCount(n int) string {
 // pluralize returns singular or plural form based on count.
 func pluralize(n int, singular, plural string) string {
 	return types.Pluralize(n, singular, plural)
-}
-
-// joinPath joins path segments with a dot.
-func joinPath(base, key string) string {
-	return types.JoinPath(base, key)
-}
-
-// cleanPath removes leading dots from path.
-func cleanPath(path string) string {
-	return types.CleanPath(path)
 }

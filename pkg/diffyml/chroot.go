@@ -20,10 +20,6 @@ func applyChroot(doc interface{}, path string, listToDocuments bool) ([]interfac
 	return compare.ApplyChroot(doc, path, listToDocuments)
 }
 
-func applyChrootToDocs(docs []interface{}, path string, listToDocuments bool) ([]interface{}, error) {
-	return compare.ApplyChrootToDocs(docs, path, listToDocuments)
-}
-
 // pathSegment represents a single segment in a path.
 // Kept locally so that tests in package diffyml can access the unexported key field.
 type pathSegment struct {

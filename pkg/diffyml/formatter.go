@@ -15,8 +15,6 @@ type BriefFormatter = format.BriefFormatter
 
 func DefaultFormatOptions() *FormatOptions { return types.DefaultFormatOptions() }
 
-var validFormatterNames = format.ValidFormatterNames
-
 func GetFormatter(name string) (Formatter, error) { return format.GetFormatter(name) }
 
 func formatValue(val interface{}) string      { return format.FormatValue(val) }

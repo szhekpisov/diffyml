@@ -17,7 +17,7 @@ type YAMLValue = interface{}
 type YAMLKind int
 
 const (
-	KindNull      YAMLKind = iota
+	KindNull YAMLKind = iota
 	KindString
 	KindInt
 	KindFloat

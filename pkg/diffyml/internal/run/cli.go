@@ -276,11 +276,6 @@ func (c *CLIConfig) ToRunOptions() *types.RunOptions {
 	}
 }
 
-// isBriefSummary reports whether the config requests brief output with AI summary.
-func (c *CLIConfig) isBriefSummary() bool {
-	return c.Output == "brief" && c.Summary
-}
-
 // Usage returns the usage help text.
 func (c *CLIConfig) Usage() string {
 	return `diffyml - A diff tool for YAML files

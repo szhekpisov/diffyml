@@ -4,7 +4,8 @@
 // Shared helpers: FormatValue, ConvertToGoPatchPath, DiffDescription.
 // Small formatters: CompactFormatter, BriefFormatter.
 // Larger formatters live in their own files:
-//   github_formatter.go, gitlab_formatter.go, gitea_formatter.go, detailed_formatter.go.
+//
+//	github_formatter.go, gitlab_formatter.go, gitea_formatter.go, detailed_formatter.go.
 package format
 
 import (

@@ -28,13 +28,16 @@ jobs:
       - name: Install gremlins
         run: go install github.com/go-gremlins/gremlins/cmd/gremlins@v0.6.0
 
-      - name: Run mutation testing
-        run: >-
-          gremlins unleash
-          --workers 2
-          --coverpkg="./pkg/diffyml/..."
-          --output=mutation-report.json
-          ./pkg/diffyml/
+      - name: Run mutation testing (per internal package)
+        run: |
+          for pkg in types parse compare format run; do
+            echo "=== Mutation testing: $pkg ==="
+            gremlins unleash --workers 2 --integration \
+              --coverpkg="./pkg/diffyml/internal/$pkg" \
+              --output="mutation-report-$pkg.json" ./pkg/diffyml/
+          done
+          bash scripts/merge-mutation-reports.sh mutation-report-*.json > mutation-report.json
+          rm -f mutation-report-{types,parse,compare,format,run}.json
 
       - name: Check efficacy threshold
         run: |

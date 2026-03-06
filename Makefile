@@ -92,12 +92,29 @@ fuzz-long:
 		go test -fuzz="^$${target}$$" -fuzztime=5m -run='^$$' ./pkg/diffyml/; \
 	done
 
+INTERNAL_PKGS = types parse compare format run
+
 mutation:
-	gremlins unleash --workers 5 --coverpkg="./pkg/diffyml/..." --output=mutation-report.json ./pkg/diffyml/
+	go install github.com/go-gremlins/gremlins/cmd/gremlins@v0.6.0
+	@for pkg in $(INTERNAL_PKGS); do \
+		echo "=== Mutation testing: $$pkg ==="; \
+		$$(go env GOPATH)/bin/gremlins unleash --workers 5 --integration \
+			--coverpkg="./pkg/diffyml/internal/$$pkg" \
+			--output="mutation-report-$$pkg.json" ./pkg/diffyml/; \
+	done
+	@bash scripts/merge-mutation-reports.sh mutation-report-*.json > mutation-report.json
+	@rm -f $(foreach pkg,$(INTERNAL_PKGS),mutation-report-$(pkg).json)
 	go clean -cache
 
 mutation-dry:
-	gremlins unleash --dry-run --coverpkg="./pkg/diffyml/..." ./pkg/diffyml/
+	@for pkg in $(INTERNAL_PKGS); do \
+		echo "=== Dry-run: $$pkg ==="; \
+		gremlins unleash --dry-run \
+			--coverpkg="./pkg/diffyml/internal/$$pkg" \
+			--output="mutation-report-$$pkg.json" ./pkg/diffyml/; \
+	done
+	@bash scripts/merge-mutation-reports.sh mutation-report-*.json > mutation-report.json
+	@rm -f $(foreach pkg,$(INTERNAL_PKGS),mutation-report-$(pkg).json)
 
 ci: fmt vet test check-coverage security
 

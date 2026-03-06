@@ -89,7 +89,7 @@ func TestFormatValue_MapStringInterface(t *testing.T) {
 	val := map[string]interface{}{"key": "val", "num": 42}
 	result := FormatValue(val)
 	if strings.Contains(result, "map[") {
-		// map[string]interface{} should be serialized as YAML, not Go repr
+		t.Errorf("FormatValue should serialize map[string]interface{} as YAML, not Go repr, got: %s", result)
 	}
 }
 

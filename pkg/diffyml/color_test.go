@@ -6,6 +6,106 @@ import (
 	"time"
 )
 
+func TestResolveColorMode(t *testing.T) {
+	tests := []struct {
+		name       string
+		mode       ColorMode
+		isTerminal bool
+		expected   bool
+	}{
+		{"always/terminal", ColorModeAlways, true, true},
+		{"always/not terminal", ColorModeAlways, false, true},
+		{"never/terminal", ColorModeNever, true, false},
+		{"never/not terminal", ColorModeNever, false, false},
+		{"auto/terminal", ColorModeAuto, true, true},
+		{"auto/not terminal", ColorModeAuto, false, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ResolveColorMode(tt.mode, tt.isTerminal)
+			if got != tt.expected {
+				t.Errorf("ResolveColorMode(%v, %v) = %v, want %v", tt.mode, tt.isTerminal, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestParseColorMode_Valid(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected ColorMode
+	}{
+		{"always", ColorModeAlways},
+		{"ALWAYS", ColorModeAlways},
+		{"Always", ColorModeAlways},
+		{"never", ColorModeNever},
+		{"NEVER", ColorModeNever},
+		{"auto", ColorModeAuto},
+		{"AUTO", ColorModeAuto},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			mode, err := ParseColorMode(tt.input)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if mode != tt.expected {
+				t.Errorf("ParseColorMode(%q) = %v, want %v", tt.input, mode, tt.expected)
+			}
+		})
+	}
+}
+
+func TestParseColorMode_Invalid(t *testing.T) {
+	_, err := ParseColorMode("invalid")
+	if err == nil {
+		t.Error("expected error for invalid color mode")
+	}
+}
+
+func TestParseColorMode_Empty(t *testing.T) {
+	mode, err := ParseColorMode("")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if mode != ColorModeAuto {
+		t.Errorf("empty string should default to ColorModeAuto, got %v", mode)
+	}
+}
+
+func TestColorConfig(t *testing.T) {
+	tests := []struct {
+		name           string
+		mode           ColorMode
+		trueColor      bool
+		isTerminal     bool
+		wantColor      bool
+		wantTrueColor  bool
+	}{
+		{"new is not nil", ColorModeAuto, false, false, false, false},
+		{"auto+terminal", ColorModeAuto, false, true, true, false},
+		{"auto+no terminal", ColorModeAuto, false, false, false, false},
+		{"always+truecolor", ColorModeAlways, true, true, true, true},
+		{"always+no truecolor", ColorModeAlways, false, true, true, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := NewColorConfig(tt.mode, tt.trueColor)
+			if cfg == nil {
+				t.Fatal("NewColorConfig should not return nil")
+			}
+			cfg.SetIsTerminal(tt.isTerminal)
+			if got := cfg.ShouldUseColor(); got != tt.wantColor {
+				t.Errorf("ShouldUseColor() = %v, want %v", got, tt.wantColor)
+			}
+			if got := cfg.ShouldUseTrueColor(); got != tt.wantTrueColor {
+				t.Errorf("ShouldUseTrueColor() = %v, want %v", got, tt.wantTrueColor)
+			}
+		})
+	}
+}
+
 // --- Mutation testing: color.go ---
 
 func TestShouldUseTrueColor_Requested(t *testing.T) {

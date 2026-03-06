@@ -1238,7 +1238,7 @@ func TestGitLabFormatter_ValidJSON_WithFilePath(t *testing.T) {
 
 	output := f.Format(diffs, opts)
 
-	var result []map[string]interface{}
+	var result []map[string]any
 	if err := json.Unmarshal([]byte(output), &result); err != nil {
 		t.Fatalf("output is not valid JSON: %v\noutput: %s", err, output)
 	}
@@ -1287,7 +1287,7 @@ func TestGitLabFormatter_FormatAll_SingleArray(t *testing.T) {
 
 	output := f.FormatAll(groups, opts)
 
-	var result []map[string]interface{}
+	var result []map[string]any
 	if err := json.Unmarshal([]byte(output), &result); err != nil {
 		t.Fatalf("FormatAll output is not valid JSON: %v\noutput: %s", err, output)
 	}
@@ -1375,7 +1375,7 @@ func TestGitLabFormatter_FormatAll_UniqueFingerprintsAcrossFiles(t *testing.T) {
 
 	output := f.FormatAll(groups, opts)
 
-	var result []map[string]interface{}
+	var result []map[string]any
 	if err := json.Unmarshal([]byte(output), &result); err != nil {
 		t.Fatalf("FormatAll output is not valid JSON: %v", err)
 	}
@@ -1410,7 +1410,7 @@ func TestGitLabFormatter_FormatAll_ValidJSON(t *testing.T) {
 
 	output := f.FormatAll(groups, opts)
 
-	var result []map[string]interface{}
+	var result []map[string]any
 	if err := json.Unmarshal([]byte(output), &result); err != nil {
 		t.Fatalf("FormatAll output is not valid JSON: %v\noutput: %s", err, output)
 	}
@@ -1453,7 +1453,7 @@ func TestGitLabFormatter_BackwardCompat_EmptyFilePath(t *testing.T) {
 	output := f.Format(diffs, opts)
 
 	// Parse as JSON to verify structural validity
-	var result []map[string]interface{}
+	var result []map[string]any
 	if err := json.Unmarshal([]byte(output), &result); err != nil {
 		t.Fatalf("output is not valid JSON: %v\noutput: %s", err, output)
 	}
@@ -1463,7 +1463,7 @@ func TestGitLabFormatter_BackwardCompat_EmptyFilePath(t *testing.T) {
 
 	// Verify location.path falls back to diff.Path (YAML key path)
 	for i, entry := range result {
-		location := entry["location"].(map[string]interface{})
+		location := entry["location"].(map[string]any)
 		path := location["path"].(string)
 		if path != diffs[i].Path {
 			t.Errorf("entry %d: expected location.path=%q (fallback to diff.Path), got %q", i, diffs[i].Path, path)
@@ -1524,7 +1524,7 @@ func TestGitLabFormatter_BackwardCompat_AllDiffTypes_ValidJSON(t *testing.T) {
 
 	output := f.Format(allDiffs, opts)
 
-	var result []map[string]interface{}
+	var result []map[string]any
 	if err := json.Unmarshal([]byte(output), &result); err != nil {
 		t.Fatalf("output is not valid JSON: %v\noutput: %s", err, output)
 	}
@@ -1537,11 +1537,11 @@ func TestGitLabFormatter_BackwardCompat_AllDiffTypes_ValidJSON(t *testing.T) {
 			}
 		}
 		// Verify location has path and lines.begin
-		location := entry["location"].(map[string]interface{})
+		location := entry["location"].(map[string]any)
 		if _, ok := location["path"]; !ok {
 			t.Errorf("entry %d: location missing 'path'", i)
 		}
-		lines := location["lines"].(map[string]interface{})
+		lines := location["lines"].(map[string]any)
 		if begin, ok := lines["begin"]; !ok {
 			t.Errorf("entry %d: location.lines missing 'begin'", i)
 		} else if begin.(float64) != 1 {
@@ -1560,7 +1560,7 @@ func TestGitLabFormatter_BackwardCompat_NilOptions(t *testing.T) {
 
 	output := f.Format(diffs, nil)
 
-	var result []map[string]interface{}
+	var result []map[string]any
 	if err := json.Unmarshal([]byte(output), &result); err != nil {
 		t.Fatalf("output with nil opts is not valid JSON: %v\noutput: %s", err, output)
 	}
@@ -1576,7 +1576,7 @@ func TestGitLabFormatter_BackwardCompat_EmptyDiffs(t *testing.T) {
 
 	output := f.Format([]Difference{}, opts)
 
-	var result []interface{}
+	var result []any
 	if err := json.Unmarshal([]byte(output), &result); err != nil {
 		t.Fatalf("empty diffs output is not valid JSON: %v\noutput: %s", err, output)
 	}
@@ -1597,7 +1597,7 @@ func TestGitLabFormatter_BackwardCompat_SpecialCharsInValues(t *testing.T) {
 
 	output := f.Format(diffs, opts)
 
-	var result []map[string]interface{}
+	var result []map[string]any
 	if err := json.Unmarshal([]byte(output), &result); err != nil {
 		t.Fatalf("output with special chars is not valid JSON: %v\noutput: %s", err, output)
 	}
@@ -1983,11 +1983,11 @@ func TestFormatValue_ListWithOrderedMaps(t *testing.T) {
 	item.Values["name"] = "FOO"
 	item.Values["value"] = "bar"
 
-	val := []interface{}{item}
+	val := []any{item}
 	result := formatValue(val)
 
 	if strings.Contains(result, "&{") {
-		t.Errorf("formatValue should not produce Go struct repr for []interface{} with *OrderedMap, got: %s", result)
+		t.Errorf("formatValue should not produce Go struct repr for []any with *OrderedMap, got: %s", result)
 	}
 	if strings.Contains(result, "0x") {
 		t.Errorf("formatValue should not produce pointer addresses, got: %s", result)
@@ -1998,7 +1998,7 @@ func TestFormatValue_ListWithOrderedMaps(t *testing.T) {
 }
 
 func TestFormatValue_MapStringInterface(t *testing.T) {
-	val := map[string]interface{}{"key": "value", "count": 42}
+	val := map[string]any{"key": "value", "count": 42}
 	result := formatValue(val)
 
 	if !strings.Contains(result, "key: value") {

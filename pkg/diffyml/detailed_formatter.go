@@ -191,7 +191,7 @@ func (f *DetailedFormatter) formatEntryBatch(sb *strings.Builder, diffs []Differ
 	}
 
 	for _, diff := range diffs {
-		var val interface{}
+		var val any
 		if diff.To != nil {
 			val = diff.To
 		} else {
@@ -210,7 +210,7 @@ func (f *DetailedFormatter) formatEntryBatch(sb *strings.Builder, diffs []Differ
 // renderEntryValue renders a value for an entry batch line.
 // For list entries, renders values with "- " prefix. For map entries, renders as "key: value".
 // The entire block is colored (green for adds, red for removes).
-func (f *DetailedFormatter) renderEntryValue(sb *strings.Builder, val interface{}, symbol string, indent int, path string, isList bool, opts *FormatOptions) {
+func (f *DetailedFormatter) renderEntryValue(sb *strings.Builder, val any, symbol string, indent int, path string, isList bool, opts *FormatOptions) {
 	colorCode := ""
 	if opts.Color {
 		if symbol == "+" {
@@ -231,18 +231,18 @@ func (f *DetailedFormatter) renderEntryValue(sb *strings.Builder, val interface{
 	}
 
 	// List entries: delegate to renderListItems which handles *OrderedMap,
-	// map[string]interface{}, and scalar fallback uniformly.
-	// For []interface{} values, pass items directly; otherwise wrap as single item.
-	if v, ok := val.([]interface{}); ok {
+	// map[string]any, and scalar fallback uniformly.
+	// For []any values, pass items directly; otherwise wrap as single item.
+	if v, ok := val.([]any); ok {
 		f.renderListItems(sb, v, indent, colorCode, opts)
 	} else {
-		f.renderListItems(sb, []interface{}{val}, indent, colorCode, opts)
+		f.renderListItems(sb, []any{val}, indent, colorCode, opts)
 	}
 }
 
 // renderKeyValueYAML renders a key: value pair in plain YAML style with color.
 // Uses standard YAML indentation (2 spaces per level), no pipe guides.
-func (f *DetailedFormatter) renderKeyValueYAML(sb *strings.Builder, key string, val interface{}, indent int, colorCode string, opts *FormatOptions) {
+func (f *DetailedFormatter) renderKeyValueYAML(sb *strings.Builder, key string, val any, indent int, colorCode string, opts *FormatOptions) {
 	pad := strings.Repeat(" ", indent)
 	switch v := val.(type) {
 	case *OrderedMap:
@@ -250,12 +250,12 @@ func (f *DetailedFormatter) renderKeyValueYAML(sb *strings.Builder, key string, 
 		for _, k := range v.Keys {
 			f.renderKeyValueYAML(sb, k, v.Values[k], indent+2, colorCode, opts)
 		}
-	case map[string]interface{}:
+	case map[string]any:
 		f.writeColoredLine(sb, fmt.Sprintf("%s%s:", pad, key), colorCode, opts)
 		for _, k := range sortedMapKeys(v) {
 			f.renderKeyValueYAML(sb, k, v[k], indent+2, colorCode, opts)
 		}
-	case []interface{}:
+	case []any:
 		f.writeColoredLine(sb, fmt.Sprintf("%s%s:", pad, key), colorCode, opts)
 		f.renderListItems(sb, v, indent+2, colorCode, opts)
 	default:
@@ -270,7 +270,7 @@ func (f *DetailedFormatter) renderKeyValueYAML(sb *strings.Builder, key string, 
 // renderFirstKeyValueYAML renders the first key of a list entry with "- " prefix.
 // The key is rendered as "    - key: value" where indent is the base indentation.
 // For nested values, continuation uses indent+2 to align under the key.
-func (f *DetailedFormatter) renderFirstKeyValueYAML(sb *strings.Builder, key string, val interface{}, indent int, colorCode string, opts *FormatOptions) {
+func (f *DetailedFormatter) renderFirstKeyValueYAML(sb *strings.Builder, key string, val any, indent int, colorCode string, opts *FormatOptions) {
 	pad := strings.Repeat(" ", indent)
 	switch v := val.(type) {
 	case *OrderedMap:
@@ -278,12 +278,12 @@ func (f *DetailedFormatter) renderFirstKeyValueYAML(sb *strings.Builder, key str
 		for _, k := range v.Keys {
 			f.renderKeyValueYAML(sb, k, v.Values[k], indent+4, colorCode, opts)
 		}
-	case map[string]interface{}:
+	case map[string]any:
 		f.writeColoredLine(sb, fmt.Sprintf("%s- %s:", pad, key), colorCode, opts)
 		for _, k := range sortedMapKeys(v) {
 			f.renderKeyValueYAML(sb, k, v[k], indent+4, colorCode, opts)
 		}
-	case []interface{}:
+	case []any:
 		f.writeColoredLine(sb, fmt.Sprintf("%s- %s:", pad, key), colorCode, opts)
 		f.renderListItems(sb, v, indent+4, colorCode, opts)
 	default:
@@ -295,8 +295,8 @@ func (f *DetailedFormatter) renderFirstKeyValueYAML(sb *strings.Builder, key str
 	}
 }
 
-// sortedMapKeys returns the keys of a map[string]interface{} in sorted order.
-func sortedMapKeys(m map[string]interface{}) []string {
+// sortedMapKeys returns the keys of a map[string]any in sorted order.
+func sortedMapKeys(m map[string]any) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {
 		keys = append(keys, k)
@@ -305,10 +305,10 @@ func sortedMapKeys(m map[string]interface{}) []string {
 	return keys
 }
 
-// renderListItems renders items of a []interface{} list with proper type dispatch.
-// Structured items (*OrderedMap, map[string]interface{}) are rendered using YAML-style
+// renderListItems renders items of a []any list with proper type dispatch.
+// Structured items (*OrderedMap, map[string]any) are rendered using YAML-style
 // key-value methods. Scalars use formatDetailedValue().
-func (f *DetailedFormatter) renderListItems(sb *strings.Builder, items []interface{}, indent int, colorCode string, opts *FormatOptions) {
+func (f *DetailedFormatter) renderListItems(sb *strings.Builder, items []any, indent int, colorCode string, opts *FormatOptions) {
 	for _, item := range items {
 		switch v := item.(type) {
 		case *OrderedMap:
@@ -319,7 +319,7 @@ func (f *DetailedFormatter) renderListItems(sb *strings.Builder, items []interfa
 					f.renderKeyValueYAML(sb, key, v.Values[key], indent+2, colorCode, opts)
 				}
 			}
-		case map[string]interface{}:
+		case map[string]any:
 			for i, key := range sortedMapKeys(v) {
 				if i == 0 {
 					f.renderFirstKeyValueYAML(sb, key, v[key], indent, colorCode, opts)
@@ -567,7 +567,7 @@ func visualizeWhitespace(s string) string {
 }
 
 // yamlTypeName returns a human-readable YAML type name for a value.
-func yamlTypeName(v interface{}) string {
+func yamlTypeName(v any) string {
 	switch v.(type) {
 	case string:
 		return "string"
@@ -577,9 +577,9 @@ func yamlTypeName(v interface{}) string {
 		return "float"
 	case bool:
 		return "bool"
-	case *OrderedMap, map[string]interface{}:
+	case *OrderedMap, map[string]any:
 		return "map"
-	case []interface{}:
+	case []any:
 		return "list"
 	case time.Time:
 		return "timestamp"
@@ -592,8 +592,8 @@ func yamlTypeName(v interface{}) string {
 
 // formatCommaSeparated formats a slice value as comma-separated items.
 // For non-slice values, falls back to formatDetailedValue for scalar display.
-func formatCommaSeparated(val interface{}) string {
-	if items, ok := val.([]interface{}); ok {
+func formatCommaSeparated(val any) string {
+	if items, ok := val.([]any); ok {
 		parts := make([]string, len(items))
 		for i, item := range items {
 			parts[i] = formatDetailedValue(item)
@@ -604,7 +604,7 @@ func formatCommaSeparated(val interface{}) string {
 }
 
 // formatDetailedValue formats a value for display, handling nil.
-func formatDetailedValue(val interface{}) string {
+func formatDetailedValue(val any) string {
 	if val == nil {
 		return "<nil>"
 	}
@@ -625,7 +625,7 @@ func formatTimestamp(t time.Time) string {
 // writeTypeChangeValue renders a value for type-change display.
 // For structured values (maps, lists), renders as indented YAML lines.
 // For scalars, renders as a single line.
-func (f *DetailedFormatter) writeTypeChangeValue(sb *strings.Builder, val interface{}, symbol string, colorCode string, opts *FormatOptions) {
+func (f *DetailedFormatter) writeTypeChangeValue(sb *strings.Builder, val any, symbol string, colorCode string, opts *FormatOptions) {
 	if isStructured(val) {
 		for _, line := range formatValueAsYAMLLines(val) {
 			f.writeColoredLine(sb, fmt.Sprintf("    %s %s", symbol, line), colorCode, opts)
@@ -636,13 +636,13 @@ func (f *DetailedFormatter) writeTypeChangeValue(sb *strings.Builder, val interf
 }
 
 // formatValueAsYAMLLines formats a structured value as YAML lines for type-change display.
-func formatValueAsYAMLLines(val interface{}) []string {
+func formatValueAsYAMLLines(val any) []string {
 	var lines []string
 	formatValueAsYAMLRecurse(val, "", &lines)
 	return lines
 }
 
-func formatValueAsYAMLRecurse(val interface{}, indent string, lines *[]string) {
+func formatValueAsYAMLRecurse(val any, indent string, lines *[]string) {
 	switch v := val.(type) {
 	case *OrderedMap:
 		for _, key := range v.Keys {
@@ -654,7 +654,7 @@ func formatValueAsYAMLRecurse(val interface{}, indent string, lines *[]string) {
 				*lines = append(*lines, fmt.Sprintf("%s%s: %v", indent, key, formatDetailedValue(child)))
 			}
 		}
-	case map[string]interface{}:
+	case map[string]any:
 		for key, child := range v {
 			if isStructured(child) {
 				*lines = append(*lines, fmt.Sprintf("%s%s:", indent, key))
@@ -663,7 +663,7 @@ func formatValueAsYAMLRecurse(val interface{}, indent string, lines *[]string) {
 				*lines = append(*lines, fmt.Sprintf("%s%s: %v", indent, key, formatDetailedValue(child)))
 			}
 		}
-	case []interface{}:
+	case []any:
 		for _, item := range v {
 			if isStructured(item) {
 				*lines = append(*lines, fmt.Sprintf("%s- ...", indent))
@@ -677,9 +677,9 @@ func formatValueAsYAMLRecurse(val interface{}, indent string, lines *[]string) {
 	}
 }
 
-func isStructured(val interface{}) bool {
+func isStructured(val any) bool {
 	switch val.(type) {
-	case *OrderedMap, map[string]interface{}, []interface{}:
+	case *OrderedMap, map[string]any, []any:
 		return true
 	default:
 		return false

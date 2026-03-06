@@ -8,10 +8,10 @@ import (
 // Tests for Kubernetes resource detection (Task 2.5)
 
 func TestIsKubernetesResource_Deployment(t *testing.T) {
-	doc := map[string]interface{}{
+	doc := map[string]any{
 		"apiVersion": "apps/v1",
 		"kind":       "Deployment",
-		"metadata": map[string]interface{}{
+		"metadata": map[string]any{
 			"name":      "my-app",
 			"namespace": "default",
 		},
@@ -22,10 +22,10 @@ func TestIsKubernetesResource_Deployment(t *testing.T) {
 }
 
 func TestIsKubernetesResource_ConfigMap(t *testing.T) {
-	doc := map[string]interface{}{
+	doc := map[string]any{
 		"apiVersion": "v1",
 		"kind":       "ConfigMap",
-		"metadata": map[string]interface{}{
+		"metadata": map[string]any{
 			"name": "my-config",
 		},
 	}
@@ -35,9 +35,9 @@ func TestIsKubernetesResource_ConfigMap(t *testing.T) {
 }
 
 func TestIsKubernetesResource_NotK8s_MissingApiVersion(t *testing.T) {
-	doc := map[string]interface{}{
+	doc := map[string]any{
 		"kind": "SomeThing",
-		"metadata": map[string]interface{}{
+		"metadata": map[string]any{
 			"name": "test",
 		},
 	}
@@ -47,9 +47,9 @@ func TestIsKubernetesResource_NotK8s_MissingApiVersion(t *testing.T) {
 }
 
 func TestIsKubernetesResource_NotK8s_MissingKind(t *testing.T) {
-	doc := map[string]interface{}{
+	doc := map[string]any{
 		"apiVersion": "v1",
-		"metadata": map[string]interface{}{
+		"metadata": map[string]any{
 			"name": "test",
 		},
 	}
@@ -59,10 +59,10 @@ func TestIsKubernetesResource_NotK8s_MissingKind(t *testing.T) {
 }
 
 func TestIsKubernetesResource_GenerateName(t *testing.T) {
-	doc := map[string]interface{}{
+	doc := map[string]any{
 		"apiVersion": "batch/v1",
 		"kind":       "Job",
-		"metadata": map[string]interface{}{
+		"metadata": map[string]any{
 			"generateName": "my-job-",
 		},
 	}
@@ -88,10 +88,10 @@ func TestIsKubernetesResource_GenerateName_OrderedMap(t *testing.T) {
 }
 
 func TestIsKubernetesResource_NoNameNorGenerateName(t *testing.T) {
-	doc := map[string]interface{}{
+	doc := map[string]any{
 		"apiVersion": "v1",
 		"kind":       "ConfigMap",
-		"metadata":   map[string]interface{}{"labels": map[string]interface{}{"app": "test"}},
+		"metadata":   map[string]any{"labels": map[string]any{"app": "test"}},
 	}
 	if IsKubernetesResource(doc) {
 		t.Error("expected resource with neither name nor generateName to NOT be detected as K8s")
@@ -99,7 +99,7 @@ func TestIsKubernetesResource_NoNameNorGenerateName(t *testing.T) {
 }
 
 func TestIsKubernetesResource_NotK8s_MissingMetadata(t *testing.T) {
-	doc := map[string]interface{}{
+	doc := map[string]any{
 		"apiVersion": "v1",
 		"kind":       "ConfigMap",
 	}
@@ -109,7 +109,7 @@ func TestIsKubernetesResource_NotK8s_MissingMetadata(t *testing.T) {
 }
 
 func TestIsKubernetesResource_NotK8s_MetadataNotMap(t *testing.T) {
-	doc := map[string]interface{}{
+	doc := map[string]any{
 		"apiVersion": "v1",
 		"kind":       "ConfigMap",
 		"metadata":   "not-a-map",
@@ -120,17 +120,17 @@ func TestIsKubernetesResource_NotK8s_MetadataNotMap(t *testing.T) {
 }
 
 func TestIsKubernetesResource_NotMap(t *testing.T) {
-	doc := []interface{}{"item1", "item2"}
+	doc := []any{"item1", "item2"}
 	if IsKubernetesResource(doc) {
 		t.Error("expected non-map document to NOT be detected as K8s")
 	}
 }
 
 func TestGetK8sResourceIdentifier_WithNamespace(t *testing.T) {
-	doc := map[string]interface{}{
+	doc := map[string]any{
 		"apiVersion": "apps/v1",
 		"kind":       "Deployment",
-		"metadata": map[string]interface{}{
+		"metadata": map[string]any{
 			"name":      "my-app",
 			"namespace": "production",
 		},
@@ -143,10 +143,10 @@ func TestGetK8sResourceIdentifier_WithNamespace(t *testing.T) {
 }
 
 func TestGetK8sResourceIdentifier_WithoutNamespace(t *testing.T) {
-	doc := map[string]interface{}{
+	doc := map[string]any{
 		"apiVersion": "v1",
 		"kind":       "ConfigMap",
-		"metadata": map[string]interface{}{
+		"metadata": map[string]any{
 			"name": "my-config",
 		},
 	}
@@ -158,10 +158,10 @@ func TestGetK8sResourceIdentifier_WithoutNamespace(t *testing.T) {
 }
 
 func TestGetK8sResourceIdentifier_ClusterScoped(t *testing.T) {
-	doc := map[string]interface{}{
+	doc := map[string]any{
 		"apiVersion": "v1",
 		"kind":       "Namespace",
-		"metadata": map[string]interface{}{
+		"metadata": map[string]any{
 			"name": "my-namespace",
 		},
 	}
@@ -173,7 +173,7 @@ func TestGetK8sResourceIdentifier_ClusterScoped(t *testing.T) {
 }
 
 func TestGetK8sResourceIdentifier_NotK8s(t *testing.T) {
-	doc := map[string]interface{}{
+	doc := map[string]any{
 		"key": "value",
 	}
 	id := GetK8sResourceIdentifier(doc, false)
@@ -183,10 +183,10 @@ func TestGetK8sResourceIdentifier_NotK8s(t *testing.T) {
 }
 
 func TestGetK8sResourceIdentifier_IgnoreApiVersion_WithNamespace(t *testing.T) {
-	doc := map[string]interface{}{
+	doc := map[string]any{
 		"apiVersion": "apps/v1",
 		"kind":       "Deployment",
-		"metadata": map[string]interface{}{
+		"metadata": map[string]any{
 			"name":      "my-app",
 			"namespace": "production",
 		},
@@ -199,10 +199,10 @@ func TestGetK8sResourceIdentifier_IgnoreApiVersion_WithNamespace(t *testing.T) {
 }
 
 func TestGetK8sResourceIdentifier_IgnoreApiVersion_WithoutNamespace(t *testing.T) {
-	doc := map[string]interface{}{
+	doc := map[string]any{
 		"apiVersion": "v1",
 		"kind":       "ConfigMap",
-		"metadata": map[string]interface{}{
+		"metadata": map[string]any{
 			"name": "my-config",
 		},
 	}
@@ -214,7 +214,7 @@ func TestGetK8sResourceIdentifier_IgnoreApiVersion_WithoutNamespace(t *testing.T
 }
 
 func TestGetK8sResourceIdentifier_IgnoreApiVersion_NotK8s(t *testing.T) {
-	doc := map[string]interface{}{
+	doc := map[string]any{
 		"key": "value",
 	}
 	id := GetK8sResourceIdentifier(doc, true)
@@ -328,7 +328,7 @@ data:
 }
 
 func TestGetIdentifierWithAdditional_DefaultFields(t *testing.T) {
-	m := map[string]interface{}{
+	m := map[string]any{
 		"name": "test-name",
 		"id":   "test-id",
 	}
@@ -339,7 +339,7 @@ func TestGetIdentifierWithAdditional_DefaultFields(t *testing.T) {
 }
 
 func TestGetIdentifierWithAdditional_CustomField(t *testing.T) {
-	m := map[string]interface{}{
+	m := map[string]any{
 		"key":      "my-key",
 		"otherKey": "ignored",
 	}
@@ -350,7 +350,7 @@ func TestGetIdentifierWithAdditional_CustomField(t *testing.T) {
 }
 
 func TestGetIdentifierWithAdditional_NoMatch(t *testing.T) {
-	m := map[string]interface{}{
+	m := map[string]any{
 		"foo": "bar",
 	}
 	id := GetIdentifierWithAdditional(m, nil)
@@ -360,9 +360,9 @@ func TestGetIdentifierWithAdditional_NoMatch(t *testing.T) {
 }
 
 func TestCanMatchByIdentifierWithAdditional_CustomFields(t *testing.T) {
-	list := []interface{}{
-		map[string]interface{}{"key": "a", "value": 1},
-		map[string]interface{}{"key": "b", "value": 2},
+	list := []any{
+		map[string]any{"key": "a", "value": 1},
+		map[string]any{"key": "b", "value": 2},
 	}
 	if !CanMatchByIdentifierWithAdditional(list, []string{"key"}) {
 		t.Error("expected list to be matchable by custom 'key' field")
@@ -370,9 +370,9 @@ func TestCanMatchByIdentifierWithAdditional_CustomFields(t *testing.T) {
 }
 
 func TestCanMatchByIdentifierWithAdditional_NoMatchingField(t *testing.T) {
-	list := []interface{}{
-		map[string]interface{}{"foo": "a"},
-		map[string]interface{}{"foo": "b"},
+	list := []any{
+		map[string]any{"foo": "a"},
+		map[string]any{"foo": "b"},
 	}
 	if CanMatchByIdentifierWithAdditional(list, nil) {
 		t.Error("expected list without name/id to NOT be matchable")
@@ -380,8 +380,8 @@ func TestCanMatchByIdentifierWithAdditional_NoMatchingField(t *testing.T) {
 }
 
 func TestCanMatchByIdentifierWithAdditional_NonComparableIdentifier(t *testing.T) {
-	list := []interface{}{
-		map[string]interface{}{"name": []interface{}{"x"}},
+	list := []any{
+		map[string]any{"name": []any{"x"}},
 	}
 	if CanMatchByIdentifierWithAdditional(list, nil) {
 		t.Error("expected list with non-comparable identifier to NOT be matchable")
@@ -470,12 +470,12 @@ data:
 
 func TestMatchK8sDocuments_EmptyIdentifier(t *testing.T) {
 	// Non-K8s docs (no kind/apiVersion) should all end up unmatched
-	fromDocs := []interface{}{
-		map[string]interface{}{"foo": "bar"},
-		map[string]interface{}{"baz": "qux"},
+	fromDocs := []any{
+		map[string]any{"foo": "bar"},
+		map[string]any{"baz": "qux"},
 	}
-	toDocs := []interface{}{
-		map[string]interface{}{"hello": "world"},
+	toDocs := []any{
+		map[string]any{"hello": "world"},
 	}
 
 	matched, unmatchedFrom, unmatchedTo := matchK8sDocuments(fromDocs, toDocs, &Options{})
@@ -492,16 +492,16 @@ func TestMatchK8sDocuments_EmptyIdentifier(t *testing.T) {
 }
 
 func TestMatchK8sDocuments_PartialMatch(t *testing.T) {
-	mkDoc := func(name string) map[string]interface{} {
-		return map[string]interface{}{
+	mkDoc := func(name string) map[string]any {
+		return map[string]any{
 			"apiVersion": "v1",
 			"kind":       "ConfigMap",
-			"metadata":   map[string]interface{}{"name": name},
+			"metadata":   map[string]any{"name": name},
 		}
 	}
 
-	fromDocs := []interface{}{mkDoc("shared"), mkDoc("only-from")}
-	toDocs := []interface{}{mkDoc("only-to"), mkDoc("shared")}
+	fromDocs := []any{mkDoc("shared"), mkDoc("only-from")}
+	toDocs := []any{mkDoc("only-to"), mkDoc("shared")}
 
 	matched, unmatchedFrom, unmatchedTo := matchK8sDocuments(fromDocs, toDocs, &Options{})
 
@@ -552,10 +552,10 @@ func TestGetK8sResourceIdentifier_OrderedMap(t *testing.T) {
 }
 
 func TestIsKubernetesResource_NonStringApiVersion(t *testing.T) {
-	doc := map[string]interface{}{
+	doc := map[string]any{
 		"apiVersion": 123,
 		"kind":       "ConfigMap",
-		"metadata":   map[string]interface{}{"name": "test"},
+		"metadata":   map[string]any{"name": "test"},
 	}
 	if IsKubernetesResource(doc) {
 		t.Error("expected false for non-string apiVersion")
@@ -563,10 +563,10 @@ func TestIsKubernetesResource_NonStringApiVersion(t *testing.T) {
 }
 
 func TestIsKubernetesResource_NonStringKind(t *testing.T) {
-	doc := map[string]interface{}{
+	doc := map[string]any{
 		"apiVersion": "v1",
 		"kind":       42,
-		"metadata":   map[string]interface{}{"name": "test"},
+		"metadata":   map[string]any{"name": "test"},
 	}
 	if IsKubernetesResource(doc) {
 		t.Error("expected false for non-string kind")
@@ -574,7 +574,7 @@ func TestIsKubernetesResource_NonStringKind(t *testing.T) {
 }
 
 func TestGetIdentifierWithAdditional_FallbackToId(t *testing.T) {
-	m := map[string]interface{}{
+	m := map[string]any{
 		"id":  "my-id",
 		"foo": "bar",
 	}
@@ -589,17 +589,17 @@ func TestCanMatchByIdentifierWithAdditional_OrderedMapWithId(t *testing.T) {
 	om.Keys = append(om.Keys, "id")
 	om.Values["id"] = "item-1"
 
-	list := []interface{}{om}
+	list := []any{om}
 	if !CanMatchByIdentifierWithAdditional(list, nil) {
 		t.Error("expected OrderedMap with 'id' field to be matchable")
 	}
 }
 
 func TestGetK8sResourceIdentifier_GenerateName(t *testing.T) {
-	doc := map[string]interface{}{
+	doc := map[string]any{
 		"apiVersion": "batch/v1",
 		"kind":       "Job",
-		"metadata": map[string]interface{}{
+		"metadata": map[string]any{
 			"generateName": "my-job-",
 		},
 	}
@@ -611,10 +611,10 @@ func TestGetK8sResourceIdentifier_GenerateName(t *testing.T) {
 }
 
 func TestGetK8sResourceIdentifier_NameOverGenerateName(t *testing.T) {
-	doc := map[string]interface{}{
+	doc := map[string]any{
 		"apiVersion": "batch/v1",
 		"kind":       "Job",
-		"metadata": map[string]interface{}{
+		"metadata": map[string]any{
 			"name":         "my-job-abc123",
 			"generateName": "my-job-",
 		},
@@ -627,16 +627,16 @@ func TestGetK8sResourceIdentifier_NameOverGenerateName(t *testing.T) {
 }
 
 func TestMatchK8sDocuments_GenerateName(t *testing.T) {
-	mkDoc := func(genName string) map[string]interface{} {
-		return map[string]interface{}{
+	mkDoc := func(genName string) map[string]any {
+		return map[string]any{
 			"apiVersion": "batch/v1",
 			"kind":       "Job",
-			"metadata":   map[string]interface{}{"generateName": genName},
+			"metadata":   map[string]any{"generateName": genName},
 		}
 	}
 
-	fromDocs := []interface{}{mkDoc("job-a-"), mkDoc("job-b-")}
-	toDocs := []interface{}{mkDoc("job-b-"), mkDoc("job-a-")}
+	fromDocs := []any{mkDoc("job-a-"), mkDoc("job-b-")}
+	toDocs := []any{mkDoc("job-b-"), mkDoc("job-a-")}
 
 	matched, unmatchedFrom, unmatchedTo := matchK8sDocuments(fromDocs, toDocs, &Options{})
 
@@ -661,18 +661,18 @@ func TestMatchK8sDocuments_GenerateName(t *testing.T) {
 
 func TestMatchK8sDocuments_FirstOccurrenceWins(t *testing.T) {
 	// When two "to" documents produce the same identifier, the first one should be used
-	mkDoc := func(name, data string) map[string]interface{} {
-		return map[string]interface{}{
+	mkDoc := func(name, data string) map[string]any {
+		return map[string]any{
 			"apiVersion": "v1",
 			"kind":       "ConfigMap",
-			"metadata":   map[string]interface{}{"name": name},
+			"metadata":   map[string]any{"name": name},
 			"data":       data,
 		}
 	}
 
-	fromDocs := []interface{}{mkDoc("dup", "from-data")}
+	fromDocs := []any{mkDoc("dup", "from-data")}
 	// Two "to" documents with the same identifier
-	toDocs := []interface{}{mkDoc("dup", "first"), mkDoc("dup", "second")}
+	toDocs := []any{mkDoc("dup", "first"), mkDoc("dup", "second")}
 
 	matched, unmatchedFrom, unmatchedTo := matchK8sDocuments(fromDocs, toDocs, &Options{})
 
@@ -695,19 +695,19 @@ func TestMatchK8sDocuments_FirstOccurrenceWins(t *testing.T) {
 func TestMatchK8sDocuments_AgnosticMatching(t *testing.T) {
 	// Two documents with same kind/name but different apiVersions should match
 	// when IgnoreApiVersion=true
-	fromDoc := map[string]interface{}{
+	fromDoc := map[string]any{
 		"apiVersion": "apps/v1beta1",
 		"kind":       "Deployment",
-		"metadata":   map[string]interface{}{"name": "my-app", "namespace": "default"},
+		"metadata":   map[string]any{"name": "my-app", "namespace": "default"},
 	}
-	toDoc := map[string]interface{}{
+	toDoc := map[string]any{
 		"apiVersion": "apps/v1",
 		"kind":       "Deployment",
-		"metadata":   map[string]interface{}{"name": "my-app", "namespace": "default"},
+		"metadata":   map[string]any{"name": "my-app", "namespace": "default"},
 	}
 
 	matched, unmatchedFrom, unmatchedTo := matchK8sDocuments(
-		[]interface{}{fromDoc}, []interface{}{toDoc},
+		[]any{fromDoc}, []any{toDoc},
 		&Options{IgnoreApiVersion: true},
 	)
 
@@ -728,17 +728,17 @@ func TestMatchK8sDocuments_AgnosticMatching(t *testing.T) {
 func TestMatchK8sDocuments_AgnosticDuplicateFirstWins(t *testing.T) {
 	// When agnostic matching produces duplicate identifiers in "to",
 	// first-occurrence-wins
-	mkDoc := func(apiVer, name string) map[string]interface{} {
-		return map[string]interface{}{
+	mkDoc := func(apiVer, name string) map[string]any {
+		return map[string]any{
 			"apiVersion": apiVer,
 			"kind":       "Deployment",
-			"metadata":   map[string]interface{}{"name": name, "namespace": "default"},
+			"metadata":   map[string]any{"name": name, "namespace": "default"},
 		}
 	}
 
-	fromDocs := []interface{}{mkDoc("apps/v1", "my-app")}
+	fromDocs := []any{mkDoc("apps/v1", "my-app")}
 	// Two "to" documents: same kind/name, different apiVersion → same agnostic identifier
-	toDocs := []interface{}{mkDoc("apps/v1beta1", "my-app"), mkDoc("apps/v1", "my-app")}
+	toDocs := []any{mkDoc("apps/v1beta1", "my-app"), mkDoc("apps/v1", "my-app")}
 
 	matched, _, unmatchedTo := matchK8sDocuments(fromDocs, toDocs, &Options{IgnoreApiVersion: true})
 
@@ -757,19 +757,19 @@ func TestMatchK8sDocuments_AgnosticDuplicateFirstWins(t *testing.T) {
 func TestMatchK8sDocuments_DefaultNoAgnosticMatch(t *testing.T) {
 	// When IgnoreApiVersion=false (default), different apiVersions produce
 	// different identifiers → no match
-	fromDoc := map[string]interface{}{
+	fromDoc := map[string]any{
 		"apiVersion": "apps/v1beta1",
 		"kind":       "Deployment",
-		"metadata":   map[string]interface{}{"name": "my-app", "namespace": "default"},
+		"metadata":   map[string]any{"name": "my-app", "namespace": "default"},
 	}
-	toDoc := map[string]interface{}{
+	toDoc := map[string]any{
 		"apiVersion": "apps/v1",
 		"kind":       "Deployment",
-		"metadata":   map[string]interface{}{"name": "my-app", "namespace": "default"},
+		"metadata":   map[string]any{"name": "my-app", "namespace": "default"},
 	}
 
 	matched, unmatchedFrom, unmatchedTo := matchK8sDocuments(
-		[]interface{}{fromDoc}, []interface{}{toDoc},
+		[]any{fromDoc}, []any{toDoc},
 		&Options{IgnoreApiVersion: false},
 	)
 
@@ -787,24 +787,24 @@ func TestMatchK8sDocuments_DefaultNoAgnosticMatch(t *testing.T) {
 func TestCompareK8sDocs_AgnosticMatch_ReportsApiVersionModified(t *testing.T) {
 	// Req 1.3: When agnostic matching pairs resources with different apiVersions,
 	// apiVersion should appear as a modified field
-	fromDoc := map[string]interface{}{
+	fromDoc := map[string]any{
 		"apiVersion": "apps/v1beta1",
 		"kind":       "Deployment",
-		"metadata":   map[string]interface{}{"name": "my-app", "namespace": "default"},
-		"spec":       map[string]interface{}{"replicas": 3},
+		"metadata":   map[string]any{"name": "my-app", "namespace": "default"},
+		"spec":       map[string]any{"replicas": 3},
 	}
-	toDoc := map[string]interface{}{
+	toDoc := map[string]any{
 		"apiVersion": "apps/v1",
 		"kind":       "Deployment",
-		"metadata":   map[string]interface{}{"name": "my-app", "namespace": "default"},
-		"spec":       map[string]interface{}{"replicas": 5},
+		"metadata":   map[string]any{"name": "my-app", "namespace": "default"},
+		"spec":       map[string]any{"replicas": 5},
 	}
 
 	opts := &Options{
 		DetectKubernetes: true,
 		IgnoreApiVersion: true,
 	}
-	diffs := compareK8sDocs([]interface{}{fromDoc}, []interface{}{toDoc}, opts)
+	diffs := compareK8sDocs([]any{fromDoc}, []any{toDoc}, opts)
 
 	hasApiVersionDiff := false
 	hasReplicasDiff := false
@@ -827,19 +827,19 @@ func TestCompareK8sDocs_AgnosticMatch_ReportsApiVersionModified(t *testing.T) {
 func TestCompareK8sDocs_AgnosticDuplicates_ReportedAsAddedRemoved(t *testing.T) {
 	// Req 3.2: When duplicate agnostic identifiers produce unmatched documents,
 	// they should be reported as added or removed
-	mkDoc := func(apiVer, name string, replicas int) map[string]interface{} {
-		return map[string]interface{}{
+	mkDoc := func(apiVer, name string, replicas int) map[string]any {
+		return map[string]any{
 			"apiVersion": apiVer,
 			"kind":       "Deployment",
-			"metadata":   map[string]interface{}{"name": name, "namespace": "default"},
-			"spec":       map[string]interface{}{"replicas": replicas},
+			"metadata":   map[string]any{"name": name, "namespace": "default"},
+			"spec":       map[string]any{"replicas": replicas},
 		}
 	}
 
 	// "from" has one my-app, "to" has two my-app with different apiVersions
 	// → same agnostic identifier → first-occurrence-wins, second is unmatched (added)
-	fromDocs := []interface{}{mkDoc("apps/v1", "my-app", 3)}
-	toDocs := []interface{}{mkDoc("apps/v1", "my-app", 3), mkDoc("apps/v1beta1", "my-app", 1)}
+	fromDocs := []any{mkDoc("apps/v1", "my-app", 3)}
+	toDocs := []any{mkDoc("apps/v1", "my-app", 3), mkDoc("apps/v1beta1", "my-app", 1)}
 
 	opts := &Options{
 		DetectKubernetes: true,
@@ -860,24 +860,24 @@ func TestCompareK8sDocs_AgnosticDuplicates_ReportedAsAddedRemoved(t *testing.T) 
 
 func TestCompareK8sDocs_RenameDetection_SingleDoc(t *testing.T) {
 	// Single doc per side: rename-matched pair should have no path prefix
-	fromDoc := map[string]interface{}{
+	fromDoc := map[string]any{
 		"apiVersion": "v1",
 		"kind":       "ConfigMap",
-		"metadata":   map[string]interface{}{"name": "app-config-abc123"},
-		"data":       map[string]interface{}{"key": "value"},
+		"metadata":   map[string]any{"name": "app-config-abc123"},
+		"data":       map[string]any{"key": "value"},
 	}
-	toDoc := map[string]interface{}{
+	toDoc := map[string]any{
 		"apiVersion": "v1",
 		"kind":       "ConfigMap",
-		"metadata":   map[string]interface{}{"name": "app-config-def456"},
-		"data":       map[string]interface{}{"key": "value"},
+		"metadata":   map[string]any{"name": "app-config-def456"},
+		"data":       map[string]any{"key": "value"},
 	}
 
 	opts := &Options{
 		DetectKubernetes: true,
 		DetectRenames:    true,
 	}
-	diffs := compareK8sDocs([]interface{}{fromDoc}, []interface{}{toDoc}, opts)
+	diffs := compareK8sDocs([]any{fromDoc}, []any{toDoc}, opts)
 
 	// Should produce field-level diffs (rename matched), not bulk add/remove
 	hasNameChange := false
@@ -908,30 +908,30 @@ func TestCompareK8sDocs_RenameDetection_SingleDoc(t *testing.T) {
 
 func TestCompareK8sDocs_RenameDetection_MultiDoc(t *testing.T) {
 	// Multi-doc: rename-matched pair should have path prefix [toIdx]
-	sharedDoc := map[string]interface{}{
+	sharedDoc := map[string]any{
 		"apiVersion": "v1",
 		"kind":       "Service",
-		"metadata":   map[string]interface{}{"name": "my-service"},
-		"spec":       map[string]interface{}{"port": 80},
+		"metadata":   map[string]any{"name": "my-service"},
+		"spec":       map[string]any{"port": 80},
 	}
-	fromDoc := map[string]interface{}{
+	fromDoc := map[string]any{
 		"apiVersion": "v1",
 		"kind":       "ConfigMap",
-		"metadata":   map[string]interface{}{"name": "app-config-abc123"},
-		"data":       map[string]interface{}{"key": "value"},
+		"metadata":   map[string]any{"name": "app-config-abc123"},
+		"data":       map[string]any{"key": "value"},
 	}
-	toDoc := map[string]interface{}{
+	toDoc := map[string]any{
 		"apiVersion": "v1",
 		"kind":       "ConfigMap",
-		"metadata":   map[string]interface{}{"name": "app-config-def456"},
-		"data":       map[string]interface{}{"key": "value"},
+		"metadata":   map[string]any{"name": "app-config-def456"},
+		"data":       map[string]any{"key": "value"},
 	}
 
 	opts := &Options{
 		DetectKubernetes: true,
 		DetectRenames:    true,
 	}
-	diffs := compareK8sDocs([]interface{}{sharedDoc, fromDoc}, []interface{}{sharedDoc, toDoc}, opts)
+	diffs := compareK8sDocs([]any{sharedDoc, fromDoc}, []any{sharedDoc, toDoc}, opts)
 
 	// Renamed doc should have diffs with [1] prefix (toIdx)
 	hasNameChange := false

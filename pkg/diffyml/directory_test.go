@@ -1028,7 +1028,7 @@ func TestRunDirectory_GitLab_SingleJSONArray(t *testing.T) {
 
 	output := stdout.String()
 	// Must be a single valid JSON array
-	var findings []map[string]interface{}
+	var findings []map[string]any
 	if err := json.Unmarshal([]byte(output), &findings); err != nil {
 		t.Fatalf("output is not valid JSON array: %v\noutput: %s", err, output)
 	}
@@ -1128,14 +1128,14 @@ func TestRunDirectory_GitLab_LocationPathIsFilePath(t *testing.T) {
 	runDirectory(cfg, rc, "", "")
 
 	output := stdout.String()
-	var findings []map[string]interface{}
+	var findings []map[string]any
 	if err := json.Unmarshal([]byte(output), &findings); err != nil {
 		t.Fatalf("invalid JSON: %v", err)
 	}
 	if len(findings) != 1 {
 		t.Fatalf("expected 1 finding, got %d", len(findings))
 	}
-	location := findings[0]["location"].(map[string]interface{})
+	location := findings[0]["location"].(map[string]any)
 	path := location["path"].(string)
 	if path != "deploy.yaml" {
 		t.Errorf("expected location.path 'deploy.yaml', got %q", path)
@@ -1159,7 +1159,7 @@ func TestRunDirectory_GitLab_DescriptionIncludesFilename(t *testing.T) {
 	runDirectory(cfg, rc, "", "")
 
 	output := stdout.String()
-	var findings []map[string]interface{}
+	var findings []map[string]any
 	if err := json.Unmarshal([]byte(output), &findings); err != nil {
 		t.Fatalf("invalid JSON: %v", err)
 	}
@@ -1191,7 +1191,7 @@ func TestRunDirectory_GitLab_UniqueFingerprintsAcrossFiles(t *testing.T) {
 	runDirectory(cfg, rc, "", "")
 
 	output := stdout.String()
-	var findings []map[string]interface{}
+	var findings []map[string]any
 	if err := json.Unmarshal([]byte(output), &findings); err != nil {
 		t.Fatalf("invalid JSON: %v", err)
 	}
@@ -1910,7 +1910,7 @@ func TestRunDirectory_WithSummary_GitLab_AppendsSummary(t *testing.T) {
 
 	output := stdout.String()
 	// GitLab JSON output should be valid
-	var findings []map[string]interface{}
+	var findings []map[string]any
 	// The output may contain both the JSON array and the AI summary
 	// Split at the AI Summary header
 	jsonEnd := strings.Index(output, "\nAI Summary:")

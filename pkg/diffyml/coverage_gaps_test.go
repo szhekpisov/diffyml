@@ -17,52 +17,52 @@ import (
 // --- deepEqual: *OrderedMap different lengths ---
 
 func TestDeepEqual_OrderedMaps_DifferentLengths(t *testing.T) {
-	a := &OrderedMap{Values: map[string]interface{}{"x": 1, "y": 2}}
-	b := &OrderedMap{Values: map[string]interface{}{"x": 1}}
+	a := &OrderedMap{Values: map[string]any{"x": 1, "y": 2}}
+	b := &OrderedMap{Values: map[string]any{"x": 1}}
 	if deepEqual(a, b, nil) {
 		t.Error("expected OrderedMaps with different lengths to not be deepEqual")
 	}
 }
 
-// --- deepEqual: []interface{} slice case ---
+// --- deepEqual: []any slice case ---
 
 func TestDeepEqual_Slices_Equal(t *testing.T) {
-	a := []interface{}{"x", "y", "z"}
-	b := []interface{}{"x", "y", "z"}
+	a := []any{"x", "y", "z"}
+	b := []any{"x", "y", "z"}
 	if !deepEqual(a, b, nil) {
 		t.Error("expected equal slices to be deepEqual")
 	}
 }
 
 func TestDeepEqual_Slices_DifferentValues(t *testing.T) {
-	a := []interface{}{"x", "y"}
-	b := []interface{}{"x", "z"}
+	a := []any{"x", "y"}
+	b := []any{"x", "z"}
 	if deepEqual(a, b, nil) {
 		t.Error("expected slices with different values to not be deepEqual")
 	}
 }
 
 func TestDeepEqual_Slices_DifferentLengths(t *testing.T) {
-	a := []interface{}{"x"}
-	b := []interface{}{"x", "y"}
+	a := []any{"x"}
+	b := []any{"x", "y"}
 	if deepEqual(a, b, nil) {
 		t.Error("expected slices with different lengths to not be deepEqual")
 	}
 }
 
 func TestDeepEqual_Slices_Nested(t *testing.T) {
-	a := []interface{}{[]interface{}{"a", "b"}}
-	b := []interface{}{[]interface{}{"a", "b"}}
+	a := []any{[]any{"a", "b"}}
+	b := []any{[]any{"a", "b"}}
 	if !deepEqual(a, b, nil) {
 		t.Error("expected nested equal slices to be deepEqual")
 	}
 }
 
-// --- extractPathOrder: map[string]interface{} branch ---
+// --- extractPathOrder: map[string]any branch ---
 
 func TestExtractPathOrder_PlainMap(t *testing.T) {
-	docs := []interface{}{
-		map[string]interface{}{
+	docs := []any{
+		map[string]any{
 			"beta":  "2",
 			"alpha": "1",
 		},
@@ -81,9 +81,9 @@ func TestExtractPathOrder_PlainMap(t *testing.T) {
 }
 
 func TestExtractPathOrder_PlainMapNested(t *testing.T) {
-	docs := []interface{}{
-		map[string]interface{}{
-			"parent": map[string]interface{}{"child": "val"},
+	docs := []any{
+		map[string]any{
+			"parent": map[string]any{"child": "val"},
 		},
 	}
 	order := extractPathOrder(docs, nil, nil)
@@ -96,14 +96,14 @@ func TestExtractPathOrder_PlainMapNested(t *testing.T) {
 	}
 }
 
-// --- areListItemsHeterogeneous: map[string]interface{} items ---
+// --- areListItemsHeterogeneous: map[string]any items ---
 
 func TestAreListItemsHeterogeneous_PlainMaps(t *testing.T) {
-	from := []interface{}{
-		map[string]interface{}{"namespaceSelector": "ns1"},
+	from := []any{
+		map[string]any{"namespaceSelector": "ns1"},
 	}
-	to := []interface{}{
-		map[string]interface{}{"ipBlock": "10.0.0.0/8"},
+	to := []any{
+		map[string]any{"ipBlock": "10.0.0.0/8"},
 	}
 
 	if !areListItemsHeterogeneous(from, to) {
@@ -112,11 +112,11 @@ func TestAreListItemsHeterogeneous_PlainMaps(t *testing.T) {
 }
 
 func TestAreListItemsHeterogeneous_PlainMapsMultipleKeys(t *testing.T) {
-	from := []interface{}{
-		map[string]interface{}{"a": "1", "b": "2"},
+	from := []any{
+		map[string]any{"a": "1", "b": "2"},
 	}
-	to := []interface{}{
-		map[string]interface{}{"c": "3"},
+	to := []any{
+		map[string]any{"c": "3"},
 	}
 
 	// from item has 2 keys, so checkSingleDistinctKeys returns false
@@ -192,14 +192,14 @@ func TestExitResult_String_UnknownCode(t *testing.T) {
 	}
 }
 
-// --- renderFirstKeyValueYAML: []interface{} value ---
+// --- renderFirstKeyValueYAML: []any value ---
 
 func TestDetailedFormatter_ListValueInFirstKey(t *testing.T) {
 	// The first key of a list entry maps to a list value,
-	// exercising the []interface{} case in renderFirstKeyValueYAML.
+	// exercising the []any case in renderFirstKeyValueYAML.
 	om := &OrderedMap{
 		Keys:   []string{"ports", "protocol"},
-		Values: map[string]interface{}{"ports": []interface{}{"80", "443"}, "protocol": "TCP"},
+		Values: map[string]any{"ports": []any{"80", "443"}, "protocol": "TCP"},
 	}
 
 	diffs := []Difference{
@@ -228,18 +228,18 @@ func TestDetailedFormatter_ListValueInFirstKey(t *testing.T) {
 func TestCompareListsByIdentifier_NoIDFallback(t *testing.T) {
 	// Mix identified and unidentified items.
 	// Items with "name" get identifier-based matching; scalars use fallback.
-	from := []interface{}{
+	from := []any{
 		&OrderedMap{
 			Keys:   []string{"name", "value"},
-			Values: map[string]interface{}{"name": "a", "value": "1"},
+			Values: map[string]any{"name": "a", "value": "1"},
 		},
 		"scalar-from-only",
 		"shared-scalar",
 	}
-	to := []interface{}{
+	to := []any{
 		&OrderedMap{
 			Keys:   []string{"name", "value"},
-			Values: map[string]interface{}{"name": "a", "value": "2"},
+			Values: map[string]any{"name": "a", "value": "2"},
 		},
 		"new-scalar",
 		"shared-scalar",
@@ -339,15 +339,15 @@ func TestGetTrueColorCode_Clamped(t *testing.T) {
 
 func TestExtractPathOrder_PlainMapIndexIncrement(t *testing.T) {
 	// Kills INCREMENT_DECREMENT at diffyml.go:155 (index++ → index--)
-	// Uses nested maps so recursion enters the map[string]interface{} case at line 150,
+	// Uses nested maps so recursion enters the map[string]any case at line 150,
 	// where index++ (line 155) is executed for each parent path.
 	// With the mutation (index--), all parent paths get the same order value (0),
 	// so the strict ordering assertion catches it.
-	docs := []interface{}{
-		map[string]interface{}{
-			"alpha": map[string]interface{}{"child1": "v1"},
-			"beta":  map[string]interface{}{"child2": "v2"},
-			"gamma": map[string]interface{}{"child3": "v3"},
+	docs := []any{
+		map[string]any{
+			"alpha": map[string]any{"child1": "v1"},
+			"beta":  map[string]any{"child2": "v2"},
+			"gamma": map[string]any{"child3": "v3"},
 		},
 	}
 	order := extractPathOrder(docs, nil, nil)
@@ -365,7 +365,7 @@ func TestExtractPathOrder_PlainMapIndexIncrement(t *testing.T) {
 
 func TestDetailedFormatter_MapContinuationIndent(t *testing.T) {
 	// Kills ARITHMETIC_BASE at detailed_formatter.go:294 (indent+4 → indent-4)
-	// The first key's value is a map[string]interface{}, so renderFirstKeyValueYAML
+	// The first key's value is a map[string]any, so renderFirstKeyValueYAML
 	// enters the map case (line 291) and renders children at indent+4 (=8 spaces).
 	// With the mutation (indent-4), children would be at 0 spaces instead.
 	diffs := []Difference{
@@ -373,7 +373,7 @@ func TestDetailedFormatter_MapContinuationIndent(t *testing.T) {
 			Path: "items.0",
 			Type: DiffAdded,
 			From: nil,
-			To:   map[string]interface{}{"aaa": map[string]interface{}{"child": "value"}},
+			To:   map[string]any{"aaa": map[string]any{"child": "value"}},
 		},
 	}
 
@@ -408,7 +408,7 @@ func TestDetailedFormatter_MapContinuationKeyIndent(t *testing.T) {
 			Path: "items.0",
 			Type: DiffAdded,
 			From: nil,
-			To:   map[string]interface{}{"aaa": "val1", "zzz": "val2"},
+			To:   map[string]any{"aaa": "val1", "zzz": "val2"},
 		},
 	}
 
@@ -441,7 +441,7 @@ func TestDetailedFormatter_FirstKeyMultilineIndent(t *testing.T) {
 	// padding becomes 2+2=4 spaces instead of 8.
 	om := &OrderedMap{
 		Keys:   []string{"config"},
-		Values: map[string]interface{}{"config": "line1\nline2\nline3"},
+		Values: map[string]any{"config": "line1\nline2\nline3"},
 	}
 	diffs := []Difference{
 		{
@@ -680,8 +680,8 @@ func TestComputeLineDiff_IdenticalLines(t *testing.T) {
 // --- compareListsPositional: different-length lists (comparator.go:353,361) ---
 
 func TestCompareListsPositional_ToLonger(t *testing.T) {
-	from := []interface{}{"a", "b"}
-	to := []interface{}{"a", "b", "c", "d"}
+	from := []any{"a", "b"}
+	to := []any{"a", "b", "c", "d"}
 	diffs := compareListsPositional("list", from, to, nil)
 
 	added := 0
@@ -696,8 +696,8 @@ func TestCompareListsPositional_ToLonger(t *testing.T) {
 }
 
 func TestCompareListsPositional_FromLonger(t *testing.T) {
-	from := []interface{}{"a", "b", "c"}
-	to := []interface{}{"a"}
+	from := []any{"a", "b", "c"}
+	to := []any{"a"}
 	diffs := compareListsPositional("list", from, to, nil)
 
 	removed := 0
@@ -791,12 +791,12 @@ func TestDetectRenames_AsymmetricTiebreaker(t *testing.T) {
 	// With 3×2 identical ConfigMaps, all 6 pairs have the same score.
 	// Mutations that invert the fromIdx tiebreaker change greedy assignment:
 	// normal → {0:0, 1:1}, remaining=[2]; reversed → {2:0, 1:1}, remaining=[0]
-	from := []interface{}{
+	from := []any{
 		mkK8sConfigMap("cm", []string{"key1", "key2", "key3"}),
 		mkK8sConfigMap("cm", []string{"key1", "key2", "key3"}),
 		mkK8sConfigMap("cm", []string{"key1", "key2", "key3"}),
 	}
-	to := []interface{}{
+	to := []any{
 		mkK8sConfigMap("cm", []string{"key1", "key2", "key3"}),
 		mkK8sConfigMap("cm", []string{"key1", "key2", "key3"}),
 	}

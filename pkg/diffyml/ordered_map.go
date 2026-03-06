@@ -16,22 +16,22 @@ import (
 // OrderedMap is a map that preserves insertion order of keys.
 type OrderedMap struct {
 	Keys   []string
-	Values map[string]interface{}
+	Values map[string]any
 }
 
 // NewOrderedMap creates an empty OrderedMap.
 func NewOrderedMap() *OrderedMap {
 	return &OrderedMap{
 		Keys:   nil,
-		Values: make(map[string]interface{}),
+		Values: make(map[string]any),
 	}
 }
 
 // ParseWithOrder parses YAML content into documents using OrderedMap for mappings
 // so that field order from the source document is preserved.
-func ParseWithOrder(content []byte) ([]interface{}, error) {
+func ParseWithOrder(content []byte) ([]any, error) {
 	decoder := yaml.NewDecoder(bytes.NewReader(content))
-	var docs []interface{}
+	var docs []any
 
 	for {
 		var node yaml.Node
@@ -50,13 +50,13 @@ func ParseWithOrder(content []byte) ([]interface{}, error) {
 
 // nodeToInterface converts a yaml.Node tree into Go values,
 // using *OrderedMap for mapping nodes to preserve key order.
-func nodeToInterface(node *yaml.Node) interface{} {
+func nodeToInterface(node *yaml.Node) any {
 	return nodeToInterfaceWithCycleDetection(node, make(map[*yaml.Node]bool))
 }
 
 // nodeToInterfaceWithCycleDetection is the recursive implementation of nodeToInterface.
 // The seen set tracks alias targets to detect cycles (e.g. an anchor referencing itself).
-func nodeToInterfaceWithCycleDetection(node *yaml.Node, seen map[*yaml.Node]bool) interface{} {
+func nodeToInterfaceWithCycleDetection(node *yaml.Node, seen map[*yaml.Node]bool) any {
 	if node == nil {
 		return nil
 	}
@@ -94,7 +94,7 @@ func nodeToInterfaceWithCycleDetection(node *yaml.Node, seen map[*yaml.Node]bool
 		return om
 
 	case yaml.SequenceNode:
-		list := make([]interface{}, 0, len(node.Content))
+		list := make([]any, 0, len(node.Content))
 		for _, child := range node.Content {
 			list = append(list, nodeToInterfaceWithCycleDetection(child, seen))
 		}
@@ -118,9 +118,9 @@ func nodeToInterfaceWithCycleDetection(node *yaml.Node, seen map[*yaml.Node]bool
 }
 
 // resolveScalar converts a scalar yaml.Node into the appropriate Go type.
-func resolveScalar(node *yaml.Node) interface{} {
-	// Use yaml.v3's own resolution by decoding into interface{}
-	var val interface{}
+func resolveScalar(node *yaml.Node) any {
+	// Use yaml.v3's own resolution by decoding into any
+	var val any
 	if err := node.Decode(&val); err != nil {
 		return node.Value
 	}

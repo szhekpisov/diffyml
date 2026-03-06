@@ -24,7 +24,7 @@ func TestRun_WithSummary_AppendsSummaryToOutput(t *testing.T) {
 			t.Error("expected x-api-key header")
 		}
 
-		var req map[string]interface{}
+		var req map[string]any
 		_ = json.NewDecoder(r.Body).Decode(&req)
 
 		w.WriteHeader(200)
@@ -408,7 +408,7 @@ func TestRun_SummaryModelFlag_ParseAndRun(t *testing.T) {
 
 	var receivedModel string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var req map[string]interface{}
+		var req map[string]any
 		_ = json.NewDecoder(r.Body).Decode(&req)
 		if model, ok := req["model"].(string); ok {
 			receivedModel = model

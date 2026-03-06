@@ -15,7 +15,7 @@ import (
 )
 
 // compareDocs compares two slices of YAML documents and returns differences.
-func compareDocs(from, to []interface{}, opts *Options) []Difference {
+func compareDocs(from, to []any, opts *Options) []Difference {
 	// Check if Kubernetes detection is enabled and documents are K8s resources
 	if opts != nil && opts.DetectKubernetes && hasK8sDocuments(from, to) {
 		return compareK8sDocs(from, to, opts)
@@ -28,7 +28,7 @@ func compareDocs(from, to []interface{}, opts *Options) []Difference {
 	maxLen := max(len(from), len(to))
 
 	for i := range maxLen {
-		var fromDoc, toDoc interface{}
+		var fromDoc, toDoc any
 		if i < len(from) {
 			fromDoc = from[i]
 		}
@@ -54,7 +54,7 @@ func compareDocs(from, to []interface{}, opts *Options) []Difference {
 }
 
 // hasK8sDocuments checks if any documents in either slice are Kubernetes resources.
-func hasK8sDocuments(from, to []interface{}) bool {
+func hasK8sDocuments(from, to []any) bool {
 	for _, doc := range from {
 		if IsKubernetesResource(doc) {
 			return true
@@ -69,7 +69,7 @@ func hasK8sDocuments(from, to []interface{}) bool {
 }
 
 // compareNodes recursively compares two YAML nodes.
-func compareNodes(path string, from, to interface{}, opts *Options) []Difference {
+func compareNodes(path string, from, to any, opts *Options) []Difference {
 	var diffs []Difference
 
 	// Handle nil cases
@@ -124,13 +124,13 @@ func compareNodes(path string, from, to interface{}, opts *Options) []Difference
 		toOrderedMap := to.(*OrderedMap)
 		diffs = append(diffs, compareOrderedMaps(path, fromVal, toOrderedMap, opts)...)
 
-	case map[string]interface{}:
-		// Type-equality guard above ensures to is also map[string]interface{}
-		toMap := to.(map[string]interface{})
+	case map[string]any:
+		// Type-equality guard above ensures to is also map[string]any
+		toMap := to.(map[string]any)
 		diffs = append(diffs, compareMaps(path, fromVal, toMap, opts)...)
 
-	case []interface{}:
-		toVal := to.([]interface{})
+	case []any:
+		toVal := to.([]any)
 		diffs = append(diffs, compareLists(path, fromVal, toVal, opts)...)
 
 	default:
@@ -196,7 +196,7 @@ func compareOrderedMaps(path string, from, to *OrderedMap, opts *Options) []Diff
 }
 
 // compareMaps compares two map nodes.
-func compareMaps(path string, from, to map[string]interface{}, opts *Options) []Difference {
+func compareMaps(path string, from, to map[string]any, opts *Options) []Difference {
 	var diffs []Difference
 
 	// Get all keys from both maps and sort for deterministic output
@@ -248,7 +248,7 @@ func compareMaps(path string, from, to map[string]interface{}, opts *Options) []
 }
 
 // compareLists compares two list nodes.
-func compareLists(path string, from, to []interface{}, opts *Options) []Difference {
+func compareLists(path string, from, to []any, opts *Options) []Difference {
 	// Try to match items by identifier (for lists of maps with name/id fields)
 	if canMatchByIdentifier(from, opts) && canMatchByIdentifier(to, opts) {
 		return compareListsByIdentifier(path, from, to, opts)
@@ -271,18 +271,18 @@ func compareLists(path string, from, to []interface{}, opts *Options) []Differen
 
 // areListItemsHeterogeneous checks if list items have different structural keys.
 // This helps decide whether to use unordered (for heterogeneous) or positional (for homogeneous) comparison.
-func areListItemsHeterogeneous(from, to []interface{}) bool {
+func areListItemsHeterogeneous(from, to []any) bool {
 	// Get keys from all items in both lists
 	allKeys := make(map[string]bool)
 
-	extractKeys := func(list []interface{}) {
+	extractKeys := func(list []any) {
 		for _, item := range list {
 			switch v := item.(type) {
 			case *OrderedMap:
 				for _, key := range v.Keys {
 					allKeys[key] = true
 				}
-			case map[string]interface{}:
+			case map[string]any:
 				for key := range v {
 					allKeys[key] = true
 				}
@@ -301,14 +301,14 @@ func areListItemsHeterogeneous(from, to []interface{}) bool {
 	// Check if each map item uses a distinct set of keys (only one key per item)
 	// This is a heuristic: items with single, different keys are likely heterogeneous
 	// (e.g., {namespaceSelector: ...} vs {ipBlock: ...})
-	checkSingleDistinctKeys := func(list []interface{}) bool {
+	checkSingleDistinctKeys := func(list []any) bool {
 		for _, item := range list {
 			switch v := item.(type) {
 			case *OrderedMap:
 				if len(v.Keys) != 1 {
 					return false
 				}
-			case map[string]interface{}:
+			case map[string]any:
 				if len(v) != 1 {
 					return false
 				}
@@ -329,7 +329,7 @@ func areListItemsHeterogeneous(from, to []interface{}) bool {
 
 // areListsMaps checks if all items in a list are maps
 // compareListsPositional compares lists by position.
-func compareListsPositional(path string, from, to []interface{}, opts *Options) []Difference {
+func compareListsPositional(path string, from, to []any, opts *Options) []Difference {
 	var diffs []Difference
 
 	minLen := min(len(from), len(to))
@@ -364,7 +364,7 @@ func compareListsPositional(path string, from, to []interface{}, opts *Options) 
 }
 
 // compareListsUnordered compares lists ignoring order.
-func compareListsUnordered(path string, from, to []interface{}, opts *Options) []Difference {
+func compareListsUnordered(path string, from, to []any, opts *Options) []Difference {
 	var diffs []Difference
 
 	// Track which items have been matched
@@ -410,7 +410,7 @@ func compareListsUnordered(path string, from, to []interface{}, opts *Options) [
 
 // canMatchByIdentifier checks if list items can be matched by identifier.
 // Returns true only if all items are maps and at least one has a "name" or "id" field.
-func canMatchByIdentifier(list []interface{}, opts *Options) bool {
+func canMatchByIdentifier(list []any, opts *Options) bool {
 	var additional []string
 	if opts != nil {
 		additional = opts.AdditionalIdentifiers
@@ -419,7 +419,7 @@ func canMatchByIdentifier(list []interface{}, opts *Options) bool {
 }
 
 // getIdentifier gets the identifier value from a map or OrderedMap.
-func getIdentifier(val interface{}, opts *Options) interface{} {
+func getIdentifier(val any, opts *Options) any {
 	var additional []string
 	if opts != nil {
 		additional = opts.AdditionalIdentifiers
@@ -427,19 +427,19 @@ func getIdentifier(val interface{}, opts *Options) interface{} {
 	if om, ok := val.(*OrderedMap); ok {
 		return getIdentifierFromOrderedMap(om, additional)
 	}
-	if m, ok := val.(map[string]interface{}); ok {
+	if m, ok := val.(map[string]any); ok {
 		return GetIdentifierWithAdditional(m, additional)
 	}
 	return nil
 }
 
 // compareListsByIdentifier compares lists matching by identifier field.
-func compareListsByIdentifier(path string, from, to []interface{}, opts *Options) []Difference {
+func compareListsByIdentifier(path string, from, to []any, opts *Options) []Difference {
 	var diffs []Difference
 
 	// Build index of from items by identifier, preserving order
-	fromIndex := make(map[interface{}]int)
-	fromIDs := make([]interface{}, 0)
+	fromIndex := make(map[any]int)
+	fromIDs := make([]any, 0)
 	fromNoID := make([]int, 0)
 	for i, item := range from {
 		id := getIdentifier(item, opts)
@@ -452,7 +452,7 @@ func compareListsByIdentifier(path string, from, to []interface{}, opts *Options
 	}
 
 	// Build index of to items by identifier.
-	toIndex := make(map[interface{}]int)
+	toIndex := make(map[any]int)
 	toNoID := make([]int, 0)
 	toIDCount := 0
 	for i, item := range to {
@@ -470,7 +470,7 @@ func compareListsByIdentifier(path string, from, to []interface{}, opts *Options
 	hasUniqueIDs := len(fromIDs) == len(fromIndex) && len(toIndex) == toIDCount
 	if hasUniqueIDs && (opts == nil || !opts.IgnoreOrderChanges) {
 		// Collect identifiers that exist in both, in from-order
-		var commonFromOrder []interface{}
+		var commonFromOrder []any
 		for _, id := range fromIDs {
 			if _, ok := toIndex[id]; ok {
 				commonFromOrder = append(commonFromOrder, id)
@@ -482,7 +482,7 @@ func compareListsByIdentifier(path string, from, to []interface{}, opts *Options
 			// Collect (toIdx, id) pairs for common IDs, then sort by toIdx
 			type idxID struct {
 				idx int
-				id  interface{}
+				id  any
 			}
 			var toSorted []idxID
 			for _, id := range commonFromOrder {
@@ -502,7 +502,7 @@ func compareListsByIdentifier(path string, from, to []interface{}, opts *Options
 			}
 
 			if orderChanged {
-				toOrder := make([]interface{}, len(toSorted))
+				toOrder := make([]any, len(toSorted))
 				for i, s := range toSorted {
 					toOrder[i] = s.id
 				}
@@ -595,7 +595,7 @@ func compareListsByIdentifier(path string, from, to []interface{}, opts *Options
 }
 
 // equalValues compares two scalar values for equality.
-func equalValues(from, to interface{}, opts *Options) bool {
+func equalValues(from, to any, opts *Options) bool {
 	// Handle whitespace comparison
 	if opts != nil && opts.IgnoreWhitespaceChanges {
 		if fromStr, ok := from.(string); ok {
@@ -609,7 +609,7 @@ func equalValues(from, to interface{}, opts *Options) bool {
 }
 
 // deepEqual compares two values deeply with options.
-func deepEqual(from, to interface{}, opts *Options) bool {
+func deepEqual(from, to any, opts *Options) bool {
 	// Handle nil
 	if from == nil && to == nil {
 		return true
@@ -638,9 +638,9 @@ func deepEqual(from, to interface{}, opts *Options) bool {
 		}
 		return true
 
-	case map[string]interface{}:
-		// Type-equality guard above ensures to is also map[string]interface{}
-		toMap := to.(map[string]interface{})
+	case map[string]any:
+		// Type-equality guard above ensures to is also map[string]any
+		toMap := to.(map[string]any)
 		if len(fromVal) != len(toMap) {
 			return false
 		}
@@ -652,8 +652,8 @@ func deepEqual(from, to interface{}, opts *Options) bool {
 		}
 		return true
 
-	case []interface{}:
-		toVal := to.([]interface{})
+	case []any:
+		toVal := to.([]any)
 		if len(fromVal) != len(toVal) {
 			return false
 		}

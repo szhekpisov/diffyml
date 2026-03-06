@@ -5,15 +5,15 @@ import (
 	"testing"
 )
 
-// Tests for code paths that handle map[string]interface{} values.
+// Tests for code paths that handle map[string]any values.
 // The parser always produces *OrderedMap, but these branches exist as
 // defensive handling for direct callers. We test them to kill gremlins mutants.
 
-// --- compareNodes with map[string]interface{} ---
+// --- compareNodes with map[string]any ---
 
 func TestCompareNodes_PlainMaps_Equal(t *testing.T) {
-	from := map[string]interface{}{"a": "1", "b": "2"}
-	to := map[string]interface{}{"a": "1", "b": "2"}
+	from := map[string]any{"a": "1", "b": "2"}
+	to := map[string]any{"a": "1", "b": "2"}
 
 	diffs := compareNodes("root", from, to, nil)
 	if len(diffs) != 0 {
@@ -22,8 +22,8 @@ func TestCompareNodes_PlainMaps_Equal(t *testing.T) {
 }
 
 func TestCompareNodes_PlainMaps_Modified(t *testing.T) {
-	from := map[string]interface{}{"a": "1", "b": "2"}
-	to := map[string]interface{}{"a": "1", "b": "changed"}
+	from := map[string]any{"a": "1", "b": "2"}
+	to := map[string]any{"a": "1", "b": "changed"}
 
 	diffs := compareNodes("root", from, to, nil)
 	if len(diffs) != 1 {
@@ -38,8 +38,8 @@ func TestCompareNodes_PlainMaps_Modified(t *testing.T) {
 }
 
 func TestCompareNodes_PlainMaps_Added(t *testing.T) {
-	from := map[string]interface{}{"a": "1"}
-	to := map[string]interface{}{"a": "1", "b": "2"}
+	from := map[string]any{"a": "1"}
+	to := map[string]any{"a": "1", "b": "2"}
 
 	diffs := compareNodes("root", from, to, nil)
 	if len(diffs) != 1 {
@@ -51,8 +51,8 @@ func TestCompareNodes_PlainMaps_Added(t *testing.T) {
 }
 
 func TestCompareNodes_PlainMaps_Removed(t *testing.T) {
-	from := map[string]interface{}{"a": "1", "b": "2"}
-	to := map[string]interface{}{"a": "1"}
+	from := map[string]any{"a": "1", "b": "2"}
+	to := map[string]any{"a": "1"}
 
 	diffs := compareNodes("root", from, to, nil)
 	if len(diffs) != 1 {
@@ -64,11 +64,11 @@ func TestCompareNodes_PlainMaps_Removed(t *testing.T) {
 }
 
 func TestCompareNodes_PlainMaps_Nested(t *testing.T) {
-	from := map[string]interface{}{
-		"parent": map[string]interface{}{"child": "old"},
+	from := map[string]any{
+		"parent": map[string]any{"child": "old"},
 	}
-	to := map[string]interface{}{
-		"parent": map[string]interface{}{"child": "new"},
+	to := map[string]any{
+		"parent": map[string]any{"child": "new"},
 	}
 
 	diffs := compareNodes("", from, to, nil)
@@ -80,11 +80,11 @@ func TestCompareNodes_PlainMaps_Nested(t *testing.T) {
 	}
 }
 
-// --- deepEqual with map[string]interface{} ---
+// --- deepEqual with map[string]any ---
 
 func TestDeepEqual_PlainMaps_Equal(t *testing.T) {
-	a := map[string]interface{}{"x": "1", "y": "2"}
-	b := map[string]interface{}{"x": "1", "y": "2"}
+	a := map[string]any{"x": "1", "y": "2"}
+	b := map[string]any{"x": "1", "y": "2"}
 
 	if !deepEqual(a, b, nil) {
 		t.Error("expected equal plain maps to be deepEqual")
@@ -92,8 +92,8 @@ func TestDeepEqual_PlainMaps_Equal(t *testing.T) {
 }
 
 func TestDeepEqual_PlainMaps_DifferentValues(t *testing.T) {
-	a := map[string]interface{}{"x": "1"}
-	b := map[string]interface{}{"x": "2"}
+	a := map[string]any{"x": "1"}
+	b := map[string]any{"x": "2"}
 
 	if deepEqual(a, b, nil) {
 		t.Error("expected different plain maps to not be deepEqual")
@@ -101,8 +101,8 @@ func TestDeepEqual_PlainMaps_DifferentValues(t *testing.T) {
 }
 
 func TestDeepEqual_PlainMaps_DifferentKeys(t *testing.T) {
-	a := map[string]interface{}{"x": "1"}
-	b := map[string]interface{}{"y": "1"}
+	a := map[string]any{"x": "1"}
+	b := map[string]any{"y": "1"}
 
 	if deepEqual(a, b, nil) {
 		t.Error("expected maps with different keys to not be deepEqual")
@@ -110,8 +110,8 @@ func TestDeepEqual_PlainMaps_DifferentKeys(t *testing.T) {
 }
 
 func TestDeepEqual_PlainMaps_DifferentLengths(t *testing.T) {
-	a := map[string]interface{}{"x": "1"}
-	b := map[string]interface{}{"x": "1", "y": "2"}
+	a := map[string]any{"x": "1"}
+	b := map[string]any{"x": "1", "y": "2"}
 
 	if deepEqual(a, b, nil) {
 		t.Error("expected maps with different lengths to not be deepEqual")
@@ -119,8 +119,8 @@ func TestDeepEqual_PlainMaps_DifferentLengths(t *testing.T) {
 }
 
 func TestDeepEqual_PlainMaps_Nested(t *testing.T) {
-	a := map[string]interface{}{"m": map[string]interface{}{"k": "v"}}
-	b := map[string]interface{}{"m": map[string]interface{}{"k": "v"}}
+	a := map[string]any{"m": map[string]any{"k": "v"}}
+	b := map[string]any{"m": map[string]any{"k": "v"}}
 
 	if !deepEqual(a, b, nil) {
 		t.Error("expected nested equal plain maps to be deepEqual")
@@ -128,8 +128,8 @@ func TestDeepEqual_PlainMaps_Nested(t *testing.T) {
 }
 
 func TestDeepEqual_PlainMaps_NestedDifferent(t *testing.T) {
-	a := map[string]interface{}{"m": map[string]interface{}{"k": "v1"}}
-	b := map[string]interface{}{"m": map[string]interface{}{"k": "v2"}}
+	a := map[string]any{"m": map[string]any{"k": "v1"}}
+	b := map[string]any{"m": map[string]any{"k": "v2"}}
 
 	if deepEqual(a, b, nil) {
 		t.Error("expected nested different plain maps to not be deepEqual")
@@ -139,8 +139,8 @@ func TestDeepEqual_PlainMaps_NestedDifferent(t *testing.T) {
 // --- compareListsPositional: added/removed items ---
 
 func TestCompareListsPositional_ItemsAdded(t *testing.T) {
-	from := []interface{}{"a"}
-	to := []interface{}{"a", "b", "c"}
+	from := []any{"a"}
+	to := []any{"a", "b", "c"}
 
 	diffs := compareListsPositional("list", from, to, nil)
 
@@ -156,8 +156,8 @@ func TestCompareListsPositional_ItemsAdded(t *testing.T) {
 }
 
 func TestCompareListsPositional_ItemsRemoved(t *testing.T) {
-	from := []interface{}{"a", "b", "c"}
-	to := []interface{}{"a"}
+	from := []any{"a", "b", "c"}
+	to := []any{"a"}
 
 	diffs := compareListsPositional("list", from, to, nil)
 
@@ -173,8 +173,8 @@ func TestCompareListsPositional_ItemsRemoved(t *testing.T) {
 }
 
 func TestCompareListsPositional_BothAddedAndRemoved(t *testing.T) {
-	from := []interface{}{"a", "b"}
-	to := []interface{}{"x", "y", "z"}
+	from := []any{"a", "b"}
+	to := []any{"x", "y", "z"}
 
 	diffs := compareListsPositional("list", from, to, nil)
 
@@ -195,7 +195,7 @@ func TestCompareListsPositional_BothAddedAndRemoved(t *testing.T) {
 	}
 }
 
-// --- detailed_formatter with map[string]interface{} ---
+// --- detailed_formatter with map[string]any ---
 
 func TestDetailedFormatter_PlainMapValue(t *testing.T) {
 	diffs := []Difference{
@@ -203,7 +203,7 @@ func TestDetailedFormatter_PlainMapValue(t *testing.T) {
 			Path: "items.0",
 			Type: DiffAdded,
 			From: nil,
-			To:   map[string]interface{}{"name": "test", "value": "123"},
+			To:   map[string]any{"name": "test", "value": "123"},
 		},
 	}
 
@@ -217,14 +217,14 @@ func TestDetailedFormatter_PlainMapValue(t *testing.T) {
 }
 
 func TestDetailedFormatter_PlainMapNested(t *testing.T) {
-	// Exercises renderFirstKeyValueYAML with map[string]interface{} val (line 291-295)
+	// Exercises renderFirstKeyValueYAML with map[string]any val (line 291-295)
 	diffs := []Difference{
 		{
 			Path: "items.0",
 			Type: DiffAdded,
 			From: nil,
-			To: map[string]interface{}{
-				"spec": map[string]interface{}{"replicas": 3, "image": "nginx"},
+			To: map[string]any{
+				"spec": map[string]any{"replicas": 3, "image": "nginx"},
 				"meta": "simple",
 			},
 		},
@@ -244,7 +244,7 @@ func TestDetailedFormatter_PlainMapRemoved(t *testing.T) {
 		{
 			Path: "items.0",
 			Type: DiffRemoved,
-			From: map[string]interface{}{"key": "val"},
+			From: map[string]any{"key": "val"},
 			To:   nil,
 		},
 	}
@@ -265,7 +265,7 @@ func TestDetailedFormatter_PlainMapWithMultilineValue(t *testing.T) {
 			Path: "items.0",
 			Type: DiffAdded,
 			From: nil,
-			To: map[string]interface{}{
+			To: map[string]any{
 				"config": "line1\nline2\nline3",
 			},
 		},

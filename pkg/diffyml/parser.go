@@ -1,6 +1,6 @@
 // parser.go - YAML parsing wrapper.
 //
-// Wraps gopkg.in/yaml.v3 to parse YAML content into Go interface{} values.
+// Wraps gopkg.in/yaml.v3 to parse YAML content into Go any values.
 // Handles multi-document YAML files (--- separators).
 // Key types: ParseError (with line/column info), DocumentParser (streaming).
 package diffyml
@@ -33,12 +33,12 @@ func NewDocumentParser(content []byte) *DocumentParser {
 // Next returns the next document, or io.EOF when no more documents.
 // The returned document can be nil (for empty YAML documents).
 // After Next returns io.EOF, subsequent calls will also return io.EOF.
-func (p *DocumentParser) Next() (interface{}, error) {
+func (p *DocumentParser) Next() (any, error) {
 	if p.done {
 		return nil, io.EOF
 	}
 
-	var doc interface{}
+	var doc any
 	err := p.decoder.Decode(&doc)
 	if err == io.EOF {
 		p.done = true
@@ -70,7 +70,7 @@ func (p *DocumentParser) Done() bool {
 // --- yaml.Node based parsing for reduced memory usage ---
 
 // parseNodes parses YAML content into a slice of yaml.Node trees.
-// This uses less memory than parsing to interface{} because it avoids
+// This uses less memory than parsing to any because it avoids
 // creating Go maps and slices for each YAML structure.
 func parseNodes(content []byte) ([]*yaml.Node, error) {
 	var nodes []*yaml.Node
@@ -178,11 +178,11 @@ func wrapParseError(err error) error {
 }
 
 // parse parses YAML content into a slice of documents.
-// Each document is represented as interface{} which can be:
+// Each document is represented as any which can be:
 // - *OrderedMap for mappings (preserves field order)
-// - []interface{} for sequences
+// - []any for sequences
 // - scalar values (string, int, float64, bool, nil)
-func parse(content []byte) ([]interface{}, error) {
+func parse(content []byte) ([]any, error) {
 	// Use ParseWithOrder to preserve field order
 	docs, err := ParseWithOrder(content)
 	if err != nil {

@@ -246,9 +246,9 @@ func (f *CompactFormatter) formatValuesInline(sb *strings.Builder, diff Differen
 
 // formatValue converts a value to string.
 // Shows full values without truncation.
-// Structured types (*OrderedMap, map[string]interface{}, []interface{}) are
+// Structured types (*OrderedMap, map[string]any, []any) are
 // serialized to inline YAML instead of Go's default %v representation.
-func formatValue(val interface{}) string {
+func formatValue(val any) string {
 	if val == nil {
 		return "<nil>"
 	}

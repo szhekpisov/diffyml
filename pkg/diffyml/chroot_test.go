@@ -5,9 +5,9 @@ import (
 )
 
 func TestNavigateToPath_SimplePath(t *testing.T) {
-	doc := map[string]interface{}{
-		"level1": map[string]interface{}{
-			"level2": map[string]interface{}{
+	doc := map[string]any{
+		"level1": map[string]any{
+			"level2": map[string]any{
 				"value": "found",
 			},
 		},
@@ -18,7 +18,7 @@ func TestNavigateToPath_SimplePath(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	m, ok := result.(map[string]interface{})
+	m, ok := result.(map[string]any)
 	if !ok {
 		t.Fatalf("expected map, got %T", result)
 	}
@@ -28,7 +28,7 @@ func TestNavigateToPath_SimplePath(t *testing.T) {
 }
 
 func TestNavigateToPath_SingleLevel(t *testing.T) {
-	doc := map[string]interface{}{
+	doc := map[string]any{
 		"data": "hello",
 	}
 
@@ -43,7 +43,7 @@ func TestNavigateToPath_SingleLevel(t *testing.T) {
 }
 
 func TestNavigateToPath_EmptyPath(t *testing.T) {
-	doc := map[string]interface{}{
+	doc := map[string]any{
 		"key": "value",
 	}
 
@@ -53,7 +53,7 @@ func TestNavigateToPath_EmptyPath(t *testing.T) {
 	}
 
 	// Empty path returns original document
-	m, ok := result.(map[string]interface{})
+	m, ok := result.(map[string]any)
 	if !ok {
 		t.Fatalf("expected map, got %T", result)
 	}
@@ -63,7 +63,7 @@ func TestNavigateToPath_EmptyPath(t *testing.T) {
 }
 
 func TestNavigateToPath_PathNotFound(t *testing.T) {
-	doc := map[string]interface{}{
+	doc := map[string]any{
 		"existing": "value",
 	}
 
@@ -74,7 +74,7 @@ func TestNavigateToPath_PathNotFound(t *testing.T) {
 }
 
 func TestNavigateToPath_PathThroughScalar(t *testing.T) {
-	doc := map[string]interface{}{
+	doc := map[string]any{
 		"scalar": "value",
 	}
 
@@ -85,11 +85,11 @@ func TestNavigateToPath_PathThroughScalar(t *testing.T) {
 }
 
 func TestNavigateToPath_ListIndex(t *testing.T) {
-	doc := map[string]interface{}{
-		"items": []interface{}{
-			map[string]interface{}{"name": "first"},
-			map[string]interface{}{"name": "second"},
-			map[string]interface{}{"name": "third"},
+	doc := map[string]any{
+		"items": []any{
+			map[string]any{"name": "first"},
+			map[string]any{"name": "second"},
+			map[string]any{"name": "third"},
 		},
 	}
 
@@ -98,7 +98,7 @@ func TestNavigateToPath_ListIndex(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	m, ok := result.(map[string]interface{})
+	m, ok := result.(map[string]any)
 	if !ok {
 		t.Fatalf("expected map, got %T", result)
 	}
@@ -108,8 +108,8 @@ func TestNavigateToPath_ListIndex(t *testing.T) {
 }
 
 func TestNavigateToPath_ListIndexOutOfBounds(t *testing.T) {
-	doc := map[string]interface{}{
-		"items": []interface{}{"a", "b"},
+	doc := map[string]any{
+		"items": []any{"a", "b"},
 	}
 
 	_, err := navigateToPath(doc, "items[5]")
@@ -119,8 +119,8 @@ func TestNavigateToPath_ListIndexOutOfBounds(t *testing.T) {
 }
 
 func TestNavigateToPath_InvalidListIndex(t *testing.T) {
-	doc := map[string]interface{}{
-		"items": []interface{}{"a", "b"},
+	doc := map[string]any{
+		"items": []any{"a", "b"},
 	}
 
 	_, err := navigateToPath(doc, "items[foo]")
@@ -130,8 +130,8 @@ func TestNavigateToPath_InvalidListIndex(t *testing.T) {
 }
 
 func TestNavigateToPath_InvalidPathSyntax(t *testing.T) {
-	doc := map[string]interface{}{
-		"items": []interface{}{"a", "b"},
+	doc := map[string]any{
+		"items": []any{"a", "b"},
 	}
 
 	_, err := navigateToPath(doc, "items[0")
@@ -141,10 +141,10 @@ func TestNavigateToPath_InvalidPathSyntax(t *testing.T) {
 }
 
 func TestNavigateToPath_NestedListAccess(t *testing.T) {
-	doc := map[string]interface{}{
-		"data": []interface{}{
-			map[string]interface{}{
-				"nested": []interface{}{"x", "y", "z"},
+	doc := map[string]any{
+		"data": []any{
+			map[string]any{
+				"nested": []any{"x", "y", "z"},
 			},
 		},
 	}
@@ -160,10 +160,10 @@ func TestNavigateToPath_NestedListAccess(t *testing.T) {
 }
 
 func TestApplyChroot_ToList(t *testing.T) {
-	doc := map[string]interface{}{
-		"items": []interface{}{
-			map[string]interface{}{"name": "one"},
-			map[string]interface{}{"name": "two"},
+	doc := map[string]any{
+		"items": []any{
+			map[string]any{"name": "one"},
+			map[string]any{"name": "two"},
 		},
 	}
 
@@ -177,7 +177,7 @@ func TestApplyChroot_ToList(t *testing.T) {
 		t.Errorf("expected 1 document, got %d", len(result))
 	}
 
-	list, ok := result[0].([]interface{})
+	list, ok := result[0].([]any)
 	if !ok {
 		t.Fatalf("expected list, got %T", result[0])
 	}
@@ -187,11 +187,11 @@ func TestApplyChroot_ToList(t *testing.T) {
 }
 
 func TestApplyChroot_ListToDocuments(t *testing.T) {
-	doc := map[string]interface{}{
-		"items": []interface{}{
-			map[string]interface{}{"name": "one"},
-			map[string]interface{}{"name": "two"},
-			map[string]interface{}{"name": "three"},
+	doc := map[string]any{
+		"items": []any{
+			map[string]any{"name": "one"},
+			map[string]any{"name": "two"},
+			map[string]any{"name": "three"},
 		},
 	}
 
@@ -206,7 +206,7 @@ func TestApplyChroot_ListToDocuments(t *testing.T) {
 	}
 
 	for i, expected := range []string{"one", "two", "three"} {
-		m, ok := result[i].(map[string]interface{})
+		m, ok := result[i].(map[string]any)
 		if !ok {
 			t.Fatalf("document %d: expected map, got %T", i, result[i])
 		}
@@ -217,8 +217,8 @@ func TestApplyChroot_ListToDocuments(t *testing.T) {
 }
 
 func TestApplyChroot_NonListWithListToDocuments(t *testing.T) {
-	doc := map[string]interface{}{
-		"data": map[string]interface{}{
+	doc := map[string]any{
+		"data": map[string]any{
 			"key": "value",
 		},
 	}
@@ -235,7 +235,7 @@ func TestApplyChroot_NonListWithListToDocuments(t *testing.T) {
 }
 
 func TestApplyChroot_EmptyPath(t *testing.T) {
-	doc := map[string]interface{}{
+	doc := map[string]any{
 		"key": "value",
 	}
 
@@ -250,7 +250,7 @@ func TestApplyChroot_EmptyPath(t *testing.T) {
 }
 
 func TestApplyChroot_PathNotFound(t *testing.T) {
-	doc := map[string]interface{}{
+	doc := map[string]any{
 		"existing": "value",
 	}
 
@@ -265,8 +265,8 @@ func TestApplyChroot_PathNotFound(t *testing.T) {
 func TestNavigateToPath_IndexAtExactLength(t *testing.T) {
 	// chroot.go:53 — `seg.index >= len(list)` → `> len(list)`
 	// If mutated, accessing index == len(list) would panic instead of returning error.
-	doc := map[string]interface{}{
-		"items": []interface{}{"a", "b", "c"},
+	doc := map[string]any{
+		"items": []any{"a", "b", "c"},
 	}
 
 	// Index 3 is exactly len(list), should return error not panic
@@ -313,7 +313,7 @@ func TestSplitPath_TrailingDot(t *testing.T) {
 func TestNavigateToPath_BareIndex(t *testing.T) {
 	// chroot.go:117 — bare index path [0] without key prefix
 	// If idx >= 0 is mutated to idx > 0, [0] would be treated as simple key
-	doc := []interface{}{"first", "second", "third"}
+	doc := []any{"first", "second", "third"}
 
 	result, err := navigateToPath(doc, "[0]")
 	if err != nil {

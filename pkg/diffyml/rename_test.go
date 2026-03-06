@@ -79,7 +79,7 @@ func TestSerializeDocument_NestedSequence(t *testing.T) {
 
 	doc := NewOrderedMap()
 	doc.Keys = append(doc.Keys, "items")
-	doc.Values["items"] = []interface{}{item1, item2}
+	doc.Values["items"] = []any{item1, item2}
 
 	data := serializeDocument(doc)
 
@@ -173,8 +173,8 @@ func TestDetectRenames_BasicMatch(t *testing.T) {
 	fromDoc := mkK8sConfigMap("app-config-abc123", []string{"key1"})
 	toDoc := mkK8sConfigMap("app-config-def456", []string{"key1"})
 
-	from := []interface{}{fromDoc}
-	to := []interface{}{toDoc}
+	from := []any{fromDoc}
+	to := []any{toDoc}
 
 	opts := &Options{DetectRenames: true}
 	matched, remainFrom, remainTo := detectRenames(from, to, []int{0}, []int{0}, opts)
@@ -199,11 +199,11 @@ func TestDetectRenames_GreedyMatching(t *testing.T) {
 	// to[0] has data keys a,b,d → most similar to from[1] (87%) and from[0] (75%)
 	// to[1] has data keys x,y,z → dissimilar to both (below threshold)
 	// Greedy: from[1]→to[0] wins (87% > 75%), from[0] stays unmatched
-	from := []interface{}{
+	from := []any{
 		mkK8sConfigMap("from-0", []string{"a", "b", "c"}),
 		mkK8sConfigMap("from-1", []string{"a", "b", "d"}),
 	}
-	to := []interface{}{
+	to := []any{
 		mkK8sConfigMap("to-0", []string{"a", "b", "d"}),
 		mkK8sConfigMap("to-1", []string{"x", "y", "z"}),
 	}
@@ -229,10 +229,10 @@ func TestDetectRenames_GreedyMatching(t *testing.T) {
 
 func TestDetectRenames_BelowThreshold(t *testing.T) {
 	// Documents with mostly different content should not match
-	from := []interface{}{mkK8sConfigMap("from-config", []string{
+	from := []any{mkK8sConfigMap("from-config", []string{
 		"key1", "key2", "key3", "key4", "key5", "key6", "key7", "key8",
 	})}
-	to := []interface{}{mkK8sConfigMap("to-config", []string{
+	to := []any{mkK8sConfigMap("to-config", []string{
 		"x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8",
 	})}
 
@@ -252,8 +252,8 @@ func TestDetectRenames_BelowThreshold(t *testing.T) {
 
 func TestDetectRenames_ExceedsLimit(t *testing.T) {
 	// 51 documents exceeds rename limit of 50
-	from := make([]interface{}, 51)
-	to := make([]interface{}, 51)
+	from := make([]any, 51)
+	to := make([]any, 51)
 	unmatchedFrom := make([]int, 51)
 	unmatchedTo := make([]int, 51)
 	for i := 0; i < 51; i++ {
@@ -278,8 +278,8 @@ func TestDetectRenames_ExceedsLimit(t *testing.T) {
 }
 
 func TestDetectRenames_Disabled(t *testing.T) {
-	from := []interface{}{mkK8sConfigMap("a", nil)}
-	to := []interface{}{mkK8sConfigMap("b", nil)}
+	from := []any{mkK8sConfigMap("a", nil)}
+	to := []any{mkK8sConfigMap("b", nil)}
 
 	opts := &Options{DetectRenames: false}
 	matched, remainFrom, remainTo := detectRenames(from, to, []int{0}, []int{0}, opts)
@@ -296,8 +296,8 @@ func TestDetectRenames_Disabled(t *testing.T) {
 }
 
 func TestDetectRenames_EmptyUnmatched(t *testing.T) {
-	from := []interface{}{mkK8sConfigMap("a", nil)}
-	to := []interface{}{mkK8sConfigMap("b", nil)}
+	from := []any{mkK8sConfigMap("a", nil)}
+	to := []any{mkK8sConfigMap("b", nil)}
 	opts := &Options{DetectRenames: true}
 
 	// Empty from side
@@ -333,8 +333,8 @@ func TestDetectRenames_NonK8sFiltered(t *testing.T) {
 	nonK8sDoc.Values["someKey"] = "someValue"
 
 	// Index 0 = non-K8s, Index 1 = K8s
-	from := []interface{}{nonK8sDoc, k8sDoc}
-	to := []interface{}{nonK8sDoc, k8sDoc}
+	from := []any{nonK8sDoc, k8sDoc}
+	to := []any{nonK8sDoc, k8sDoc}
 
 	opts := &Options{DetectRenames: true}
 	matched, remainFrom, remainTo := detectRenames(from, to, []int{0, 1}, []int{0, 1}, opts)
@@ -370,7 +370,7 @@ func TestDetectRenames_NonK8sFiltered(t *testing.T) {
 }
 
 func TestSerializeDocument_MapStringInterface(t *testing.T) {
-	doc := map[string]interface{}{
+	doc := map[string]any{
 		"beta":  "two",
 		"alpha": "one",
 	}
@@ -431,8 +431,8 @@ func TestDetectRenames_SizeRatioRejection(t *testing.T) {
 		"k", "l", "m", "n", "o", "p", "q", "r", "s", "t",
 	})
 
-	from := []interface{}{smallDoc}
-	to := []interface{}{largeDoc}
+	from := []any{smallDoc}
+	to := []any{largeDoc}
 
 	opts := &Options{DetectRenames: true}
 	matched, remainFrom, remainTo := detectRenames(from, to, []int{0}, []int{0}, opts)
@@ -450,11 +450,11 @@ func TestDetectRenames_SizeRatioRejection(t *testing.T) {
 
 func TestDetectRenames_SortTiebreaker(t *testing.T) {
 	// All pairs have the same high score, so tiebreaker (ascending fromIdx, toIdx) decides.
-	from := []interface{}{
+	from := []any{
 		mkK8sConfigMap("from-0", []string{"shared1", "shared2", "shared3"}),
 		mkK8sConfigMap("from-1", []string{"shared1", "shared2", "shared3"}),
 	}
-	to := []interface{}{
+	to := []any{
 		mkK8sConfigMap("to-0", []string{"shared1", "shared2", "shared3"}),
 		mkK8sConfigMap("to-1", []string{"shared1", "shared2", "shared3"}),
 	}
@@ -489,8 +489,8 @@ func TestNewSimilarityIndex_NoTrailingNewline(t *testing.T) {
 
 func TestDetectRenames_ExactlyAtLimit(t *testing.T) {
 	// Exactly 50 documents should be allowed (limit is >50, not >=50)
-	from := make([]interface{}, 50)
-	to := make([]interface{}, 50)
+	from := make([]any, 50)
+	to := make([]any, 50)
 	unmatchedFrom := make([]int, 50)
 	unmatchedTo := make([]int, 50)
 	for i := 0; i < 50; i++ {
@@ -511,8 +511,8 @@ func TestDetectRenames_ExactlyAtLimit(t *testing.T) {
 
 func TestDetectRenames_AsymmetricLimitFromSmall(t *testing.T) {
 	// k8sFrom=1, k8sTo=51 — max is 51, exceeds limit
-	from := make([]interface{}, 1)
-	to := make([]interface{}, 51)
+	from := make([]any, 1)
+	to := make([]any, 51)
 	from[0] = mkMinK8sDoc("from-0")
 	for i := 0; i < 51; i++ {
 		to[i] = mkMinK8sDoc(fmt.Sprintf("to-%d", i))
@@ -566,8 +566,8 @@ func TestDetectRenames_ScoreExactlyAtThreshold(t *testing.T) {
 		return doc
 	}
 
-	from := []interface{}{mkDoc("aaa-from", "ns-from")}
-	to := []interface{}{mkDoc("bbb-to", "ns-to")}
+	from := []any{mkDoc("aaa-from", "ns-from")}
+	to := []any{mkDoc("bbb-to", "ns-to")}
 
 	// Verify the score is indeed 60
 	fromData := serializeDocument(from[0])
@@ -605,8 +605,8 @@ func TestDetectRenames_SizeRatioSwapOrder(t *testing.T) {
 	smallDoc := mkK8sConfigMap("small", []string{"a"})
 
 	// from=large, to=small (opposite order from SizeRatioRejection test)
-	from := []interface{}{largeDoc}
-	to := []interface{}{smallDoc}
+	from := []any{largeDoc}
+	to := []any{smallDoc}
 
 	opts := &Options{DetectRenames: true}
 	matched, remainFrom, remainTo := detectRenames(from, to, []int{0}, []int{0}, opts)
@@ -667,8 +667,8 @@ func TestDetectRenames_SizeRatioBypassGuard(t *testing.T) {
 			similarity, renameScoreThreshold)
 	}
 
-	from := []interface{}{smallDoc}
-	to := []interface{}{largeDoc}
+	from := []any{smallDoc}
+	to := []any{largeDoc}
 	opts := &Options{DetectRenames: true}
 	matched, _, _ := detectRenames(from, to, []int{0}, []int{0}, opts)
 
@@ -690,8 +690,8 @@ func TestDetectRenames_SortTiebreaker_LargeInput(t *testing.T) {
 	// exercised instead of insertionSort, and verify deterministic assignment.
 
 	n := 5
-	from := make([]interface{}, n)
-	to := make([]interface{}, n)
+	from := make([]any, n)
+	to := make([]any, n)
 	unmatchedFrom := make([]int, n)
 	unmatchedTo := make([]int, n)
 
@@ -805,8 +805,8 @@ func TestDetectRenames_SizeRatioBoundaryExact(t *testing.T) {
 	}
 
 	// Size ratio == threshold → original code passes (60 < 60 = false), mutant rejects (60 <= 60 = true)
-	from := []interface{}{smallDoc}
-	to := []interface{}{largeDoc}
+	from := []any{smallDoc}
+	to := []any{largeDoc}
 	opts := &Options{DetectRenames: true}
 	matched, remainFrom, remainTo := detectRenames(from, to, []int{0}, []int{0}, opts)
 

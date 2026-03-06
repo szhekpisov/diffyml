@@ -15,7 +15,7 @@ func TestExtractPathOrder_EmptyPrefix(t *testing.T) {
 	om.Values["beta"] = "val1"
 	om.Values["alpha"] = "val2"
 
-	docs := []interface{}{om}
+	docs := []any{om}
 	opts := &Options{}
 	pathOrder := extractPathOrder(docs, nil, opts)
 
@@ -44,7 +44,7 @@ func TestExtractPathOrder_IndexIncrement(t *testing.T) {
 	om.Values["second"] = "b"
 	om.Values["third"] = "c"
 
-	docs := []interface{}{om}
+	docs := []any{om}
 	opts := &Options{}
 	pathOrder := extractPathOrder(docs, nil, opts)
 
@@ -62,19 +62,19 @@ func TestExtractPathOrder_IndexIncrement(t *testing.T) {
 }
 
 func TestExtractPathOrder_ListIndexIncrement(t *testing.T) {
-	// diffyml.go:176 — specifically for list items ([]interface{} branch)
+	// diffyml.go:176 — specifically for list items ([]any branch)
 	// If index-- instead of index++, the list prefix "items" gets index 0,
 	// then index becomes -1, making subsequent paths get negative indices.
 	// This causes the list prefix to sort AFTER its own items, breaking order.
 	//
 	// Test: "items" prefix should have a LOWER index than its first child "items.0"
-	list := []interface{}{"item0", "item1"}
+	list := []any{"item0", "item1"}
 
 	om := NewOrderedMap()
 	om.Keys = []string{"items"}
 	om.Values["items"] = list
 
-	docs := []interface{}{om}
+	docs := []any{om}
 	opts := &Options{}
 	pathOrder := extractPathOrder(docs, nil, opts)
 

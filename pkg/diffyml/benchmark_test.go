@@ -208,10 +208,10 @@ func buildOrderedMapModified(n int) *OrderedMap {
 	return om
 }
 
-// buildServiceList creates a parsed []interface{} list with n named items
+// buildServiceList creates a parsed []any list with n named items
 // for direct use in compareLists benchmarks.
-func buildServiceList(n int) []interface{} {
-	list := make([]interface{}, n)
+func buildServiceList(n int) []any {
+	list := make([]any, n)
 	for i := 0; i < n; i++ {
 		om := NewOrderedMap()
 		om.Keys = append(om.Keys, "name", "version", "replicas")
@@ -224,13 +224,13 @@ func buildServiceList(n int) []interface{} {
 }
 
 // buildServiceListModified creates a modified list for compareLists benchmarks.
-func buildServiceListModified(n int) []interface{} {
+func buildServiceListModified(n int) []any {
 	removed := 2
 	added := n / 10
 	if added < 1 {
 		added = 1
 	}
-	list := make([]interface{}, 0, n-removed+added)
+	list := make([]any, 0, n-removed+added)
 	for i := removed; i < n; i++ {
 		om := NewOrderedMap()
 		om.Keys = append(om.Keys, "name", "version", "replicas")
@@ -255,8 +255,8 @@ func buildServiceListModified(n int) []interface{} {
 }
 
 // buildScalarList creates a list of n scalar values (no identifiers).
-func buildScalarList(n int) []interface{} {
-	list := make([]interface{}, n)
+func buildScalarList(n int) []any {
+	list := make([]any, n)
 	for i := 0; i < n; i++ {
 		list[i] = fmt.Sprintf("item-%d", i)
 	}
@@ -264,13 +264,13 @@ func buildScalarList(n int) []interface{} {
 }
 
 // buildScalarListModified creates a modified scalar list for unordered comparison.
-func buildScalarListModified(n int) []interface{} {
+func buildScalarListModified(n int) []any {
 	removed := 2
 	added := n / 10
 	if added < 1 {
 		added = 1
 	}
-	list := make([]interface{}, 0, n-removed+added)
+	list := make([]any, 0, n-removed+added)
 	for i := removed; i < n; i++ {
 		list = append(list, fmt.Sprintf("item-%d", i))
 	}

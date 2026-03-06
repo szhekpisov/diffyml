@@ -15,7 +15,7 @@ func compare(from, to []byte, opts *diffyml.Options) ([]diffyml.Difference, erro
 }
 
 // hasModification checks if there's a modification diff with the given from/to values.
-func hasModification(diffs []diffyml.Difference, from, to interface{}) bool {
+func hasModification(diffs []diffyml.Difference, from, to any) bool {
 	for _, d := range diffs {
 		if d.Type == diffyml.DiffModified {
 			if d.From == from && d.To == to {

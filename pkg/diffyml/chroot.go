@@ -25,7 +25,7 @@ func (e *ChrootError) Error() string {
 // navigateToPath navigates to the specified dot-notation path within a document.
 // Path format: "level1.level2.key" or "items[0].name" for list access.
 // Returns the value at the path, or an error if path doesn't exist.
-func navigateToPath(doc interface{}, path string) (interface{}, error) {
+func navigateToPath(doc any, path string) (any, error) {
 	if path == "" {
 		return doc, nil
 	}
@@ -43,7 +43,7 @@ func navigateToPath(doc interface{}, path string) (interface{}, error) {
 	for _, seg := range segments {
 		if seg.isIndex {
 			// Array index access
-			list, ok := current.([]interface{})
+			list, ok := current.([]any)
 			if !ok {
 				return nil, &ChrootError{
 					Path:    path,
@@ -59,13 +59,13 @@ func navigateToPath(doc interface{}, path string) (interface{}, error) {
 			current = list[seg.index]
 		} else {
 			// Map key access - support both OrderedMap and regular map
-			var val interface{}
+			var val any
 			var exists bool
 
 			switch m := current.(type) {
 			case *OrderedMap:
 				val, exists = m.Values[seg.key]
-			case map[string]interface{}:
+			case map[string]any:
 				val, exists = m[seg.key]
 			default:
 				return nil, &ChrootError{
@@ -188,9 +188,9 @@ func splitPath(path string) ([]string, error) {
 // applyChroot applies chroot path scoping to a document.
 // If listToDocuments is true and the path points to a list,
 // each list item is returned as a separate document.
-func applyChroot(doc interface{}, path string, listToDocuments bool) ([]interface{}, error) {
+func applyChroot(doc any, path string, listToDocuments bool) ([]any, error) {
 	if path == "" {
-		return []interface{}{doc}, nil
+		return []any{doc}, nil
 	}
 
 	result, err := navigateToPath(doc, path)
@@ -199,21 +199,21 @@ func applyChroot(doc interface{}, path string, listToDocuments bool) ([]interfac
 	}
 
 	// Check if result is a list and listToDocuments is enabled
-	if list, ok := result.([]interface{}); ok && listToDocuments {
+	if list, ok := result.([]any); ok && listToDocuments {
 		return list, nil
 	}
 
 	// Return as single document
-	return []interface{}{result}, nil
+	return []any{result}, nil
 }
 
 // applyChrootToDocs applies chroot to multiple documents.
-func applyChrootToDocs(docs []interface{}, path string, listToDocuments bool) ([]interface{}, error) {
+func applyChrootToDocs(docs []any, path string, listToDocuments bool) ([]any, error) {
 	if path == "" {
 		return docs, nil
 	}
 
-	var result []interface{}
+	var result []any
 	for _, doc := range docs {
 		chrootDocs, err := applyChroot(doc, path, listToDocuments)
 		if err != nil {

@@ -13,7 +13,7 @@ func TestDocumentParser(t *testing.T) {
 		name      string
 		input     string
 		wantDocs  int
-		wantFirst interface{} // expected first doc value (nil means nil doc)
+		wantFirst any // expected first doc value (nil means nil doc)
 		wantErr   bool
 	}{
 		{
@@ -49,7 +49,7 @@ func TestDocumentParser(t *testing.T) {
 				t.Fatalf("expected initial doc count 0, got %d", p.DocumentCount())
 			}
 
-			var docs []interface{}
+			var docs []any
 			for {
 				doc, err := p.Next()
 				if err == io.EOF {

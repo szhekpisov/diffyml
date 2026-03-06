@@ -5,12 +5,12 @@ import (
 	"testing"
 )
 
-// getMapValue extracts a value from either *OrderedMap or map[string]interface{}
-func getMapValue(doc interface{}, key string) interface{} {
+// getMapValue extracts a value from either *OrderedMap or map[string]any
+func getMapValue(doc any, key string) any {
 	switch m := doc.(type) {
 	case *OrderedMap:
 		return m.Values[key]
-	case map[string]interface{}:
+	case map[string]any:
 		return m[key]
 	default:
 		return nil
@@ -18,9 +18,9 @@ func getMapValue(doc interface{}, key string) interface{} {
 }
 
 // isMap checks if a value is a map type (OrderedMap or regular map)
-func isMap(val interface{}) bool {
+func isMap(val any) bool {
 	switch val.(type) {
-	case *OrderedMap, map[string]interface{}:
+	case *OrderedMap, map[string]any:
 		return true
 	default:
 		return false
@@ -100,7 +100,7 @@ func TestParse_ListAsRoot(t *testing.T) {
 		t.Errorf("expected 1 document, got %d", len(docs))
 	}
 
-	list, ok := docs[0].([]interface{})
+	list, ok := docs[0].([]any)
 	if !ok {
 		t.Fatalf("expected list, got %T", docs[0])
 	}

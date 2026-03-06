@@ -76,8 +76,8 @@ func TestDetailedFormatter_Snapshot_OrderChange(t *testing.T) {
 
 	diffs := []Difference{
 		{Path: "items", Type: DiffOrderChanged,
-			From: []interface{}{"a", "b"},
-			To:   []interface{}{"b", "a"}},
+			From: []any{"a", "b"},
+			To:   []any{"b", "a"}},
 	}
 
 	output := f.Format(diffs, opts)
@@ -250,7 +250,7 @@ func TestDetailedFormatter_Integration_NoRegressionSnapshots(t *testing.T) {
 		{
 			name: "order change",
 			diffs: []Difference{{Path: "items", Type: DiffOrderChanged,
-				From: []interface{}{"a", "b"}, To: []interface{}{"b", "a"}}},
+				From: []any{"a", "b"}, To: []any{"b", "a"}}},
 			expected: "items\n  ⇆ order changed\n    - a, b\n    + b, a\n\n",
 		},
 		{
@@ -302,8 +302,8 @@ func TestDetailedFormatter_Snapshot_FullComparison(t *testing.T) {
 		{Path: "config.port", Type: DiffModified, From: 8080, To: "8080"},
 		// Order change
 		{Path: "items", Type: DiffOrderChanged,
-			From: []interface{}{"a", "b"},
-			To:   []interface{}{"b", "a"}},
+			From: []any{"a", "b"},
+			To:   []any{"b", "a"}},
 	}
 
 	output := f.Format(diffs, opts)

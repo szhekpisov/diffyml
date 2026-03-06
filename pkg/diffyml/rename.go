@@ -73,7 +73,7 @@ func (s *similarityIndex) score(other *similarityIndex) int {
 
 // serializeDocument converts a parsed YAML document to YAML bytes for similarity comparison.
 // valueToYAMLNode always produces a valid *yaml.Node, so yaml.Marshal cannot fail here.
-func serializeDocument(doc interface{}) []byte {
+func serializeDocument(doc any) []byte {
 	node := valueToYAMLNode(doc)
 	data, _ := yaml.Marshal(node)
 	return data
@@ -87,7 +87,7 @@ type renamePair struct {
 }
 
 // detectRenames finds renamed documents among unmatched K8s resources.
-func detectRenames(from, to []interface{}, unmatchedFrom, unmatchedTo []int, opts *Options) (renameMatched map[int]int, remainingFrom, remainingTo []int) {
+func detectRenames(from, to []any, unmatchedFrom, unmatchedTo []int, opts *Options) (renameMatched map[int]int, remainingFrom, remainingTo []int) {
 	renameMatched = make(map[int]int)
 
 	// Early return if disabled or either list is empty

@@ -275,7 +275,7 @@ func TestDetailedFormatter_OrderChanged(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
-		{Path: "items", Type: DiffOrderChanged, From: []interface{}{"a", "b"}, To: []interface{}{"b", "a"}},
+		{Path: "items", Type: DiffOrderChanged, From: []any{"a", "b"}, To: []any{"b", "a"}},
 	}
 
 	output := f.Format(diffs, opts)
@@ -413,7 +413,7 @@ func TestDetailedFormatter_Pluralize(t *testing.T) {
 
 func TestDetailedFormatter_YamlTypeName(t *testing.T) {
 	tests := []struct {
-		value    interface{}
+		value    any
 		expected string
 	}{
 		{"hello", "string"},
@@ -495,7 +495,7 @@ func TestDetailedFormatter_StructuredListValue(t *testing.T) {
 	f, _ := GetFormatter("detailed")
 	opts := DefaultFormatOptions()
 
-	listVal := []interface{}{"alpha", "beta", "gamma"}
+	listVal := []any{"alpha", "beta", "gamma"}
 
 	diffs := []Difference{
 		{Path: "items.0", Type: DiffAdded, To: listVal},
@@ -544,7 +544,7 @@ func TestDetailedFormatter_NestedListInMap(t *testing.T) {
 	om := NewOrderedMap()
 	om.Keys = append(om.Keys, "name", "ports")
 	om.Values["name"] = "service"
-	om.Values["ports"] = []interface{}{80, 443}
+	om.Values["ports"] = []any{80, 443}
 
 	diffs := []Difference{
 		{Path: "services.0", Type: DiffAdded, To: om},
@@ -564,8 +564,8 @@ func TestDetailedFormatter_RegularMapValue(t *testing.T) {
 	f, _ := GetFormatter("detailed")
 	opts := DefaultFormatOptions()
 
-	// Test with regular map[string]interface{} as well
-	m := map[string]interface{}{
+	// Test with regular map[string]any as well
+	m := map[string]any{
 		"enabled": true,
 	}
 
@@ -725,14 +725,14 @@ func TestDetailedFormatter_YamlTypeName_MapAndList(t *testing.T) {
 		t.Errorf("expected 'map' for *OrderedMap, got %q", yamlTypeName(om))
 	}
 
-	m := map[string]interface{}{"k": "v"}
+	m := map[string]any{"k": "v"}
 	if yamlTypeName(m) != "map" {
-		t.Errorf("expected 'map' for map[string]interface{}, got %q", yamlTypeName(m))
+		t.Errorf("expected 'map' for map[string]any, got %q", yamlTypeName(m))
 	}
 
-	list := []interface{}{"a", "b"}
+	list := []any{"a", "b"}
 	if yamlTypeName(list) != "list" {
-		t.Errorf("expected 'list' for []interface{}, got %q", yamlTypeName(list))
+		t.Errorf("expected 'list' for []any, got %q", yamlTypeName(list))
 	}
 }
 
@@ -758,7 +758,7 @@ func TestStripWhitespace(t *testing.T) {
 
 func TestFormatDetailedValue(t *testing.T) {
 	tests := []struct {
-		input    interface{}
+		input    any
 		expected string
 	}{
 		{nil, "<nil>"},
@@ -845,8 +845,8 @@ func TestDetailedFormatter_OrderChangedWithValues(t *testing.T) {
 
 	diffs := []Difference{
 		{Path: "items", Type: DiffOrderChanged,
-			From: []interface{}{"x", "y", "z"},
-			To:   []interface{}{"z", "y", "x"}},
+			From: []any{"x", "y", "z"},
+			To:   []any{"z", "y", "x"}},
 	}
 
 	output := f.Format(diffs, opts)
@@ -1014,8 +1014,8 @@ func TestDetailedFormatter_TrailingSeparator_OrderChange(t *testing.T) {
 
 	diffs := []Difference{
 		{Path: "items", Type: DiffOrderChanged,
-			From: []interface{}{"a", "b"},
-			To:   []interface{}{"b", "a"}},
+			From: []any{"a", "b"},
+			To:   []any{"b", "a"}},
 	}
 
 	output := f.Format(diffs, opts)
@@ -1075,8 +1075,8 @@ func TestDetailedFormatter_OrderChange_CommaSeparated(t *testing.T) {
 
 	diffs := []Difference{
 		{Path: "items", Type: DiffOrderChanged,
-			From: []interface{}{"a", "b", "c"},
-			To:   []interface{}{"c", "a", "b"}},
+			From: []any{"a", "b", "c"},
+			To:   []any{"c", "a", "b"}},
 	}
 
 	output := f.Format(diffs, opts)
@@ -1095,8 +1095,8 @@ func TestDetailedFormatter_OrderChange_SingleItem(t *testing.T) {
 
 	diffs := []Difference{
 		{Path: "items", Type: DiffOrderChanged,
-			From: []interface{}{"a"},
-			To:   []interface{}{"a"}},
+			From: []any{"a"},
+			To:   []any{"a"}},
 	}
 
 	output := f.Format(diffs, opts)
@@ -1115,8 +1115,8 @@ func TestDetailedFormatter_OrderChange_NonStringItems(t *testing.T) {
 
 	diffs := []Difference{
 		{Path: "nums", Type: DiffOrderChanged,
-			From: []interface{}{1, 2, 3},
-			To:   []interface{}{3, 1, 2}},
+			From: []any{1, 2, 3},
+			To:   []any{3, 1, 2}},
 	}
 
 	output := f.Format(diffs, opts)
@@ -1135,8 +1135,8 @@ func TestDetailedFormatter_OrderChange_Snapshot(t *testing.T) {
 
 	diffs := []Difference{
 		{Path: "items", Type: DiffOrderChanged,
-			From: []interface{}{"a", "b"},
-			To:   []interface{}{"b", "a"}},
+			From: []any{"a", "b"},
+			To:   []any{"b", "a"}},
 	}
 
 	output := f.Format(diffs, opts)
@@ -1335,9 +1335,9 @@ func TestParseBareDocIndex(t *testing.T) {
 // Mutation testing kill shots
 
 func TestDetailedFormatter_NestedMapIndentation(t *testing.T) {
-	// Use map[string]interface{} (not OrderedMap) to exercise line 264 specifically
-	innerMap := map[string]interface{}{"inner": "value"}
-	outerMap := map[string]interface{}{"outer": innerMap}
+	// Use map[string]any (not OrderedMap) to exercise line 264 specifically
+	innerMap := map[string]any{"inner": "value"}
+	outerMap := map[string]any{"outer": innerMap}
 
 	diffs := []Difference{
 		{Path: "config", Type: DiffAdded, To: outerMap},
@@ -1518,9 +1518,9 @@ func TestDetailedFormatter_RenderEntryValue_ListOfLists(t *testing.T) {
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
-	// []interface{} branch of renderEntryValue for isList=true
+	// []any branch of renderEntryValue for isList=true
 	diffs := []Difference{
-		{Path: "matrix.0", Type: DiffAdded, To: []interface{}{"a", "b", "c"}},
+		{Path: "matrix.0", Type: DiffAdded, To: []any{"a", "b", "c"}},
 	}
 	output := f.Format(diffs, opts)
 	if !strings.Contains(output, "- a") {
@@ -1533,10 +1533,10 @@ func TestDetailedFormatter_RenderEntryValue_MapEntry(t *testing.T) {
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
-	// map[string]interface{} branch of renderListItems: first key must have "- " bullet,
+	// map[string]any branch of renderListItems: first key must have "- " bullet,
 	// second key must NOT have bullet. Keys are sorted: "name" < "value".
 	diffs := []Difference{
-		{Path: "items.0", Type: DiffAdded, To: map[string]interface{}{"name": "test", "value": "123"}},
+		{Path: "items.0", Type: DiffAdded, To: map[string]any{"name": "test", "value": "123"}},
 	}
 	output := f.Format(diffs, opts)
 	if !strings.Contains(output, "- name:") {
@@ -1555,10 +1555,10 @@ func TestDetailedFormatter_RenderFirstKeyValueYAML_MapValue(t *testing.T) {
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
-	// map[string]interface{} branch of renderFirstKeyValueYAML
+	// map[string]any branch of renderFirstKeyValueYAML
 	om := NewOrderedMap()
 	om.Keys = append(om.Keys, "config")
-	om.Values["config"] = map[string]interface{}{"host": "localhost", "port": 8080}
+	om.Values["config"] = map[string]any{"host": "localhost", "port": 8080}
 	diffs := []Difference{
 		{Path: "services.0", Type: DiffAdded, To: om},
 	}
@@ -1573,10 +1573,10 @@ func TestDetailedFormatter_RenderFirstKeyValueYAML_ListValue(t *testing.T) {
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
-	// []interface{} branch of renderFirstKeyValueYAML
+	// []any branch of renderFirstKeyValueYAML
 	om := NewOrderedMap()
 	om.Keys = append(om.Keys, "ports")
-	om.Values["ports"] = []interface{}{80, 443}
+	om.Values["ports"] = []any{80, 443}
 	diffs := []Difference{
 		{Path: "services.0", Type: DiffAdded, To: om},
 	}
@@ -1665,8 +1665,8 @@ func TestFormatDetailedValue_Timestamp(t *testing.T) {
 }
 
 func TestFormatValueAsYAMLLines(t *testing.T) {
-	t.Run("map[string]interface{}", func(t *testing.T) {
-		val := map[string]interface{}{"key": "val"}
+	t.Run("map[string]any", func(t *testing.T) {
+		val := map[string]any{"key": "val"}
 		lines := formatValueAsYAMLLines(val)
 		if len(lines) != 1 || lines[0] != "key: val" {
 			t.Errorf("expected [key: val], got %v", lines)
@@ -1674,8 +1674,8 @@ func TestFormatValueAsYAMLLines(t *testing.T) {
 	})
 
 	t.Run("map with nested structured child", func(t *testing.T) {
-		val := map[string]interface{}{
-			"parent": map[string]interface{}{"child": 1},
+		val := map[string]any{
+			"parent": map[string]any{"child": 1},
 		}
 		lines := formatValueAsYAMLLines(val)
 		if len(lines) != 2 {
@@ -1690,8 +1690,8 @@ func TestFormatValueAsYAMLLines(t *testing.T) {
 	})
 
 	t.Run("list with structured items", func(t *testing.T) {
-		val := []interface{}{
-			map[string]interface{}{"name": "a"},
+		val := []any{
+			map[string]any{"name": "a"},
 		}
 		lines := formatValueAsYAMLLines(val)
 		if len(lines) != 2 {
@@ -1721,10 +1721,10 @@ func TestDetailedFormatter_TypeChange_Structured(t *testing.T) {
 	t.Run("map to list", func(t *testing.T) {
 		om := &OrderedMap{
 			Keys:   []string{"a", "b"},
-			Values: map[string]interface{}{"a": 1, "b": 2},
+			Values: map[string]any{"a": 1, "b": 2},
 		}
 		diffs := []Difference{
-			{Path: "foo", Type: DiffModified, From: om, To: []interface{}{1, 2}},
+			{Path: "foo", Type: DiffModified, From: om, To: []any{1, 2}},
 		}
 		output := f.Format(diffs, opts)
 		if !strings.Contains(output, "type change from map to list") {
@@ -1754,14 +1754,14 @@ func TestDetailedFormatter_TypeChange_Structured(t *testing.T) {
 }
 
 func TestIsStructured(t *testing.T) {
-	if !isStructured(map[string]interface{}{"a": 1}) {
-		t.Error("map[string]interface{} should be structured")
+	if !isStructured(map[string]any{"a": 1}) {
+		t.Error("map[string]any should be structured")
 	}
 	if !isStructured(&OrderedMap{}) {
 		t.Error("*OrderedMap should be structured")
 	}
-	if !isStructured([]interface{}{1}) {
-		t.Error("[]interface{} should be structured")
+	if !isStructured([]any{1}) {
+		t.Error("[]any should be structured")
 	}
 	if isStructured("hello") {
 		t.Error("string should not be structured")
@@ -1792,7 +1792,7 @@ func TestDetailedFormatter_RenderListItems_OrderedMapInList(t *testing.T) {
 	container := NewOrderedMap()
 	container.Keys = append(container.Keys, "name", "volumeMounts")
 	container.Values["name"] = "app"
-	container.Values["volumeMounts"] = []interface{}{mount1, mount2}
+	container.Values["volumeMounts"] = []any{mount1, mount2}
 
 	diffs := []Difference{
 		{Path: "containers.0", Type: DiffAdded, To: container},
@@ -1840,7 +1840,7 @@ func TestDetailedFormatter_RenderListItems_NestedOrderedMapInList(t *testing.T) 
 	container := NewOrderedMap()
 	container.Keys = append(container.Keys, "name", "env")
 	container.Values["name"] = "app"
-	container.Values["env"] = []interface{}{envVar}
+	container.Values["env"] = []any{envVar}
 
 	diffs := []Difference{
 		{Path: "containers.0", Type: DiffAdded, To: container},
@@ -1866,14 +1866,14 @@ func TestDetailedFormatter_RenderKeyValueYAML_ListWithStructuredItems(t *testing
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
-	// renderKeyValueYAML []interface{} branch: map entry whose value is a list of structured items
+	// renderKeyValueYAML []any branch: map entry whose value is a list of structured items
 	item := NewOrderedMap()
 	item.Keys = append(item.Keys, "name", "port")
 	item.Values["name"] = "http"
 	item.Values["port"] = 8080
 
 	diffs := []Difference{
-		{Path: "spec.ports", Type: DiffAdded, To: []interface{}{item}},
+		{Path: "spec.ports", Type: DiffAdded, To: []any{item}},
 	}
 	output := f.Format(diffs, opts)
 
@@ -1893,7 +1893,7 @@ func TestDetailedFormatter_RenderFirstKeyValueYAML_ListWithStructuredItems(t *te
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
-	// renderFirstKeyValueYAML []interface{} branch: first key of a list entry has structured list value
+	// renderFirstKeyValueYAML []any branch: first key of a list entry has structured list value
 	secretRef := NewOrderedMap()
 	secretRef.Keys = append(secretRef.Keys, "name")
 	secretRef.Values["name"] = "my-secret"
@@ -1904,7 +1904,7 @@ func TestDetailedFormatter_RenderFirstKeyValueYAML_ListWithStructuredItems(t *te
 
 	container := NewOrderedMap()
 	container.Keys = append(container.Keys, "envFrom")
-	container.Values["envFrom"] = []interface{}{envFromItem}
+	container.Values["envFrom"] = []any{envFromItem}
 
 	diffs := []Difference{
 		{Path: "containers.0", Type: DiffAdded, To: container},
@@ -1930,14 +1930,14 @@ func TestDetailedFormatter_RenderEntryValue_ListWithMixedItems(t *testing.T) {
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
-	// renderEntryValue []interface{} branch with mixed scalar and structured items
+	// renderEntryValue []any branch with mixed scalar and structured items
 	item := NewOrderedMap()
 	item.Keys = append(item.Keys, "key", "value")
 	item.Values["key"] = "foo"
 	item.Values["value"] = "bar"
 
 	diffs := []Difference{
-		{Path: "items.0", Type: DiffAdded, To: []interface{}{"scalar-val", item}},
+		{Path: "items.0", Type: DiffAdded, To: []any{"scalar-val", item}},
 	}
 	output := f.Format(diffs, opts)
 

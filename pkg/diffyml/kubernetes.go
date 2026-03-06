@@ -18,14 +18,14 @@ const k8sDocumentPath = "(document)"
 // IsKubernetesResource checks if a document has the structure of a Kubernetes resource.
 // A Kubernetes resource must have apiVersion, kind, and metadata fields,
 // where metadata is a map containing at least a name field.
-func IsKubernetesResource(doc interface{}) bool {
+func IsKubernetesResource(doc any) bool {
 	// Get map values from either OrderedMap or regular map
-	getVal := func(doc interface{}, key string) (interface{}, bool) {
+	getVal := func(doc any, key string) (any, bool) {
 		switch m := doc.(type) {
 		case *OrderedMap:
 			val, ok := m.Values[key]
 			return val, ok
-		case map[string]interface{}:
+		case map[string]any:
 			val, ok := m[key]
 			return val, ok
 		default:
@@ -70,17 +70,17 @@ func IsKubernetesResource(doc interface{}) bool {
 // GetK8sResourceIdentifier returns a unique identifier for a Kubernetes resource.
 // When ignoreApiVersion is false: "apiVersion:kind:namespace/name" or "apiVersion:kind:name".
 // When ignoreApiVersion is true: "kind:namespace/name" or "kind:name".
-func GetK8sResourceIdentifier(doc interface{}, ignoreApiVersion bool) string {
+func GetK8sResourceIdentifier(doc any, ignoreApiVersion bool) string {
 	if !IsKubernetesResource(doc) {
 		return ""
 	}
 
 	// Helper to get value from either OrderedMap or regular map
-	getVal := func(doc interface{}, key string) interface{} {
+	getVal := func(doc any, key string) any {
 		switch m := doc.(type) {
 		case *OrderedMap:
 			return m.Values[key]
-		case map[string]interface{}:
+		case map[string]any:
 			return m[key]
 		default:
 			return nil
@@ -111,7 +111,7 @@ func GetK8sResourceIdentifier(doc interface{}, ignoreApiVersion bool) string {
 
 // GetIdentifierWithAdditional gets an identifier value from a map,
 // checking default fields (name, id) and any additional specified fields.
-func GetIdentifierWithAdditional(m map[string]interface{}, additionalIdentifiers []string) interface{} {
+func GetIdentifierWithAdditional(m map[string]any, additionalIdentifiers []string) any {
 	// Check additional identifiers first (they take priority)
 	for _, field := range additionalIdentifiers {
 		if val, ok := m[field]; ok {
@@ -132,7 +132,7 @@ func GetIdentifierWithAdditional(m map[string]interface{}, additionalIdentifiers
 
 // CanMatchByIdentifierWithAdditional checks if list items can be matched by identifier,
 // including additional identifier fields.
-func CanMatchByIdentifierWithAdditional(list []interface{}, additionalIdentifiers []string) bool {
+func CanMatchByIdentifierWithAdditional(list []any, additionalIdentifiers []string) bool {
 	if len(list) == 0 {
 		return false
 	}
@@ -149,7 +149,7 @@ func CanMatchByIdentifierWithAdditional(list []interface{}, additionalIdentifier
 		}
 
 		// Check for regular map
-		m, ok := item.(map[string]interface{})
+		m, ok := item.(map[string]any)
 		if !ok {
 			// Not a map, can't match by identifier
 			return false
@@ -163,7 +163,7 @@ func CanMatchByIdentifierWithAdditional(list []interface{}, additionalIdentifier
 }
 
 // getIdentifierFromOrderedMap extracts identifier from OrderedMap
-func getIdentifierFromOrderedMap(om *OrderedMap, additionalIdentifiers []string) interface{} {
+func getIdentifierFromOrderedMap(om *OrderedMap, additionalIdentifiers []string) any {
 	// Check additional identifiers first (they take priority)
 	for _, field := range additionalIdentifiers {
 		if val, ok := om.Values[field]; ok {
@@ -183,7 +183,7 @@ func getIdentifierFromOrderedMap(om *OrderedMap, additionalIdentifiers []string)
 }
 
 // isComparableIdentifier returns true when a value can be safely used as a Go map key.
-func isComparableIdentifier(id interface{}) bool {
+func isComparableIdentifier(id any) bool {
 	if id == nil {
 		return false
 	}
@@ -192,7 +192,7 @@ func isComparableIdentifier(id interface{}) bool {
 
 // matchK8sDocuments matches Kubernetes documents from two slices by their identifiers.
 // Returns a map from 'from' index to 'to' index, and lists of unmatched indices.
-func matchK8sDocuments(from, to []interface{}, opts *Options) (matched map[int]int, unmatchedFrom, unmatchedTo []int) {
+func matchK8sDocuments(from, to []any, opts *Options) (matched map[int]int, unmatchedFrom, unmatchedTo []int) {
 	matched = make(map[int]int)
 	ignoreApiVersion := opts != nil && opts.IgnoreApiVersion
 
@@ -232,7 +232,7 @@ func matchK8sDocuments(from, to []interface{}, opts *Options) (matched map[int]i
 }
 
 // compareK8sDocs compares Kubernetes documents matching by resource identifier.
-func compareK8sDocs(from, to []interface{}, opts *Options) []Difference {
+func compareK8sDocs(from, to []any, opts *Options) []Difference {
 	var diffs []Difference
 
 	matched, unmatchedFrom, unmatchedTo := matchK8sDocuments(from, to, opts)
@@ -252,13 +252,13 @@ func compareK8sDocs(from, to []interface{}, opts *Options) []Difference {
 		orderChanged := !slices.IsSortedFunc(pairs, func(a, b idxPair) int { return cmp.Compare(a.toIdx, b.toIdx) })
 
 		if orderChanged {
-			fromOrder := make([]interface{}, len(pairs))
+			fromOrder := make([]any, len(pairs))
 			for i, p := range pairs {
 				fromOrder[i] = GetK8sResourceIdentifier(from[p.fromIdx], ignoreApiVersion)
 			}
 			// Re-sort by toIdx for to-order
 			slices.SortFunc(pairs, func(a, b idxPair) int { return cmp.Compare(a.toIdx, b.toIdx) })
-			toOrder := make([]interface{}, len(pairs))
+			toOrder := make([]any, len(pairs))
 			for i, p := range pairs {
 				toOrder[i] = GetK8sResourceIdentifier(from[p.fromIdx], ignoreApiVersion)
 			}

@@ -30,9 +30,9 @@ type Difference struct {
 	// Type indicates the kind of change (added, removed, modified, order changed).
 	Type DiffType
 	// From is the original value (nil for additions).
-	From interface{}
+	From any
 	// To is the new value (nil for removals).
-	To interface{}
+	To any
 	// DocumentIndex indicates which document in a multi-document YAML file (0-based).
 	DocumentIndex int
 }
@@ -126,12 +126,12 @@ func Compare(from, to []byte, opts *Options) ([]Difference, error) {
 // sortDiffs sorts differences by path for consistent output.
 // Sorts root-level additions first, then by path depth and alphabetically.
 // extractPathOrder extracts the order of all paths from parsed documents
-func extractPathOrder(fromDocs, toDocs []interface{}, opts *Options) map[string]int {
+func extractPathOrder(fromDocs, toDocs []any, opts *Options) map[string]int {
 	pathOrder := make(map[string]int)
 	index := 0
 
-	var extractFromValue func(prefix string, val interface{})
-	extractFromValue = func(prefix string, val interface{}) {
+	var extractFromValue func(prefix string, val any)
+	extractFromValue = func(prefix string, val any) {
 		switch v := val.(type) {
 		case *OrderedMap:
 			// Register the prefix itself
@@ -149,7 +149,7 @@ func extractPathOrder(fromDocs, toDocs []interface{}, opts *Options) map[string]
 				}
 				extractFromValue(childPath, v.Values[key])
 			}
-		case map[string]interface{}:
+		case map[string]any:
 			// Register the prefix itself
 			if prefix != "" {
 				if _, exists := pathOrder[prefix]; !exists {
@@ -170,7 +170,7 @@ func extractPathOrder(fromDocs, toDocs []interface{}, opts *Options) map[string]
 				}
 				extractFromValue(childPath, v[key])
 			}
-		case []interface{}:
+		case []any:
 			// Register the prefix itself
 			if prefix != "" {
 				if _, exists := pathOrder[prefix]; !exists {
@@ -238,7 +238,7 @@ func isListEntryDiff(diff Difference) bool {
 	}
 
 	// Check if the value is a map with identifier fields (typical for list items)
-	var val interface{}
+	var val any
 	if diff.To != nil {
 		val = diff.To
 	} else {
@@ -256,7 +256,7 @@ func isListEntryDiff(diff Difference) bool {
 	}
 
 	// Check regular map
-	if m, ok := val.(map[string]interface{}); ok {
+	if m, ok := val.(map[string]any); ok {
 		if _, hasName := m["name"]; hasName {
 			return true
 		}

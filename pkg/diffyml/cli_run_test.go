@@ -550,14 +550,14 @@ func TestRun_GitLab_FallbackOnParentTraversingPath(t *testing.T) {
 
 	output := stdout.String()
 	// Parse the JSON to verify it's valid and has a path
-	var result []map[string]interface{}
+	var result []map[string]any
 	if err := json.Unmarshal([]byte(output), &result); err != nil {
 		t.Fatalf("output is not valid JSON: %v\noutput: %s", err, output)
 	}
 	if len(result) == 0 {
 		t.Fatal("expected at least one result")
 	}
-	location := result[0]["location"].(map[string]interface{})
+	location := result[0]["location"].(map[string]any)
 	path := location["path"].(string)
 	// Path should either be the original or converted — but never empty
 	if path == "" {

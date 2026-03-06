@@ -78,7 +78,7 @@ func TestSerializeValue_OrderedMap(t *testing.T) {
 }
 
 func TestSerializeValue_Map(t *testing.T) {
-	m := map[string]interface{}{"key": "value"}
+	m := map[string]any{"key": "value"}
 	got := serializeValue(m)
 	if !strings.Contains(got, "key: value") {
 		t.Errorf("serializeValue(map) = %q, want to contain 'key: value'", got)
@@ -86,7 +86,7 @@ func TestSerializeValue_Map(t *testing.T) {
 }
 
 func TestSerializeValue_Slice(t *testing.T) {
-	s := []interface{}{"a", "b", "c"}
+	s := []any{"a", "b", "c"}
 	got := serializeValue(s)
 	if !strings.Contains(got, "- a") || !strings.Contains(got, "- b") {
 		t.Errorf("serializeValue(slice) = %q, want to contain list items", got)

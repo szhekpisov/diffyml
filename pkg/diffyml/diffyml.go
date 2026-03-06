@@ -39,28 +39,3 @@ const (
 func Compare(from, to []byte, opts *Options) ([]Difference, error) {
 	return compare.Compare(from, to, opts)
 }
-
-// extractPathOrder extracts the order of all paths from parsed documents.
-func extractPathOrder(fromDocs, toDocs []interface{}, opts *Options) map[string]int {
-	return compare.ExtractPathOrder(fromDocs, toDocs, opts)
-}
-
-// isListEntryDiff checks if a difference represents a list entry.
-func isListEntryDiff(diff Difference) bool {
-	return types.IsListEntryDiff(diff)
-}
-
-// sortDiffsWithOrder sorts differences for consistent output.
-func sortDiffsWithOrder(diffs []Difference, pathOrder map[string]int) {
-	types.SortDiffsWithOrder(diffs, pathOrder)
-}
-
-// formatCount returns a human-readable count string.
-func formatCount(n int) string {
-	return types.FormatCount(n)
-}
-
-// pluralize returns singular or plural form based on count.
-func pluralize(n int, singular, plural string) string {
-	return types.Pluralize(n, singular, plural)
-}

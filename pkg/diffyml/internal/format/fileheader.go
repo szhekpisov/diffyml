@@ -36,8 +36,8 @@ func FormatFileHeader(filename string, pairType FilePairType, opts *types.Format
 
 	if opts != nil && opts.Color {
 		return fmt.Sprintf("%s%s%s\n%s%s%s\n",
-			types.StyleBold+types.ColorWhite, fromLine, types.ColorReset,
-			types.StyleBold+types.ColorWhite, toLine, types.ColorReset)
+			StyleBold+ColorWhite, fromLine, ColorReset,
+			StyleBold+ColorWhite, toLine, ColorReset)
 	}
 	return fmt.Sprintf("%s\n%s\n", fromLine, toLine)
 }

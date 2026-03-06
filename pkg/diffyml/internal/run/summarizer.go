@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/szhekpisov/diffyml/pkg/diffyml/internal/format"
 	"github.com/szhekpisov/diffyml/pkg/diffyml/internal/parse"
 	"github.com/szhekpisov/diffyml/pkg/diffyml/internal/types"
 )
@@ -255,9 +256,9 @@ func FormatSummaryOutput(summary string, opts *types.FormatOptions) string {
 	sb.WriteString("\n")
 
 	if opts != nil && opts.Color {
-		sb.WriteString(types.StyleBold + types.ColorCyan)
+		sb.WriteString(format.StyleBold + format.ColorCyan)
 		sb.WriteString("AI Summary:")
-		sb.WriteString(types.ColorReset)
+		sb.WriteString(format.ColorReset)
 	} else {
 		sb.WriteString("AI Summary:")
 	}

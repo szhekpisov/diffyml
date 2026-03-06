@@ -7,39 +7,38 @@ package diffyml
 
 import (
 	"github.com/szhekpisov/diffyml/pkg/diffyml/internal/run"
-	"github.com/szhekpisov/diffyml/pkg/diffyml/internal/types"
 )
 
 // Exit code constants for program termination.
 const (
 	// ExitCodeSuccess indicates successful execution with no differences.
-	ExitCodeSuccess = types.ExitCodeSuccess
+	ExitCodeSuccess = run.ExitCodeSuccess
 	// ExitCodeDifferences indicates differences were found (with -s flag).
-	ExitCodeDifferences = types.ExitCodeDifferences
+	ExitCodeDifferences = run.ExitCodeDifferences
 	// ExitCodeError indicates a program error occurred.
-	ExitCodeError = types.ExitCodeError
+	ExitCodeError = run.ExitCodeError
 )
 
 // DetermineExitCode returns the appropriate exit code based on execution results.
 func DetermineExitCode(setExitCode bool, diffCount int, err error) int {
-	return types.DetermineExitCode(setExitCode, diffCount, err)
+	return run.DetermineExitCode(setExitCode, diffCount, err)
 }
 
 // ExitResult encapsulates the result of program execution.
-type ExitResult = types.ExitResult
+type ExitResult = run.ExitResult
 
 // RunConfig holds runtime configuration for the Run function.
-type RunConfig = types.RunConfig
+type RunConfig = run.RunConfig
 
 // RunOptions holds the library-level options for running a comparison.
-type RunOptions = types.RunOptions
+type RunOptions = run.RunOptions
 
 // NewRunConfig creates a new RunConfig with default values.
-func NewRunConfig() *RunConfig { return types.NewRunConfig() }
+func NewRunConfig() *RunConfig { return run.NewRunConfig() }
 
 // Run executes the main comparison flow with the given configuration.
 func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult { return run.Run(cfg, rc) }
 
 // exitError logs an error to stderr and returns an ExitResult with ExitCodeError.
 // Unexported; required by tests in package diffyml.
-func exitError(rc *RunConfig, err error) *ExitResult { return types.ExitError(rc, err) }
+func exitError(rc *RunConfig, err error) *ExitResult { return run.ExitError(rc, err) }

@@ -20,25 +20,25 @@ import (
 
 // Run executes the main comparison flow with the given configuration.
 // Returns an ExitResult with the appropriate exit code and any error.
-func Run(cfg *CLIConfig, rc *types.RunConfig) *types.ExitResult {
+func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
 	if rc == nil {
-		rc = types.NewRunConfig()
+		rc = NewRunConfig()
 	}
 
 	// Handle help flag
 	if cfg.ShowHelp {
 		fmt.Fprint(rc.Stdout, cfg.Usage())
-		return &types.ExitResult{Code: types.ExitCodeSuccess, Err: nil}
+		return &ExitResult{Code: ExitCodeSuccess, Err: nil}
 	}
 
 	// Validate configuration (skip in test mode)
 	if rc.IsRealMode() {
 		if err := cfg.Validate(); err != nil {
-			return types.ExitError(rc, err)
+			return ExitError(rc, err)
 		}
 
 		if cfg.Summary && os.Getenv("ANTHROPIC_API_KEY") == "" {
-			return types.ExitError(rc, fmt.Errorf("--summary requires ANTHROPIC_API_KEY environment variable to be set"))
+			return ExitError(rc, fmt.Errorf("--summary requires ANTHROPIC_API_KEY environment variable to be set"))
 		}
 	}
 
@@ -53,7 +53,7 @@ func Run(cfg *CLIConfig, rc *types.RunConfig) *types.ExitResult {
 			return RunDirectory(runOpts, rc, runOpts.FromFile, runOpts.ToFile)
 		}
 		if fromIsDir != toIsDir {
-			return types.ExitError(rc, fmt.Errorf("both arguments must be the same type (both files or both directories)"))
+			return ExitError(rc, fmt.Errorf("both arguments must be the same type (both files or both directories)"))
 		}
 	}
 
@@ -61,27 +61,27 @@ func Run(cfg *CLIConfig, rc *types.RunConfig) *types.ExitResult {
 }
 
 // RunWithOpts executes the core comparison flow using resolved RunOptions.
-func RunWithOpts(opts *types.RunOptions, rc *types.RunConfig) *types.ExitResult {
+func RunWithOpts(opts *RunOptions, rc *RunConfig) *ExitResult {
 	// Build formatter and shared options
 	ro, err := BuildRunOpts(opts)
 	if err != nil {
-		return types.ExitError(rc, err)
+		return ExitError(rc, err)
 	}
 
 	// Load file contents
 	fromContent, err := LoadOrUse(rc.FromContent, opts.FromFile)
 	if err != nil {
-		return types.ExitError(rc, err)
+		return ExitError(rc, err)
 	}
 	toContent, err := LoadOrUse(rc.ToContent, opts.ToFile)
 	if err != nil {
-		return types.ExitError(rc, err)
+		return ExitError(rc, err)
 	}
 
 	// Compare and filter
 	diffs, err := CompareAndFilter(fromContent, toContent, ro.compare, ro.filter)
 	if err != nil {
-		return types.ExitError(rc, err)
+		return ExitError(rc, err)
 	}
 
 	// Set file path for formatters that use it (e.g., GitLab)
@@ -109,8 +109,8 @@ func RunWithOpts(opts *types.RunOptions, rc *types.RunConfig) *types.ExitResult 
 	}
 
 	// Determine exit code
-	exitCode := types.DetermineExitCode(opts.SetExitCode, len(diffs), nil)
-	return &types.ExitResult{Code: exitCode, Err: nil}
+	exitCode := DetermineExitCode(opts.SetExitCode, len(diffs), nil)
+	return &ExitResult{Code: exitCode, Err: nil}
 }
 
 // ApplyColorConfig applies color settings to format options.
@@ -131,7 +131,7 @@ type runOpts struct {
 }
 
 // BuildRunOpts creates the internal runOpts from RunOptions.
-func BuildRunOpts(o *types.RunOptions) (*runOpts, error) {
+func BuildRunOpts(o *RunOptions) (*runOpts, error) {
 	formatter, err := format.GetFormatter(o.Output)
 	if err != nil {
 		return nil, err
@@ -167,7 +167,7 @@ func CompareAndFilter(from, to []byte, compareOpts *types.Options, filterOpts *t
 
 // InvokeSummary runs the AI summarizer and returns the formatted summary string.
 // Callers must check Summary flag and non-empty diffs before calling.
-func InvokeSummary(model string, rc *types.RunConfig, groups []types.DiffGroup, formatOpts *types.FormatOptions) (string, error) {
+func InvokeSummary(model string, rc *RunConfig, groups []types.DiffGroup, formatOpts *types.FormatOptions) (string, error) {
 	summarizer := NewSummarizer(model)
 	if rc.SummaryAPIURL != "" {
 		summarizer.ApiURL = rc.SummaryAPIURL

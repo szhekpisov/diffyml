@@ -151,11 +151,11 @@ func (f *CompactFormatter) formatHeader(sb *strings.Builder, diffs []types.Diffe
 	}
 
 	if opts.Color {
-		sb.WriteString(types.CompactColor(types.DiffModified))
+		sb.WriteString(CompactColor(types.DiffModified))
 	}
 	fmt.Fprintf(sb, "Found %d difference(s)", len(diffs))
 	if opts.Color {
-		sb.WriteString(types.ColorReset)
+		sb.WriteString(ColorReset)
 	}
 	fmt.Fprintf(sb, " (%d added, %d removed, %d modified)\n\n", added, removed, modified)
 }
@@ -179,7 +179,7 @@ func (f *CompactFormatter) formatDiff(sb *strings.Builder, diff types.Difference
 		indicator = "⇆"
 	}
 
-	colorCode := types.CompactColor(diff.Type)
+	colorCode := CompactColor(diff.Type)
 
 	// Apply color for the indicator
 	if opts.Color {
@@ -187,7 +187,7 @@ func (f *CompactFormatter) formatDiff(sb *strings.Builder, diff types.Difference
 	}
 	sb.WriteString(indicator)
 	if opts.Color {
-		sb.WriteString(types.ColorReset)
+		sb.WriteString(ColorReset)
 	}
 
 	sb.WriteString(" ")
@@ -207,39 +207,39 @@ func (f *CompactFormatter) formatValuesInline(sb *strings.Builder, diff types.Di
 
 		sb.WriteString(" : ")
 		if opts.Color {
-			sb.WriteString(types.CompactColor(types.DiffRemoved))
+			sb.WriteString(CompactColor(types.DiffRemoved))
 		}
 		sb.WriteString(fromStr)
 		if opts.Color {
-			sb.WriteString(types.ColorReset)
+			sb.WriteString(ColorReset)
 		}
 		sb.WriteString(" → ")
 		if opts.Color {
-			sb.WriteString(types.CompactColor(types.DiffAdded))
+			sb.WriteString(CompactColor(types.DiffAdded))
 		}
 		sb.WriteString(toStr)
 		if opts.Color {
-			sb.WriteString(types.ColorReset)
+			sb.WriteString(ColorReset)
 		}
 	case types.DiffAdded:
 		toStr := FormatValue(diff.To)
 		sb.WriteString(" : ")
 		if opts.Color {
-			sb.WriteString(types.CompactColor(types.DiffAdded))
+			sb.WriteString(CompactColor(types.DiffAdded))
 		}
 		sb.WriteString(toStr)
 		if opts.Color {
-			sb.WriteString(types.ColorReset)
+			sb.WriteString(ColorReset)
 		}
 	case types.DiffRemoved:
 		fromStr := FormatValue(diff.From)
 		sb.WriteString(" : ")
 		if opts.Color {
-			sb.WriteString(types.CompactColor(types.DiffRemoved))
+			sb.WriteString(CompactColor(types.DiffRemoved))
 		}
 		sb.WriteString(fromStr)
 		if opts.Color {
-			sb.WriteString(types.ColorReset)
+			sb.WriteString(ColorReset)
 		}
 	case types.DiffOrderChanged:
 		sb.WriteString(" (order changed)")

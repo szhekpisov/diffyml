@@ -1,9 +1,14 @@
-package types
+// types.go - Runner-specific types for execution orchestration.
+//
+// RunConfig, RunOptions, ExitResult, and exit code constants.
+package run
 
 import (
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/szhekpisov/diffyml/pkg/diffyml/internal/types"
 )
 
 // Exit code constants for program termination.
@@ -71,9 +76,9 @@ type RunOptions struct {
 	Output       string
 	Summary      bool
 	SummaryModel string
-	CompareOpts  *Options
-	FilterOpts   *FilterOptions
-	FormatOpts   *FormatOptions
+	CompareOpts  *types.Options
+	FilterOpts   *types.FilterOptions
+	FormatOpts   *types.FormatOptions
 }
 
 // IsBriefSummary reports whether the options request brief output with AI summary.

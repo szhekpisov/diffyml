@@ -259,10 +259,10 @@ func (c *CLIConfig) ToFormatOptions() *types.FormatOptions {
 }
 
 // ToRunOptions converts CLIConfig to RunOptions with all options resolved.
-func (c *CLIConfig) ToRunOptions() *types.RunOptions {
+func (c *CLIConfig) ToRunOptions() *RunOptions {
 	formatOpts := c.ToFormatOptions()
 	ApplyColorConfig(c, formatOpts)
-	return &types.RunOptions{
+	return &RunOptions{
 		FromFile:     c.FromFile,
 		ToFile:       c.ToFile,
 		SetExitCode:  c.SetExitCode,

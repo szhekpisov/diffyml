@@ -69,7 +69,7 @@ func (f *DetailedFormatter) Format(diffs []types.Difference, opts *types.FormatO
 
 // formatHeader renders a summary header line.
 func (f *DetailedFormatter) formatHeader(sb *strings.Builder, diffs []types.Difference, opts *types.FormatOptions) {
-	clr := types.Colorizer{TrueColor: opts.TrueColor}
+	clr := Colorizer{TrueColor: opts.TrueColor}
 	if opts.Color {
 		sb.WriteString(clr.Modified())
 	}
@@ -128,11 +128,11 @@ func (f *DetailedFormatter) formatPathHeading(sb *strings.Builder, path string, 
 	}
 
 	if opts.Color {
-		sb.WriteString(types.StyleBold)
+		sb.WriteString(StyleBold)
 	}
 	sb.WriteString(heading)
 	if opts.Color {
-		sb.WriteString(types.ColorReset)
+		sb.WriteString(ColorReset)
 	}
 	sb.WriteString("\n")
 }
@@ -169,7 +169,7 @@ func (f *DetailedFormatter) formatGroupDiffs(sb *strings.Builder, group pathGrou
 
 // formatEntryBatch renders a group of additions or removals with a count descriptor.
 func (f *DetailedFormatter) formatEntryBatch(sb *strings.Builder, diffs []types.Difference, action string, opts *types.FormatOptions) {
-	clr := types.Colorizer{TrueColor: opts.TrueColor}
+	clr := Colorizer{TrueColor: opts.TrueColor}
 	n := len(diffs)
 	isListEntry := types.IsListEntryDiff(diffs[0])
 	entryType := "map"
@@ -217,7 +217,7 @@ func (f *DetailedFormatter) formatEntryBatch(sb *strings.Builder, diffs []types.
 // For list entries, renders values with "- " prefix. For map entries, renders as "key: value".
 // The entire block is colored (green for adds, red for removes).
 func (f *DetailedFormatter) renderEntryValue(sb *strings.Builder, val interface{}, symbol string, indent int, path string, isList bool, opts *types.FormatOptions) {
-	clr := types.Colorizer{TrueColor: opts.TrueColor}
+	clr := Colorizer{TrueColor: opts.TrueColor}
 	colorCode := ""
 	if opts.Color {
 		if symbol == "+" {
@@ -329,7 +329,7 @@ func (f *DetailedFormatter) renderMultilineValue(sb *strings.Builder, prefix, va
 
 // formatChangeDescriptor renders the descriptor line for a single diff.
 func (f *DetailedFormatter) formatChangeDescriptor(sb *strings.Builder, diff types.Difference, opts *types.FormatOptions) {
-	clr := types.Colorizer{TrueColor: opts.TrueColor}
+	clr := Colorizer{TrueColor: opts.TrueColor}
 	switch diff.Type {
 	case types.DiffModified:
 		f.formatModified(sb, diff, opts)
@@ -347,7 +347,7 @@ func (f *DetailedFormatter) formatChangeDescriptor(sb *strings.Builder, diff typ
 
 // formatModified renders a modification descriptor with type change, multiline, and whitespace detection.
 func (f *DetailedFormatter) formatModified(sb *strings.Builder, diff types.Difference, opts *types.FormatOptions) {
-	clr := types.Colorizer{TrueColor: opts.TrueColor}
+	clr := Colorizer{TrueColor: opts.TrueColor}
 	fromType := YamlTypeName(diff.From)
 	toType := YamlTypeName(diff.To)
 
@@ -355,8 +355,8 @@ func (f *DetailedFormatter) formatModified(sb *strings.Builder, diff types.Diffe
 	if fromType != toType {
 		if opts.Color {
 			f.writeDescriptorLine(sb, fmt.Sprintf("  ± type change from %s%s%s to %s%s%s",
-				types.StyleItalic, fromType, types.StyleItalicOff,
-				types.StyleItalic, toType, types.StyleItalicOff), clr.Modified(), opts)
+				StyleItalic, fromType, StyleItalicOff,
+				StyleItalic, toType, StyleItalicOff), clr.Modified(), opts)
 		} else {
 			f.writeDescriptorLine(sb, fmt.Sprintf("  ± type change from %s to %s", fromType, toType), clr.Modified(), opts)
 		}
@@ -409,7 +409,7 @@ func (f *DetailedFormatter) formatModified(sb *strings.Builder, diff types.Diffe
 
 // formatMultilineDiff renders an inline line-by-line diff for multiline strings.
 func (f *DetailedFormatter) formatMultilineDiff(sb *strings.Builder, from, to string, opts *types.FormatOptions) {
-	clr := types.Colorizer{TrueColor: opts.TrueColor}
+	clr := Colorizer{TrueColor: opts.TrueColor}
 	fromLines := strings.Split(from, "\n")
 	toLines := strings.Split(to, "\n")
 	ops := ComputeLineDiff(fromLines, toLines)
@@ -676,7 +676,7 @@ func (f *DetailedFormatter) writeColoredLine(sb *strings.Builder, text string, c
 	if opts.Color {
 		sb.WriteString(colorCode)
 		sb.WriteString(text)
-		sb.WriteString(types.ColorReset)
+		sb.WriteString(ColorReset)
 	} else {
 		sb.WriteString(text)
 	}
@@ -688,7 +688,7 @@ func (f *DetailedFormatter) writeDescriptorLine(sb *strings.Builder, text string
 	if opts.Color {
 		sb.WriteString(colorCode)
 		sb.WriteString(text)
-		sb.WriteString(types.ColorReset)
+		sb.WriteString(ColorReset)
 	} else {
 		sb.WriteString(text)
 	}

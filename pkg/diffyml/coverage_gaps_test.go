@@ -15,120 +15,6 @@ import (
 
 // Tests targeting remaining coverage gaps identified by gremlins mutation testing.
 
-// --- deepEqual: *OrderedMap different lengths ---
-
-func TestDeepEqual_OrderedMaps_DifferentLengths(t *testing.T) {
-	a := &OrderedMap{Values: map[string]interface{}{"x": 1, "y": 2}}
-	b := &OrderedMap{Values: map[string]interface{}{"x": 1}}
-	if deepEqual(a, b, nil) {
-		t.Error("expected OrderedMaps with different lengths to not be deepEqual")
-	}
-}
-
-// --- deepEqual: []interface{} slice case ---
-
-func TestDeepEqual_Slices_Equal(t *testing.T) {
-	a := []interface{}{"x", "y", "z"}
-	b := []interface{}{"x", "y", "z"}
-	if !deepEqual(a, b, nil) {
-		t.Error("expected equal slices to be deepEqual")
-	}
-}
-
-func TestDeepEqual_Slices_DifferentValues(t *testing.T) {
-	a := []interface{}{"x", "y"}
-	b := []interface{}{"x", "z"}
-	if deepEqual(a, b, nil) {
-		t.Error("expected slices with different values to not be deepEqual")
-	}
-}
-
-func TestDeepEqual_Slices_DifferentLengths(t *testing.T) {
-	a := []interface{}{"x"}
-	b := []interface{}{"x", "y"}
-	if deepEqual(a, b, nil) {
-		t.Error("expected slices with different lengths to not be deepEqual")
-	}
-}
-
-func TestDeepEqual_Slices_Nested(t *testing.T) {
-	a := []interface{}{[]interface{}{"a", "b"}}
-	b := []interface{}{[]interface{}{"a", "b"}}
-	if !deepEqual(a, b, nil) {
-		t.Error("expected nested equal slices to be deepEqual")
-	}
-}
-
-// --- extractPathOrder: OrderedMap branches ---
-
-func TestExtractPathOrder_OrderedMap(t *testing.T) {
-	om := &OrderedMap{
-		Keys:   []string{"beta", "alpha"},
-		Values: map[string]interface{}{"beta": "2", "alpha": "1"},
-	}
-	docs := []interface{}{om}
-	order := extractPathOrder(docs, nil, nil)
-
-	if len(order) == 0 {
-		t.Fatal("expected non-empty path order")
-	}
-	if _, ok := order["alpha"]; !ok {
-		t.Error("expected 'alpha' in path order")
-	}
-	if _, ok := order["beta"]; !ok {
-		t.Error("expected 'beta' in path order")
-	}
-}
-
-func TestExtractPathOrder_OrderedMapNested(t *testing.T) {
-	child := &OrderedMap{
-		Keys:   []string{"child"},
-		Values: map[string]interface{}{"child": "val"},
-	}
-	om := &OrderedMap{
-		Keys:   []string{"parent"},
-		Values: map[string]interface{}{"parent": child},
-	}
-	docs := []interface{}{om}
-	order := extractPathOrder(docs, nil, nil)
-
-	if _, ok := order["parent"]; !ok {
-		t.Error("expected 'parent' in path order")
-	}
-	if _, ok := order["parent.child"]; !ok {
-		t.Error("expected 'parent.child' in path order")
-	}
-}
-
-// --- areListItemsHeterogeneous: OrderedMap items ---
-
-func TestAreListItemsHeterogeneous_OrderedMaps(t *testing.T) {
-	from := []interface{}{
-		&OrderedMap{Keys: []string{"namespaceSelector"}, Values: map[string]interface{}{"namespaceSelector": "ns1"}},
-	}
-	to := []interface{}{
-		&OrderedMap{Keys: []string{"ipBlock"}, Values: map[string]interface{}{"ipBlock": "10.0.0.0/8"}},
-	}
-
-	if !areListItemsHeterogeneous(from, to) {
-		t.Error("expected heterogeneous for maps with different single keys")
-	}
-}
-
-func TestAreListItemsHeterogeneous_OrderedMapsMultipleKeys(t *testing.T) {
-	from := []interface{}{
-		&OrderedMap{Keys: []string{"a", "b"}, Values: map[string]interface{}{"a": "1", "b": "2"}},
-	}
-	to := []interface{}{
-		&OrderedMap{Keys: []string{"c"}, Values: map[string]interface{}{"c": "3"}},
-	}
-
-	// from item has 2 keys, so checkSingleDistinctKeys returns false
-	if areListItemsHeterogeneous(from, to) {
-		t.Error("expected not heterogeneous when an item has multiple keys")
-	}
-}
-
 // --- clamp: min/max boundary branches ---
 
 func TestClamp_BelowMin(t *testing.T) {
@@ -227,52 +113,6 @@ func TestDetailedFormatter_ListValueInFirstKey(t *testing.T) {
 	}
 }
 
-// --- compareListsByIdentifier: fallback for items without identifiers ---
-
-func TestCompareListsByIdentifier_NoIDFallback(t *testing.T) {
-	// Mix identified and unidentified items.
-	// Items with "name" get identifier-based matching; scalars use fallback.
-	from := []interface{}{
-		&OrderedMap{
-			Keys:   []string{"name", "value"},
-			Values: map[string]interface{}{"name": "a", "value": "1"},
-		},
-		"scalar-from-only",
-		"shared-scalar",
-	}
-	to := []interface{}{
-		&OrderedMap{
-			Keys:   []string{"name", "value"},
-			Values: map[string]interface{}{"name": "a", "value": "2"},
-		},
-		"new-scalar",
-		"shared-scalar",
-	}
-
-	diffs := compareListsByIdentifier("items", from, to, nil)
-
-	// "a" matched by name → modified value
-	// "scalar-from-only" has no identifier → removed (fallback)
-	// "new-scalar" has no identifier → added (fallback)
-	// "shared-scalar" matched by deepEqual in fallback → no diff
-	var removed, added int
-	for _, d := range diffs {
-		switch d.Type {
-		case DiffRemoved:
-			removed++
-		case DiffAdded:
-			added++
-		}
-	}
-
-	if removed < 1 {
-		t.Errorf("expected at least 1 removed diff (scalar-from-only), got %d removed", removed)
-	}
-	if added < 1 {
-		t.Errorf("expected at least 1 added diff (new-scalar), got %d added", added)
-	}
-}
-
 // --- runDirectory: real filesystem paths ---
 
 func TestRunDirectory_RealFilesystem(t *testing.T) {
@@ -338,33 +178,6 @@ func TestGetTrueColorCode_Clamped(t *testing.T) {
 }
 
 // === Section 2: Kill LIVED mutants ===
-
-// --- extractPathOrder: index++ increment ---
-
-func TestExtractPathOrder_OrderedMapIndexIncrement(t *testing.T) {
-	// Kills INCREMENT_DECREMENT mutation on index++.
-	// Uses nested maps so recursion enters the *OrderedMap case,
-	// where index++ is executed for each parent path.
-	// With the mutation (index--), all parent paths get the same order value (0),
-	// so the strict ordering assertion catches it.
-	child1 := &OrderedMap{Keys: []string{"child1"}, Values: map[string]interface{}{"child1": "v1"}}
-	child2 := &OrderedMap{Keys: []string{"child2"}, Values: map[string]interface{}{"child2": "v2"}}
-	child3 := &OrderedMap{Keys: []string{"child3"}, Values: map[string]interface{}{"child3": "v3"}}
-	om := &OrderedMap{
-		Keys:   []string{"alpha", "beta", "gamma"},
-		Values: map[string]interface{}{"alpha": child1, "beta": child2, "gamma": child3},
-	}
-	docs := []interface{}{om}
-	order := extractPathOrder(docs, nil, nil)
-
-	// Keys are in OrderedMap insertion order: alpha < beta < gamma
-	if order["alpha"] >= order["beta"] {
-		t.Errorf("expected alpha (%d) < beta (%d)", order["alpha"], order["beta"])
-	}
-	if order["beta"] >= order["gamma"] {
-		t.Errorf("expected beta (%d) < gamma (%d)", order["beta"], order["gamma"])
-	}
-}
 
 // --- DetailedFormatter: map continuation indent (detailed_formatter.go:239,294) ---
 
@@ -679,40 +492,6 @@ func TestComputeLineDiff_IdenticalLines(t *testing.T) {
 	}
 	if len(ops) != 3 {
 		t.Errorf("expected 3 ops, got %d", len(ops))
-	}
-}
-
-// --- compareListsPositional: different-length lists (comparator.go:353,361) ---
-
-func TestCompareListsPositional_ToLonger(t *testing.T) {
-	from := []interface{}{"a", "b"}
-	to := []interface{}{"a", "b", "c", "d"}
-	diffs := compareListsPositional("list", from, to, nil)
-
-	added := 0
-	for _, d := range diffs {
-		if d.Type == DiffAdded {
-			added++
-		}
-	}
-	if added != 2 {
-		t.Errorf("expected 2 added items, got %d", added)
-	}
-}
-
-func TestCompareListsPositional_FromLonger(t *testing.T) {
-	from := []interface{}{"a", "b", "c"}
-	to := []interface{}{"a"}
-	diffs := compareListsPositional("list", from, to, nil)
-
-	removed := 0
-	for _, d := range diffs {
-		if d.Type == DiffRemoved {
-			removed++
-		}
-	}
-	if removed != 2 {
-		t.Errorf("expected 2 removed items, got %d", removed)
 	}
 }
 

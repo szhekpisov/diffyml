@@ -24,7 +24,3 @@ func CanMatchByIdentifierWithAdditional(list []interface{}, additionalIdentifier
 func matchK8sDocuments(from, to []interface{}, opts *Options) (matched map[int]int, unmatchedFrom, unmatchedTo []int) {
 	return compare.MatchK8sDocuments(from, to, opts)
 }
-
-func compareK8sDocs(from, to []interface{}, opts *Options, compareFn nodeComparerFn) []Difference {
-	return compare.CompareK8sDocs(from, to, opts, compareFn)
-}

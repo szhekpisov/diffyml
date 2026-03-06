@@ -370,54 +370,6 @@ func TestDetailedFormatter_MapEntryRemoved(t *testing.T) {
 	}
 }
 
-func TestDetailedFormatter_FormatCount(t *testing.T) {
-	tests := []struct {
-		n        int
-		expected string
-	}{
-		{0, "zero"},
-		{1, "one"},
-		{2, "two"},
-		{3, "three"},
-		{4, "four"},
-		{5, "five"},
-		{6, "six"},
-		{7, "seven"},
-		{8, "eight"},
-		{9, "nine"},
-		{10, "ten"},
-		{11, "eleven"},
-		{12, "twelve"},
-		{13, "13"},
-		{100, "100"},
-	}
-	for _, tt := range tests {
-		result := formatCount(tt.n)
-		if result != tt.expected {
-			t.Errorf("formatCount(%d) = %q, want %q", tt.n, result, tt.expected)
-		}
-	}
-}
-
-func TestDetailedFormatter_Pluralize(t *testing.T) {
-	tests := []struct {
-		n        int
-		singular string
-		plural   string
-		expected string
-	}{
-		{1, "entry", "entries", "entry"},
-		{2, "entry", "entries", "entries"},
-		{0, "entry", "entries", "entries"},
-	}
-	for _, tt := range tests {
-		result := pluralize(tt.n, tt.singular, tt.plural)
-		if result != tt.expected {
-			t.Errorf("pluralize(%d, %q, %q) = %q, want %q", tt.n, tt.singular, tt.plural, result, tt.expected)
-		}
-	}
-}
-
 func TestDetailedFormatter_YamlTypeName(t *testing.T) {
 	tests := []struct {
 		value    interface{}

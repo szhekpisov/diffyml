@@ -4,13 +4,14 @@ package diffyml
 import (
 	"os"
 
+	"github.com/szhekpisov/diffyml/pkg/diffyml/internal/format"
 	"github.com/szhekpisov/diffyml/pkg/diffyml/internal/types"
 )
 
 // Type aliases
 type ColorMode = types.ColorMode
 type ColorConfig = types.ColorConfig
-type Colorizer = types.Colorizer
+type Colorizer = format.Colorizer
 
 // Constants
 const (
@@ -19,39 +20,39 @@ const (
 	ColorModeNever  = types.ColorModeNever
 )
 
-// ANSI color codes (unexported in facade, exported in types)
+// ANSI color codes (unexported in facade, exported in format)
 const (
-	colorReset  = types.ColorReset
-	colorRed    = types.ColorRed
-	colorGreen  = types.ColorGreen
-	colorYellow = types.ColorYellow
-	colorCyan   = types.ColorCyan
-	colorWhite  = types.ColorWhite
-	colorGray   = types.ColorGray
+	colorReset  = format.ColorReset
+	colorRed    = format.ColorRed
+	colorGreen  = format.ColorGreen
+	colorYellow = format.ColorYellow
+	colorCyan   = format.ColorCyan
+	colorWhite  = format.ColorWhite
+	colorGray   = format.ColorGray
 )
 
 // ANSI style codes
 const (
-	styleBold      = types.StyleBold
-	styleBoldOff   = types.StyleBoldOff
-	styleItalic    = types.StyleItalic
-	styleItalicOff = types.StyleItalicOff
+	styleBold      = format.StyleBold
+	styleBoldOff   = format.StyleBoldOff
+	styleItalic    = format.StyleItalic
+	styleItalicOff = format.StyleItalicOff
 )
 
 // Detailed color palette constants
 const (
-	DetailedYellowR = types.DetailedYellowR
-	DetailedYellowG = types.DetailedYellowG
-	DetailedYellowB = types.DetailedYellowB
-	DetailedRedR    = types.DetailedRedR
-	DetailedRedG    = types.DetailedRedG
-	DetailedRedB    = types.DetailedRedB
-	DetailedGreenR  = types.DetailedGreenR
-	DetailedGreenG  = types.DetailedGreenG
-	DetailedGreenB  = types.DetailedGreenB
-	DetailedGrayR   = types.DetailedGrayR
-	DetailedGrayG   = types.DetailedGrayG
-	DetailedGrayB   = types.DetailedGrayB
+	DetailedYellowR = format.DetailedYellowR
+	DetailedYellowG = format.DetailedYellowG
+	DetailedYellowB = format.DetailedYellowB
+	DetailedRedR    = format.DetailedRedR
+	DetailedRedG    = format.DetailedRedG
+	DetailedRedB    = format.DetailedRedB
+	DetailedGreenR  = format.DetailedGreenR
+	DetailedGreenG  = format.DetailedGreenG
+	DetailedGreenB  = format.DetailedGreenB
+	DetailedGrayR   = format.DetailedGrayR
+	DetailedGrayG   = format.DetailedGrayG
+	DetailedGrayB   = format.DetailedGrayB
 )
 
 // stdoutStatFn is injectable for testing. Tests can reassign this variable
@@ -75,11 +76,11 @@ func ResolveColorMode(mode ColorMode, isTerminal bool) bool {
 func NewColorConfig(mode ColorMode, trueColor bool) *ColorConfig {
 	return types.NewColorConfig(mode, trueColor)
 }
-func GetTrueColorCode(r, g, b int) string { return types.GetTrueColorCode(r, g, b) }
+func GetTrueColorCode(r, g, b int) string { return format.GetTrueColorCode(r, g, b) }
 func GetDetailedColorCode(diffType DiffType, useTrueColor bool) string {
-	return types.GetDetailedColorCode(diffType, useTrueColor)
+	return format.GetDetailedColorCode(diffType, useTrueColor)
 }
-func GetContextColorCode(useTrueColor bool) string { return types.GetContextColorCode(useTrueColor) }
-func GetColorReset() string                        { return types.GetColorReset() }
-func CompactColor(dt DiffType) string              { return types.CompactColor(dt) }
-func clamp(val, lo, hi int) int                    { return types.Clamp(val, lo, hi) }
+func GetContextColorCode(useTrueColor bool) string { return format.GetContextColorCode(useTrueColor) }
+func GetColorReset() string                        { return format.GetColorReset() }
+func CompactColor(dt DiffType) string              { return format.CompactColor(dt) }
+func clamp(val, lo, hi int) int                    { return format.Clamp(val, lo, hi) }

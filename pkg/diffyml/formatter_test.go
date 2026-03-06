@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"time"
 )
 
 func TestGetFormatter_Compact(t *testing.T) {
@@ -208,28 +207,6 @@ func TestFormatter_NilOptions(t *testing.T) {
 	output := f.Format(diffs, nil)
 	if output == "" {
 		t.Error("formatter should produce output even with nil options")
-	}
-}
-
-func TestConvertToGoPatchPath(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected string
-	}{
-		{"config.name", "/config/name"},
-		{"items[0].value", "/items/0/value"},
-		{"root", "/root"},
-		{"a.b.c.d", "/a/b/c/d"},
-		{"list[0][1].nested", "/list/0/1/nested"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			result := convertToGoPatchPath(tt.input)
-			if result != tt.expected {
-				t.Errorf("convertToGoPatchPath(%q) = %q, want %q", tt.input, result, tt.expected)
-			}
-		})
 	}
 }
 
@@ -1184,26 +1161,6 @@ func TestGitLabFormatter_FingerprintIncludesFilePath(t *testing.T) {
 	}
 }
 
-func TestGitLabFormatter_FingerprintUnchangedWhenNoFilePath(t *testing.T) {
-	f := &GitLabFormatter{}
-	opts := DefaultFormatOptions()
-	// FilePath is empty
-
-	diffs := []Difference{
-		{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"},
-	}
-
-	output := f.Format(diffs, opts)
-	fp := extractFingerprint(t, output)
-
-	// Should match the old fingerprint formula: sha256(description)
-	desc := diffDescription(diffs[0])
-	expectedFP := gitLabFingerprint("", desc)
-	if fp != expectedFP {
-		t.Errorf("fingerprint with empty FilePath should match legacy formula\ngot:  %s\nwant: %s", fp, expectedFP)
-	}
-}
-
 func TestGitLabFormatter_DescriptionContainsYAMLPath(t *testing.T) {
 	f := &GitLabFormatter{}
 	opts := DefaultFormatOptions()
@@ -1434,80 +1391,6 @@ func TestGitLabFormatter_ImplementsStructuredFormatter(t *testing.T) {
 }
 
 // --- Task 4.1: Regression and backward compatibility validation ---
-
-func TestGitLabFormatter_BackwardCompat_EmptyFilePath(t *testing.T) {
-	// When FilePath is empty, the formatter should behave identically to
-	// pre-feature behavior: location.path falls back to diff.Path,
-	// fingerprints are computed from description only.
-	f := &GitLabFormatter{}
-	opts := DefaultFormatOptions()
-	// FilePath is empty (zero value)
-
-	diffs := []Difference{
-		{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"},
-		{Path: "config.port", Type: DiffAdded, To: 8080},
-		{Path: "config.old", Type: DiffRemoved, From: "value"},
-		{Path: "items", Type: DiffOrderChanged},
-	}
-
-	output := f.Format(diffs, opts)
-
-	// Parse as JSON to verify structural validity
-	var result []map[string]interface{}
-	if err := json.Unmarshal([]byte(output), &result); err != nil {
-		t.Fatalf("output is not valid JSON: %v\noutput: %s", err, output)
-	}
-	if len(result) != 4 {
-		t.Errorf("expected 4 entries, got %d", len(result))
-	}
-
-	// Verify location.path falls back to diff.Path (YAML key path)
-	for i, entry := range result {
-		location := entry["location"].(map[string]interface{})
-		path := location["path"].(string)
-		if path != diffs[i].Path {
-			t.Errorf("entry %d: expected location.path=%q (fallback to diff.Path), got %q", i, diffs[i].Path, path)
-		}
-	}
-
-	// Verify fingerprints match the legacy formula: sha256(description only)
-	for i, entry := range result {
-		fp := entry["fingerprint"].(string)
-		desc := diffDescription(diffs[i])
-		expectedFP := gitLabFingerprint("", desc)
-		if fp != expectedFP {
-			t.Errorf("entry %d: fingerprint mismatch with legacy formula\ngot:  %s\nwant: %s", i, fp, expectedFP)
-		}
-	}
-}
-
-func TestGitLabFormatter_BackwardCompat_FingerprintStability(t *testing.T) {
-	// Fingerprints with empty FilePath must be deterministic and match
-	// the exact pre-change formula: sha256(description).
-	// This guards against accidental changes to the hash input format.
-	diff := Difference{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"}
-	desc := diffDescription(diff)
-
-	// Compute expected fingerprint manually
-	expectedFP := gitLabFingerprint("", desc)
-
-	// Verify through the formatter
-	f := &GitLabFormatter{}
-	opts := DefaultFormatOptions()
-	output := f.Format([]Difference{diff}, opts)
-
-	fp := extractFingerprint(t, output)
-	if fp != expectedFP {
-		t.Errorf("fingerprint should match legacy formula\ngot:  %s\nwant: %s", fp, expectedFP)
-	}
-
-	// Run again to verify determinism
-	output2 := f.Format([]Difference{diff}, opts)
-	fp2 := extractFingerprint(t, output2)
-	if fp != fp2 {
-		t.Errorf("fingerprint should be deterministic across calls\ncall1: %s\ncall2: %s", fp, fp2)
-	}
-}
 
 func TestGitLabFormatter_BackwardCompat_AllDiffTypes_ValidJSON(t *testing.T) {
 	// Verify that all diff types produce valid JSON with all required fields
@@ -1954,87 +1837,4 @@ func TestBriefFormatter_OnlyModified(t *testing.T) {
 	if strings.Contains(output, "removed") {
 		t.Errorf("output should not contain 'removed' when there are none, got: %s", output)
 	}
-}
-
-// Tests for formatValue with structured types
-
-func TestFormatValue_OrderedMap(t *testing.T) {
-	om := NewOrderedMap()
-	om.Keys = append(om.Keys, "name", "port")
-	om.Values["name"] = "http"
-	om.Values["port"] = 8080
-
-	result := formatValue(om)
-
-	if strings.Contains(result, "&{") {
-		t.Errorf("formatValue should not produce Go struct repr for *OrderedMap, got: %s", result)
-	}
-	if !strings.Contains(result, "name: http") {
-		t.Errorf("expected 'name: http' in YAML output, got: %s", result)
-	}
-	if !strings.Contains(result, "port: 8080") {
-		t.Errorf("expected 'port: 8080' in YAML output, got: %s", result)
-	}
-}
-
-func TestFormatValue_ListWithOrderedMaps(t *testing.T) {
-	item := NewOrderedMap()
-	item.Keys = append(item.Keys, "name", "value")
-	item.Values["name"] = "FOO"
-	item.Values["value"] = "bar"
-
-	val := []interface{}{item}
-	result := formatValue(val)
-
-	if strings.Contains(result, "&{") {
-		t.Errorf("formatValue should not produce Go struct repr for []interface{} with *OrderedMap, got: %s", result)
-	}
-	if strings.Contains(result, "0x") {
-		t.Errorf("formatValue should not produce pointer addresses, got: %s", result)
-	}
-	if !strings.Contains(result, "name: FOO") {
-		t.Errorf("expected 'name: FOO' in YAML output, got: %s", result)
-	}
-}
-
-func TestFormatValue_MapStringInterface(t *testing.T) {
-	val := map[string]interface{}{"key": "value", "count": 42}
-	result := formatValue(val)
-
-	if !strings.Contains(result, "key: value") {
-		t.Errorf("expected 'key: value' in YAML output, got: %s", result)
-	}
-	if !strings.Contains(result, "count: 42") {
-		t.Errorf("expected 'count: 42' in YAML output, got: %s", result)
-	}
-}
-
-func TestFormatValue_ScalarUnchanged(t *testing.T) {
-	if got := formatValue("hello"); got != "hello" {
-		t.Errorf("expected 'hello', got: %s", got)
-	}
-	if got := formatValue(42); got != "42" {
-		t.Errorf("expected '42', got: %s", got)
-	}
-	if got := formatValue(nil); got != "<nil>" {
-		t.Errorf("expected '<nil>', got: %s", got)
-	}
-}
-
-func TestFormatValue_Timestamp(t *testing.T) {
-	t.Run("date only", func(t *testing.T) {
-		ts := time.Date(2010, 9, 9, 0, 0, 0, 0, time.UTC)
-		got := formatValue(ts)
-		if got != "2010-09-09" {
-			t.Errorf("expected 2010-09-09, got %s", got)
-		}
-	})
-
-	t.Run("datetime", func(t *testing.T) {
-		ts := time.Date(2023, 6, 15, 14, 30, 0, 0, time.UTC)
-		got := formatValue(ts)
-		if got != "2023-06-15T14:30:00Z" {
-			t.Errorf("expected 2023-06-15T14:30:00Z, got %s", got)
-		}
-	})
 }

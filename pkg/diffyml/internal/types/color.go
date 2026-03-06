@@ -1,3 +1,7 @@
+// color.go - Color mode configuration and terminal detection.
+//
+// Presentation-layer color constants (ANSI codes, Colorizer, etc.)
+// live in internal/format/color.go.
 package types
 
 import (
@@ -100,106 +104,4 @@ func (c *ColorConfig) ToFormatOptions(opts *FormatOptions) {
 	}
 	opts.Color = c.ShouldUseColor()
 	opts.TrueColor = c.ShouldUseTrueColor()
-}
-
-// Detailed color palette constants (24-bit RGB values)
-const (
-	DetailedYellowR, DetailedYellowG, DetailedYellowB = 199, 196, 63
-	DetailedRedR, DetailedRedG, DetailedRedB          = 185, 49, 27
-	DetailedGreenR, DetailedGreenG, DetailedGreenB    = 88, 191, 56
-	DetailedGrayR, DetailedGrayG, DetailedGrayB       = 105, 105, 105
-)
-
-// ANSI color codes (8-color fallback)
-const (
-	ColorReset  = "\033[0m"
-	ColorRed    = "\033[31m"
-	ColorGreen  = "\033[32m"
-	ColorYellow = "\033[33m"
-	ColorCyan   = "\033[36m"
-	ColorWhite  = "\033[37m"
-	ColorGray   = "\033[90m"
-)
-
-// ANSI style codes
-const (
-	StyleBold      = "\033[1m"
-	StyleBoldOff   = "\033[22m"
-	StyleItalic    = "\033[3m"
-	StyleItalicOff = "\033[23m"
-)
-
-// GetTrueColorCode returns an ANSI escape sequence for 24-bit RGB color.
-func GetTrueColorCode(r, g, b int) string {
-	r = Clamp(r, 0, 255)
-	g = Clamp(g, 0, 255)
-	b = Clamp(b, 0, 255)
-	return fmt.Sprintf("\033[38;2;%d;%d;%dm", r, g, b)
-}
-
-// GetDetailedColorCode returns the appropriate color code for a diff type.
-func GetDetailedColorCode(diffType DiffType, useTrueColor bool) string {
-	if useTrueColor {
-		switch diffType {
-		case DiffAdded:
-			return GetTrueColorCode(DetailedGreenR, DetailedGreenG, DetailedGreenB)
-		case DiffRemoved:
-			return GetTrueColorCode(DetailedRedR, DetailedRedG, DetailedRedB)
-		case DiffModified, DiffOrderChanged:
-			return GetTrueColorCode(DetailedYellowR, DetailedYellowG, DetailedYellowB)
-		}
-	}
-	switch diffType {
-	case DiffAdded:
-		return ColorGreen
-	case DiffRemoved:
-		return ColorRed
-	case DiffModified, DiffOrderChanged:
-		return ColorYellow
-	}
-	return ""
-}
-
-// GetContextColorCode returns gray color for context lines.
-func GetContextColorCode(useTrueColor bool) string {
-	if useTrueColor {
-		return GetTrueColorCode(DetailedGrayR, DetailedGrayG, DetailedGrayB)
-	}
-	return ColorGray
-}
-
-// GetColorReset returns the ANSI reset code.
-func GetColorReset() string {
-	return ColorReset
-}
-
-// Clamp restricts a value to the range [lo, hi].
-func Clamp(val, lo, hi int) int {
-	return max(lo, min(val, hi))
-}
-
-// Colorizer provides diff-type-aware color codes for formatters.
-type Colorizer struct {
-	TrueColor bool
-}
-
-func (c Colorizer) Added() string    { return GetDetailedColorCode(DiffAdded, c.TrueColor) }
-func (c Colorizer) Removed() string  { return GetDetailedColorCode(DiffRemoved, c.TrueColor) }
-func (c Colorizer) Modified() string { return GetDetailedColorCode(DiffModified, c.TrueColor) }
-func (c Colorizer) Context() string  { return GetContextColorCode(c.TrueColor) }
-func (c Colorizer) Reset() string    { return ColorReset }
-func (c Colorizer) Bold() string     { return StyleBold }
-
-// CompactColor returns the 8-color ANSI code for a diff type.
-func CompactColor(dt DiffType) string {
-	switch dt {
-	case DiffAdded:
-		return ColorGreen
-	case DiffRemoved:
-		return ColorRed
-	case DiffModified, DiffOrderChanged:
-		return ColorYellow
-	default:
-		return ""
-	}
 }

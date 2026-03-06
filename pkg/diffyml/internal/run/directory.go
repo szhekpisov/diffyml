@@ -152,7 +152,7 @@ func BuildFilePairsFromMap(m map[string][2][]byte) []FilePair {
 // LoadPairContent loads the from/to content for a file pair.
 // In testing mode (rc.FilePairs != nil), reads from the in-memory map.
 // In real mode, loads from the filesystem based on the pair type.
-func LoadPairContent(pair FilePair, rc *types.RunConfig) (from, to []byte, err error) {
+func LoadPairContent(pair FilePair, rc *RunConfig) (from, to []byte, err error) {
 	if rc.FilePairs != nil {
 		contents := rc.FilePairs[pair.Name]
 		if contents[0] != nil {
@@ -206,7 +206,7 @@ type pairResult struct {
 // RunDirectory executes directory-mode comparison using a 3-phase pipeline:
 // sequential load, parallel compare, sequential format.
 // Called from Run() when both arguments are directories.
-func RunDirectory(runOpts *types.RunOptions, rc *types.RunConfig, fromDir, toDir string) *types.ExitResult {
+func RunDirectory(runOpts *RunOptions, rc *RunConfig, fromDir, toDir string) *ExitResult {
 	// Handle swap: swap directories before planning to avoid double-swap
 	if runOpts.Swap {
 		fromDir, toDir = toDir, fromDir
@@ -221,14 +221,14 @@ func RunDirectory(runOpts *types.RunOptions, rc *types.RunConfig, fromDir, toDir
 		var err error
 		pairs, err = BuildFilePairPlan(fromDir, toDir)
 		if err != nil {
-			return types.ExitError(rc, err)
+			return ExitError(rc, err)
 		}
 	}
 
 	// Build shared options
 	ro, err := BuildRunOpts(runOpts)
 	if err != nil {
-		return types.ExitError(rc, err)
+		return ExitError(rc, err)
 	}
 	// Disable swap in compareOpts since we already swapped dirs
 	if runOpts.Swap {
@@ -330,11 +330,11 @@ func RunDirectory(runOpts *types.RunOptions, rc *types.RunConfig, fromDir, toDir
 	if hasDiffs {
 		diffCount = 1
 	}
-	if code := types.DetermineExitCode(runOpts.SetExitCode, diffCount, nil); code != types.ExitCodeSuccess {
-		return &types.ExitResult{Code: code, Err: nil}
+	if code := DetermineExitCode(runOpts.SetExitCode, diffCount, nil); code != ExitCodeSuccess {
+		return &ExitResult{Code: code, Err: nil}
 	}
 	if hasErrors {
-		return &types.ExitResult{Code: types.ExitCodeError, Err: nil}
+		return &ExitResult{Code: ExitCodeError, Err: nil}
 	}
-	return &types.ExitResult{Code: types.ExitCodeSuccess, Err: nil}
+	return &ExitResult{Code: ExitCodeSuccess, Err: nil}
 }

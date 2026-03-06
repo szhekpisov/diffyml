@@ -16,7 +16,3 @@ type BriefFormatter = format.BriefFormatter
 func DefaultFormatOptions() *FormatOptions { return types.DefaultFormatOptions() }
 
 func GetFormatter(name string) (Formatter, error) { return format.GetFormatter(name) }
-
-func formatValue(val interface{}) string      { return format.FormatValue(val) }
-func convertToGoPatchPath(path string) string { return format.ConvertToGoPatchPath(path) }
-func diffDescription(diff Difference) string  { return format.DiffDescription(diff) }

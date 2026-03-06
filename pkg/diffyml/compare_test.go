@@ -1431,6 +1431,34 @@ b_added: new`)
 	}
 }
 
+func TestCompare_RootRemoveBeforeNestedRemove(t *testing.T) {
+	// A root-level removal must be sorted before a nested-level removal.
+	// This kills the mutation on isRootRemJ (types.go:162) that inverts
+	// the dot-check: without the fix, "a.nested" would be mis-classified
+	// as a root removal and sorted before "z".
+	from := yml(`z: old
+a:
+  nested: old`)
+	to := yml(`a: {}`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if len(diffs) != 2 {
+		t.Fatalf("expected 2 diffs, got %d", len(diffs))
+	}
+	// Root-level removal "z" must come before nested removal "a.nested"
+	if diffs[0].Type != diffyml.DiffRemoved || diffs[0].Path != "z" {
+		t.Errorf("expected first diff to be removed 'z', got type=%v path=%q",
+			diffs[0].Type, diffs[0].Path)
+	}
+	if diffs[1].Type != diffyml.DiffRemoved || diffs[1].Path != "a.nested" {
+		t.Errorf("expected second diff to be removed 'a.nested', got type=%v path=%q",
+			diffs[1].Type, diffs[1].Path)
+	}
+}
+
 func TestCompare_HeterogeneousListReorder(t *testing.T) {
 	// Heterogeneous list items (single distinct keys) should be compared unordered,
 	// so reordering them should produce no diffs.

@@ -18,16 +18,16 @@ const (
 // SimilarityIndex hashes lines of text for content similarity comparison.
 // Uses CRC32 on each line, storing counts in a table.
 type SimilarityIndex struct {
-	hashes   map[uint32]int
-	numLines int
-	numBytes int
+	Hashes   map[uint32]int
+	NumLines int
+	NumBytes int
 }
 
 // NewSimilarityIndex builds a similarity index from raw bytes by hashing each non-empty line.
 func NewSimilarityIndex(data []byte) *SimilarityIndex {
 	idx := &SimilarityIndex{
-		hashes:   make(map[uint32]int),
-		numBytes: len(data),
+		Hashes:   make(map[uint32]int),
+		NumBytes: len(data),
 	}
 
 	start := 0
@@ -48,8 +48,8 @@ func NewSimilarityIndex(data []byte) *SimilarityIndex {
 				continue
 			}
 
-			idx.hashes[crc32.ChecksumIEEE(line)]++
-			idx.numLines++
+			idx.Hashes[crc32.ChecksumIEEE(line)]++
+			idx.NumLines++
 		}
 	}
 
@@ -58,14 +58,14 @@ func NewSimilarityIndex(data []byte) *SimilarityIndex {
 
 // Score computes similarity score (0–100) between two indices.
 func (s *SimilarityIndex) Score(other *SimilarityIndex) int {
-	maxLines := max(s.numLines, other.numLines)
+	maxLines := max(s.NumLines, other.NumLines)
 	if maxLines == 0 {
 		return 0
 	}
 
 	matching := 0
-	for h, count := range other.hashes {
-		if selfCount, ok := s.hashes[h]; ok {
+	for h, count := range other.Hashes {
+		if selfCount, ok := s.Hashes[h]; ok {
 			matching += min(selfCount, count)
 		}
 	}
@@ -149,8 +149,8 @@ func DetectRenames(from, to []interface{}, unmatchedFrom, unmatchedTo []int, opt
 			tc := toCandidates[toIdx]
 
 			// Size ratio early rejection
-			minLen := min(fc.numBytes, tc.numBytes)
-			maxLen := max(fc.numBytes, tc.numBytes)
+			minLen := min(fc.NumBytes, tc.NumBytes)
+			maxLen := max(fc.NumBytes, tc.NumBytes)
 			if maxLen != 0 && minLen*100/maxLen < RenameScoreThreshold {
 				continue
 			}

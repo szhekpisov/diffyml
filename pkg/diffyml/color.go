@@ -54,20 +54,18 @@ const (
 	DetailedGrayB   = types.DetailedGrayB
 )
 
-// stdoutStatFn is injectable for testing. Must be a local var so tests in
-// package diffyml can reassign it. IsTerminal below reads this var.
+// stdoutStatFn is injectable for testing. Tests can reassign this variable
+// and IsTerminal will sync it to the internal package before delegating.
 var stdoutStatFn = func() (os.FileInfo, error) {
 	return os.Stdout.Stat()
 }
 
 // IsTerminal checks if the given file descriptor is a terminal.
-// Uses the local stdoutStatFn so that tests can override it.
+// Delegates to the internal implementation, syncing the test-overridable
+// stdoutStatFn so that mutations in the internal code are exercised.
 func IsTerminal(fd uintptr) bool {
-	stat, err := stdoutStatFn()
-	if err != nil {
-		return false
-	}
-	return (stat.Mode() & os.ModeCharDevice) != 0
+	types.StdoutStatFn = stdoutStatFn
+	return types.IsTerminal(fd)
 }
 
 func ParseColorMode(s string) (ColorMode, error) { return types.ParseColorMode(s) }

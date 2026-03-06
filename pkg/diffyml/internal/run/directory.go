@@ -249,34 +249,23 @@ func RunDirectory(runOpts *types.RunOptions, rc *types.RunConfig, fromDir, toDir
 	}
 
 	// Phase 2: Compare in parallel (stateless, safe for concurrent use)
-	if len(pairs) > 1 {
-		sem := make(chan struct{}, runtime.NumCPU())
-		var wg sync.WaitGroup
-		for i := range results {
-			if results[i].loadErr != nil {
-				continue
-			}
-			wg.Add(1)
-			sem <- struct{}{}
-			go func(idx int) {
-				defer wg.Done()
-				defer func() { <-sem }()
-				diffs, err := CompareAndFilter(results[idx].from, results[idx].to, ro.compare, ro.filter)
-				results[idx].diffs = diffs
-				results[idx].cmpErr = err
-			}(i)
+	sem := make(chan struct{}, runtime.NumCPU())
+	var wg sync.WaitGroup
+	for i := range results {
+		if results[i].loadErr != nil {
+			continue
 		}
-		wg.Wait()
-	} else {
-		for i := range results {
-			if results[i].loadErr != nil {
-				continue
-			}
-			diffs, err := CompareAndFilter(results[i].from, results[i].to, ro.compare, ro.filter)
-			results[i].diffs = diffs
-			results[i].cmpErr = err
-		}
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(idx int) {
+			defer wg.Done()
+			defer func() { <-sem }()
+			diffs, err := CompareAndFilter(results[idx].from, results[idx].to, ro.compare, ro.filter)
+			results[idx].diffs = diffs
+			results[idx].cmpErr = err
+		}(i)
 	}
+	wg.Wait()
 
 	// Phase 3: Format sequentially (preserves output order)
 	sf, isStructured := ro.formatter.(types.StructuredFormatter)

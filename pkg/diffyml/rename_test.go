@@ -96,7 +96,7 @@ func TestSimilarityIndex_IdenticalDocs(t *testing.T) {
 	idx1 := newSimilarityIndex(data)
 	idx2 := newSimilarityIndex(data)
 
-	score := idx1.score(idx2)
+	score := idx1.Score(idx2)
 	if score != 100 {
 		t.Errorf("expected score 100 for identical docs, got %d", score)
 	}
@@ -108,7 +108,7 @@ func TestSimilarityIndex_CompletelyDifferent(t *testing.T) {
 	idx1 := newSimilarityIndex(data1)
 	idx2 := newSimilarityIndex(data2)
 
-	score := idx1.score(idx2)
+	score := idx1.Score(idx2)
 	if score != 0 {
 		t.Errorf("expected score 0 for completely different docs, got %d", score)
 	}
@@ -120,7 +120,7 @@ func TestSimilarityIndex_PartialMatch(t *testing.T) {
 	idx1 := newSimilarityIndex(data1)
 	idx2 := newSimilarityIndex(data2)
 
-	score := idx1.score(idx2)
+	score := idx1.Score(idx2)
 	if score <= 0 || score >= 100 {
 		t.Errorf("expected score between 0 and 100, got %d", score)
 	}
@@ -134,7 +134,7 @@ func TestSimilarityIndex_EmptyDocs(t *testing.T) {
 	idx1 := newSimilarityIndex([]byte(""))
 	idx2 := newSimilarityIndex([]byte(""))
 
-	score := idx1.score(idx2)
+	score := idx1.Score(idx2)
 	if score != 0 {
 		t.Errorf("expected score 0 for empty docs, got %d", score)
 	}
@@ -395,13 +395,13 @@ func TestSerializeDocument_UnknownType(t *testing.T) {
 }
 
 func TestSimilarityIndex_AsymmetricLineCounts(t *testing.T) {
-	// self has fewer lines than other → exercises other.numLines > maxLines branch
+	// self has fewer lines than other → exercises other.NumLines > maxLines branch
 	data1 := []byte("line1\n")
 	data2 := []byte("line1\nline2\nline3\n")
 	idx1 := newSimilarityIndex(data1)
 	idx2 := newSimilarityIndex(data2)
 
-	score := idx1.score(idx2)
+	score := idx1.Score(idx2)
 	// 1 matching out of max(1,3) = 3 → 33%
 	if score != 33 {
 		t.Errorf("expected score 33, got %d", score)
@@ -415,7 +415,7 @@ func TestSimilarityIndex_DuplicateLines(t *testing.T) {
 	idx1 := newSimilarityIndex(data1)
 	idx2 := newSimilarityIndex(data2)
 
-	score := idx1.score(idx2)
+	score := idx1.Score(idx2)
 	// matching: min(1,2)=1 for "aaa" + min(1,1)=1 for "bbb" = 2
 	// max lines = 3 → 2*100/3 = 66
 	if score != 66 {
@@ -479,11 +479,11 @@ func TestNewSimilarityIndex_NoTrailingNewline(t *testing.T) {
 	withNewline := newSimilarityIndex([]byte("line1\nline2\n"))
 	withoutNewline := newSimilarityIndex([]byte("line1\nline2"))
 
-	if withNewline.numLines != withoutNewline.numLines {
-		t.Errorf("expected same line count, got %d vs %d", withNewline.numLines, withoutNewline.numLines)
+	if withNewline.NumLines != withoutNewline.NumLines {
+		t.Errorf("expected same line count, got %d vs %d", withNewline.NumLines, withoutNewline.NumLines)
 	}
-	if withNewline.score(withoutNewline) != 100 {
-		t.Errorf("expected score 100, got %d", withNewline.score(withoutNewline))
+	if withNewline.Score(withoutNewline) != 100 {
+		t.Errorf("expected score 100, got %d", withNewline.Score(withoutNewline))
 	}
 }
 
@@ -574,10 +574,10 @@ func TestDetectRenames_ScoreExactlyAtThreshold(t *testing.T) {
 	toData := serializeDocument(to[0])
 	fromIdx := newSimilarityIndex(fromData)
 	toIdx := newSimilarityIndex(toData)
-	actualScore := fromIdx.score(toIdx)
+	actualScore := fromIdx.Score(toIdx)
 	if actualScore != 60 {
 		t.Fatalf("precondition: expected score 60, got %d (from lines=%d, to lines=%d)\nfrom:\n%s\nto:\n%s",
-			actualScore, fromIdx.numLines, toIdx.numLines, string(fromData), string(toData))
+			actualScore, fromIdx.NumLines, toIdx.NumLines, string(fromData), string(toData))
 	}
 
 	opts := &Options{DetectRenames: true}
@@ -656,7 +656,7 @@ func TestDetectRenames_SizeRatioBypassGuard(t *testing.T) {
 	toIdx := newSimilarityIndex(toData)
 
 	sizeRatio := min(len(fromData), len(toData)) * 100 / max(len(fromData), len(toData))
-	similarity := fromIdx.score(toIdx)
+	similarity := fromIdx.Score(toIdx)
 
 	if sizeRatio >= renameScoreThreshold {
 		t.Fatalf("precondition failed: size ratio %d%% >= threshold %d%%, need < threshold",
@@ -799,7 +799,7 @@ func TestDetectRenames_SizeRatioBoundaryExact(t *testing.T) {
 
 	fromIdx := newSimilarityIndex(smallBytes)
 	toIdx := newSimilarityIndex(largeBytes)
-	similarity := fromIdx.score(toIdx)
+	similarity := fromIdx.Score(toIdx)
 	if similarity < renameScoreThreshold {
 		t.Fatalf("precondition: similarity %d%% < %d%%, need >= threshold", similarity, renameScoreThreshold)
 	}

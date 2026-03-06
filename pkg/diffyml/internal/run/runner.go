@@ -170,13 +170,13 @@ func CompareAndFilter(from, to []byte, compareOpts *types.Options, filterOpts *t
 func InvokeSummary(model string, rc *types.RunConfig, groups []types.DiffGroup, formatOpts *types.FormatOptions) (string, error) {
 	summarizer := NewSummarizer(model)
 	if rc.SummaryAPIURL != "" {
-		summarizer.apiURL = rc.SummaryAPIURL
+		summarizer.ApiURL = rc.SummaryAPIURL
 	}
 	summary, err := summarizer.Summarize(context.Background(), groups)
 	if err != nil {
 		return "", err
 	}
-	return formatSummaryOutput(summary, formatOpts), nil
+	return FormatSummaryOutput(summary, formatOpts), nil
 }
 
 // NormalizeFilePath converts a file path to a clean relative path.

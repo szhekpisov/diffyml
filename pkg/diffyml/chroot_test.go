@@ -334,8 +334,8 @@ func TestParsePath_LeadingDot(t *testing.T) {
 	if len(segments) != 1 {
 		t.Errorf("parsePath(\".items\") returned %d segments, want 1", len(segments))
 	}
-	if len(segments) > 0 && segments[0].key != "items" {
-		t.Errorf("parsePath(\".items\")[0].key = %q, want \"items\"", segments[0].key)
+	if len(segments) > 0 && segments[0].Key != "items" {
+		t.Errorf("parsePath(\".items\")[0].Key = %q, want \"items\"", segments[0].Key)
 	}
 }
 

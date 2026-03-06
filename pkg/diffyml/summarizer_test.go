@@ -232,16 +232,16 @@ func TestFormatSummaryOutput_WithColor(t *testing.T) {
 func TestNewSummarizer_DefaultModel(t *testing.T) {
 	t.Setenv("ANTHROPIC_API_KEY", "test-key")
 	s := NewSummarizer("")
-	if s.model != defaultModel {
-		t.Errorf("NewSummarizer(\"\").model = %q, want %q", s.model, defaultModel)
+	if s.Model != defaultModel {
+		t.Errorf("NewSummarizer(\"\").model = %q, want %q", s.Model, defaultModel)
 	}
 }
 
 func TestNewSummarizer_CustomModel(t *testing.T) {
 	t.Setenv("ANTHROPIC_API_KEY", "test-key")
 	s := NewSummarizer("claude-sonnet-4-20250514")
-	if s.model != "claude-sonnet-4-20250514" {
-		t.Errorf("NewSummarizer custom model = %q, want %q", s.model, "claude-sonnet-4-20250514")
+	if s.Model != "claude-sonnet-4-20250514" {
+		t.Errorf("NewSummarizer custom model = %q, want %q", s.Model, "claude-sonnet-4-20250514")
 	}
 }
 
@@ -457,8 +457,8 @@ func TestNewSummarizerWithClient_CustomModelPreserved(t *testing.T) {
 	// summarizer.go:60 — custom model should be preserved, not replaced by default
 	mock := &mockHTTPDoer{statusCode: 200, body: `{"content":[{"type":"text","text":"ok"}]}`}
 	s := NewSummarizerWithClient("my-custom-model", "test-key", mock)
-	if s.model != "my-custom-model" {
-		t.Errorf("NewSummarizerWithClient model = %q, want %q", s.model, "my-custom-model")
+	if s.Model != "my-custom-model" {
+		t.Errorf("NewSummarizerWithClient model = %q, want %q", s.Model, "my-custom-model")
 	}
 }
 
@@ -466,8 +466,8 @@ func TestNewSummarizerWithClient_EmptyModelDefault(t *testing.T) {
 	// summarizer.go:60 — empty model should be replaced by default
 	mock := &mockHTTPDoer{statusCode: 200, body: `{"content":[{"type":"text","text":"ok"}]}`}
 	s := NewSummarizerWithClient("", "test-key", mock)
-	if s.model != defaultModel {
-		t.Errorf("NewSummarizerWithClient empty model = %q, want %q", s.model, defaultModel)
+	if s.Model != defaultModel {
+		t.Errorf("NewSummarizerWithClient empty model = %q, want %q", s.Model, defaultModel)
 	}
 }
 

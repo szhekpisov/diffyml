@@ -257,6 +257,28 @@ func TestCLIConfig_ParseArgs_DoubleDashTerminator(t *testing.T) {
 	}
 }
 
+func TestCLIConfig_ParseArgs_DoubleDashWithValueFlag(t *testing.T) {
+	// A non-bool flag before "--" ensures that the i+1 offset
+	// in reorderArgs correctly skips the "--" separator.
+	// With a mutated offset (e.g. i-1), the flag value "never"
+	// would be duplicated in positional args, causing fs.Parse
+	// to stop early and set FromFile incorrectly.
+	cfg := NewCLIConfig()
+	args := []string{"--color", "never", "--", "from.yaml", "to.yaml"}
+
+	err := cfg.ParseArgs(args)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.FromFile != "from.yaml" {
+		t.Errorf("expected FromFile='from.yaml', got %q", cfg.FromFile)
+	}
+	if cfg.Color != "never" {
+		t.Errorf("expected Color='never', got %q", cfg.Color)
+	}
+}
+
 func TestCLIConfig_ParseArgs_EqualsForm(t *testing.T) {
 	cfg := NewCLIConfig()
 	args := []string{"from.yaml", "to.yaml", "--color=never", "--output=compact"}

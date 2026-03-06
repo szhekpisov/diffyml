@@ -28,16 +28,16 @@ const (
 )
 
 // httpDoer abstracts HTTP request execution for testability.
-type httpDoer interface {
+type HttpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
 // Summarizer generates AI-powered summaries of YAML differences.
 type Summarizer struct {
-	client httpDoer
-	apiKey string
-	model  string
-	apiURL string // overridable for testing; defaults to anthropicAPIURL
+	Client HttpDoer
+	ApiKey string `json:"-"` // never serialized
+	Model  string
+	ApiURL string // overridable for testing; defaults to anthropicAPIURL
 }
 
 // NewSummarizer creates a summarizer with the specified model.
@@ -48,24 +48,24 @@ func NewSummarizer(model string) *Summarizer {
 		model = defaultModel
 	}
 	return &Summarizer{
-		client: &http.Client{},
-		apiKey: os.Getenv("ANTHROPIC_API_KEY"),
-		model:  model,
-		apiURL: anthropicAPIURL,
+		Client: &http.Client{},
+		ApiKey: os.Getenv("ANTHROPIC_API_KEY"),
+		Model:  model,
+		ApiURL: anthropicAPIURL,
 	}
 }
 
-// NewSummarizerWithClient creates a summarizer with an injected httpDoer.
+// NewSummarizerWithClient creates a summarizer with an injected HttpDoer.
 // Used in tests to supply a mock HTTP client.
-func NewSummarizerWithClient(model string, apiKey string, client httpDoer) *Summarizer {
+func NewSummarizerWithClient(model string, apiKey string, client HttpDoer) *Summarizer {
 	if model == "" {
 		model = defaultModel
 	}
 	return &Summarizer{
-		client: client,
-		apiKey: apiKey,
-		model:  model,
-		apiURL: anthropicAPIURL,
+		Client: client,
+		ApiKey: apiKey,
+		Model:  model,
+		ApiURL: anthropicAPIURL,
 	}
 }
 
@@ -104,12 +104,12 @@ func (s *Summarizer) Summarize(ctx context.Context, groups []types.DiffGroup) (s
 	ctx, cancel := context.WithTimeout(ctx, summaryTimeout)
 	defer cancel()
 
-	prompt := buildPrompt(groups)
+	prompt := BuildPrompt(groups)
 
 	reqBody := messagesRequest{
-		Model:     s.model,
+		Model:     s.Model,
 		MaxTokens: 512,
-		System:    systemPrompt(),
+		System:    SystemPrompt(),
 		Messages:  []messageParam{{Role: "user", Content: prompt}},
 	}
 
@@ -123,15 +123,15 @@ func (s *Summarizer) Summarize(ctx context.Context, groups []types.DiffGroup) (s
 		return "", fmt.Errorf("request timed out")
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", s.apiURL, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, "POST", s.ApiURL, bytes.NewReader(body))
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("x-api-key", s.apiKey)
+	req.Header.Set("x-api-key", s.ApiKey)
 	req.Header.Set("anthropic-version", anthropicVersion)
 
-	resp, err := s.client.Do(req)
+	resp, err := s.Client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("request failed: %w", err)
 	}
@@ -176,7 +176,7 @@ func (s *Summarizer) Summarize(ctx context.Context, groups []types.DiffGroup) (s
 }
 
 // diffTypeLabel returns the prompt label for a DiffType.
-func diffTypeLabel(dt types.DiffType) string {
+func DiffTypeLabel(dt types.DiffType) string {
 	switch dt {
 	case types.DiffAdded:
 		return "ADDED"
@@ -192,7 +192,7 @@ func diffTypeLabel(dt types.DiffType) string {
 }
 
 // buildPrompt serializes DiffGroups into structured text for the API.
-func buildPrompt(groups []types.DiffGroup) string {
+func BuildPrompt(groups []types.DiffGroup) string {
 	var sb strings.Builder
 	totalLen := 0
 	groupsWritten := 0
@@ -204,9 +204,9 @@ func buildPrompt(groups []types.DiffGroup) string {
 		var groupBuf strings.Builder
 		fmt.Fprintf(&groupBuf, "File: %s\n", group.FilePath)
 		for _, diff := range group.Diffs {
-			from := serializeValue(diff.From)
-			to := serializeValue(diff.To)
-			fmt.Fprintf(&groupBuf, "- [%s] %s: %q → %q\n", diffTypeLabel(diff.Type), diff.Path, from, to)
+			from := SerializeValue(diff.From)
+			to := SerializeValue(diff.To)
+			fmt.Fprintf(&groupBuf, "- [%s] %s: %q → %q\n", DiffTypeLabel(diff.Type), diff.Path, from, to)
 		}
 		groupBuf.WriteString("\n")
 
@@ -233,7 +233,7 @@ func buildPrompt(groups []types.DiffGroup) string {
 
 // serializeValue serializes a Difference.From or Difference.To value into a
 // human-readable string for prompt inclusion.
-func serializeValue(val interface{}) string {
+func SerializeValue(val interface{}) string {
 	if val == nil {
 		return "<none>"
 	}
@@ -245,12 +245,12 @@ func serializeValue(val interface{}) string {
 }
 
 // systemPrompt returns the system prompt instructing the model on summary style.
-func systemPrompt() string {
+func SystemPrompt() string {
 	return "You are a YAML diff summarizer. Given a list of structural differences between YAML files, produce a concise natural language summary (2-5 sentences). Focus on the most important changes and their likely impact. Do not repeat raw paths or values — describe the changes at a conceptual level. If changes span multiple files, mention the affected files."
 }
 
-// formatSummaryOutput formats the AI summary for display.
-func formatSummaryOutput(summary string, opts *types.FormatOptions) string {
+// FormatSummaryOutput formats the AI summary for display.
+func FormatSummaryOutput(summary string, opts *types.FormatOptions) string {
 	var sb strings.Builder
 	sb.WriteString("\n")
 

@@ -32,37 +32,37 @@ func NavigateToPath(doc interface{}, path string) (interface{}, error) {
 	current := doc
 
 	for _, seg := range segments {
-		if seg.isIndex {
+		if seg.IsIndex {
 			// Array index access
 			list, ok := current.([]interface{})
 			if !ok {
 				return nil, &types.ChrootError{
 					Path:    path,
-					Message: fmt.Sprintf("expected list at %q, got %T", seg.key, current),
+					Message: fmt.Sprintf("expected list at %q, got %T", seg.Key, current),
 				}
 			}
-			if seg.index < 0 || seg.index >= len(list) {
+			if seg.Index < 0 || seg.Index >= len(list) {
 				return nil, &types.ChrootError{
 					Path:    path,
-					Message: fmt.Sprintf("index %d out of bounds (list has %d items)", seg.index, len(list)),
+					Message: fmt.Sprintf("index %d out of bounds (list has %d items)", seg.Index, len(list)),
 				}
 			}
-			current = list[seg.index]
+			current = list[seg.Index]
 		} else {
 			// Map key access
 			om := types.ToOrderedMap(current)
 			if om == nil {
 				return nil, &types.ChrootError{
 					Path:    path,
-					Message: fmt.Sprintf("expected map at %q, got %T", seg.key, current),
+					Message: fmt.Sprintf("expected map at %q, got %T", seg.Key, current),
 				}
 			}
 
-			val, exists := om.Values[seg.key]
+			val, exists := om.Values[seg.Key]
 			if !exists {
 				return nil, &types.ChrootError{
 					Path:    path,
-					Message: fmt.Sprintf("key %q not found", seg.key),
+					Message: fmt.Sprintf("key %q not found", seg.Key),
 				}
 			}
 			current = val
@@ -72,17 +72,17 @@ func NavigateToPath(doc interface{}, path string) (interface{}, error) {
 	return current, nil
 }
 
-// pathSegment represents a single segment in a path.
-type pathSegment struct {
-	key     string // The key name (for maps)
-	index   int    // The index (for lists)
-	isIndex bool   // True if this segment is a list index
+// PathSegment represents a single segment in a path.
+type PathSegment struct {
+	Key     string // The key name (for maps)
+	Index   int    // The index (for lists)
+	IsIndex bool   // True if this segment is a list index
 }
 
 // ParsePath parses a dot-notation path with optional index accessors.
 // Examples: "foo.bar", "items[0]", "data[0].name"
-func ParsePath(path string) ([]pathSegment, error) {
-	var segments []pathSegment
+func ParsePath(path string) ([]PathSegment, error) {
+	var segments []PathSegment
 	if path == "" {
 		return segments, nil
 	}
@@ -112,7 +112,7 @@ func ParsePath(path string) ([]pathSegment, error) {
 
 			if key != "" {
 				// First add the key segment
-				segments = append(segments, pathSegment{key: key})
+				segments = append(segments, PathSegment{Key: key})
 			}
 
 			// Then add the index segment
@@ -120,10 +120,10 @@ func ParsePath(path string) ([]pathSegment, error) {
 			if err != nil {
 				return nil, fmt.Errorf("invalid list index %q", indexStr)
 			}
-			segments = append(segments, pathSegment{index: index, isIndex: true})
+			segments = append(segments, PathSegment{Index: index, IsIndex: true})
 		} else {
 			// Simple key
-			segments = append(segments, pathSegment{key: part})
+			segments = append(segments, PathSegment{Key: part})
 		}
 	}
 

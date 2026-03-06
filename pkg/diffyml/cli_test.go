@@ -389,7 +389,7 @@ func TestCLIConfig_UsageContainsFlags(t *testing.T) {
 	}
 
 	for _, flag := range expectedFlags {
-		if !containsSubstr(usage, flag) {
+		if !strings.Contains(usage, flag) {
 			t.Errorf("usage should contain flag %q", flag)
 		}
 	}
@@ -470,7 +470,7 @@ func TestCLIConfig_Validate_InvalidOutput(t *testing.T) {
 		t.Error("expected error for invalid output format")
 	}
 	// Should list valid options
-	if !containsSubstr(err.Error(), "compact") {
+	if !strings.Contains(err.Error(), "compact") {
 		t.Error("error should list valid options including 'compact'")
 	}
 }
@@ -485,7 +485,7 @@ func TestCLIConfig_Validate_InvalidColor(t *testing.T) {
 	if err == nil {
 		t.Error("expected error for invalid color mode")
 	}
-	if !containsSubstr(err.Error(), "color") {
+	if !strings.Contains(err.Error(), "color") {
 		t.Error("error should mention color mode")
 	}
 }
@@ -525,7 +525,7 @@ func TestCLIConfig_Validate_InvalidFilterRegexp(t *testing.T) {
 	if err == nil {
 		t.Error("expected error for invalid filter regex")
 	}
-	if !containsSubstr(err.Error(), "filter-regexp") {
+	if !strings.Contains(err.Error(), "filter-regexp") {
 		t.Error("error should mention filter-regexp")
 	}
 }
@@ -540,7 +540,7 @@ func TestCLIConfig_Validate_InvalidExcludeRegexp(t *testing.T) {
 	if err == nil {
 		t.Error("expected error for invalid exclude regex")
 	}
-	if !containsSubstr(err.Error(), "exclude-regexp") {
+	if !strings.Contains(err.Error(), "exclude-regexp") {
 		t.Error("error should mention exclude-regexp")
 	}
 }
@@ -572,7 +572,7 @@ func TestValidateFileExists_NonExistent(t *testing.T) {
 	if err == nil {
 		t.Error("expected error for non-existent file")
 	}
-	if !containsSubstr(err.Error(), "/nonexistent/path/file.yaml") {
+	if !strings.Contains(err.Error(), "/nonexistent/path/file.yaml") {
 		t.Error("error should include the file path")
 	}
 }
@@ -583,7 +583,7 @@ func TestValidateFileExists_Directory(t *testing.T) {
 	if err == nil {
 		t.Error("expected error when path is a directory")
 	}
-	if !containsSubstr(err.Error(), "directory") {
+	if !strings.Contains(err.Error(), "directory") {
 		t.Error("error should mention that path is a directory")
 	}
 }
@@ -604,7 +604,7 @@ func TestValidateOutputFormat_Invalid(t *testing.T) {
 		t.Error("expected error for invalid format")
 	}
 	// Should list valid options
-	if !containsSubstr(err.Error(), "compact") || !containsSubstr(err.Error(), "brief") {
+	if !strings.Contains(err.Error(), "compact") || !strings.Contains(err.Error(), "brief") {
 		t.Error("error should list valid format options")
 	}
 }
@@ -623,10 +623,10 @@ func TestValidateRegexPatterns_Invalid(t *testing.T) {
 	if err == nil {
 		t.Error("expected error for invalid pattern")
 	}
-	if !containsSubstr(err.Error(), "[invalid") {
+	if !strings.Contains(err.Error(), "[invalid") {
 		t.Error("error should include the invalid pattern")
 	}
-	if !containsSubstr(err.Error(), "test-flag") {
+	if !strings.Contains(err.Error(), "test-flag") {
 		t.Error("error should include the flag name")
 	}
 }
@@ -760,7 +760,7 @@ func TestExitResult_String(t *testing.T) {
 	for _, tc := range tests {
 		result := NewExitResult(tc.code, tc.err)
 		str := result.String()
-		if !containsSubstr(str, tc.contains) {
+		if !strings.Contains(str, tc.contains) {
 			t.Errorf("expected String() to contain %q, got %q", tc.contains, str)
 		}
 	}
@@ -898,7 +898,7 @@ func TestRun_OutputToStdout(t *testing.T) {
 		t.Error("expected output to be written to stdout")
 	}
 	// Should contain difference info
-	if !containsSubstr(output, "key") {
+	if !strings.Contains(output, "key") {
 		t.Error("expected output to contain path 'key'")
 	}
 }
@@ -921,10 +921,10 @@ func TestRun_WithFiltering(t *testing.T) {
 
 	output := stdout.String()
 	// Should contain key1 but not key2
-	if !containsSubstr(output, "key1") {
+	if !strings.Contains(output, "key1") {
 		t.Error("expected output to contain filtered path 'key1'")
 	}
-	if containsSubstr(output, "key2") {
+	if strings.Contains(output, "key2") {
 		t.Error("expected output to NOT contain excluded path 'key2'")
 	}
 }
@@ -947,7 +947,7 @@ func TestRun_OmitHeader(t *testing.T) {
 
 	output := stdout.String()
 	// Should NOT contain the header (which contains "Found X difference(s)")
-	if containsSubstr(output, "Found") && containsSubstr(output, "difference(s)") {
+	if strings.Contains(output, "Found") && strings.Contains(output, "difference(s)") {
 		t.Error("expected header to be omitted")
 	}
 }
@@ -970,7 +970,7 @@ func TestRun_BriefOutput(t *testing.T) {
 
 	output := stdout.String()
 	// Brief format should indicate a modification (± in streaming, "modified" in batch)
-	if !containsSubstr(output, "±") && !containsSubstr(output, "modified") {
+	if !strings.Contains(output, "±") && !strings.Contains(output, "modified") {
 		t.Errorf("expected brief output to contain '±' or 'modified', got: %s", output)
 	}
 }
@@ -1031,7 +1031,7 @@ func TestRun_ShowHelp(t *testing.T) {
 		t.Errorf("expected exit code %d for help, got %d", ExitCodeSuccess, result.Code)
 	}
 	output := stdout.String()
-	if !containsSubstr(output, "Usage:") {
+	if !strings.Contains(output, "Usage:") {
 		t.Error("expected help output to contain 'Usage:'")
 	}
 }
@@ -1062,7 +1062,7 @@ func TestCLI_EndToEnd_ParseAndRun(t *testing.T) {
 	}
 
 	output := stdout.String()
-	if !containsSubstr(output, "config.value") {
+	if !strings.Contains(output, "config.value") {
 		t.Errorf("expected path in output, got: %s", output)
 	}
 }
@@ -1260,10 +1260,10 @@ func TestCLI_FlagCombinations_SwapAndFilter(t *testing.T) {
 	output := stdout.String()
 	// With swap, from becomes to and vice versa
 	// With filter, only config.a should be shown
-	if !containsSubstr(output, "config.a") {
+	if !strings.Contains(output, "config.a") {
 		t.Error("expected config.a in filtered output")
 	}
-	if containsSubstr(output, "config.b") {
+	if strings.Contains(output, "config.b") {
 		t.Error("expected config.b to be filtered out")
 	}
 }
@@ -1287,7 +1287,7 @@ func TestCLI_OutputFormat_CompactWithColor(t *testing.T) {
 
 	output := stdout.String()
 	// Should contain ANSI color codes when color is forced always
-	if !containsSubstr(output, "\033[") {
+	if !strings.Contains(output, "\033[") {
 		t.Error("expected ANSI color codes in output with color=always")
 	}
 }
@@ -1311,7 +1311,7 @@ func TestCLI_OutputFormat_CompactWithoutColor(t *testing.T) {
 
 	output := stdout.String()
 	// Should NOT contain ANSI color codes when color is never
-	if containsSubstr(output, "\033[") {
+	if strings.Contains(output, "\033[") {
 		t.Error("expected no ANSI color codes in output with color=never")
 	}
 }
@@ -1338,7 +1338,7 @@ func TestCLI_Chroot_BothFiles(t *testing.T) {
 
 	output := stdout.String()
 	// Path should be relative to chroot
-	if !containsSubstr(output, "value") {
+	if !strings.Contains(output, "value") {
 		t.Error("expected 'value' path in output")
 	}
 }
@@ -1399,10 +1399,10 @@ config:
 	}
 
 	output := stdout.String()
-	if !containsSubstr(output, "config.database.host") {
+	if !strings.Contains(output, "config.database.host") {
 		t.Error("expected config.database.host difference")
 	}
-	if !containsSubstr(output, "config.cache.ttl") {
+	if !strings.Contains(output, "config.cache.ttl") {
 		t.Error("expected config.cache.ttl difference")
 	}
 }
@@ -1416,7 +1416,7 @@ func TestCLI_Usage_ListsAllFiveFormats(t *testing.T) {
 	// All five formats should be listed in the usage text
 	formats := []string{"compact", "brief", "github", "gitlab", "gitea"}
 	for _, format := range formats {
-		if !containsSubstr(usage, format) {
+		if !strings.Contains(usage, format) {
 			t.Errorf("Usage() should list format %q", format)
 		}
 	}
@@ -1428,7 +1428,7 @@ func TestCLI_Usage_OutputFlagDescriptionIncludesCompact(t *testing.T) {
 
 	// The --output flag description should include "compact"
 	// Look for the line that describes output styles
-	if !containsSubstr(usage, "compact") {
+	if !strings.Contains(usage, "compact") {
 		t.Error("Usage() --output flag description should include 'compact'")
 	}
 }
@@ -1465,7 +1465,7 @@ func TestValidateOutputFormat_InvalidListsCompact(t *testing.T) {
 		t.Error("expected error for invalid format")
 	}
 	// Error should list "compact" among valid options
-	if !containsSubstr(err.Error(), "compact") {
+	if !strings.Contains(err.Error(), "compact") {
 		t.Error("error message should list 'compact' among valid formats")
 	}
 }

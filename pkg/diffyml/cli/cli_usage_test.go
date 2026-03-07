@@ -1,4 +1,4 @@
-package diffyml
+package cli
 
 import (
 	"strings"

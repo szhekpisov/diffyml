@@ -1,4 +1,4 @@
-package diffyml
+package cli
 
 import (
 	"os"
@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-const fixturesDir = "../../testdata/fixtures"
+const fixturesDir = "../../../testdata/fixtures"
 
 func TestCLI_Fixtures(t *testing.T) {
 	entries, err := os.ReadDir(fixturesDir)

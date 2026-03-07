@@ -28,13 +28,6 @@ func TestFormatterByName_DetailedCaseInsensitive(t *testing.T) {
 	}
 }
 
-func TestValidateOutputFormat_Detailed(t *testing.T) {
-	err := ValidateOutputFormat("detailed")
-	if err != nil {
-		t.Fatalf("expected 'detailed' to be a valid output format, got error: %v", err)
-	}
-}
-
 func TestDetailedFormatter_EmptyDiffs(t *testing.T) {
 	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()

@@ -3,7 +3,7 @@
 // Key types: CLIConfig (all CLI options), RunConfig (runtime IO), ExitResult.
 // Key functions: Run() executes the full comparison flow.
 // Exit codes: 0=success, 1=differences (with -s), 255=error.
-package diffyml
+package cli
 
 import (
 	"context"
@@ -14,6 +14,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/szhekpisov/diffyml/pkg/diffyml"
 )
 
 // CLIConfig holds all command-line configuration options.
@@ -234,8 +236,8 @@ func reorderArgs(args []string, fs *flag.FlagSet) []string {
 }
 
 // ToCompareOptions converts CLI config to comparison Options.
-func (c *CLIConfig) ToCompareOptions() *Options {
-	return &Options{
+func (c *CLIConfig) ToCompareOptions() *diffyml.Options {
+	return &diffyml.Options{
 		IgnoreOrderChanges:      c.IgnoreOrderChanges,
 		IgnoreWhitespaceChanges: c.IgnoreWhitespaceChanges,
 		IgnoreValueChanges:      c.IgnoreValueChanges,
@@ -253,8 +255,8 @@ func (c *CLIConfig) ToCompareOptions() *Options {
 }
 
 // ToFilterOptions converts CLI config to FilterOptions.
-func (c *CLIConfig) ToFilterOptions() *FilterOptions {
-	return &FilterOptions{
+func (c *CLIConfig) ToFilterOptions() *diffyml.FilterOptions {
+	return &diffyml.FilterOptions{
 		IncludePaths:  c.Filter,
 		ExcludePaths:  c.Exclude,
 		IncludeRegexp: c.FilterRegexp,
@@ -263,8 +265,8 @@ func (c *CLIConfig) ToFilterOptions() *FilterOptions {
 }
 
 // ToFormatOptions converts CLI config to FormatOptions.
-func (c *CLIConfig) ToFormatOptions() *FormatOptions {
-	return &FormatOptions{
+func (c *CLIConfig) ToFormatOptions() *diffyml.FormatOptions {
+	return &diffyml.FormatOptions{
 		OmitHeader:       c.OmitHeader,
 		UseGoPatchStyle:  c.UseGoPatchStyle,
 		ContextLines:     c.MultiLineContextLines,
@@ -349,12 +351,12 @@ func (c *CLIConfig) Validate() error {
 	}
 
 	// Validate color mode
-	if _, err := ParseColorMode(c.Color); err != nil {
+	if _, err := diffyml.ParseColorMode(c.Color); err != nil {
 		return fmt.Errorf("invalid color mode %q, valid modes: always, never, auto", c.Color)
 	}
 
 	// Validate truecolor mode
-	if _, err := ParseColorMode(c.TrueColor); err != nil {
+	if _, err := diffyml.ParseColorMode(c.TrueColor); err != nil {
 		return fmt.Errorf("invalid truecolor mode %q, valid modes: always, never, auto", c.TrueColor)
 	}
 
@@ -531,8 +533,8 @@ func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
 
 	// Directory detection (skip when test content is pre-loaded)
 	if rc.FromContent == nil && rc.ToContent == nil && rc.FilePairs == nil {
-		fromIsDir := IsDirectory(cfg.FromFile)
-		toIsDir := IsDirectory(cfg.ToFile)
+		fromIsDir := diffyml.IsDirectory(cfg.FromFile)
+		toIsDir := diffyml.IsDirectory(cfg.ToFile)
 
 		if fromIsDir && toIsDir {
 			return runDirectory(cfg, rc, cfg.FromFile, cfg.ToFile)
@@ -545,7 +547,7 @@ func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
 	}
 
 	// Get the formatter
-	formatter, err := FormatterByName(cfg.Output)
+	formatter, err := diffyml.FormatterByName(cfg.Output)
 	if err != nil {
 		fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
 		return NewExitResult(ExitCodeError, err)
@@ -557,7 +559,7 @@ func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
 	if rc.FromContent != nil {
 		fromContent = rc.FromContent
 	} else {
-		fromContent, err = LoadContent(cfg.FromFile)
+		fromContent, err = diffyml.LoadContent(cfg.FromFile)
 		if err != nil {
 			fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
 			return NewExitResult(ExitCodeError, err)
@@ -567,7 +569,7 @@ func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
 	if rc.ToContent != nil {
 		toContent = rc.ToContent
 	} else {
-		toContent, err = LoadContent(cfg.ToFile)
+		toContent, err = diffyml.LoadContent(cfg.ToFile)
 		if err != nil {
 			fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
 			return NewExitResult(ExitCodeError, err)
@@ -580,14 +582,14 @@ func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
 	formatOpts := cfg.ToFormatOptions()
 
 	// Apply color configuration
-	colorMode, _ := ParseColorMode(cfg.Color)
-	trueColorMode, _ := ParseColorMode(cfg.TrueColor)
-	colorCfg := NewColorConfig(colorMode, trueColorMode == ColorModeAlways)
+	colorMode, _ := diffyml.ParseColorMode(cfg.Color)
+	trueColorMode, _ := diffyml.ParseColorMode(cfg.TrueColor)
+	colorCfg := diffyml.NewColorConfig(colorMode, trueColorMode == diffyml.ColorModeAlways)
 	colorCfg.DetectTerminal()
 	colorCfg.ToFormatOptions(formatOpts)
 
 	// Compare files
-	diffs, err := Compare(fromContent, toContent, compareOpts)
+	diffs, err := diffyml.Compare(fromContent, toContent, compareOpts)
 	if err != nil {
 		err = fmt.Errorf("failed to compare files: %w", err)
 		fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
@@ -595,7 +597,7 @@ func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
 	}
 
 	// Apply filters
-	diffs, err = FilterDiffsWithRegexp(diffs, filterOpts)
+	diffs, err = diffyml.FilterDiffsWithRegexp(diffs, filterOpts)
 	if err != nil {
 		err = fmt.Errorf("filter error: %w", err)
 		fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
@@ -620,7 +622,7 @@ func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
 		if rc.SummaryAPIURL != "" {
 			summarizer.apiURL = rc.SummaryAPIURL
 		}
-		groups := []DiffGroup{{FilePath: normalizeFilePath(cfg.ToFile, rc.Stderr), Diffs: diffs}}
+		groups := []diffyml.DiffGroup{{FilePath: normalizeFilePath(cfg.ToFile, rc.Stderr), Diffs: diffs}}
 		summary, err := summarizer.Summarize(context.Background(), groups)
 		if err != nil {
 			if isBriefSummary {
@@ -629,7 +631,7 @@ func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
 			}
 			fmt.Fprintf(rc.Stderr, "Warning: AI summary unavailable: %v\n", err)
 		} else {
-			fmt.Fprint(rc.Stdout, formatSummaryOutput(summary, formatOpts))
+			fmt.Fprint(rc.Stdout, diffyml.FormatSummaryOutput(summary, formatOpts))
 		}
 	} else if isBriefSummary {
 		// No diffs but brief+summary: write standard brief output

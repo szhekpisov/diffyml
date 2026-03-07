@@ -2,7 +2,7 @@
 //
 // Converts OrderedMap, map[string]any, and []any to yaml.Node trees
 // for serialization. Used by formatValue (formatter.go), serializeDocument
-// (rename.go), and serializeValue (summarizer.go).
+// (rename.go), and SerializeValue (summarizer.go).
 package diffyml
 
 import (
@@ -81,9 +81,9 @@ func sortedMapKeys(m map[string]any) []string {
 	return keys
 }
 
-// serializeValue serializes a Difference.From or Difference.To value into a
+// SerializeValue serializes a Difference.From or Difference.To value into a
 // human-readable string for prompt inclusion.
-func serializeValue(val any) string {
+func SerializeValue(val any) string {
 	if val == nil {
 		return "<none>"
 	}

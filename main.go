@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/szhekpisov/diffyml/pkg/diffyml"
+	"github.com/szhekpisov/diffyml/pkg/diffyml/cli"
 )
 
 // Version information - can be overridden at build time using ldflags
@@ -19,7 +19,7 @@ func formatVersion() string {
 }
 
 func main() {
-	cfg := diffyml.NewCLIConfig()
+	cfg := cli.NewCLIConfig()
 
 	// Check for version flag first
 	for _, arg := range os.Args[1:] {
@@ -39,9 +39,9 @@ func main() {
 
 	if err := cfg.ParseArgs(os.Args[1:]); err != nil {
 		_, _ = os.Stderr.WriteString("Error: " + err.Error() + "\n")
-		os.Exit(diffyml.ExitCodeError)
+		os.Exit(cli.ExitCodeError)
 	}
 
-	result := diffyml.Run(cfg, nil)
+	result := cli.Run(cfg, nil)
 	os.Exit(result.Code)
 }

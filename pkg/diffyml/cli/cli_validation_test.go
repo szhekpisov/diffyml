@@ -1,8 +1,10 @@
-package diffyml
+package cli
 
 import (
 	"strings"
 	"testing"
+
+	"github.com/szhekpisov/diffyml/pkg/diffyml"
 )
 
 // Tests for input validation (Task 5.2)
@@ -131,7 +133,7 @@ func TestCLIConfig_Validate_MissingToFile(t *testing.T) {
 }
 
 func TestValidateFileExists_NonExistent(t *testing.T) {
-	err := ValidateFileExists("/nonexistent/path/file.yaml")
+	err := diffyml.ValidateFileExists("/nonexistent/path/file.yaml")
 	if err == nil {
 		t.Error("expected error for non-existent file")
 	}
@@ -142,7 +144,7 @@ func TestValidateFileExists_NonExistent(t *testing.T) {
 
 func TestValidateFileExists_Directory(t *testing.T) {
 	// "." is a directory, not a file
-	err := ValidateFileExists(".")
+	err := diffyml.ValidateFileExists(".")
 	if err == nil {
 		t.Error("expected error when path is a directory")
 	}

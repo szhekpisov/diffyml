@@ -1,4 +1,4 @@
-package diffyml
+package cli
 
 import (
 	"encoding/json"
@@ -514,11 +514,12 @@ func TestRun_WithSummary_ColorEnabled(t *testing.T) {
 	}
 
 	output := stdout.String()
-	// Should contain colored AI Summary header
-	if !strings.Contains(output, colorCyan) {
+	// Should contain colored AI Summary header (cyan = \033[36m)
+	if !strings.Contains(output, "\033[36m") {
 		t.Errorf("expected cyan color in AI Summary header with color=always, got: %s", output)
 	}
-	if !strings.Contains(output, styleBold) {
+	// Should contain bold style (\033[1m)
+	if !strings.Contains(output, "\033[1m") {
 		t.Errorf("expected bold style in AI Summary header with color=always, got: %s", output)
 	}
 	if !strings.Contains(output, "AI Summary:") {

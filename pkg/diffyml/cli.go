@@ -374,22 +374,6 @@ func (c *CLIConfig) Validate() error {
 	return nil
 }
 
-// ValidateFileExists checks if a file exists and is not a directory.
-// Returns an error with the file path if validation fails.
-func ValidateFileExists(path string) error {
-	info, err := os.Stat(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return fmt.Errorf("file not found: %s", path)
-		}
-		return fmt.Errorf("cannot access file %s: %w", path, err)
-	}
-	if info.IsDir() {
-		return fmt.Errorf("path is a directory, not a file: %s", path)
-	}
-	return nil
-}
-
 // validOutputFormats lists all valid output format names.
 var validOutputFormats = []string{"compact", "brief", "github", "gitlab", "gitea", "detailed"}
 

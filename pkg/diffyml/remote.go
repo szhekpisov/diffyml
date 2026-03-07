@@ -22,6 +22,22 @@ func IsRemoteSource(source string) bool {
 	return strings.HasPrefix(source, "http://") || strings.HasPrefix(source, "https://")
 }
 
+// ValidateFileExists checks if a file exists and is not a directory.
+// Returns an error with the file path if validation fails.
+func ValidateFileExists(path string) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("file not found: %s", path)
+		}
+		return fmt.Errorf("cannot access file %s: %w", path, err)
+	}
+	if info.IsDir() {
+		return fmt.Errorf("path is a directory, not a file: %s", path)
+	}
+	return nil
+}
+
 // LoadContent loads content from a source, which can be a local file path
 // or an HTTP/HTTPS URL. Returns the content bytes or an error.
 func LoadContent(source string) ([]byte, error) {

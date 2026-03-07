@@ -24,30 +24,35 @@ The mutation testing workflow (`.github/workflows/mutation.yml`) runs on every P
 
 ## Report
 
-**Last full run:** 2026-03-07 — efficacy 98.57% (553 killed / 561 covered)
+**Last full run:** 2026-03-07 — efficacy 99.82% (560 killed / 561 covered), 1 lived
 **Mutator coverage:** 99.29%
 
 | Status | Count |
 |--------|-------|
-| Killed | 553 |
-| Lived | 8 |
+| Killed | 560 |
+| Lived | 1 |
 | Timed out | 1 |
 | Not covered | 4 |
-| **Efficacy** | **98.57%** |
+| **Efficacy** | **99.82%** |
 | **Mutator coverage** | **99.29%** |
 
-## Survived Mutants (8 LIVED)
+## Survived Mutants (1 LIVED)
 
-| File | Line | Mutator | Code |
-|------|------|---------|------|
-| `diffyml.go` | 141:11 | `INCREMENT_DECREMENT` | `index++` in `buildPathOrder` — post-increment on path-order counter |
-| `diffyml.go` | 219:15 | `CONDITIONALS_BOUNDARY` | `len(path) > 0` in `isListEntryDiff` — bracket-notation check guard |
-| `diffyml.go` | 242:13 | `CONDITIONALS_NEGATION` | `diff.To != nil` in `isListEntryDiff` — pick `To` vs `From` for map-identifier heuristic |
-| `detailed_formatter_linediff.go` | 71:8 | `CONDITIONALS_BOUNDARY` | `i < skipUntil` in line-diff render loop — collapse context skipping |
-| `detailed_formatter_linediff.go` | 129:44 | `CONDITIONALS_BOUNDARY` | `dp[i][j-1] >= dp[i-1][j]` in LCS backtrack — tie-breaking direction |
-| `detailed_formatter_render.go` | 58:34 | `ARITHMETIC_BASE` | `indent+2` in `renderKeyValueYAML` list branch — nested list indentation |
-| `detailed_formatter_render.go` | 86:34 | `ARITHMETIC_BASE` | `indent+4` in `renderListMapItem` list branch — nested list indentation |
-| `kubernetes.go` | 239:27 | `CONDITIONALS_NEGATION` | `opts != nil && opts.IgnoreApiVersion` — nil-guard before field access |
+| File | Line | Mutator | Code | Status |
+|------|------|---------|------|--------|
+| `kubernetes.go` | 239:27 | `CONDITIONALS_NEGATION` | `opts != nil && opts.IgnoreApiVersion` — controls `ignoreApiVersion` for order-change identifiers | Fix pushed, pending CI verification |
+
+### Previously survived (7 killed in this run)
+
+| File | Line | Mutator | Kill method |
+|------|------|---------|-------------|
+| `diffyml.go` | 141:11 | `INCREMENT_DECREMENT` | `TestExtractPathOrder_OrderedMapNestedIndexIncrement` — nested OrderedMaps force the branch with non-empty prefix |
+| `diffyml.go` | 219:15 | `CONDITIONALS_BOUNDARY` | `TestIsListEntryDiff_EmptyPath` — empty path returns false; mutation panics |
+| `diffyml.go` | 242:13 | `CONDITIONALS_NEGATION` | `TestIsListEntryDiff_ToNilUsesFrom` / `TestIsListEntryDiff_ToHasIdentifier` — verifies correct To vs From selection |
+| `detailed_formatter_linediff.go` | 71:8 | `CONDITIONALS_BOUNDARY` | `TestDetailedFormatter_CollapseSkipBoundary` — verifies first line after collapsed section renders |
+| `detailed_formatter_linediff.go` | 129:44 | `CONDITIONALS_BOUNDARY` | `TestComputeLineDiff_LCSTieBreakingExactOrder` — asserts exact operation sequence |
+| `detailed_formatter_render.go` | 58:34 | `ARITHMETIC_BASE` | `TestDetailedFormatter_RenderKeyValueYAML_ListIndent` — continuation key with []any value, checks exact indent |
+| `detailed_formatter_render.go` | 86:34 | `ARITHMETIC_BASE` | `TestDetailedFormatter_RenderFirstKeyValueYAML_ListIndent` — first key with []any value, checks exact indent |
 
 ---
 

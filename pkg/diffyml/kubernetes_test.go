@@ -1354,49 +1354,60 @@ func TestK8sGetVal_Default(t *testing.T) {
 	}
 }
 
-func TestCompareK8sDocs_IgnoreApiVersion_OnlyApiVersionDiffers(t *testing.T) {
+func TestCompareK8sDocs_IgnoreApiVersion_OrderChangeIdentifiers(t *testing.T) {
 	// Kills CONDITIONALS_NEGATION at kubernetes.go:239
 	// (opts != nil && opts.IgnoreApiVersion → opts == nil || !opts.IgnoreApiVersion)
-	// When IgnoreApiVersion=true and docs differ ONLY in apiVersion,
-	// the original code sets ignoreApiVersion=true → apiVersion diff is reported
-	// as a field-level change. The mutation would set ignoreApiVersion=false,
-	// meaning apiVersion is NOT ignored during matching → docs don't match →
-	// they appear as added/removed instead of modified.
-	fromDoc := map[string]any{
-		"apiVersion": "apps/v1beta1",
-		"kind":       "Deployment",
-		"metadata":   map[string]any{"name": "my-app", "namespace": "default"},
-		"spec":       map[string]any{"replicas": 3},
+	//
+	// The local `ignoreApiVersion` variable is used at lines 257/263 to render
+	// K8sResourceIdentifier in the order-change diff. When true, identifiers
+	// omit apiVersion (e.g. "Deployment:default/app-a"). When the mutation
+	// flips it to false, identifiers include apiVersion (e.g. "apps/v1:Deployment:default/app-a").
+	//
+	// We need 2+ matched docs in swapped order to trigger order-change detection.
+	mkDoc := func(name string) map[string]any {
+		return map[string]any{
+			"apiVersion": "apps/v1",
+			"kind":       "Deployment",
+			"metadata":   map[string]any{"name": name, "namespace": "default"},
+			"spec":       map[string]any{"replicas": 1},
+		}
 	}
-	toDoc := map[string]any{
-		"apiVersion": "apps/v1",
-		"kind":       "Deployment",
-		"metadata":   map[string]any{"name": "my-app", "namespace": "default"},
-		"spec":       map[string]any{"replicas": 3},
-	}
+
+	fromDocs := []any{mkDoc("app-a"), mkDoc("app-b")}
+	toDocs := []any{mkDoc("app-b"), mkDoc("app-a")}
 
 	opts := &Options{
 		DetectKubernetes: true,
 		IgnoreApiVersion: true,
 	}
-	diffs := compareK8sDocs([]any{fromDoc}, []any{toDoc}, opts)
+	diffs := compareK8sDocs(fromDocs, toDocs, opts)
 
-	// With IgnoreApiVersion=true: docs match, only apiVersion field differs
-	hasApiVersionModified := false
-	hasBulkAddOrRemove := false
-	for _, d := range diffs {
-		if d.Type == DiffModified && d.From == "apps/v1beta1" && d.To == "apps/v1" {
-			hasApiVersionModified = true
-		}
-		if d.Type == DiffAdded || d.Type == DiffRemoved {
-			hasBulkAddOrRemove = true
+	// Find the order-change diff
+	var orderDiff *Difference
+	for i := range diffs {
+		if diffs[i].Type == DiffOrderChanged {
+			orderDiff = &diffs[i]
+			break
 		}
 	}
-	if !hasApiVersionModified {
-		t.Error("expected apiVersion to appear as a modified field when IgnoreApiVersion=true")
+	if orderDiff == nil {
+		t.Fatal("expected DiffOrderChanged for reordered documents")
 	}
-	if hasBulkAddOrRemove {
-		t.Error("docs should match by identity when IgnoreApiVersion=true, not appear as added/removed")
+
+	// With ignoreApiVersion=true: identifiers should NOT contain "apps/v1"
+	// With mutation (ignoreApiVersion=false): identifiers WOULD contain "apps/v1"
+	fromOrder, ok := orderDiff.From.([]any)
+	if !ok {
+		t.Fatalf("expected From to be []any, got %T", orderDiff.From)
+	}
+	for _, id := range fromOrder {
+		idStr, ok := id.(string)
+		if !ok {
+			t.Fatalf("expected string identifier, got %T", id)
+		}
+		if strings.Contains(idStr, "apps/v1") {
+			t.Errorf("with IgnoreApiVersion=true, identifier should not contain apiVersion, got %q", idStr)
+		}
 	}
 }
 

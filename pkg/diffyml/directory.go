@@ -188,6 +188,108 @@ func buildFilePairsFromMap(m map[string][2][]byte) []FilePair {
 	return pairs
 }
 
+// summaryEntry pairs a DiffGroup with its file pair type for non-structured summary output.
+type summaryEntry struct {
+	Group    DiffGroup
+	PairType FilePairType
+}
+
+// loadFilePairContent loads the from/to content for a single file pair.
+// In testing mode (filePairs != nil), reads from the in-memory map.
+// In real mode, reads from the filesystem based on pair type.
+func loadFilePairContent(pair FilePair, filePairs map[string][2][]byte) ([]byte, []byte, error) {
+	if filePairs != nil {
+		contents := filePairs[pair.Name]
+		from := contents[0]
+		if from == nil {
+			from = []byte{}
+		}
+		to := contents[1]
+		if to == nil {
+			to = []byte{}
+		}
+		return from, to, nil
+	}
+
+	var from, to []byte
+	var err error
+	switch pair.Type {
+	case FilePairBothExist:
+		from, err = LoadContent(pair.FromPath)
+		if err != nil {
+			return nil, nil, err
+		}
+		to, err = LoadContent(pair.ToPath)
+		if err != nil {
+			return nil, nil, err
+		}
+	case FilePairOnlyFrom:
+		from, err = LoadContent(pair.FromPath)
+		if err != nil {
+			return nil, nil, err
+		}
+		to = []byte{}
+	case FilePairOnlyTo:
+		from = []byte{}
+		to, err = LoadContent(pair.ToPath)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+	return from, to, nil
+}
+
+// compareAndFilterPair compares two YAML contents and filters the results.
+func compareAndFilterPair(from, to []byte, compareOpts *Options, filterOpts *FilterOptions) ([]Difference, error) {
+	diffs, err := Compare(from, to, compareOpts)
+	if err != nil {
+		return nil, err
+	}
+	return FilterDiffsWithRegexp(diffs, filterOpts)
+}
+
+// emitDirectorySummary generates and emits AI summaries for directory mode.
+// Handles both structured (aggregated) and non-structured (per-file) formatters.
+func emitDirectorySummary(cfg *CLIConfig, rc *RunConfig, groups []DiffGroup, entries []summaryEntry,
+	formatOpts *FormatOptions, formatter Formatter, isStructured, isBriefSummary bool) {
+	if isStructured && len(groups) > 0 {
+		summarizer := NewSummarizer(cfg.SummaryModel)
+		if rc.SummaryAPIURL != "" {
+			summarizer.apiURL = rc.SummaryAPIURL
+		}
+		summary, err := summarizer.Summarize(context.Background(), groups)
+		if err != nil {
+			fmt.Fprintf(rc.Stderr, "Warning: AI summary unavailable: %v\n", err)
+		} else {
+			fmt.Fprint(rc.Stdout, formatSummaryOutput(summary, formatOpts))
+		}
+		return
+	}
+
+	if !isStructured && len(entries) > 0 {
+		summaryGroups := make([]DiffGroup, len(entries))
+		for i, e := range entries {
+			summaryGroups[i] = e.Group
+		}
+		summarizer := NewSummarizer(cfg.SummaryModel)
+		if rc.SummaryAPIURL != "" {
+			summarizer.apiURL = rc.SummaryAPIURL
+		}
+		summary, err := summarizer.Summarize(context.Background(), summaryGroups)
+		if err != nil {
+			if isBriefSummary {
+				for _, e := range entries {
+					fmt.Fprint(rc.Stdout, FormatFileHeader(e.Group.FilePath, e.PairType, formatOpts))
+					fmt.Fprint(rc.Stdout, formatter.Format(e.Group.Diffs, formatOpts))
+				}
+			}
+			fmt.Fprintf(rc.Stderr, "Warning: AI summary unavailable: %v\n", err)
+		} else {
+			fmt.Fprint(rc.Stdout, formatSummaryOutput(summary, formatOpts))
+		}
+	}
+}
+
 // runDirectory executes directory-mode comparison.
 // Unexported; called from Run() when both arguments are directories.
 func runDirectory(cfg *CLIConfig, rc *RunConfig, fromDir, toDir string) *ExitResult {
@@ -245,75 +347,19 @@ func runDirectory(cfg *CLIConfig, rc *RunConfig, fromDir, toDir string) *ExitRes
 	var groups []DiffGroup
 
 	// For non-structured summary: collect entries to invoke summarizer after all files
-	type summaryEntry struct {
-		Group    DiffGroup
-		PairType FilePairType
-	}
 	var summaryEntries []summaryEntry
 
 	for _, pair := range pairs {
-		var fromContent, toContent []byte
-
-		if rc.FilePairs != nil {
-			// Testing mode: read from in-memory map
-			contents := rc.FilePairs[pair.Name]
-			if contents[0] != nil {
-				fromContent = contents[0]
-			} else {
-				fromContent = []byte{}
-			}
-			if contents[1] != nil {
-				toContent = contents[1]
-			} else {
-				toContent = []byte{}
-			}
-		} else {
-			// Real mode: load content from filesystem
-			switch pair.Type {
-			case FilePairBothExist:
-				fromContent, err = LoadContent(pair.FromPath)
-				if err != nil {
-					fmt.Fprintf(rc.Stderr, "Error reading %s: %v\n", pair.Name, err)
-					hasErrors = true
-					continue
-				}
-				toContent, err = LoadContent(pair.ToPath)
-				if err != nil {
-					fmt.Fprintf(rc.Stderr, "Error reading %s: %v\n", pair.Name, err)
-					hasErrors = true
-					continue
-				}
-			case FilePairOnlyFrom:
-				fromContent, err = LoadContent(pair.FromPath)
-				if err != nil {
-					fmt.Fprintf(rc.Stderr, "Error reading %s: %v\n", pair.Name, err)
-					hasErrors = true
-					continue
-				}
-				toContent = []byte{}
-			case FilePairOnlyTo:
-				fromContent = []byte{}
-				toContent, err = LoadContent(pair.ToPath)
-				if err != nil {
-					fmt.Fprintf(rc.Stderr, "Error reading %s: %v\n", pair.Name, err)
-					hasErrors = true
-					continue
-				}
-			}
-		}
-
-		// Compare
-		diffs, err := Compare(fromContent, toContent, compareOpts)
-		if err != nil {
-			fmt.Fprintf(rc.Stderr, "Error comparing %s: %v\n", pair.Name, err)
+		fromContent, toContent, loadErr := loadFilePairContent(pair, rc.FilePairs)
+		if loadErr != nil {
+			fmt.Fprintf(rc.Stderr, "Error reading %s: %v\n", pair.Name, loadErr)
 			hasErrors = true
 			continue
 		}
 
-		// Filter
-		diffs, err = FilterDiffsWithRegexp(diffs, filterOpts)
-		if err != nil {
-			fmt.Fprintf(rc.Stderr, "Error filtering %s: %v\n", pair.Name, err)
+		diffs, diffErr := compareAndFilterPair(fromContent, toContent, compareOpts, filterOpts)
+		if diffErr != nil {
+			fmt.Fprintf(rc.Stderr, "Error comparing %s: %v\n", pair.Name, diffErr)
 			hasErrors = true
 			continue
 		}
@@ -325,14 +371,12 @@ func runDirectory(cfg *CLIConfig, rc *RunConfig, fromDir, toDir string) *ExitRes
 		hasDiffs = true
 
 		if isStructured {
-			// Collect diffs into groups for aggregated output
 			filePath := strings.TrimPrefix(pair.Name, "./")
 			groups = append(groups, DiffGroup{
 				FilePath: filePath,
 				Diffs:    diffs,
 			})
 		} else {
-			// Collect for summary if needed
 			if cfg.Summary {
 				summaryEntries = append(summaryEntries, summaryEntry{
 					Group:    DiffGroup{FilePath: pair.Name, Diffs: diffs},
@@ -340,13 +384,9 @@ func runDirectory(cfg *CLIConfig, rc *RunConfig, fromDir, toDir string) *ExitRes
 				})
 			}
 
-			// Non-structured: per-file header + format (skip for brief+summary)
 			if !isBriefSummary {
-				header := FormatFileHeader(pair.Name, pair.Type, formatOpts)
-				fmt.Fprint(rc.Stdout, header)
-
-				output := formatter.Format(diffs, formatOpts)
-				fmt.Fprint(rc.Stdout, output)
+				fmt.Fprint(rc.Stdout, FormatFileHeader(pair.Name, pair.Type, formatOpts))
+				fmt.Fprint(rc.Stdout, formatter.Format(diffs, formatOpts))
 			}
 		}
 	}
@@ -358,43 +398,9 @@ func runDirectory(cfg *CLIConfig, rc *RunConfig, fromDir, toDir string) *ExitRes
 		hasDiffs = len(groups) > 0
 	}
 
-	// AI Summary for structured formatters
-	if isStructured && cfg.Summary && len(groups) > 0 {
-		summarizer := NewSummarizer(cfg.SummaryModel)
-		if rc.SummaryAPIURL != "" {
-			summarizer.apiURL = rc.SummaryAPIURL
-		}
-		summary, summaryErr := summarizer.Summarize(context.Background(), groups)
-		if summaryErr != nil {
-			fmt.Fprintf(rc.Stderr, "Warning: AI summary unavailable: %v\n", summaryErr)
-		} else {
-			fmt.Fprint(rc.Stdout, formatSummaryOutput(summary, formatOpts))
-		}
-	}
-
-	// AI Summary for non-structured formatters
-	if !isStructured && cfg.Summary && len(summaryEntries) > 0 {
-		summaryGroups := make([]DiffGroup, len(summaryEntries))
-		for i, e := range summaryEntries {
-			summaryGroups[i] = e.Group
-		}
-		summarizer := NewSummarizer(cfg.SummaryModel)
-		if rc.SummaryAPIURL != "" {
-			summarizer.apiURL = rc.SummaryAPIURL
-		}
-		summary, summaryErr := summarizer.Summarize(context.Background(), summaryGroups)
-		if summaryErr != nil {
-			if isBriefSummary {
-				// Fallback: show brief output for all files since AI summary failed
-				for _, e := range summaryEntries {
-					fmt.Fprint(rc.Stdout, FormatFileHeader(e.Group.FilePath, e.PairType, formatOpts))
-					fmt.Fprint(rc.Stdout, formatter.Format(e.Group.Diffs, formatOpts))
-				}
-			}
-			fmt.Fprintf(rc.Stderr, "Warning: AI summary unavailable: %v\n", summaryErr)
-		} else {
-			fmt.Fprint(rc.Stdout, formatSummaryOutput(summary, formatOpts))
-		}
+	// AI Summary
+	if cfg.Summary {
+		emitDirectorySummary(cfg, rc, groups, summaryEntries, formatOpts, formatter, isStructured, isBriefSummary)
 	}
 
 	// Compute aggregated exit code (directory-specific precedence)

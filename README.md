@@ -246,7 +246,7 @@ Core packages enforce 95–100% test coverage thresholds in CI. [Mutation testin
 
 ## Performance
 
-Benchmarked against 4 Go-based YAML diff tools using [hyperfine](https://github.com/sharkdp/hyperfine) (20 runs, 5 warmup). Environment: Apple M1 Pro, macOS, Go 1.25.7.
+Benchmarked against 4 Go-based YAML diff tools using [hyperfine](https://github.com/sharkdp/hyperfine) (20 runs, 5 warmup). Environment: Apple M1 Pro, macOS, Go 1.26.1.
 
 | File size | diffyml | [dyff](https://github.com/homeport/dyff) | [semihbkgr/yamldiff](https://github.com/semihbkgr/yamldiff) | [sters/yaml-diff](https://github.com/sters/yaml-diff) | [sahilm/yamldiff](https://github.com/sahilm/yamldiff) | diff |
 |-----------|--------:|-----:|----------:|------:|-------:|-----:|
@@ -280,7 +280,7 @@ Contributions welcome! [Open an issue](https://github.com/szhekpisov/diffyml/iss
 <details>
 <summary>Development setup</summary>
 
-**Prerequisites:** Go 1.25.7+, [pre-commit](https://pre-commit.com/)
+**Prerequisites:** Go 1.26.1+, [pre-commit](https://pre-commit.com/)
 
 ```bash
 git clone https://github.com/szhekpisov/diffyml.git

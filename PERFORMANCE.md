@@ -80,7 +80,7 @@ Both tools exhibit super-linear scaling: they take ~1 second at Large (5,000 lin
 
 ## Results
 
-**Environment:** Apple M1 Pro, macOS, Go 1.25.7, 20 runs with 5 warmup iterations.
+**Environment:** Apple M1 Pro, macOS, Go 1.26.1, 20 runs with 5 warmup iterations.
 
 ### Execution Time
 

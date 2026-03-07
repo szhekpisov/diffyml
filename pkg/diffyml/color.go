@@ -195,6 +195,22 @@ func ColorReset() string {
 	return colorReset
 }
 
+// colorStart returns the ANSI color code if color is enabled, empty string otherwise.
+func colorStart(opts *FormatOptions, code string) string {
+	if opts.Color {
+		return code
+	}
+	return ""
+}
+
+// colorEnd returns the ANSI reset code if color is enabled, empty string otherwise.
+func colorEnd(opts *FormatOptions) string {
+	if opts.Color {
+		return colorReset
+	}
+	return ""
+}
+
 // clamp restricts a value to the range [lo, hi].
 func clamp(val, lo, hi int) int {
 	return max(lo, min(val, hi))

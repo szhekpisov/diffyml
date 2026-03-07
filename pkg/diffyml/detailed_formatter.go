@@ -52,15 +52,11 @@ func (f *DetailedFormatter) Format(diffs []Difference, opts *FormatOptions) stri
 
 // formatHeader renders a summary header line.
 func (f *DetailedFormatter) formatHeader(sb *strings.Builder, diffs []Difference, opts *FormatOptions) {
-	if opts.Color {
-		sb.WriteString(f.colorModified(opts))
-	}
+	sb.WriteString(colorStart(opts, f.colorModified(opts)))
 	fmt.Fprintf(sb, "Found %s %s",
 		formatCount(len(diffs)),
 		pluralize(len(diffs), "difference", "differences"))
-	if opts.Color {
-		sb.WriteString(ColorReset())
-	}
+	sb.WriteString(colorEnd(opts))
 	sb.WriteString("\n\n")
 }
 
@@ -109,13 +105,9 @@ func (f *DetailedFormatter) formatPathHeading(sb *strings.Builder, path string, 
 		heading = convertToGoPatchPath(path)
 	}
 
-	if opts.Color {
-		sb.WriteString(styleBold)
-	}
+	sb.WriteString(colorStart(opts, styleBold))
 	sb.WriteString(heading)
-	if opts.Color {
-		sb.WriteString(colorReset)
-	}
+	sb.WriteString(colorEnd(opts))
 	sb.WriteString("\n")
 }
 
@@ -167,15 +159,11 @@ func (f *DetailedFormatter) formatEntryBatch(sb *strings.Builder, diffs []Differ
 		colorFn = f.colorRemoved
 	}
 
-	if opts.Color {
-		sb.WriteString("  ")
-		sb.WriteString(colorFn(opts))
-		fmt.Fprintf(sb, "%s %s %s %s:", symbol, countStr, noun, action)
-		sb.WriteString(f.colorReset())
-		sb.WriteString("\n")
-	} else {
-		fmt.Fprintf(sb, "  %s %s %s %s:\n", symbol, countStr, noun, action)
-	}
+	sb.WriteString("  ")
+	sb.WriteString(colorStart(opts, colorFn(opts)))
+	fmt.Fprintf(sb, "%s %s %s %s:", symbol, countStr, noun, action)
+	sb.WriteString(colorEnd(opts))
+	sb.WriteString("\n")
 
 	for _, diff := range diffs {
 		var val any
@@ -286,26 +274,18 @@ func (f *DetailedFormatter) detectMultiDoc(diffs []Difference) bool {
 }
 
 // writeColoredLine writes a line with color code and newline.
-func (f *DetailedFormatter) writeColoredLine(sb *strings.Builder, text string, colorCode string, opts *FormatOptions) {
-	if opts.Color {
-		sb.WriteString(colorCode)
-		sb.WriteString(text)
-		sb.WriteString(f.colorReset())
-	} else {
-		sb.WriteString(text)
-	}
+func (f *DetailedFormatter) writeColoredLine(sb *strings.Builder, text string, code string, opts *FormatOptions) {
+	sb.WriteString(colorStart(opts, code))
+	sb.WriteString(text)
+	sb.WriteString(colorEnd(opts))
 	sb.WriteString("\n")
 }
 
 // writeDescriptorLine writes a descriptor line using a color function.
 func (f *DetailedFormatter) writeDescriptorLine(sb *strings.Builder, text string, colorFn func(*FormatOptions) string, opts *FormatOptions) {
-	if opts.Color {
-		sb.WriteString(colorFn(opts))
-		sb.WriteString(text)
-		sb.WriteString(f.colorReset())
-	} else {
-		sb.WriteString(text)
-	}
+	sb.WriteString(colorStart(opts, colorFn(opts)))
+	sb.WriteString(text)
+	sb.WriteString(colorEnd(opts))
 	sb.WriteString("\n")
 }
 
@@ -325,8 +305,4 @@ func (f *DetailedFormatter) colorModified(opts *FormatOptions) string {
 
 func (f *DetailedFormatter) colorContext(opts *FormatOptions) string {
 	return ContextColorCode(opts.TrueColor)
-}
-
-func (f *DetailedFormatter) colorReset() string {
-	return ColorReset()
 }

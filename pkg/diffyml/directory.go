@@ -153,12 +153,12 @@ func FormatFileHeader(filename string, pairType FilePairType, opts *FormatOption
 		toLine = "+++ b/" + filename
 	}
 
-	if opts != nil && opts.Color {
-		return fmt.Sprintf("%s%s%s\n%s%s%s\n",
-			styleBold+colorWhite, fromLine, colorReset,
-			styleBold+colorWhite, toLine, colorReset)
+	if opts == nil {
+		opts = DefaultFormatOptions()
 	}
-	return fmt.Sprintf("%s\n%s\n", fromLine, toLine)
+	prefix := colorStart(opts, styleBold+colorWhite)
+	suffix := colorEnd(opts)
+	return fmt.Sprintf("%s%s%s\n%s%s%s\n", prefix, fromLine, suffix, prefix, toLine, suffix)
 }
 
 // buildFilePairsFromMap builds a sorted slice of FilePair from an in-memory map

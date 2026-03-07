@@ -14,13 +14,9 @@ import (
 // For list entries, renders values with "- " prefix. For map entries, renders as "key: value".
 // The entire block is colored (green for adds, red for removes).
 func (f *DetailedFormatter) renderEntryValue(sb *strings.Builder, val any, symbol string, indent int, path string, isList bool, opts *FormatOptions) {
-	colorCode := ""
-	if opts.Color {
-		if symbol == "+" {
-			colorCode = f.colorAdded(opts)
-		} else {
-			colorCode = f.colorRemoved(opts)
-		}
+	code := f.colorRemoved(opts)
+	if symbol == "+" {
+		code = f.colorAdded(opts)
 	}
 
 	// Map entries: extract key from path and render as key: value
@@ -29,7 +25,7 @@ func (f *DetailedFormatter) renderEntryValue(sb *strings.Builder, val any, symbo
 		if idx := strings.LastIndex(path, "."); idx >= 0 {
 			key = path[idx+1:]
 		}
-		f.renderKeyValueYAML(sb, key, val, indent, colorCode, opts)
+		f.renderKeyValueYAML(sb, key, val, indent, code, opts)
 		return
 	}
 
@@ -37,9 +33,9 @@ func (f *DetailedFormatter) renderEntryValue(sb *strings.Builder, val any, symbo
 	// map[string]any, and scalar fallback uniformly.
 	// For []any values, pass items directly; otherwise wrap as single item.
 	if v, ok := val.([]any); ok {
-		f.renderListItems(sb, v, indent, colorCode, opts)
+		f.renderListItems(sb, v, indent, code, opts)
 	} else {
-		f.renderListItems(sb, []any{val}, indent, colorCode, opts)
+		f.renderListItems(sb, []any{val}, indent, code, opts)
 	}
 }
 

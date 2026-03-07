@@ -145,13 +145,9 @@ func (f *CompactFormatter) formatHeader(sb *strings.Builder, diffs []Difference,
 		}
 	}
 
-	if opts.Color {
-		sb.WriteString(colorYellow)
-	}
+	sb.WriteString(colorStart(opts, colorYellow))
 	fmt.Fprintf(sb, "Found %d difference(s)", len(diffs))
-	if opts.Color {
-		sb.WriteString(colorReset)
-	}
+	sb.WriteString(colorEnd(opts))
 	fmt.Fprintf(sb, " (%d added, %d removed, %d modified)\n\n", added, removed, modified)
 }
 
@@ -180,13 +176,9 @@ func (f *CompactFormatter) formatDiff(sb *strings.Builder, diff Difference, opts
 	}
 
 	// Apply color for the indicator
-	if opts.Color {
-		sb.WriteString(colorCode)
-	}
+	sb.WriteString(colorStart(opts, colorCode))
 	sb.WriteString(indicator)
-	if opts.Color {
-		sb.WriteString(colorReset)
-	}
+	sb.WriteString(colorEnd(opts))
 
 	sb.WriteString(" ")
 
@@ -204,41 +196,25 @@ func (f *CompactFormatter) formatValuesInline(sb *strings.Builder, diff Differen
 		toStr := formatValue(diff.To)
 
 		sb.WriteString(" : ")
-		if opts.Color {
-			sb.WriteString(colorRed)
-		}
+		sb.WriteString(colorStart(opts, colorRed))
 		sb.WriteString(fromStr)
-		if opts.Color {
-			sb.WriteString(colorReset)
-		}
+		sb.WriteString(colorEnd(opts))
 		sb.WriteString(" → ")
-		if opts.Color {
-			sb.WriteString(colorGreen)
-		}
+		sb.WriteString(colorStart(opts, colorGreen))
 		sb.WriteString(toStr)
-		if opts.Color {
-			sb.WriteString(colorReset)
-		}
+		sb.WriteString(colorEnd(opts))
 	case DiffAdded:
 		toStr := formatValue(diff.To)
 		sb.WriteString(" : ")
-		if opts.Color {
-			sb.WriteString(colorGreen)
-		}
+		sb.WriteString(colorStart(opts, colorGreen))
 		sb.WriteString(toStr)
-		if opts.Color {
-			sb.WriteString(colorReset)
-		}
+		sb.WriteString(colorEnd(opts))
 	case DiffRemoved:
 		fromStr := formatValue(diff.From)
 		sb.WriteString(" : ")
-		if opts.Color {
-			sb.WriteString(colorRed)
-		}
+		sb.WriteString(colorStart(opts, colorRed))
 		sb.WriteString(fromStr)
-		if opts.Color {
-			sb.WriteString(colorReset)
-		}
+		sb.WriteString(colorEnd(opts))
 	case DiffOrderChanged:
 		sb.WriteString(" (order changed)")
 	}

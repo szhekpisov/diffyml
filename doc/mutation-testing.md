@@ -24,65 +24,17 @@ The mutation testing workflow (`.github/workflows/mutation.yml`) runs on every P
 
 ## Report
 
-**Last full run:** 2026-03-07 — efficacy 99.82% (560 killed / 561 covered), 1 lived
+**Last full run:** 2026-03-07 — efficacy 100.00% (561 killed / 561 covered), 0 lived
 **Mutator coverage:** 99.29%
 
 | Status | Count |
 |--------|-------|
-| Killed | 560 |
-| Lived | 1 |
+| Killed | 561 |
+| Lived | 0 |
 | Timed out | 1 |
 | Not covered | 4 |
-| **Efficacy** | **99.82%** |
+| **Efficacy** | **100.00%** |
 | **Mutator coverage** | **99.29%** |
-
-## Survived Mutants (1 LIVED)
-
-| File | Line | Mutator | Code | Status |
-|------|------|---------|------|--------|
-| `kubernetes.go` | 239:27 | `CONDITIONALS_NEGATION` | `opts != nil && opts.IgnoreApiVersion` — controls `ignoreApiVersion` for order-change identifiers | Fix pushed, pending CI verification |
-
-### Previously survived (7 killed in this run)
-
-| File | Line | Mutator | Kill method |
-|------|------|---------|-------------|
-| `diffyml.go` | 141:11 | `INCREMENT_DECREMENT` | `TestExtractPathOrder_OrderedMapNestedIndexIncrement` — nested OrderedMaps force the branch with non-empty prefix |
-| `diffyml.go` | 219:15 | `CONDITIONALS_BOUNDARY` | `TestIsListEntryDiff_EmptyPath` — empty path returns false; mutation panics |
-| `diffyml.go` | 242:13 | `CONDITIONALS_NEGATION` | `TestIsListEntryDiff_ToNilUsesFrom` / `TestIsListEntryDiff_ToHasIdentifier` — verifies correct To vs From selection |
-| `detailed_formatter_linediff.go` | 71:8 | `CONDITIONALS_BOUNDARY` | `TestDetailedFormatter_CollapseSkipBoundary` — verifies first line after collapsed section renders |
-| `detailed_formatter_linediff.go` | 129:44 | `CONDITIONALS_BOUNDARY` | `TestComputeLineDiff_LCSTieBreakingExactOrder` — asserts exact operation sequence |
-| `detailed_formatter_render.go` | 58:34 | `ARITHMETIC_BASE` | `TestDetailedFormatter_RenderKeyValueYAML_ListIndent` — continuation key with []any value, checks exact indent |
-| `detailed_formatter_render.go` | 86:34 | `ARITHMETIC_BASE` | `TestDetailedFormatter_RenderFirstKeyValueYAML_ListIndent` — first key with []any value, checks exact indent |
-
----
-
-## Eliminated Mutants (35 former LIVED → removed or killed)
-
-The following equivalent mutants were eliminated via code refactoring:
-
-| Pattern | Mutants | Technique |
-|---------|---------|-----------|
-| Sort comparisons in `diffyml.go` | 4 | Replaced `sort.SliceStable` (bool less) with `slices.SortStableFunc` (int comparator) using `cmp.Compare`, eliminating `<` boundary targets |
-| Clamp boundaries in `color.go` | 2 | Replaced manual `if val < min / if val > max` with `max(lo, min(val, hi))` builtin |
-| `maxLen` boundaries in `comparator.go` | 2 | Replaced manual `if len(to) > maxLen` with `max()` builtin |
-| Loop boundary in `comparator.go` | 1 | Replaced `for i := 0; i < maxLen; i++` with `for i := range maxLen` |
-| `i >= len(from)` boundary in `comparator.go` | 1 | Split single loop into three range-separated loops (shared, added, removed) |
-| Array reverse in `detailed_formatter.go` | 1 | Replaced manual reverse loop with `slices.Reverse(ops)` |
-| LCS tie-breaking in `detailed_formatter.go` | 1 | Replaced `if-else` branch with `max(dp[i-1][j], dp[i][j-1])` builtin |
-| `closeBracket < 0` in `detailed_formatter.go` | 1 | Changed to `closeBracket == -1`; boundary mutation eliminated, replaced by killable INVERT_NEGATIVES (but equivalent for -1 literal) |
-| `len(path) > 1` in `diffyml.go` | 1 | Removed redundant outer guard; inner `lastDot >= 0` already handles it |
-| Sort tiebreakers in `rename.go` | 4 | Replaced `sort.SliceStable` with `slices.SortStableFunc` + `cmp.Or(cmp.Compare(...), ...)` |
-| K8s order detection in `kubernetes.go` | 5 | Removed dead nil guard, replaced `sort.Slice` with `slices.SortFunc` + `cmp.Compare`, used `slices.IsSortedFunc` for monotonicity check |
-| List order detection in `comparator.go` | 1 | Replaced `sort.Slice` with `slices.SortFunc` + `cmp.Compare` |
-| `ShouldUseTrueColor` dead code in `color.go` | 2 | Removed redundant COLORTERM/TERM env checks — function always returned `c.trueColor` regardless; simplified to `return c.trueColor` |
-| `renderListItems` map bullet in `detailed_formatter.go` | 1 | Strengthened test to verify `- ` bullet appears on first key only, not just key presence |
-| Size-ratio threshold boundary in `rename.go` | 1 | Added boundary test with byte-size ratio exactly at threshold (60%), distinguishing `<` from `<=` |
-| Map/slice capacity hints in `directory.go`, `summarizer.go` | 3 | Removed capacity hints that produced unkillable `ARITHMETIC_BASE` mutants on allocation-only expressions |
-| Flag parsing `>= 0` in `cli.go` | 1 | Replaced `IndexByte` + boundary check with `strings.Cut`, removing the mutation target |
-| `parseDocIndexPrefix` `-1` literal in `detailed_formatter.go` | 2 | Replaced `strings.Index` + `-1` check with `strings.Cut`, removing the mutation target |
-| DJB hash arithmetic in `rename.go` | 1 | Replaced hand-rolled DJB hash with `crc32.ChecksumIEEE`, removing the `h*33 + uint32(b)` mutation target |
-
----
 
 ## Timed Out (1 mutant)
 

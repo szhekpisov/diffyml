@@ -120,17 +120,15 @@ func compareNodes(path string, from, to any, opts *Options) []Difference {
 	// Compare based on type
 	switch fromVal := from.(type) {
 	case *OrderedMap:
-		// Type-equality guard above ensures to is also *OrderedMap
-		toOrderedMap := to.(*OrderedMap)
+		toOrderedMap := to.(*OrderedMap) // safe: type switch guarantees matching type
 		diffs = append(diffs, compareOrderedMaps(path, fromVal, toOrderedMap, opts)...)
 
 	case map[string]any:
-		// Type-equality guard above ensures to is also map[string]any
-		toMap := to.(map[string]any)
+		toMap := to.(map[string]any) // safe: type switch guarantees matching type
 		diffs = append(diffs, compareMaps(path, fromVal, toMap, opts)...)
 
 	case []any:
-		toVal := to.([]any)
+		toVal := to.([]any) // safe: type switch guarantees matching type
 		diffs = append(diffs, compareLists(path, fromVal, toVal, opts)...)
 
 	default:
@@ -625,8 +623,7 @@ func deepEqual(from, to any, opts *Options) bool {
 
 	switch fromVal := from.(type) {
 	case *OrderedMap:
-		// Type-equality guard above ensures to is also *OrderedMap
-		toOrderedMap := to.(*OrderedMap)
+		toOrderedMap := to.(*OrderedMap) // safe: type switch guarantees matching type
 		if len(fromVal.Values) != len(toOrderedMap.Values) {
 			return false
 		}
@@ -639,8 +636,7 @@ func deepEqual(from, to any, opts *Options) bool {
 		return true
 
 	case map[string]any:
-		// Type-equality guard above ensures to is also map[string]any
-		toMap := to.(map[string]any)
+		toMap := to.(map[string]any) // safe: type switch guarantees matching type
 		if len(fromVal) != len(toMap) {
 			return false
 		}
@@ -653,7 +649,7 @@ func deepEqual(from, to any, opts *Options) bool {
 		return true
 
 	case []any:
-		toVal := to.([]any)
+		toVal := to.([]any) // safe: type switch guarantees matching type
 		if len(fromVal) != len(toVal) {
 			return false
 		}

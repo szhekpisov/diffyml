@@ -87,8 +87,8 @@ func K8sResourceIdentifier(doc any, ignoreApiVersion bool) string {
 		}
 	}
 
-	apiVersion := getVal(doc, "apiVersion").(string)
-	kind := getVal(doc, "kind").(string)
+	apiVersion, _ := getVal(doc, "apiVersion").(string) // safe: IsKubernetesResource() pre-validates these fields
+	kind, _ := getVal(doc, "kind").(string)              // safe: IsKubernetesResource() pre-validates these fields
 	metadata := getVal(doc, "metadata")
 	nameVal := getVal(metadata, "name")
 	if nameVal == nil {

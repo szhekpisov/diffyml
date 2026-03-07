@@ -24,22 +24,30 @@ The mutation testing workflow (`.github/workflows/mutation.yml`) runs on every P
 
 ## Report
 
-**Last full run:** 2026-03-02 — efficacy 100.00% (562 killed / 562 covered)
-**Line coverage:** 97.2% (`go test -cover ./pkg/diffyml/`)
+**Last full run:** 2026-03-07 — efficacy 98.57% (553 killed / 561 covered)
 **Mutator coverage:** 99.29%
 
 | Status | Count |
 |--------|-------|
-| Killed | 562 |
-| Lived | 0 |
-| Timed out | 0 |
+| Killed | 553 |
+| Lived | 8 |
+| Timed out | 1 |
 | Not covered | 4 |
-| **Efficacy** | **100.00%** |
+| **Efficacy** | **98.57%** |
 | **Mutator coverage** | **99.29%** |
 
-## Survived Mutants (0 LIVED)
+## Survived Mutants (8 LIVED)
 
-No surviving mutants.
+| File | Line | Mutator | Code |
+|------|------|---------|------|
+| `diffyml.go` | 141:11 | `INCREMENT_DECREMENT` | `index++` in `buildPathOrder` — post-increment on path-order counter |
+| `diffyml.go` | 219:15 | `CONDITIONALS_BOUNDARY` | `len(path) > 0` in `isListEntryDiff` — bracket-notation check guard |
+| `diffyml.go` | 242:13 | `CONDITIONALS_NEGATION` | `diff.To != nil` in `isListEntryDiff` — pick `To` vs `From` for map-identifier heuristic |
+| `detailed_formatter_linediff.go` | 71:8 | `CONDITIONALS_BOUNDARY` | `i < skipUntil` in line-diff render loop — collapse context skipping |
+| `detailed_formatter_linediff.go` | 129:44 | `CONDITIONALS_BOUNDARY` | `dp[i][j-1] >= dp[i-1][j]` in LCS backtrack — tie-breaking direction |
+| `detailed_formatter_render.go` | 58:34 | `ARITHMETIC_BASE` | `indent+2` in `renderKeyValueYAML` list branch — nested list indentation |
+| `detailed_formatter_render.go` | 86:34 | `ARITHMETIC_BASE` | `indent+4` in `renderListMapItem` list branch — nested list indentation |
+| `kubernetes.go` | 239:27 | `CONDITIONALS_NEGATION` | `opts != nil && opts.IgnoreApiVersion` — nil-guard before field access |
 
 ---
 
@@ -71,6 +79,14 @@ The following equivalent mutants were eliminated via code refactoring:
 
 ---
 
+## Timed Out (1 mutant)
+
+| File | Line | Mutator | Code |
+|------|------|---------|------|
+| `parser.go` | 163:9 | `CONDITIONALS_NEGATION` | `err == nil` guard in `wrapParseError` — negating causes infinite recursion or hang |
+
+---
+
 ## Not Covered (4 mutants)
 
 4 mutants remain NOT COVERED. All are `ARITHMETIC_BASE` mutations on package-level constants. Constants are compile-time expressions that do not appear as executable statements in Go's `-coverprofile`, so gremlins cannot determine whether they are tested.
@@ -80,6 +96,6 @@ The following equivalent mutants were eliminated via code refactoring:
 | `remote.go` | 14:23 | `MaxResponseSize = 10 * 1024 * 1024` |
 | `remote.go` | 14:30 | `MaxResponseSize = 10 * 1024 * 1024` |
 | `remote.go` | 16:22 | `DefaultTimeout = 30 * time.Second` |
-| `summarizer.go` | 26:24 | `summaryTimeout = 30 * time.Second` |
+| `cli/summarizer.go` | 26:24 | `summaryTimeout = 30 * time.Second` |
 
 These constants are exercised by unit tests (`TestRemoteConstants`, `TestSummarize_Timeout`), but since Go does not instrument constant declarations, they will always be reported as NOT COVERED by gremlins.

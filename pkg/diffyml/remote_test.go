@@ -215,7 +215,7 @@ func TestValidateFileExists_PermissionError(t *testing.T) {
 	if err := os.Mkdir(nested, 0000); err != nil {
 		t.Fatalf("failed to create dir: %v", err)
 	}
-	defer os.Chmod(nested, 0700)
+	defer func() { _ = os.Chmod(nested, 0700) }()
 
 	err := ValidateFileExists(nested + "/file.yaml")
 	if err == nil {
@@ -232,7 +232,7 @@ func TestLoadContent_UnreadableFile(t *testing.T) {
 	if err := os.WriteFile(path, []byte("data"), 0000); err != nil {
 		t.Fatalf("failed to create file: %v", err)
 	}
-	defer os.Chmod(path, 0600)
+	defer func() { _ = os.Chmod(path, 0600) }()
 
 	_, err := LoadContent(path)
 	if err == nil {
@@ -255,7 +255,7 @@ func TestFetchURL_ReadBodyError(t *testing.T) {
 		// Hijack the connection to force close it
 		if hj, ok := w.(http.Hijacker); ok {
 			conn, _, _ := hj.Hijack()
-			conn.Close()
+			_ = conn.Close()
 		}
 	}))
 	defer server.Close()

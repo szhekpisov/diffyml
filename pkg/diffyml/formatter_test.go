@@ -8,8 +8,8 @@ import (
 	"time"
 )
 
-func TestGetFormatter_Compact(t *testing.T) {
-	f, err := GetFormatter("compact")
+func TestFormatterByName_Compact(t *testing.T) {
+	f, err := FormatterByName("compact")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -18,8 +18,8 @@ func TestGetFormatter_Compact(t *testing.T) {
 	}
 }
 
-func TestGetFormatter_Brief(t *testing.T) {
-	f, err := GetFormatter("brief")
+func TestFormatterByName_Brief(t *testing.T) {
+	f, err := FormatterByName("brief")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -28,8 +28,8 @@ func TestGetFormatter_Brief(t *testing.T) {
 	}
 }
 
-func TestGetFormatter_GitHub(t *testing.T) {
-	f, err := GetFormatter("github")
+func TestFormatterByName_GitHub(t *testing.T) {
+	f, err := FormatterByName("github")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -38,8 +38,8 @@ func TestGetFormatter_GitHub(t *testing.T) {
 	}
 }
 
-func TestGetFormatter_GitLab(t *testing.T) {
-	f, err := GetFormatter("gitlab")
+func TestFormatterByName_GitLab(t *testing.T) {
+	f, err := FormatterByName("gitlab")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -48,8 +48,8 @@ func TestGetFormatter_GitLab(t *testing.T) {
 	}
 }
 
-func TestGetFormatter_Gitea(t *testing.T) {
-	f, err := GetFormatter("gitea")
+func TestFormatterByName_Gitea(t *testing.T) {
+	f, err := FormatterByName("gitea")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -58,23 +58,23 @@ func TestGetFormatter_Gitea(t *testing.T) {
 	}
 }
 
-func TestGetFormatter_Invalid(t *testing.T) {
-	_, err := GetFormatter("invalid")
+func TestFormatterByName_Invalid(t *testing.T) {
+	_, err := FormatterByName("invalid")
 	if err == nil {
 		t.Error("expected error for invalid formatter name")
 	}
 }
 
-func TestGetFormatter_EmptyName(t *testing.T) {
-	_, err := GetFormatter("")
+func TestFormatterByName_EmptyName(t *testing.T) {
+	_, err := FormatterByName("")
 	if err == nil {
 		t.Error("expected error for empty formatter name")
 	}
 }
 
-func TestGetFormatter_CaseInsensitive(t *testing.T) {
+func TestFormatterByName_CaseInsensitive(t *testing.T) {
 	// Formatter names should be case-insensitive for convenience
-	f, err := GetFormatter("COMPACT")
+	f, err := FormatterByName("COMPACT")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -83,8 +83,8 @@ func TestGetFormatter_CaseInsensitive(t *testing.T) {
 	}
 }
 
-func TestGetFormatter_ListsValidFormats(t *testing.T) {
-	_, err := GetFormatter("badname")
+func TestFormatterByName_ListsValidFormats(t *testing.T) {
+	_, err := FormatterByName("badname")
 	if err == nil {
 		t.Fatal("expected error for invalid name")
 	}
@@ -164,7 +164,7 @@ func TestFormatter_Interface(t *testing.T) {
 
 	for _, name := range formatters {
 		t.Run(name, func(t *testing.T) {
-			f, err := GetFormatter(name)
+			f, err := FormatterByName(name)
 			if err != nil {
 				t.Fatalf("failed to get formatter: %v", err)
 			}
@@ -186,7 +186,7 @@ func TestFormatter_EmptyDiffs(t *testing.T) {
 
 	for _, name := range formatters {
 		t.Run(name, func(t *testing.T) {
-			f, err := GetFormatter(name)
+			f, err := FormatterByName(name)
 			if err != nil {
 				t.Fatalf("failed to get formatter: %v", err)
 			}
@@ -198,7 +198,7 @@ func TestFormatter_EmptyDiffs(t *testing.T) {
 }
 
 func TestFormatter_NilOptions(t *testing.T) {
-	f, _ := GetFormatter("compact")
+	f, _ := FormatterByName("compact")
 
 	diffs := []Difference{
 		{Path: "test", Type: DiffAdded, From: nil, To: "value"},
@@ -370,7 +370,7 @@ func TestColorConfig_TrueColorDisabled(t *testing.T) {
 // CI Formatter specific tests (Task 6.3)
 
 func TestBriefFormatter_SummaryGeneration(t *testing.T) {
-	f, _ := GetFormatter("brief")
+	f, _ := FormatterByName("brief")
 	opts := DefaultFormatOptions()
 
 	tests := []struct {
@@ -424,7 +424,7 @@ func TestBriefFormatter_SummaryGeneration(t *testing.T) {
 }
 
 func TestBriefFormatter_NoDifferences(t *testing.T) {
-	f, _ := GetFormatter("brief")
+	f, _ := FormatterByName("brief")
 	opts := DefaultFormatOptions()
 
 	output := f.Format([]Difference{}, opts)
@@ -434,7 +434,7 @@ func TestBriefFormatter_NoDifferences(t *testing.T) {
 }
 
 func TestGitHubFormatter_WorkflowCommandFormat(t *testing.T) {
-	f, _ := GetFormatter("github")
+	f, _ := FormatterByName("github")
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
@@ -453,7 +453,7 @@ func TestGitHubFormatter_WorkflowCommandFormat(t *testing.T) {
 }
 
 func TestGitHubFormatter_AllDiffTypes(t *testing.T) {
-	f, _ := GetFormatter("github")
+	f, _ := FormatterByName("github")
 	opts := DefaultFormatOptions()
 
 	tests := []struct {
@@ -494,7 +494,7 @@ func TestGitHubFormatter_AllDiffTypes(t *testing.T) {
 }
 
 func TestGitHubFormatter_EmptyOutput(t *testing.T) {
-	f, _ := GetFormatter("github")
+	f, _ := FormatterByName("github")
 	opts := DefaultFormatOptions()
 
 	output := f.Format([]Difference{}, opts)
@@ -505,7 +505,7 @@ func TestGitHubFormatter_EmptyOutput(t *testing.T) {
 }
 
 func TestGitLabFormatter_CodeQualityJSON(t *testing.T) {
-	f, _ := GetFormatter("gitlab")
+	f, _ := FormatterByName("gitlab")
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
@@ -542,7 +542,7 @@ func TestGitLabFormatter_CodeQualityJSON(t *testing.T) {
 }
 
 func TestGitLabFormatter_EmptyArray(t *testing.T) {
-	f, _ := GetFormatter("gitlab")
+	f, _ := FormatterByName("gitlab")
 	opts := DefaultFormatOptions()
 
 	output := f.Format([]Difference{}, opts)
@@ -553,7 +553,7 @@ func TestGitLabFormatter_EmptyArray(t *testing.T) {
 }
 
 func TestGitLabFormatter_MultipleDiffs(t *testing.T) {
-	f, _ := GetFormatter("gitlab")
+	f, _ := FormatterByName("gitlab")
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
@@ -569,8 +569,8 @@ func TestGitLabFormatter_MultipleDiffs(t *testing.T) {
 }
 
 func TestGiteaFormatter_GitHubCompatible(t *testing.T) {
-	giteaF, _ := GetFormatter("gitea")
-	githubF, _ := GetFormatter("github")
+	giteaF, _ := FormatterByName("gitea")
+	githubF, _ := FormatterByName("github")
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
@@ -589,7 +589,7 @@ func TestGiteaFormatter_GitHubCompatible(t *testing.T) {
 // CompactFormatter specific tests
 
 func TestCompactFormatter_SingleLineFormat(t *testing.T) {
-	f, _ := GetFormatter("compact")
+	f, _ := FormatterByName("compact")
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
@@ -614,7 +614,7 @@ func TestCompactFormatter_SingleLineFormat(t *testing.T) {
 }
 
 func TestCompactFormatter_ChangeTypeIndicators(t *testing.T) {
-	f, _ := GetFormatter("compact")
+	f, _ := FormatterByName("compact")
 	opts := DefaultFormatOptions()
 
 	tests := []struct {
@@ -675,7 +675,7 @@ func TestStyleConstants_CombiningWithColor(t *testing.T) {
 }
 
 func TestCompactFormatter_ColorCodes(t *testing.T) {
-	f, _ := GetFormatter("compact")
+	f, _ := FormatterByName("compact")
 	diffs := []Difference{
 		{Path: "test", Type: DiffAdded, From: nil, To: "new"},
 	}
@@ -690,7 +690,7 @@ func TestCompactFormatter_ColorCodes(t *testing.T) {
 }
 
 func TestGitHubFormatter_DifferentiatedCommands(t *testing.T) {
-	f, _ := GetFormatter("github")
+	f, _ := FormatterByName("github")
 	opts := DefaultFormatOptions()
 
 	tests := []struct {
@@ -739,7 +739,7 @@ func TestGitHubFormatter_DifferentiatedCommands(t *testing.T) {
 }
 
 func TestGitHubFormatter_FileParameter(t *testing.T) {
-	f, _ := GetFormatter("github")
+	f, _ := FormatterByName("github")
 	opts := DefaultFormatOptions()
 	opts.FilePath = "deploy.yaml"
 
@@ -761,7 +761,7 @@ func TestGitHubFormatter_FileParameter(t *testing.T) {
 }
 
 func TestGitHubFormatter_NoFileParameter(t *testing.T) {
-	f, _ := GetFormatter("github")
+	f, _ := FormatterByName("github")
 	opts := DefaultFormatOptions()
 	// FilePath is empty — backward compatible
 
@@ -783,7 +783,7 @@ func TestGitHubFormatter_NoFileParameter(t *testing.T) {
 }
 
 func TestGitHubFormatter_FileParameterAllDiffTypes(t *testing.T) {
-	f, _ := GetFormatter("github")
+	f, _ := FormatterByName("github")
 	opts := DefaultFormatOptions()
 	opts.FilePath = "service.yaml"
 
@@ -825,7 +825,7 @@ func TestGitHubFormatter_FileParameterAllDiffTypes(t *testing.T) {
 }
 
 func TestGitHubFormatter_AnnotationLimitTruncation(t *testing.T) {
-	f, _ := GetFormatter("github")
+	f, _ := FormatterByName("github")
 	opts := DefaultFormatOptions()
 
 	// Generate 13 warning diffs (DiffModified → ::warning)
@@ -862,7 +862,7 @@ func TestGitHubFormatter_AnnotationLimitTruncation(t *testing.T) {
 }
 
 func TestGitHubFormatter_AnnotationLimitNotTriggered(t *testing.T) {
-	f, _ := GetFormatter("github")
+	f, _ := FormatterByName("github")
 	opts := DefaultFormatOptions()
 
 	// Generate exactly 10 warning diffs — should not trigger summary
@@ -890,7 +890,7 @@ func TestGitHubFormatter_AnnotationLimitNotTriggered(t *testing.T) {
 }
 
 func TestGitHubFormatter_AnnotationLimitMixedNotice(t *testing.T) {
-	f, _ := GetFormatter("github")
+	f, _ := FormatterByName("github")
 	opts := DefaultFormatOptions()
 
 	// DiffAdded and DiffOrderChanged both map to ::notice — they share the budget
@@ -936,7 +936,7 @@ func TestGitHubFormatter_AnnotationLimitMixedNotice(t *testing.T) {
 }
 
 func TestGitHubFormatter_AnnotationLimitMultipleTypes(t *testing.T) {
-	f, _ := GetFormatter("github")
+	f, _ := FormatterByName("github")
 	opts := DefaultFormatOptions()
 
 	// 12 notices (DiffAdded) + 11 warnings (DiffModified) + 3 errors (DiffRemoved)
@@ -974,7 +974,7 @@ func TestGitHubFormatter_AnnotationLimitMultipleTypes(t *testing.T) {
 }
 
 func TestGitLabFormatter_RequiredFields(t *testing.T) {
-	f, _ := GetFormatter("gitlab")
+	f, _ := FormatterByName("gitlab")
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
@@ -992,7 +992,7 @@ func TestGitLabFormatter_RequiredFields(t *testing.T) {
 }
 
 func TestGitLabFormatter_SeverityMapping(t *testing.T) {
-	f, _ := GetFormatter("gitlab")
+	f, _ := FormatterByName("gitlab")
 	opts := DefaultFormatOptions()
 
 	tests := []struct {
@@ -1033,7 +1033,7 @@ func TestGitLabFormatter_SeverityMapping(t *testing.T) {
 }
 
 func TestGitLabFormatter_CheckNameMapping(t *testing.T) {
-	f, _ := GetFormatter("gitlab")
+	f, _ := FormatterByName("gitlab")
 	opts := DefaultFormatOptions()
 
 	tests := []struct {
@@ -1074,7 +1074,7 @@ func TestGitLabFormatter_CheckNameMapping(t *testing.T) {
 }
 
 func TestGitLabFormatter_UniqueFingerprints(t *testing.T) {
-	f, _ := GetFormatter("gitlab")
+	f, _ := FormatterByName("gitlab")
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
@@ -1104,7 +1104,7 @@ func TestGitLabFormatter_UniqueFingerprints(t *testing.T) {
 }
 
 func TestGitLabFormatter_FingerprintDeterministic(t *testing.T) {
-	f, _ := GetFormatter("gitlab")
+	f, _ := FormatterByName("gitlab")
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
@@ -1680,7 +1680,7 @@ func TestCompactFormatter_InlineColor(t *testing.T) {
 // DiffOrderChanged compact indicator test
 
 func TestCompactFormatter_OrderChangedIndicator(t *testing.T) {
-	f, _ := GetFormatter("compact")
+	f, _ := FormatterByName("compact")
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{

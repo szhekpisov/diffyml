@@ -561,7 +561,7 @@ func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
 	}
 
 	// Get the formatter
-	formatter, err := GetFormatter(cfg.Output)
+	formatter, err := FormatterByName(cfg.Output)
 	if err != nil {
 		fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
 		return NewExitResult(ExitCodeError, err)

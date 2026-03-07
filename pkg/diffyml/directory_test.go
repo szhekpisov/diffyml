@@ -1354,7 +1354,7 @@ func TestRunDirectory_NonGitLab_NotStructuredFormatter(t *testing.T) {
 
 	for _, name := range nonStructured {
 		t.Run(name, func(t *testing.T) {
-			f, err := GetFormatter(name)
+			f, err := FormatterByName(name)
 			if err != nil {
 				t.Fatalf("failed to get formatter: %v", err)
 			}
@@ -1378,7 +1378,7 @@ func TestFormatter_FilePathFieldIgnoredByNonGitLab(t *testing.T) {
 
 	for _, name := range nonGitLab {
 		t.Run(name, func(t *testing.T) {
-			f, err := GetFormatter(name)
+			f, err := FormatterByName(name)
 			if err != nil {
 				t.Fatalf("failed to get formatter: %v", err)
 			}

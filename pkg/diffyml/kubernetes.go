@@ -2,7 +2,7 @@
 //
 // Detects K8s resources by checking for apiVersion, kind, and metadata fields.
 // Matches resources across documents using apiVersion + kind + metadata.name (or generateName).
-// Key functions: IsKubernetesResource(), GetK8sIdentifier().
+// Key functions: IsKubernetesResource(), K8sResourceIdentifier().
 package diffyml
 
 import (
@@ -67,10 +67,10 @@ func IsKubernetesResource(doc any) bool {
 	return true
 }
 
-// GetK8sResourceIdentifier returns a unique identifier for a Kubernetes resource.
+// K8sResourceIdentifier returns a unique identifier for a Kubernetes resource.
 // When ignoreApiVersion is false: "apiVersion:kind:namespace/name" or "apiVersion:kind:name".
 // When ignoreApiVersion is true: "kind:namespace/name" or "kind:name".
-func GetK8sResourceIdentifier(doc any, ignoreApiVersion bool) string {
+func K8sResourceIdentifier(doc any, ignoreApiVersion bool) string {
 	if !IsKubernetesResource(doc) {
 		return ""
 	}
@@ -109,9 +109,9 @@ func GetK8sResourceIdentifier(doc any, ignoreApiVersion bool) string {
 	return fmt.Sprintf("%s:%s:%s", apiVersion, kind, name)
 }
 
-// GetIdentifierWithAdditional gets an identifier value from a map,
+// IdentifierWithAdditional gets an identifier value from a map,
 // checking default fields (name, id) and any additional specified fields.
-func GetIdentifierWithAdditional(m map[string]any, additionalIdentifiers []string) any {
+func IdentifierWithAdditional(m map[string]any, additionalIdentifiers []string) any {
 	// Check additional identifiers first (they take priority)
 	for _, field := range additionalIdentifiers {
 		if val, ok := m[field]; ok {
@@ -154,7 +154,7 @@ func CanMatchByIdentifierWithAdditional(list []any, additionalIdentifiers []stri
 			// Not a map, can't match by identifier
 			return false
 		}
-		id := GetIdentifierWithAdditional(m, additionalIdentifiers)
+		id := IdentifierWithAdditional(m, additionalIdentifiers)
 		if isComparableIdentifier(id) {
 			hasIdentifier = true
 		}
@@ -201,7 +201,7 @@ func matchK8sDocuments(from, to []any, opts *Options) (matched map[int]int, unma
 	toMatched := make([]bool, len(to))
 
 	for i, doc := range to {
-		if id := GetK8sResourceIdentifier(doc, ignoreApiVersion); id != "" {
+		if id := K8sResourceIdentifier(doc, ignoreApiVersion); id != "" {
 			if _, exists := toIndex[id]; !exists {
 				toIndex[id] = i
 			}
@@ -210,7 +210,7 @@ func matchK8sDocuments(from, to []any, opts *Options) (matched map[int]int, unma
 
 	// Match 'from' documents to 'to' documents
 	for i, doc := range from {
-		id := GetK8sResourceIdentifier(doc, ignoreApiVersion)
+		id := K8sResourceIdentifier(doc, ignoreApiVersion)
 		if id != "" {
 			if toIdx, ok := toIndex[id]; ok {
 				matched[i] = toIdx
@@ -254,13 +254,13 @@ func compareK8sDocs(from, to []any, opts *Options) []Difference {
 		if orderChanged {
 			fromOrder := make([]any, len(pairs))
 			for i, p := range pairs {
-				fromOrder[i] = GetK8sResourceIdentifier(from[p.fromIdx], ignoreApiVersion)
+				fromOrder[i] = K8sResourceIdentifier(from[p.fromIdx], ignoreApiVersion)
 			}
 			// Re-sort by toIdx for to-order
 			slices.SortFunc(pairs, func(a, b idxPair) int { return cmp.Compare(a.toIdx, b.toIdx) })
 			toOrder := make([]any, len(pairs))
 			for i, p := range pairs {
-				toOrder[i] = GetK8sResourceIdentifier(from[p.fromIdx], ignoreApiVersion)
+				toOrder[i] = K8sResourceIdentifier(from[p.fromIdx], ignoreApiVersion)
 			}
 
 			diffs = append(diffs, Difference{

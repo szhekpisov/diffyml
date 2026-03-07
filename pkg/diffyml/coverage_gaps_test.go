@@ -145,17 +145,17 @@ func TestClamp_InRange(t *testing.T) {
 	}
 }
 
-// --- GetContextColorCode: true color path ---
+// --- ContextColorCode: true color path ---
 
-func TestGetContextColorCode_TrueColor(t *testing.T) {
-	code := GetContextColorCode(true)
+func TestContextColorCode_TrueColor(t *testing.T) {
+	code := ContextColorCode(true)
 	if !strings.HasPrefix(code, "\033[38;2;") {
 		t.Errorf("expected true color ANSI prefix, got %q", code)
 	}
 }
 
-func TestGetContextColorCode_Basic(t *testing.T) {
-	code := GetContextColorCode(false)
+func TestContextColorCode_Basic(t *testing.T) {
+	code := ContextColorCode(false)
 	if code != "\033[90m" {
 		t.Errorf("expected gray ANSI code \\033[90m, got %q", code)
 	}
@@ -322,11 +322,11 @@ func writeFile(t *testing.T, path string, content string) {
 	}
 }
 
-// --- GetTrueColorCode: exercises clamp through boundary values ---
+// --- TrueColorCode: exercises clamp through boundary values ---
 
-func TestGetTrueColorCode_Clamped(t *testing.T) {
+func TestTrueColorCode_Clamped(t *testing.T) {
 	// Values out of range should be clamped
-	code := GetTrueColorCode(-1, 256, 128)
+	code := TrueColorCode(-1, 256, 128)
 	expected := fmt.Sprintf("\033[38;2;%d;%d;%dm", 0, 255, 128)
 	if code != expected {
 		t.Errorf("expected clamped color code %q, got %q", expected, code)

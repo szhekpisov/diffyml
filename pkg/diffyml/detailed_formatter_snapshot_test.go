@@ -6,7 +6,7 @@ import (
 )
 
 func TestDetailedFormatter_Snapshot_ScalarModification(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -22,7 +22,7 @@ func TestDetailedFormatter_Snapshot_ScalarModification(t *testing.T) {
 }
 
 func TestDetailedFormatter_Snapshot_TypeChange(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -38,7 +38,7 @@ func TestDetailedFormatter_Snapshot_TypeChange(t *testing.T) {
 }
 
 func TestDetailedFormatter_Snapshot_SingleListEntryAdded(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -54,7 +54,7 @@ func TestDetailedFormatter_Snapshot_SingleListEntryAdded(t *testing.T) {
 }
 
 func TestDetailedFormatter_Snapshot_SingleMapEntryRemoved(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -70,7 +70,7 @@ func TestDetailedFormatter_Snapshot_SingleMapEntryRemoved(t *testing.T) {
 }
 
 func TestDetailedFormatter_Snapshot_OrderChange(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -88,7 +88,7 @@ func TestDetailedFormatter_Snapshot_OrderChange(t *testing.T) {
 }
 
 func TestDetailedFormatter_Snapshot_WhitespaceChange(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -104,7 +104,7 @@ func TestDetailedFormatter_Snapshot_WhitespaceChange(t *testing.T) {
 }
 
 func TestDetailedFormatter_Snapshot_RootLevel(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -120,7 +120,7 @@ func TestDetailedFormatter_Snapshot_RootLevel(t *testing.T) {
 }
 
 func TestDetailedFormatter_Snapshot_GoPatchRoot(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 	opts.UseGoPatchStyle = true
@@ -137,7 +137,7 @@ func TestDetailedFormatter_Snapshot_GoPatchRoot(t *testing.T) {
 }
 
 func TestDetailedFormatter_Snapshot_StructuredMapAdded(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -158,7 +158,7 @@ func TestDetailedFormatter_Snapshot_StructuredMapAdded(t *testing.T) {
 }
 
 func TestDetailedFormatter_Snapshot_Header(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
@@ -173,7 +173,7 @@ func TestDetailedFormatter_Snapshot_Header(t *testing.T) {
 }
 
 func TestDetailedFormatter_Snapshot_MultiplePathGroups(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -190,7 +190,7 @@ func TestDetailedFormatter_Snapshot_MultiplePathGroups(t *testing.T) {
 }
 
 func TestDetailedFormatter_Snapshot_MultilineDiff(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 	opts.ContextLines = 1
@@ -217,7 +217,7 @@ func TestDetailedFormatter_Snapshot_MultilineDiff(t *testing.T) {
 
 func TestDetailedFormatter_Integration_NoRegressionSnapshots(t *testing.T) {
 	// Verify uncolored output is byte-identical to expected baseline for all diff types
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.Color = false
 	opts.OmitHeader = true
@@ -282,7 +282,7 @@ func TestDetailedFormatter_Integration_NoRegressionSnapshots(t *testing.T) {
 }
 
 func TestDetailedFormatter_Snapshot_FullComparison(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 

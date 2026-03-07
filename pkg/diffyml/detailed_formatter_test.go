@@ -8,8 +8,8 @@ import (
 
 // Scaffold and CLI registration tests
 
-func TestGetFormatter_Detailed(t *testing.T) {
-	f, err := GetFormatter("detailed")
+func TestFormatterByName_Detailed(t *testing.T) {
+	f, err := FormatterByName("detailed")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -18,8 +18,8 @@ func TestGetFormatter_Detailed(t *testing.T) {
 	}
 }
 
-func TestGetFormatter_DetailedCaseInsensitive(t *testing.T) {
-	f, err := GetFormatter("DETAILED")
+func TestFormatterByName_DetailedCaseInsensitive(t *testing.T) {
+	f, err := FormatterByName("DETAILED")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -36,7 +36,7 @@ func TestValidateOutputFormat_Detailed(t *testing.T) {
 }
 
 func TestDetailedFormatter_EmptyDiffs(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	output := f.Format([]Difference{}, opts)
@@ -46,7 +46,7 @@ func TestDetailedFormatter_EmptyDiffs(t *testing.T) {
 }
 
 func TestDetailedFormatter_NilOptions(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 
 	diffs := []Difference{
 		{Path: "test.key", Type: DiffModified, From: "old", To: "new"},
@@ -60,7 +60,7 @@ func TestDetailedFormatter_NilOptions(t *testing.T) {
 }
 
 func TestDetailedFormatter_ImplementsInterface(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 
 	diffs := []Difference{
 		{Path: "test.path", Type: DiffModified, From: "old", To: "new"},
@@ -75,7 +75,7 @@ func TestDetailedFormatter_ImplementsInterface(t *testing.T) {
 
 func TestDetailedFormatter_ListedInValidFormats(t *testing.T) {
 	// "detailed" should appear in the error message when an invalid format is used
-	_, err := GetFormatter("badname")
+	_, err := FormatterByName("badname")
 	if err == nil {
 		t.Fatal("expected error for invalid name")
 	}
@@ -87,7 +87,7 @@ func TestDetailedFormatter_ListedInValidFormats(t *testing.T) {
 // Path grouping and path headings
 
 func TestDetailedFormatter_PathHeading(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
@@ -102,7 +102,7 @@ func TestDetailedFormatter_PathHeading(t *testing.T) {
 }
 
 func TestDetailedFormatter_PathGrouping(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
@@ -124,7 +124,7 @@ func TestDetailedFormatter_PathGrouping(t *testing.T) {
 }
 
 func TestDetailedFormatter_PathGroupPreservesOrder(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
@@ -146,7 +146,7 @@ func TestDetailedFormatter_PathGroupPreservesOrder(t *testing.T) {
 }
 
 func TestDetailedFormatter_GoPatchPath(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.UseGoPatchStyle = true
 
@@ -161,7 +161,7 @@ func TestDetailedFormatter_GoPatchPath(t *testing.T) {
 }
 
 func TestDetailedFormatter_RootLevelPath(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
@@ -175,7 +175,7 @@ func TestDetailedFormatter_RootLevelPath(t *testing.T) {
 }
 
 func TestDetailedFormatter_RootLevelGoPatch(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.UseGoPatchStyle = true
 
@@ -198,7 +198,7 @@ func TestDetailedFormatter_RootLevelGoPatch(t *testing.T) {
 }
 
 func TestDetailedFormatter_BlankLineBetweenPathBlocks(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
@@ -216,7 +216,7 @@ func TestDetailedFormatter_BlankLineBetweenPathBlocks(t *testing.T) {
 // Scalar and order change descriptors
 
 func TestDetailedFormatter_ValueChange(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
@@ -236,7 +236,7 @@ func TestDetailedFormatter_ValueChange(t *testing.T) {
 }
 
 func TestDetailedFormatter_TypeChange(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	// int to string type change
@@ -257,7 +257,7 @@ func TestDetailedFormatter_TypeChange(t *testing.T) {
 }
 
 func TestDetailedFormatter_TypeChangeBoolToString(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
@@ -271,7 +271,7 @@ func TestDetailedFormatter_TypeChangeBoolToString(t *testing.T) {
 }
 
 func TestDetailedFormatter_OrderChanged(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
@@ -287,7 +287,7 @@ func TestDetailedFormatter_OrderChanged(t *testing.T) {
 // List and map entry descriptors with count formatting
 
 func TestDetailedFormatter_ListEntryAdded(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
@@ -301,7 +301,7 @@ func TestDetailedFormatter_ListEntryAdded(t *testing.T) {
 }
 
 func TestDetailedFormatter_MultipleListEntriesRemoved(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	// Two removals at the same list path — should be grouped
@@ -322,7 +322,7 @@ func TestDetailedFormatter_MultipleListEntriesRemoved(t *testing.T) {
 }
 
 func TestDetailedFormatter_ListEntryRemovedBracket(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
@@ -336,7 +336,7 @@ func TestDetailedFormatter_ListEntryRemovedBracket(t *testing.T) {
 }
 
 func TestDetailedFormatter_MapEntryAdded(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
@@ -350,7 +350,7 @@ func TestDetailedFormatter_MapEntryAdded(t *testing.T) {
 }
 
 func TestDetailedFormatter_MapEntryRemoved(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
@@ -437,7 +437,7 @@ func TestDetailedFormatter_YamlTypeName(t *testing.T) {
 // Structured value rendering with YAML-like formatting
 
 func TestDetailedFormatter_StructuredMapAdded(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	om := NewOrderedMap()
@@ -460,7 +460,7 @@ func TestDetailedFormatter_StructuredMapAdded(t *testing.T) {
 }
 
 func TestDetailedFormatter_StructuredMapWithYAMLIndentation(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	inner := NewOrderedMap()
@@ -492,7 +492,7 @@ func TestDetailedFormatter_StructuredMapWithYAMLIndentation(t *testing.T) {
 }
 
 func TestDetailedFormatter_StructuredListValue(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	listVal := []any{"alpha", "beta", "gamma"}
@@ -516,7 +516,7 @@ func TestDetailedFormatter_StructuredListValue(t *testing.T) {
 }
 
 func TestDetailedFormatter_StructuredMapRemoved(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	om := NewOrderedMap()
@@ -538,7 +538,7 @@ func TestDetailedFormatter_StructuredMapRemoved(t *testing.T) {
 }
 
 func TestDetailedFormatter_NestedListInMap(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	om := NewOrderedMap()
@@ -561,7 +561,7 @@ func TestDetailedFormatter_NestedListInMap(t *testing.T) {
 }
 
 func TestDetailedFormatter_RegularMapValue(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	// Test with regular map[string]any as well
@@ -580,7 +580,7 @@ func TestDetailedFormatter_RegularMapValue(t *testing.T) {
 }
 
 func TestDetailedFormatter_NilValueDisplay(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
@@ -594,7 +594,7 @@ func TestDetailedFormatter_NilValueDisplay(t *testing.T) {
 }
 
 func TestDetailedFormatter_ScalarFallback(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	// Unknown type should fall back to fmt.Sprintf
@@ -611,7 +611,7 @@ func TestDetailedFormatter_ScalarFallback(t *testing.T) {
 // Header and flag compatibility tests
 
 func TestDetailedFormatter_Header(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
@@ -627,7 +627,7 @@ func TestDetailedFormatter_Header(t *testing.T) {
 }
 
 func TestDetailedFormatter_HeaderOmitted(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -647,7 +647,7 @@ func TestDetailedFormatter_HeaderOmitted(t *testing.T) {
 }
 
 func TestDetailedFormatter_HeaderSingleDiff(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
@@ -661,7 +661,7 @@ func TestDetailedFormatter_HeaderSingleDiff(t *testing.T) {
 }
 
 func TestDetailedFormatter_HeaderColorEnabled(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.Color = true
 
@@ -677,7 +677,7 @@ func TestDetailedFormatter_HeaderColorEnabled(t *testing.T) {
 }
 
 func TestDetailedFormatter_FlagCombination_OmitHeaderGoPatch(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 	opts.UseGoPatchStyle = true
@@ -698,7 +698,7 @@ func TestDetailedFormatter_FlagCombination_OmitHeaderGoPatch(t *testing.T) {
 }
 
 func TestDetailedFormatter_FlagCombination_ColorGoPatch(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.Color = true
 	opts.UseGoPatchStyle = true
@@ -778,7 +778,7 @@ func TestFormatDetailedValue(t *testing.T) {
 // Behavior edge cases
 
 func TestDetailedFormatter_MultipleMapEntriesAdded(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
@@ -794,7 +794,7 @@ func TestDetailedFormatter_MultipleMapEntriesAdded(t *testing.T) {
 }
 
 func TestDetailedFormatter_AddedAndRemovedInSameGroup(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
@@ -812,7 +812,7 @@ func TestDetailedFormatter_AddedAndRemovedInSameGroup(t *testing.T) {
 }
 
 func TestDetailedFormatter_ModifiedNilToValue(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
@@ -826,7 +826,7 @@ func TestDetailedFormatter_ModifiedNilToValue(t *testing.T) {
 }
 
 func TestDetailedFormatter_ModifiedValueToNil(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
@@ -840,7 +840,7 @@ func TestDetailedFormatter_ModifiedValueToNil(t *testing.T) {
 }
 
 func TestDetailedFormatter_OrderChangedWithValues(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
@@ -862,7 +862,7 @@ func TestDetailedFormatter_OrderChangedWithValues(t *testing.T) {
 }
 
 func TestDetailedFormatter_DeeplyNestedStructure(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -893,7 +893,7 @@ func TestDetailedFormatter_DeeplyNestedStructure(t *testing.T) {
 // Regression-prevention tests
 
 func TestDetailedFormatter_MapEntryScalar_RendersKeyValue(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -909,7 +909,7 @@ func TestDetailedFormatter_MapEntryScalar_RendersKeyValue(t *testing.T) {
 }
 
 func TestDetailedFormatter_MapEntryStructured_RendersKeyWrapper(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -930,7 +930,7 @@ func TestDetailedFormatter_MapEntryStructured_RendersKeyWrapper(t *testing.T) {
 }
 
 func TestDetailedFormatter_ListEntry_StillUsesDashPrefix(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -946,7 +946,7 @@ func TestDetailedFormatter_ListEntry_StillUsesDashPrefix(t *testing.T) {
 }
 
 func TestDetailedFormatter_NoLeadingBlankLine_OmitHeader(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -961,7 +961,7 @@ func TestDetailedFormatter_NoLeadingBlankLine_OmitHeader(t *testing.T) {
 }
 
 func TestDetailedFormatter_LeadingBlankLine_WithHeader(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
@@ -976,7 +976,7 @@ func TestDetailedFormatter_LeadingBlankLine_WithHeader(t *testing.T) {
 }
 
 func TestDetailedFormatter_TrailingSeparator_ValueChange(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -992,7 +992,7 @@ func TestDetailedFormatter_TrailingSeparator_ValueChange(t *testing.T) {
 }
 
 func TestDetailedFormatter_TrailingSeparator_EntryBatch(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -1008,7 +1008,7 @@ func TestDetailedFormatter_TrailingSeparator_EntryBatch(t *testing.T) {
 }
 
 func TestDetailedFormatter_TrailingSeparator_OrderChange(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -1026,7 +1026,7 @@ func TestDetailedFormatter_TrailingSeparator_OrderChange(t *testing.T) {
 }
 
 func TestDetailedFormatter_TrailingSeparator_TypeChange(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -1042,7 +1042,7 @@ func TestDetailedFormatter_TrailingSeparator_TypeChange(t *testing.T) {
 }
 
 func TestDetailedFormatter_HeaderFormat_SpelledOutCount(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	// Single diff: "Found one difference"
@@ -1069,7 +1069,7 @@ func TestDetailedFormatter_HeaderFormat_SpelledOutCount(t *testing.T) {
 // Order change comma-separated format
 
 func TestDetailedFormatter_OrderChange_CommaSeparated(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -1089,7 +1089,7 @@ func TestDetailedFormatter_OrderChange_CommaSeparated(t *testing.T) {
 }
 
 func TestDetailedFormatter_OrderChange_SingleItem(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -1109,7 +1109,7 @@ func TestDetailedFormatter_OrderChange_SingleItem(t *testing.T) {
 }
 
 func TestDetailedFormatter_OrderChange_NonStringItems(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -1129,7 +1129,7 @@ func TestDetailedFormatter_OrderChange_NonStringItems(t *testing.T) {
 }
 
 func TestDetailedFormatter_OrderChange_Snapshot(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -1149,7 +1149,7 @@ func TestDetailedFormatter_OrderChange_Snapshot(t *testing.T) {
 // List entry YAML dash prefix
 
 func TestDetailedFormatter_ListEntry_DashPrefix(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -1173,7 +1173,7 @@ func TestDetailedFormatter_ListEntry_DashPrefix(t *testing.T) {
 }
 
 func TestDetailedFormatter_ListEntry_MultipleMaps(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -1201,7 +1201,7 @@ func TestDetailedFormatter_ListEntry_MultipleMaps(t *testing.T) {
 }
 
 func TestDetailedFormatter_ListEntry_NestedMap(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -1227,7 +1227,7 @@ func TestDetailedFormatter_ListEntry_NestedMap(t *testing.T) {
 }
 
 func TestDetailedFormatter_ListEntry_ScalarUnchanged(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -1243,7 +1243,7 @@ func TestDetailedFormatter_ListEntry_ScalarUnchanged(t *testing.T) {
 }
 
 func TestDetailedFormatter_ListEntry_Snapshot(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -1266,7 +1266,7 @@ func TestDetailedFormatter_ListEntry_Snapshot(t *testing.T) {
 // Document heading tests
 
 func TestDetailedFormatter_DocumentHeading(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -1373,7 +1373,7 @@ func TestDetailedFormatter_NestedMapIndentation(t *testing.T) {
 func TestDetailedFormatter_ListEntryAtIndex9(t *testing.T) {
 	// A scalar list entry at index 9 must still be detected as a list entry.
 	// This catches the mutation c > '9' → c >= '9' which would treat '9' as non-digit.
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -1445,7 +1445,7 @@ func TestParseDocIndexPrefix(t *testing.T) {
 }
 
 func TestDetailedFormatter_ColonNotation(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -1499,7 +1499,7 @@ func TestDetailedFormatter_ColonNotation(t *testing.T) {
 // renderEntryValue edge cases
 
 func TestDetailedFormatter_RenderEntryValue_ListScalar(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -1514,7 +1514,7 @@ func TestDetailedFormatter_RenderEntryValue_ListScalar(t *testing.T) {
 }
 
 func TestDetailedFormatter_RenderEntryValue_ListOfLists(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -1529,7 +1529,7 @@ func TestDetailedFormatter_RenderEntryValue_ListOfLists(t *testing.T) {
 }
 
 func TestDetailedFormatter_RenderEntryValue_MapEntry(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -1551,7 +1551,7 @@ func TestDetailedFormatter_RenderEntryValue_MapEntry(t *testing.T) {
 }
 
 func TestDetailedFormatter_RenderFirstKeyValueYAML_MapValue(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -1569,7 +1569,7 @@ func TestDetailedFormatter_RenderFirstKeyValueYAML_MapValue(t *testing.T) {
 }
 
 func TestDetailedFormatter_RenderFirstKeyValueYAML_ListValue(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -1590,7 +1590,7 @@ func TestDetailedFormatter_RenderFirstKeyValueYAML_ListValue(t *testing.T) {
 }
 
 func TestDetailedFormatter_RenderFirstKeyValueYAML_MultilineString(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -1714,7 +1714,7 @@ func TestFormatValueAsYAMLLines(t *testing.T) {
 }
 
 func TestDetailedFormatter_TypeChange_Structured(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -1774,7 +1774,7 @@ func TestIsStructured(t *testing.T) {
 // Nested list rendering tests
 
 func TestDetailedFormatter_RenderListItems_OrderedMapInList(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -1819,7 +1819,7 @@ func TestDetailedFormatter_RenderListItems_OrderedMapInList(t *testing.T) {
 }
 
 func TestDetailedFormatter_RenderListItems_NestedOrderedMapInList(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -1862,7 +1862,7 @@ func TestDetailedFormatter_RenderListItems_NestedOrderedMapInList(t *testing.T) 
 }
 
 func TestDetailedFormatter_RenderKeyValueYAML_ListWithStructuredItems(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -1889,7 +1889,7 @@ func TestDetailedFormatter_RenderKeyValueYAML_ListWithStructuredItems(t *testing
 }
 
 func TestDetailedFormatter_RenderFirstKeyValueYAML_ListWithStructuredItems(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -1926,7 +1926,7 @@ func TestDetailedFormatter_RenderFirstKeyValueYAML_ListWithStructuredItems(t *te
 }
 
 func TestDetailedFormatter_RenderEntryValue_ListWithMixedItems(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 

@@ -211,7 +211,7 @@ func runDirectory(cfg *CLIConfig, rc *RunConfig, fromDir, toDir string) *ExitRes
 	}
 
 	// Get the formatter
-	formatter, err := GetFormatter(cfg.Output)
+	formatter, err := FormatterByName(cfg.Output)
 	if err != nil {
 		fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
 		return NewExitResult(ExitCodeError, err)

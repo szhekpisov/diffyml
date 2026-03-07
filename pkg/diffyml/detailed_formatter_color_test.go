@@ -8,7 +8,7 @@ import (
 // Basic color coding tests
 
 func TestDetailedFormatter_ColorEnabled_AdditionGreen(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.Color = true
 
@@ -24,7 +24,7 @@ func TestDetailedFormatter_ColorEnabled_AdditionGreen(t *testing.T) {
 }
 
 func TestDetailedFormatter_ColorEnabled_RemovalRed(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.Color = true
 
@@ -40,7 +40,7 @@ func TestDetailedFormatter_ColorEnabled_RemovalRed(t *testing.T) {
 }
 
 func TestDetailedFormatter_ColorEnabled_ModificationYellow(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.Color = true
 
@@ -56,7 +56,7 @@ func TestDetailedFormatter_ColorEnabled_ModificationYellow(t *testing.T) {
 }
 
 func TestDetailedFormatter_ColorEnabled_ModificationValues(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.Color = true
 
@@ -75,7 +75,7 @@ func TestDetailedFormatter_ColorEnabled_ModificationValues(t *testing.T) {
 }
 
 func TestDetailedFormatter_ColorEnabled_ContextGray(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.Color = true
 
@@ -94,7 +94,7 @@ func TestDetailedFormatter_ColorEnabled_ContextGray(t *testing.T) {
 }
 
 func TestDetailedFormatter_ColorEnabled_ResetCodes(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.Color = true
 
@@ -110,7 +110,7 @@ func TestDetailedFormatter_ColorEnabled_ResetCodes(t *testing.T) {
 }
 
 func TestDetailedFormatter_ColorDisabled_NoAnsiCodes(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.Color = false
 
@@ -130,7 +130,7 @@ func TestDetailedFormatter_ColorDisabled_NoAnsiCodes(t *testing.T) {
 // TrueColor tests
 
 func TestDetailedFormatter_TrueColor_AdditionGreen(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.Color = true
 	opts.TrueColor = true
@@ -148,7 +148,7 @@ func TestDetailedFormatter_TrueColor_AdditionGreen(t *testing.T) {
 }
 
 func TestDetailedFormatter_TrueColor_RemovalRed(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.Color = true
 	opts.TrueColor = true
@@ -166,7 +166,7 @@ func TestDetailedFormatter_TrueColor_RemovalRed(t *testing.T) {
 }
 
 func TestDetailedFormatter_TrueColor_ModificationYellow(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.Color = true
 	opts.TrueColor = true
@@ -184,7 +184,7 @@ func TestDetailedFormatter_TrueColor_ModificationYellow(t *testing.T) {
 }
 
 func TestDetailedFormatter_ColorEnabled_OrderChangeYellow(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.Color = true
 
@@ -200,7 +200,7 @@ func TestDetailedFormatter_ColorEnabled_OrderChangeYellow(t *testing.T) {
 }
 
 func TestDetailedFormatter_ColorEnabled_TypeChangeYellow(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.Color = true
 
@@ -216,7 +216,7 @@ func TestDetailedFormatter_ColorEnabled_TypeChangeYellow(t *testing.T) {
 }
 
 func TestDetailedFormatter_ColorEnabled_MultilineDiffColors(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.Color = true
 
@@ -240,7 +240,7 @@ func TestDetailedFormatter_ColorEnabled_MultilineDiffColors(t *testing.T) {
 }
 
 func TestDetailedFormatter_ColorEnabled_WhitespaceChangeYellow(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.Color = true
 
@@ -258,7 +258,7 @@ func TestDetailedFormatter_ColorEnabled_WhitespaceChangeYellow(t *testing.T) {
 // Bold path headings
 
 func TestDetailedFormatter_ColorEnabled_BoldPathHeading(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.Color = true
 	opts.OmitHeader = true
@@ -275,7 +275,7 @@ func TestDetailedFormatter_ColorEnabled_BoldPathHeading(t *testing.T) {
 }
 
 func TestDetailedFormatter_ColorEnabled_BoldRootLevel(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.Color = true
 	opts.OmitHeader = true
@@ -292,7 +292,7 @@ func TestDetailedFormatter_ColorEnabled_BoldRootLevel(t *testing.T) {
 }
 
 func TestDetailedFormatter_ColorEnabled_BoldGoPatchRoot(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.Color = true
 	opts.OmitHeader = true
@@ -310,7 +310,7 @@ func TestDetailedFormatter_ColorEnabled_BoldGoPatchRoot(t *testing.T) {
 }
 
 func TestDetailedFormatter_ColorDisabled_NoBoldPathHeading(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.Color = false
 	opts.OmitHeader = true
@@ -329,7 +329,7 @@ func TestDetailedFormatter_ColorDisabled_NoBoldPathHeading(t *testing.T) {
 // Italic type names
 
 func TestDetailedFormatter_ColorEnabled_ItalicTypeNames(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.Color = true
 	opts.OmitHeader = true
@@ -349,7 +349,7 @@ func TestDetailedFormatter_ColorEnabled_ItalicTypeNames(t *testing.T) {
 }
 
 func TestDetailedFormatter_ColorDisabled_NoItalicTypeNames(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.Color = false
 	opts.OmitHeader = true
@@ -369,7 +369,7 @@ func TestDetailedFormatter_ColorDisabled_NoItalicTypeNames(t *testing.T) {
 }
 
 func TestDetailedFormatter_ColorEnabled_ItalicPreservesYellow(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.Color = true
 	opts.OmitHeader = true
@@ -388,7 +388,7 @@ func TestDetailedFormatter_ColorEnabled_ItalicPreservesYellow(t *testing.T) {
 // Colored entry values
 
 func TestDetailedFormatter_ColorEnabled_EntryValueColored(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.Color = true
 	opts.OmitHeader = true
@@ -404,7 +404,7 @@ func TestDetailedFormatter_ColorEnabled_EntryValueColored(t *testing.T) {
 
 	output := f.Format(diffs, opts)
 	// All value lines should be colored green (addition)
-	addedColor := GetDetailedColorCode(DiffAdded, false)
+	addedColor := DetailedColorCode(DiffAdded, false)
 	if !strings.Contains(output, addedColor+"    - name: nginx") {
 		t.Errorf("expected green colored '- name: nginx', got: %q", output)
 	}
@@ -414,7 +414,7 @@ func TestDetailedFormatter_ColorEnabled_EntryValueColored(t *testing.T) {
 }
 
 func TestDetailedFormatter_ColorEnabled_NestedEntryValueColored(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.Color = true
 	opts.OmitHeader = true
@@ -435,7 +435,7 @@ func TestDetailedFormatter_ColorEnabled_NestedEntryValueColored(t *testing.T) {
 
 	output := f.Format(diffs, opts)
 	// All nested value lines should be colored green
-	addedColor := GetDetailedColorCode(DiffAdded, false)
+	addedColor := DetailedColorCode(DiffAdded, false)
 	colorCount := strings.Count(output, addedColor)
 	// Should color: descriptor line, name: myapp, config:, host: localhost, port: 8080
 	if colorCount < 4 {
@@ -444,7 +444,7 @@ func TestDetailedFormatter_ColorEnabled_NestedEntryValueColored(t *testing.T) {
 }
 
 func TestDetailedFormatter_ColorDisabled_PlainEntryValues(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.Color = false
 	opts.OmitHeader = true
@@ -472,7 +472,7 @@ func TestDetailedFormatter_ColorDisabled_PlainEntryValues(t *testing.T) {
 }
 
 func TestDetailedFormatter_ColorEnabled_ListEntryValueColored(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.Color = true
 	opts.OmitHeader = true
@@ -484,7 +484,7 @@ func TestDetailedFormatter_ColorEnabled_ListEntryValueColored(t *testing.T) {
 
 	output := f.Format(diffs, opts)
 	// List entries should be colored green
-	addedColor := GetDetailedColorCode(DiffAdded, false)
+	addedColor := DetailedColorCode(DiffAdded, false)
 	if !strings.Contains(output, addedColor+"    - alpha") {
 		t.Errorf("expected green colored '- alpha' list item, got: %q", output)
 	}
@@ -493,7 +493,7 @@ func TestDetailedFormatter_ColorEnabled_ListEntryValueColored(t *testing.T) {
 // Colored order change was/now values
 
 func TestDetailedFormatter_ColorEnabled_OrderChangeWasRed(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.Color = true
 	opts.OmitHeader = true
@@ -505,7 +505,7 @@ func TestDetailedFormatter_ColorEnabled_OrderChangeWasRed(t *testing.T) {
 	}
 
 	output := f.Format(diffs, opts)
-	removedColor := GetDetailedColorCode(DiffRemoved, false)
+	removedColor := DetailedColorCode(DiffRemoved, false)
 	// "- " line should be in removal (red) color
 	if !strings.Contains(output, removedColor+"    - ") {
 		t.Errorf("expected red color on '- ' line, got: %q", output)
@@ -513,7 +513,7 @@ func TestDetailedFormatter_ColorEnabled_OrderChangeWasRed(t *testing.T) {
 }
 
 func TestDetailedFormatter_ColorEnabled_OrderChangeNowGreen(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.Color = true
 	opts.OmitHeader = true
@@ -525,7 +525,7 @@ func TestDetailedFormatter_ColorEnabled_OrderChangeNowGreen(t *testing.T) {
 	}
 
 	output := f.Format(diffs, opts)
-	addedColor := GetDetailedColorCode(DiffAdded, false)
+	addedColor := DetailedColorCode(DiffAdded, false)
 	// "+ " line should be in addition (green) color
 	if !strings.Contains(output, addedColor+"    + ") {
 		t.Errorf("expected green color on '+ ' line, got: %q", output)
@@ -533,7 +533,7 @@ func TestDetailedFormatter_ColorEnabled_OrderChangeNowGreen(t *testing.T) {
 }
 
 func TestDetailedFormatter_ColorDisabled_PlainOrderChange(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.Color = false
 	opts.OmitHeader = true
@@ -557,7 +557,7 @@ func TestDetailedFormatter_ColorDisabled_PlainOrderChange(t *testing.T) {
 // Integration color tests
 
 func TestDetailedFormatter_Integration_AllDiffTypesColored(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.Color = true
 
@@ -599,13 +599,13 @@ func TestDetailedFormatter_Integration_AllDiffTypesColored(t *testing.T) {
 	}
 
 	// 3. Entry values colored (structured map added has green-colored YAML lines)
-	addedColor := GetDetailedColorCode(DiffAdded, false)
+	addedColor := DetailedColorCode(DiffAdded, false)
 	if !strings.Contains(output, addedColor+"    - name: nginx") {
 		t.Errorf("expected green colored entry value lines, got: %q", output)
 	}
 
 	// 4. Red on - line, green on + line (order change)
-	removedColor := GetDetailedColorCode(DiffRemoved, false)
+	removedColor := DetailedColorCode(DiffRemoved, false)
 	if !strings.Contains(output, removedColor+"    - ") {
 		t.Errorf("expected red color on '- ' line, got: %q", output)
 	}
@@ -620,7 +620,7 @@ func TestDetailedFormatter_Integration_AllDiffTypesColored(t *testing.T) {
 }
 
 func TestDetailedFormatter_Integration_AllDiffTypesUncolored(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.Color = false
 
@@ -661,7 +661,7 @@ func TestDetailedFormatter_Integration_AllDiffTypesUncolored(t *testing.T) {
 }
 
 func TestDetailedFormatter_Integration_TrueColorBoldItalicCombination(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.Color = true
 	opts.TrueColor = true
@@ -691,7 +691,7 @@ func TestDetailedFormatter_Integration_TrueColorBoldItalicCombination(t *testing
 	}
 
 	// Italic type names within true color yellow descriptor
-	trueYellow := GetDetailedColorCode(DiffModified, true)
+	trueYellow := DetailedColorCode(DiffModified, true)
 	if !strings.Contains(output, trueYellow) {
 		t.Errorf("expected true color yellow for type change descriptor, got: %q", output)
 	}
@@ -700,13 +700,13 @@ func TestDetailedFormatter_Integration_TrueColorBoldItalicCombination(t *testing
 	}
 
 	// True color green on entry value lines
-	trueGreen := GetDetailedColorCode(DiffAdded, true)
+	trueGreen := DetailedColorCode(DiffAdded, true)
 	if !strings.Contains(output, trueGreen+"    - name: nginx") {
 		t.Errorf("expected true color green for entry value lines, got: %q", output)
 	}
 
 	// True color red/green on -/+
-	trueRed := GetDetailedColorCode(DiffRemoved, true)
+	trueRed := DetailedColorCode(DiffRemoved, true)
 	if !strings.Contains(output, trueRed+"    - ") {
 		t.Errorf("expected true color red on '- ' line, got: %q", output)
 	}
@@ -729,7 +729,7 @@ func TestDetailedFormatter_Integration_AutoColorModeNoTerminal(t *testing.T) {
 		t.Fatal("expected Color=false when auto mode with non-terminal")
 	}
 
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	diffs := []Difference{
 		{Path: "services.0", Type: DiffAdded, To: func() *OrderedMap {
 			om := NewOrderedMap()

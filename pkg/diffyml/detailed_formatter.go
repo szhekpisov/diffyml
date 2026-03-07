@@ -59,7 +59,7 @@ func (f *DetailedFormatter) formatHeader(sb *strings.Builder, diffs []Difference
 		formatCount(len(diffs)),
 		pluralize(len(diffs), "difference", "differences"))
 	if opts.Color {
-		sb.WriteString(GetColorReset())
+		sb.WriteString(ColorReset())
 	}
 	sb.WriteString("\n\n")
 }
@@ -312,21 +312,21 @@ func (f *DetailedFormatter) writeDescriptorLine(sb *strings.Builder, text string
 // Color helper methods for DetailedFormatter
 
 func (f *DetailedFormatter) colorAdded(opts *FormatOptions) string {
-	return GetDetailedColorCode(DiffAdded, opts.TrueColor)
+	return DetailedColorCode(DiffAdded, opts.TrueColor)
 }
 
 func (f *DetailedFormatter) colorRemoved(opts *FormatOptions) string {
-	return GetDetailedColorCode(DiffRemoved, opts.TrueColor)
+	return DetailedColorCode(DiffRemoved, opts.TrueColor)
 }
 
 func (f *DetailedFormatter) colorModified(opts *FormatOptions) string {
-	return GetDetailedColorCode(DiffModified, opts.TrueColor)
+	return DetailedColorCode(DiffModified, opts.TrueColor)
 }
 
 func (f *DetailedFormatter) colorContext(opts *FormatOptions) string {
-	return GetContextColorCode(opts.TrueColor)
+	return ContextColorCode(opts.TrueColor)
 }
 
 func (f *DetailedFormatter) colorReset() string {
-	return GetColorReset()
+	return ColorReset()
 }

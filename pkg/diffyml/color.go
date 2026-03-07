@@ -145,27 +145,27 @@ const (
 	styleItalicOff = "\033[23m"
 )
 
-// GetTrueColorCode returns an ANSI escape sequence for 24-bit RGB color.
+// TrueColorCode returns an ANSI escape sequence for 24-bit RGB color.
 // RGB values are clamped to the valid range [0, 255].
-func GetTrueColorCode(r, g, b int) string {
+func TrueColorCode(r, g, b int) string {
 	r = clamp(r, 0, 255)
 	g = clamp(g, 0, 255)
 	b = clamp(b, 0, 255)
 	return fmt.Sprintf("\033[38;2;%d;%d;%dm", r, g, b)
 }
 
-// GetDetailedColorCode returns the appropriate color code for a diff type.
+// DetailedColorCode returns the appropriate color code for a diff type.
 // Uses the detailed palette when useTrueColor is true,
 // otherwise falls back to standard 8-color ANSI codes.
-func GetDetailedColorCode(diffType DiffType, useTrueColor bool) string {
+func DetailedColorCode(diffType DiffType, useTrueColor bool) string {
 	if useTrueColor {
 		switch diffType {
 		case DiffAdded:
-			return GetTrueColorCode(DetailedGreenR, DetailedGreenG, DetailedGreenB)
+			return TrueColorCode(DetailedGreenR, DetailedGreenG, DetailedGreenB)
 		case DiffRemoved:
-			return GetTrueColorCode(DetailedRedR, DetailedRedG, DetailedRedB)
+			return TrueColorCode(DetailedRedR, DetailedRedG, DetailedRedB)
 		case DiffModified, DiffOrderChanged:
-			return GetTrueColorCode(DetailedYellowR, DetailedYellowG, DetailedYellowB)
+			return TrueColorCode(DetailedYellowR, DetailedYellowG, DetailedYellowB)
 		}
 	}
 	// Fallback to 8-color ANSI
@@ -180,18 +180,18 @@ func GetDetailedColorCode(diffType DiffType, useTrueColor bool) string {
 	return ""
 }
 
-// GetContextColorCode returns gray color for context lines.
+// ContextColorCode returns gray color for context lines.
 // Uses the detailed gray RGB value when useTrueColor is true,
 // otherwise uses bright black (gray) ANSI code.
-func GetContextColorCode(useTrueColor bool) string {
+func ContextColorCode(useTrueColor bool) string {
 	if useTrueColor {
-		return GetTrueColorCode(DetailedGrayR, DetailedGrayG, DetailedGrayB)
+		return TrueColorCode(DetailedGrayR, DetailedGrayG, DetailedGrayB)
 	}
 	return colorGray
 }
 
-// GetColorReset returns the ANSI reset code to clear all formatting.
-func GetColorReset() string {
+// ColorReset returns the ANSI reset code to clear all formatting.
+func ColorReset() string {
 	return colorReset
 }
 

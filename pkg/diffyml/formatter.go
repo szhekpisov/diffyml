@@ -67,10 +67,10 @@ func DefaultFormatOptions() *FormatOptions {
 // validFormatterNames lists all supported formatter names.
 var validFormatterNames = []string{"compact", "brief", "github", "gitlab", "gitea", "detailed"}
 
-// GetFormatter returns a formatter by name.
+// FormatterByName returns a formatter by name.
 // Supported names: compact, brief, github, gitlab, gitea, detailed.
 // Returns error for invalid formatter names with list of valid options.
-func GetFormatter(name string) (Formatter, error) {
+func FormatterByName(name string) (Formatter, error) {
 	// Normalize to lowercase for case-insensitive matching
 	name = strings.ToLower(name)
 

@@ -44,7 +44,7 @@ func TestDetailedFormatter_CertInspection_ModifiedCerts(t *testing.T) {
 		time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
 		big.NewInt(0xccdd))
 
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -78,7 +78,7 @@ func TestDetailedFormatter_CertInspection_Disabled(t *testing.T) {
 		time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
 		big.NewInt(2))
 
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 	opts.NoCertInspection = true
@@ -103,7 +103,7 @@ func TestDetailedFormatter_CertInspection_OnlyOneSideIsCert(t *testing.T) {
 		time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
 		big.NewInt(1))
 
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -124,7 +124,7 @@ func TestDetailedFormatter_CertInspection_AddedCert(t *testing.T) {
 		time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
 		big.NewInt(0xab))
 
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -147,7 +147,7 @@ func TestDetailedFormatter_CertInspection_RemovedCert(t *testing.T) {
 		time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
 		big.NewInt(0xcd))
 
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 
@@ -170,7 +170,7 @@ func TestDetailedFormatter_CertInspection_AddedCert_Disabled(t *testing.T) {
 		time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
 		big.NewInt(1))
 
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 	opts.NoCertInspection = true
@@ -189,7 +189,7 @@ func TestDetailedFormatter_CertInspection_AddedCert_Disabled(t *testing.T) {
 }
 
 func TestDetailedFormatter_CertInspection_NonStringValues(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 

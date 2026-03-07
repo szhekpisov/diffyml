@@ -126,7 +126,7 @@ func TestIsKubernetesResource_NotMap(t *testing.T) {
 	}
 }
 
-func TestGetK8sResourceIdentifier_WithNamespace(t *testing.T) {
+func TestK8sResourceIdentifier_WithNamespace(t *testing.T) {
 	doc := map[string]any{
 		"apiVersion": "apps/v1",
 		"kind":       "Deployment",
@@ -135,14 +135,14 @@ func TestGetK8sResourceIdentifier_WithNamespace(t *testing.T) {
 			"namespace": "production",
 		},
 	}
-	id := GetK8sResourceIdentifier(doc, false)
+	id := K8sResourceIdentifier(doc, false)
 	expected := "apps/v1:Deployment:production/my-app"
 	if id != expected {
 		t.Errorf("expected identifier %q, got %q", expected, id)
 	}
 }
 
-func TestGetK8sResourceIdentifier_WithoutNamespace(t *testing.T) {
+func TestK8sResourceIdentifier_WithoutNamespace(t *testing.T) {
 	doc := map[string]any{
 		"apiVersion": "v1",
 		"kind":       "ConfigMap",
@@ -150,14 +150,14 @@ func TestGetK8sResourceIdentifier_WithoutNamespace(t *testing.T) {
 			"name": "my-config",
 		},
 	}
-	id := GetK8sResourceIdentifier(doc, false)
+	id := K8sResourceIdentifier(doc, false)
 	expected := "v1:ConfigMap:my-config"
 	if id != expected {
 		t.Errorf("expected identifier %q, got %q", expected, id)
 	}
 }
 
-func TestGetK8sResourceIdentifier_ClusterScoped(t *testing.T) {
+func TestK8sResourceIdentifier_ClusterScoped(t *testing.T) {
 	doc := map[string]any{
 		"apiVersion": "v1",
 		"kind":       "Namespace",
@@ -165,24 +165,24 @@ func TestGetK8sResourceIdentifier_ClusterScoped(t *testing.T) {
 			"name": "my-namespace",
 		},
 	}
-	id := GetK8sResourceIdentifier(doc, false)
+	id := K8sResourceIdentifier(doc, false)
 	expected := "v1:Namespace:my-namespace"
 	if id != expected {
 		t.Errorf("expected identifier %q, got %q", expected, id)
 	}
 }
 
-func TestGetK8sResourceIdentifier_NotK8s(t *testing.T) {
+func TestK8sResourceIdentifier_NotK8s(t *testing.T) {
 	doc := map[string]any{
 		"key": "value",
 	}
-	id := GetK8sResourceIdentifier(doc, false)
+	id := K8sResourceIdentifier(doc, false)
 	if id != "" {
 		t.Errorf("expected empty identifier for non-K8s doc, got %q", id)
 	}
 }
 
-func TestGetK8sResourceIdentifier_IgnoreApiVersion_WithNamespace(t *testing.T) {
+func TestK8sResourceIdentifier_IgnoreApiVersion_WithNamespace(t *testing.T) {
 	doc := map[string]any{
 		"apiVersion": "apps/v1",
 		"kind":       "Deployment",
@@ -191,14 +191,14 @@ func TestGetK8sResourceIdentifier_IgnoreApiVersion_WithNamespace(t *testing.T) {
 			"namespace": "production",
 		},
 	}
-	id := GetK8sResourceIdentifier(doc, true)
+	id := K8sResourceIdentifier(doc, true)
 	expected := "Deployment:production/my-app"
 	if id != expected {
 		t.Errorf("expected agnostic identifier %q, got %q", expected, id)
 	}
 }
 
-func TestGetK8sResourceIdentifier_IgnoreApiVersion_WithoutNamespace(t *testing.T) {
+func TestK8sResourceIdentifier_IgnoreApiVersion_WithoutNamespace(t *testing.T) {
 	doc := map[string]any{
 		"apiVersion": "v1",
 		"kind":       "ConfigMap",
@@ -206,18 +206,18 @@ func TestGetK8sResourceIdentifier_IgnoreApiVersion_WithoutNamespace(t *testing.T
 			"name": "my-config",
 		},
 	}
-	id := GetK8sResourceIdentifier(doc, true)
+	id := K8sResourceIdentifier(doc, true)
 	expected := "ConfigMap:my-config"
 	if id != expected {
 		t.Errorf("expected agnostic identifier %q, got %q", expected, id)
 	}
 }
 
-func TestGetK8sResourceIdentifier_IgnoreApiVersion_NotK8s(t *testing.T) {
+func TestK8sResourceIdentifier_IgnoreApiVersion_NotK8s(t *testing.T) {
 	doc := map[string]any{
 		"key": "value",
 	}
-	id := GetK8sResourceIdentifier(doc, true)
+	id := K8sResourceIdentifier(doc, true)
 	if id != "" {
 		t.Errorf("expected empty identifier for non-K8s doc with ignoreApiVersion, got %q", id)
 	}
@@ -327,33 +327,33 @@ data:
 	}
 }
 
-func TestGetIdentifierWithAdditional_DefaultFields(t *testing.T) {
+func TestIdentifierWithAdditional_DefaultFields(t *testing.T) {
 	m := map[string]any{
 		"name": "test-name",
 		"id":   "test-id",
 	}
-	id := GetIdentifierWithAdditional(m, nil)
+	id := IdentifierWithAdditional(m, nil)
 	if id != "test-name" {
 		t.Errorf("expected 'test-name', got %q", id)
 	}
 }
 
-func TestGetIdentifierWithAdditional_CustomField(t *testing.T) {
+func TestIdentifierWithAdditional_CustomField(t *testing.T) {
 	m := map[string]any{
 		"key":      "my-key",
 		"otherKey": "ignored",
 	}
-	id := GetIdentifierWithAdditional(m, []string{"key"})
+	id := IdentifierWithAdditional(m, []string{"key"})
 	if id != "my-key" {
 		t.Errorf("expected 'my-key', got %q", id)
 	}
 }
 
-func TestGetIdentifierWithAdditional_NoMatch(t *testing.T) {
+func TestIdentifierWithAdditional_NoMatch(t *testing.T) {
 	m := map[string]any{
 		"foo": "bar",
 	}
-	id := GetIdentifierWithAdditional(m, nil)
+	id := IdentifierWithAdditional(m, nil)
 	if id != nil {
 		t.Errorf("expected nil, got %v", id)
 	}
@@ -532,7 +532,7 @@ func TestIsKubernetesResource_OrderedMap(t *testing.T) {
 	}
 }
 
-func TestGetK8sResourceIdentifier_OrderedMap(t *testing.T) {
+func TestK8sResourceIdentifier_OrderedMap(t *testing.T) {
 	meta := NewOrderedMap()
 	meta.Keys = append(meta.Keys, "name", "namespace")
 	meta.Values["name"] = "my-app"
@@ -544,7 +544,7 @@ func TestGetK8sResourceIdentifier_OrderedMap(t *testing.T) {
 	doc.Values["kind"] = "Deployment"
 	doc.Values["metadata"] = meta
 
-	id := GetK8sResourceIdentifier(doc, false)
+	id := K8sResourceIdentifier(doc, false)
 	expected := "apps/v1:Deployment:production/my-app"
 	if id != expected {
 		t.Errorf("expected %q, got %q", expected, id)
@@ -573,12 +573,12 @@ func TestIsKubernetesResource_NonStringKind(t *testing.T) {
 	}
 }
 
-func TestGetIdentifierWithAdditional_FallbackToId(t *testing.T) {
+func TestIdentifierWithAdditional_FallbackToId(t *testing.T) {
 	m := map[string]any{
 		"id":  "my-id",
 		"foo": "bar",
 	}
-	id := GetIdentifierWithAdditional(m, nil)
+	id := IdentifierWithAdditional(m, nil)
 	if id != "my-id" {
 		t.Errorf("expected 'my-id', got %v", id)
 	}
@@ -595,7 +595,7 @@ func TestCanMatchByIdentifierWithAdditional_OrderedMapWithId(t *testing.T) {
 	}
 }
 
-func TestGetK8sResourceIdentifier_GenerateName(t *testing.T) {
+func TestK8sResourceIdentifier_GenerateName(t *testing.T) {
 	doc := map[string]any{
 		"apiVersion": "batch/v1",
 		"kind":       "Job",
@@ -603,14 +603,14 @@ func TestGetK8sResourceIdentifier_GenerateName(t *testing.T) {
 			"generateName": "my-job-",
 		},
 	}
-	id := GetK8sResourceIdentifier(doc, false)
+	id := K8sResourceIdentifier(doc, false)
 	expected := "batch/v1:Job:my-job-"
 	if id != expected {
 		t.Errorf("expected identifier %q, got %q", expected, id)
 	}
 }
 
-func TestGetK8sResourceIdentifier_NameOverGenerateName(t *testing.T) {
+func TestK8sResourceIdentifier_NameOverGenerateName(t *testing.T) {
 	doc := map[string]any{
 		"apiVersion": "batch/v1",
 		"kind":       "Job",
@@ -619,7 +619,7 @@ func TestGetK8sResourceIdentifier_NameOverGenerateName(t *testing.T) {
 			"generateName": "my-job-",
 		},
 	}
-	id := GetK8sResourceIdentifier(doc, false)
+	id := K8sResourceIdentifier(doc, false)
 	expected := "batch/v1:Job:my-job-abc123"
 	if id != expected {
 		t.Errorf("expected name to take priority, got %q", id)

@@ -8,7 +8,7 @@ import (
 // Multiline text diff with context and collapse
 
 func TestDetailedFormatter_MultilineDescriptor(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	from := "line1\nline2\nline3"
@@ -25,7 +25,7 @@ func TestDetailedFormatter_MultilineDescriptor(t *testing.T) {
 }
 
 func TestDetailedFormatter_MultilineAdditionDeletionCount(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	from := "line1\nline2\nline3"
@@ -43,7 +43,7 @@ func TestDetailedFormatter_MultilineAdditionDeletionCount(t *testing.T) {
 }
 
 func TestDetailedFormatter_MultilineDiffMarkers(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	from := "aaa\nbbb\nccc"
@@ -85,7 +85,7 @@ func TestDetailedFormatter_MultilineDiffMarkers(t *testing.T) {
 }
 
 func TestDetailedFormatter_MultilineCollapseUnchanged(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.ContextLines = 1
 
@@ -104,7 +104,7 @@ func TestDetailedFormatter_MultilineCollapseUnchanged(t *testing.T) {
 }
 
 func TestDetailedFormatter_MultilineContextLinesOption(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.ContextLines = 1
 
@@ -124,7 +124,7 @@ func TestDetailedFormatter_MultilineContextLinesOption(t *testing.T) {
 }
 
 func TestDetailedFormatter_SingleLineNotMultiline(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	// Single-line strings should NOT use multiline diff path
@@ -211,7 +211,7 @@ func TestComputeLineDiff_Identical(t *testing.T) {
 // Whitespace-only change detection and visualization
 
 func TestDetailedFormatter_WhitespaceOnlyChange(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
@@ -225,7 +225,7 @@ func TestDetailedFormatter_WhitespaceOnlyChange(t *testing.T) {
 }
 
 func TestDetailedFormatter_WhitespaceVisualization(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
@@ -240,7 +240,7 @@ func TestDetailedFormatter_WhitespaceVisualization(t *testing.T) {
 }
 
 func TestDetailedFormatter_WhitespaceNewlineVisualization(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
@@ -298,7 +298,7 @@ func TestVisualizeWhitespace(t *testing.T) {
 }
 
 func TestDetailedFormatter_MultilineDiffNoCollapse(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.ContextLines = 100 // Very high, nothing should collapse
 
@@ -316,7 +316,7 @@ func TestDetailedFormatter_MultilineDiffNoCollapse(t *testing.T) {
 }
 
 func TestDetailedFormatter_MultilineDiffSingleAddition(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 
 	from := "line1\nline2"
@@ -528,7 +528,7 @@ func TestComputeLineDiff_LastColumnDP(t *testing.T) {
 }
 
 func TestDetailedFormatter_MultilineDiff_NegativeContextLines(t *testing.T) {
-	f, _ := GetFormatter("detailed")
+	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
 	opts.ContextLines = -1 // should default to 4

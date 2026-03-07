@@ -428,7 +428,7 @@ func getIdentifier(val any, opts *Options) any {
 		return getIdentifierFromOrderedMap(om, additional)
 	}
 	if m, ok := val.(map[string]any); ok {
-		return GetIdentifierWithAdditional(m, additional)
+		return IdentifierWithAdditional(m, additional)
 	}
 	return nil
 }

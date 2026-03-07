@@ -92,3 +92,11 @@ func TestFormatFileHeader_EndsWithNewline(t *testing.T) {
 		t.Errorf("expected header to end with newline, got: %q", header)
 	}
 }
+
+func TestFormatFileHeader_NilOpts(t *testing.T) {
+	header := FormatFileHeader("test.yaml", FilePairBothExist, nil)
+	expected := "--- a/test.yaml\n+++ b/test.yaml\n"
+	if header != expected {
+		t.Errorf("expected %q, got %q", expected, header)
+	}
+}

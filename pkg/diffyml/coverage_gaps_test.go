@@ -578,6 +578,63 @@ func TestDetectRenames_AsymmetricTiebreaker(t *testing.T) {
 	}
 }
 
+func TestHasK8sDocuments_OnlyToHasK8s(t *testing.T) {
+	from := []any{map[string]any{"key": "value"}}
+	to := []any{map[string]any{"apiVersion": "v1", "kind": "Service", "metadata": map[string]any{"name": "svc"}}}
+	if !hasK8sDocuments(from, to) {
+		t.Error("expected true when only 'to' has K8s documents")
+	}
+}
+
+func TestGetIdentifier_PlainMap(t *testing.T) {
+	m := map[string]any{"name": "myapp", "value": "1"}
+	id := getIdentifier(m, nil)
+	if id != "myapp" {
+		t.Errorf("expected 'myapp', got %v", id)
+	}
+}
+
+func TestDeepEqual_BothNil(t *testing.T) {
+	if !deepEqual(nil, nil, nil) {
+		t.Error("deepEqual(nil, nil) should be true")
+	}
+}
+
+func TestDeepEqual_TypeMismatch(t *testing.T) {
+	if deepEqual("str", 42, nil) {
+		t.Error("deepEqual with different types should be false")
+	}
+}
+
+func TestCompareListsByIdentifier_NoIDMatchedSkip(t *testing.T) {
+	// Two unidentified items in from that match toNoID items.
+	// The second fromNoID item must iterate past the already-matched slot
+	// to hit the toNoIDMatched continue branch (line 562).
+	from := []any{
+		&OrderedMap{
+			Keys:   []string{"name", "v"},
+			Values: map[string]any{"name": "x", "v": "1"},
+		},
+		"shared-a",
+		"shared-b",
+	}
+	to := []any{
+		&OrderedMap{
+			Keys:   []string{"name", "v"},
+			Values: map[string]any{"name": "x", "v": "1"},
+		},
+		"shared-a",
+		"shared-b",
+	}
+
+	diffs := compareListsByIdentifier("items", from, to, nil)
+	for _, d := range diffs {
+		if d.Type == DiffRemoved || d.Type == DiffAdded {
+			t.Errorf("unexpected diff: %+v", d)
+		}
+	}
+}
+
 func TestRemoteConstants(t *testing.T) {
 	if MaxResponseSize != 10*1024*1024 {
 		t.Errorf("MaxResponseSize should be 10485760, got %d", MaxResponseSize)

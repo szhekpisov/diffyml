@@ -101,3 +101,13 @@ func TestFormatSummaryOutput_WithColor(t *testing.T) {
 		t.Errorf("FormatSummaryOutput with color should reset, got: %s", got)
 	}
 }
+
+func TestFormatSummaryOutput_NilOpts(t *testing.T) {
+	got := FormatSummaryOutput("nil opts test", nil)
+	if !strings.Contains(got, "AI Summary:") {
+		t.Errorf("expected 'AI Summary:' header, got: %s", got)
+	}
+	if !strings.Contains(got, "nil opts test") {
+		t.Errorf("expected summary text, got: %s", got)
+	}
+}

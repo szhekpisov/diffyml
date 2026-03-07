@@ -1698,6 +1698,23 @@ func TestFormatValueAsYAMLLines(t *testing.T) {
 		}
 	})
 
+	t.Run("OrderedMap with structured child", func(t *testing.T) {
+		val := &OrderedMap{
+			Keys:   []string{"parent"},
+			Values: map[string]any{"parent": map[string]any{"child": 1}},
+		}
+		lines := formatValueAsYAMLLines(val)
+		if len(lines) != 2 {
+			t.Errorf("expected 2 lines, got %d: %v", len(lines), lines)
+		}
+		if lines[0] != "parent:" {
+			t.Errorf("expected 'parent:', got %s", lines[0])
+		}
+		if lines[1] != "  child: 1" {
+			t.Errorf("expected '  child: 1', got %s", lines[1])
+		}
+	})
+
 	t.Run("default scalar fallback", func(t *testing.T) {
 		lines := formatValueAsYAMLLines(42)
 		if len(lines) != 1 || lines[0] != "42" {

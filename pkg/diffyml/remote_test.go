@@ -198,6 +198,77 @@ func TestLoadContent_RemoteError(t *testing.T) {
 	}
 }
 
+func TestValidateFileExists_IsDirectory(t *testing.T) {
+	dir := t.TempDir()
+	err := ValidateFileExists(dir)
+	if err == nil {
+		t.Fatal("ValidateFileExists on a directory should return error")
+	}
+	if !strings.Contains(err.Error(), "directory") {
+		t.Errorf("error should mention 'directory', got: %v", err)
+	}
+}
+
+func TestValidateFileExists_PermissionError(t *testing.T) {
+	dir := t.TempDir()
+	nested := dir + "/noperm"
+	if err := os.Mkdir(nested, 0000); err != nil {
+		t.Fatalf("failed to create dir: %v", err)
+	}
+	defer os.Chmod(nested, 0700)
+
+	err := ValidateFileExists(nested + "/file.yaml")
+	if err == nil {
+		t.Fatal("ValidateFileExists should return error for inaccessible path")
+	}
+	if !strings.Contains(err.Error(), "cannot access") {
+		t.Errorf("error should mention 'cannot access', got: %v", err)
+	}
+}
+
+func TestLoadContent_UnreadableFile(t *testing.T) {
+	dir := t.TempDir()
+	path := dir + "/unreadable.yaml"
+	if err := os.WriteFile(path, []byte("data"), 0000); err != nil {
+		t.Fatalf("failed to create file: %v", err)
+	}
+	defer os.Chmod(path, 0600)
+
+	_, err := LoadContent(path)
+	if err == nil {
+		t.Fatal("LoadContent should return error for unreadable file")
+	}
+	if !strings.Contains(err.Error(), "failed to read file") {
+		t.Errorf("error should mention 'failed to read file', got: %v", err)
+	}
+}
+
+func TestFetchURL_ReadBodyError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Length", "1000")
+		w.WriteHeader(200)
+		// Write partial data then close connection abruptly
+		fmt.Fprint(w, "partial")
+		if f, ok := w.(http.Flusher); ok {
+			f.Flush()
+		}
+		// Hijack the connection to force close it
+		if hj, ok := w.(http.Hijacker); ok {
+			conn, _, _ := hj.Hijack()
+			conn.Close()
+		}
+	}))
+	defer server.Close()
+
+	_, err := fetchURL(server.URL)
+	if err == nil {
+		t.Fatal("fetchURL should return error when body read fails")
+	}
+	if !strings.Contains(err.Error(), "failed to read response") {
+		t.Errorf("error should mention 'failed to read response', got: %v", err)
+	}
+}
+
 // --- Mutation testing: remote.go ---
 
 func TestFetchURL_HTTP300Rejected(t *testing.T) {

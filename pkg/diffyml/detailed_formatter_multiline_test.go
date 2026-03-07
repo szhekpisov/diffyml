@@ -527,6 +527,109 @@ func TestComputeLineDiff_LastColumnDP(t *testing.T) {
 	}
 }
 
+func TestDetailedFormatter_CollapseSkipBoundary(t *testing.T) {
+	// Kills CONDITIONALS_BOUNDARY at detailed_formatter_linediff.go:71
+	// (i < skipUntil → i <= skipUntil)
+	// With <=, the first line AFTER a collapsed section would be skipped,
+	// producing incorrect output.
+	//
+	// Setup: 1 changed line, then exactly (contextLines+1) unchanged lines,
+	// then 1 changed line. With context=1, the collapse region is tiny:
+	// just 1 line. The line right after the collapse must still appear.
+	f := &DetailedFormatter{}
+	opts := &FormatOptions{Color: false, ContextLines: 1}
+
+	// Build: change at line 0, 4 unchanged lines (indices 1-4), change at line 5
+	// With context=1: nearChange = {0,1, 4,5}
+	// Lines 2-3 are collapsed (2 lines), skipUntil = 4
+	// At i=4: with < skipUntil (4 < 4 = false) → renders line 4 ✓
+	// At i=4: with <= skipUntil (4 <= 4 = true) → skips line 4 ✗
+	from := "ORIGINAL\nb\nc\nd\ne\nALSO_ORIGINAL"
+	to := "CHANGED\nb\nc\nd\ne\nALSO_CHANGED"
+
+	diffs := []Difference{
+		{Path: "text", Type: DiffModified, From: from, To: to},
+	}
+	output := f.Format(diffs, opts)
+
+	// Line "e" (index 4) is within context of the second change and must appear
+	if !strings.Contains(output, "e") {
+		t.Errorf("expected context line 'e' to appear after collapsed section, got:\n%s", output)
+	}
+
+	// Count output lines that contain the actual content markers
+	lines := strings.Split(output, "\n")
+	var contextLines []string
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		// Context lines (not change markers, not collapse markers)
+		if trimmed == "b" || trimmed == "c" || trimmed == "d" || trimmed == "e" {
+			contextLines = append(contextLines, trimmed)
+		}
+	}
+	// With context=1: "b" (context after first change) and "e" (context before second change) should appear
+	// "c" and "d" should be collapsed
+	if len(contextLines) != 2 {
+		t.Errorf("expected exactly 2 context lines (b, e), got %d: %v\nfull output:\n%s", len(contextLines), contextLines, output)
+	}
+}
+
+func TestComputeLineDiff_LCSTieBreakingExactOrder(t *testing.T) {
+	// Kills CONDITIONALS_BOUNDARY at detailed_formatter_linediff.go:129
+	// (dp[i][j-1] >= dp[i-1][j] → dp[i][j-1] > dp[i-1][j])
+	//
+	// With >= (original): when tied, prefer insert (j-1 branch).
+	// With > (mutant): when tied, prefer delete (i-1 branch).
+	// After slices.Reverse, the order in the final result differs.
+	//
+	// Input: from=["A","B"], to=["B","A"]
+	// LCS table:
+	//     ""  B  A
+	// ""   0  0  0
+	// A    0  0  1
+	// B    0  1  1
+	//
+	// Backtrack from (2,2): dp[2][1]=1, dp[1][2]=1 → tied
+	// With >= (original): take j-1 branch → insert A, then at (2,1): match B → keep B, then at (1,0): delete A
+	//   ops built in reverse: [delete A, keep B, insert A]
+	//   After Reverse: [insert A, keep B, delete A]
+	//   Wait, let me recalculate.
+	//
+	// Actually: backtrack from (2,2): from[1]="B" ≠ to[1]="A"
+	//   dp[i][j-1] = dp[2][1] = 1, dp[i-1][j] = dp[1][2] = 1 → tied
+	//   With >=: take j-1 branch → insert to[1]="A", j=1
+	//   At (2,1): from[1]="B" == to[0]="B" → keep "B", i=1, j=0
+	//   At (1,0): j=0, i>0 → delete from[0]="A", i=0
+	//   ops = [insert "A", keep "B", delete "A"]
+	//   After reverse: [delete "A", keep "B", insert "A"]
+	//
+	//   With > (mutant): take i-1 branch → delete from[1]="B", i=1
+	//   At (1,2): from[0]="A" == to[1]="A" → keep "A", i=0, j=1
+	//   At (0,1): i=0, j>0 → insert to[0]="B", j=0
+	//   ops = [delete "B", keep "A", insert "B"]
+	//   After reverse: [insert "B", keep "A", delete "B"]
+	//
+	// So with >=: first op is delete "A"; with >: first op is insert "B"
+	fromLines := []string{"A", "B"}
+	toLines := []string{"B", "A"}
+	ops := computeLineDiff(fromLines, toLines)
+
+	if len(ops) != 3 {
+		t.Fatalf("expected 3 ops, got %d: %v", len(ops), ops)
+	}
+
+	// With >= (original): [delete "A", keep "B", insert "A"]
+	if ops[0].Type != editDelete || ops[0].Line != "A" {
+		t.Errorf("ops[0] should be delete 'A', got type=%d line=%q", ops[0].Type, ops[0].Line)
+	}
+	if ops[1].Type != editKeep || ops[1].Line != "B" {
+		t.Errorf("ops[1] should be keep 'B', got type=%d line=%q", ops[1].Type, ops[1].Line)
+	}
+	if ops[2].Type != editInsert || ops[2].Line != "A" {
+		t.Errorf("ops[2] should be insert 'A', got type=%d line=%q", ops[2].Type, ops[2].Line)
+	}
+}
+
 func TestDetailedFormatter_MultilineDiff_NegativeContextLines(t *testing.T) {
 	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()

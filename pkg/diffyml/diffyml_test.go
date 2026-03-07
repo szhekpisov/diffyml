@@ -205,6 +205,85 @@ func TestSortDiffsWithOrder_AlphabeticalFallback(t *testing.T) {
 	}
 }
 
+func TestExtractPathOrder_OrderedMapNestedIndexIncrement(t *testing.T) {
+	// Kills INCREMENT_DECREMENT at diffyml.go:141 (index++ → index--)
+	// The existing TestExtractPathOrder_IndexIncrement uses flat OrderedMap with
+	// scalar values — prefix is always "" so the code at line 138-141 is skipped.
+	// We need a NESTED OrderedMap so that recursion enters the OrderedMap branch
+	// with a non-empty prefix, hitting the index++ at line 141.
+	child1 := NewOrderedMap()
+	child1.Keys = []string{"x"}
+	child1.Values["x"] = "val"
+
+	child2 := NewOrderedMap()
+	child2.Keys = []string{"y"}
+	child2.Values["y"] = "val"
+
+	child3 := NewOrderedMap()
+	child3.Keys = []string{"z"}
+	child3.Values["z"] = "val"
+
+	root := NewOrderedMap()
+	root.Keys = []string{"first", "second", "third"}
+	root.Values["first"] = child1
+	root.Values["second"] = child2
+	root.Values["third"] = child3
+
+	docs := []any{root}
+	pathOrder := extractPathOrder(docs, nil, &Options{})
+
+	// Each nested OrderedMap prefix must get a strictly increasing index.
+	// With index-- mutation, they'd all get 0 or decreasing indices.
+	firstIdx := pathOrder["first"]
+	secondIdx := pathOrder["second"]
+	thirdIdx := pathOrder["third"]
+
+	if firstIdx >= secondIdx {
+		t.Errorf("first (%d) should be less than second (%d)", firstIdx, secondIdx)
+	}
+	if secondIdx >= thirdIdx {
+		t.Errorf("second (%d) should be less than third (%d)", secondIdx, thirdIdx)
+	}
+}
+
+func TestIsListEntryDiff_EmptyPath(t *testing.T) {
+	// Kills CONDITIONALS_BOUNDARY at diffyml.go:219 (len(path) > 0 → >= 0)
+	// With >= 0, empty path would proceed to path[len(path)-1] = path[-1] → panic.
+	diff := Difference{Path: "", Type: DiffModified, From: "a", To: "b"}
+	result := isListEntryDiff(diff)
+	if result {
+		t.Error("empty path should not be detected as list entry")
+	}
+}
+
+func TestIsListEntryDiff_ToNilUsesFrom(t *testing.T) {
+	// Kills CONDITIONALS_NEGATION at diffyml.go:242 (diff.To != nil → == nil)
+	// When To is nil, the code should use From for the map-identifier heuristic.
+	// With the negation, it picks nil To instead → returns false.
+	om := NewOrderedMap()
+	om.Keys = []string{"name", "value"}
+	om.Values["name"] = "my-item"
+	om.Values["value"] = "data"
+
+	diff := Difference{Path: "items", Type: DiffRemoved, From: om, To: nil}
+	if !isListEntryDiff(diff) {
+		t.Error("expected true when To is nil but From has identifier field 'name'")
+	}
+}
+
+func TestIsListEntryDiff_ToHasIdentifier(t *testing.T) {
+	// Counterpart: when To is non-nil, it should be used. Mutation picks nil From → false.
+	om := NewOrderedMap()
+	om.Keys = []string{"name", "value"}
+	om.Values["name"] = "my-item"
+	om.Values["value"] = "data"
+
+	diff := Difference{Path: "items", Type: DiffAdded, From: nil, To: om}
+	if !isListEntryDiff(diff) {
+		t.Error("expected true when From is nil but To has identifier field 'name'")
+	}
+}
+
 func TestIsListEntryDiff_SingleCharPath(t *testing.T) {
 	// diffyml.go:222 — `len(path) > 1` ensures we don't check single-char paths
 	// diffyml.go:224 — `lastDot >= 0` boundary at position 0

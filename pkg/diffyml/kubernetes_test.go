@@ -1354,6 +1354,52 @@ func TestK8sGetVal_Default(t *testing.T) {
 	}
 }
 
+func TestCompareK8sDocs_IgnoreApiVersion_OnlyApiVersionDiffers(t *testing.T) {
+	// Kills CONDITIONALS_NEGATION at kubernetes.go:239
+	// (opts != nil && opts.IgnoreApiVersion → opts == nil || !opts.IgnoreApiVersion)
+	// When IgnoreApiVersion=true and docs differ ONLY in apiVersion,
+	// the original code sets ignoreApiVersion=true → apiVersion diff is reported
+	// as a field-level change. The mutation would set ignoreApiVersion=false,
+	// meaning apiVersion is NOT ignored during matching → docs don't match →
+	// they appear as added/removed instead of modified.
+	fromDoc := map[string]any{
+		"apiVersion": "apps/v1beta1",
+		"kind":       "Deployment",
+		"metadata":   map[string]any{"name": "my-app", "namespace": "default"},
+		"spec":       map[string]any{"replicas": 3},
+	}
+	toDoc := map[string]any{
+		"apiVersion": "apps/v1",
+		"kind":       "Deployment",
+		"metadata":   map[string]any{"name": "my-app", "namespace": "default"},
+		"spec":       map[string]any{"replicas": 3},
+	}
+
+	opts := &Options{
+		DetectKubernetes: true,
+		IgnoreApiVersion: true,
+	}
+	diffs := compareK8sDocs([]any{fromDoc}, []any{toDoc}, opts)
+
+	// With IgnoreApiVersion=true: docs match, only apiVersion field differs
+	hasApiVersionModified := false
+	hasBulkAddOrRemove := false
+	for _, d := range diffs {
+		if d.Type == DiffModified && d.From == "apps/v1beta1" && d.To == "apps/v1" {
+			hasApiVersionModified = true
+		}
+		if d.Type == DiffAdded || d.Type == DiffRemoved {
+			hasBulkAddOrRemove = true
+		}
+	}
+	if !hasApiVersionModified {
+		t.Error("expected apiVersion to appear as a modified field when IgnoreApiVersion=true")
+	}
+	if hasBulkAddOrRemove {
+		t.Error("docs should match by identity when IgnoreApiVersion=true, not appear as added/removed")
+	}
+}
+
 func TestCompareK8sDocs_NilDocuments(t *testing.T) {
 	// nil documents in from/to should be skipped (not reported as added/removed).
 	k8sDoc := func(name string) *OrderedMap {

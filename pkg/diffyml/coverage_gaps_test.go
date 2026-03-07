@@ -635,6 +635,74 @@ func TestCompareListsByIdentifier_NoIDMatchedSkip(t *testing.T) {
 	}
 }
 
+func TestDetailedFormatter_RenderKeyValueYAML_ListIndent(t *testing.T) {
+	// Kills ARITHMETIC_BASE at detailed_formatter_render.go:58 (indent+2 → other)
+	// renderKeyValueYAML, case []any: list items are rendered at indent+2.
+	// The OrderedMap first key "items" has a []any value. Since "items" is the
+	// first key, it goes through renderFirstKeyValueYAML at indent=4 (base),
+	// which calls renderListItems at indent+4=8. But we want to test the
+	// renderKeyValueYAML []any branch (line 58), so "items" must be a
+	// CONTINUATION key (not the first key).
+	om := &OrderedMap{
+		Keys:   []string{"name", "items"},
+		Values: map[string]any{"name": "test", "items": []any{"val1", "val2"}},
+	}
+
+	diffs := []Difference{
+		{Path: "spec.containers.0", Type: DiffAdded, From: nil, To: om},
+	}
+
+	f := &DetailedFormatter{}
+	opts := &FormatOptions{Color: false}
+	result := f.Format(diffs, opts)
+
+	// "name" is first key → renderFirstKeyValueYAML at indent=4: "    - name: test"
+	// "items" is continuation key → renderKeyValueYAML at indent=4+2=6: "      items:"
+	// List items are rendered at indent+2=8 via renderListItems: "        - val1"
+	lines := strings.Split(result, "\n")
+	for _, line := range lines {
+		if strings.Contains(line, "- val1") || strings.Contains(line, "- val2") {
+			trimmed := strings.TrimLeft(line, " ")
+			indent := len(line) - len(trimmed)
+			if indent != 8 {
+				t.Errorf("expected list items at indent 8, got %d: %q", indent, line)
+			}
+		}
+	}
+}
+
+func TestDetailedFormatter_RenderFirstKeyValueYAML_ListIndent(t *testing.T) {
+	// Kills ARITHMETIC_BASE at detailed_formatter_render.go:86 (indent+4 → other)
+	// renderFirstKeyValueYAML, case []any: nested list items inside a list entry's
+	// first key should be rendered at indent+4.
+	om := &OrderedMap{
+		Keys:   []string{"commands"},
+		Values: map[string]any{"commands": []any{"cmd1", "cmd2"}},
+	}
+
+	diffs := []Difference{
+		{Path: "spec.containers.0", Type: DiffAdded, From: nil, To: om},
+	}
+
+	f := &DetailedFormatter{}
+	opts := &FormatOptions{Color: false}
+	result := f.Format(diffs, opts)
+
+	// "commands" is the first key → renderFirstKeyValueYAML at indent=4.
+	// List items are rendered at indent+4=8 via renderListItems.
+	// Each list item line: "        - cmd1" (8 spaces + "- cmd1")
+	lines := strings.Split(result, "\n")
+	for _, line := range lines {
+		if strings.Contains(line, "- cmd1") || strings.Contains(line, "- cmd2") {
+			trimmed := strings.TrimLeft(line, " ")
+			indent := len(line) - len(trimmed)
+			if indent != 8 {
+				t.Errorf("expected list items at indent 8, got %d: %q", indent, line)
+			}
+		}
+	}
+}
+
 func TestRemoteConstants(t *testing.T) {
 	if MaxResponseSize != 10*1024*1024 {
 		t.Errorf("MaxResponseSize should be 10485760, got %d", MaxResponseSize)

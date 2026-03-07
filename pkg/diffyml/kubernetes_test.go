@@ -1343,3 +1343,41 @@ func TestCompare_IgnoreApiVersion_WithChroot(t *testing.T) {
 		t.Error("expected replicas diff after chroot")
 	}
 }
+
+func TestK8sGetVal_Default(t *testing.T) {
+	// Exercise the default branch (non-map type returns nil).
+	if got := k8sGetVal("not-a-map", "key"); got != nil {
+		t.Errorf("expected nil for non-map type, got %v", got)
+	}
+	if got := k8sGetVal(42, "key"); got != nil {
+		t.Errorf("expected nil for int type, got %v", got)
+	}
+}
+
+func TestCompareK8sDocs_NilDocuments(t *testing.T) {
+	// nil documents in from/to should be skipped (not reported as added/removed).
+	k8sDoc := func(name string) *OrderedMap {
+		return &OrderedMap{
+			Keys: []string{"apiVersion", "kind", "metadata"},
+			Values: map[string]any{
+				"apiVersion": "v1",
+				"kind":       "Service",
+				"metadata": &OrderedMap{
+					Keys:   []string{"name"},
+					Values: map[string]any{"name": name},
+				},
+			},
+		}
+	}
+
+	from := []any{k8sDoc("svc"), nil}
+	to := []any{k8sDoc("svc"), nil}
+	opts := &Options{DetectKubernetes: true}
+
+	diffs := compareK8sDocs(from, to, opts)
+	for _, d := range diffs {
+		if d.Type == DiffAdded || d.Type == DiffRemoved {
+			t.Errorf("unexpected diff for nil doc: %+v", d)
+		}
+	}
+}

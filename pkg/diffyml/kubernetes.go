@@ -67,6 +67,18 @@ func IsKubernetesResource(doc any) bool {
 	return true
 }
 
+// k8sGetVal extracts a value by key from an OrderedMap or map[string]any.
+func k8sGetVal(m any, key string) any {
+	switch v := m.(type) {
+	case *OrderedMap:
+		return v.Values[key]
+	case map[string]any:
+		return v[key]
+	default:
+		return nil
+	}
+}
+
 // K8sResourceIdentifier returns a unique identifier for a Kubernetes resource.
 // When ignoreApiVersion is false: "apiVersion:kind:namespace/name" or "apiVersion:kind:name".
 // When ignoreApiVersion is true: "kind:namespace/name" or "kind:name".
@@ -75,35 +87,23 @@ func K8sResourceIdentifier(doc any, ignoreApiVersion bool) string {
 		return ""
 	}
 
-	// Helper to get value from either OrderedMap or regular map
-	getVal := func(doc any, key string) any {
-		switch m := doc.(type) {
-		case *OrderedMap:
-			return m.Values[key]
-		case map[string]any:
-			return m[key]
-		default:
-			return nil
-		}
-	}
-
-	apiVersion, _ := getVal(doc, "apiVersion").(string) // safe: IsKubernetesResource() pre-validates these fields
-	kind, _ := getVal(doc, "kind").(string)             // safe: IsKubernetesResource() pre-validates these fields
-	metadata := getVal(doc, "metadata")
-	nameVal := getVal(metadata, "name")
+	apiVersion, _ := k8sGetVal(doc, "apiVersion").(string) // safe: IsKubernetesResource() pre-validates these fields
+	kind, _ := k8sGetVal(doc, "kind").(string)             // safe: IsKubernetesResource() pre-validates these fields
+	metadata := k8sGetVal(doc, "metadata")
+	nameVal := k8sGetVal(metadata, "name")
 	if nameVal == nil {
-		nameVal = getVal(metadata, "generateName")
+		nameVal = k8sGetVal(metadata, "generateName")
 	}
 	name := fmt.Sprintf("%v", nameVal)
 
 	if ignoreApiVersion {
-		if namespace := getVal(metadata, "namespace"); namespace != nil {
+		if namespace := k8sGetVal(metadata, "namespace"); namespace != nil {
 			return fmt.Sprintf("%s:%v/%s", kind, namespace, name)
 		}
 		return fmt.Sprintf("%s:%s", kind, name)
 	}
 
-	if namespace := getVal(metadata, "namespace"); namespace != nil {
+	if namespace := k8sGetVal(metadata, "namespace"); namespace != nil {
 		return fmt.Sprintf("%s:%s:%v/%s", apiVersion, kind, namespace, name)
 	}
 	return fmt.Sprintf("%s:%s:%s", apiVersion, kind, name)

@@ -34,7 +34,7 @@ check-coverage:
 	}; \
 	check_threshold "parser.go"      "$$PARSER_COV"      "100.0"; \
 	check_threshold "ordered_map.go" "$$ORDERED_MAP_COV" "100.0"; \
-	check_threshold "kubernetes.go"  "$$KUBERNETES_COV"  "95.0"; \
+	check_threshold "kubernetes.go"  "$$KUBERNETES_COV"  "100.0"; \
 	echo ""; \
 	if [ "$$FAIL" -eq 1 ]; then \
 		echo "Coverage threshold check FAILED"; \

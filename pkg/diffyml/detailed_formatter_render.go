@@ -6,7 +6,6 @@ package diffyml
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 )
 
@@ -92,16 +91,6 @@ func (f *DetailedFormatter) renderFirstKeyValueYAML(sb *strings.Builder, key str
 			f.writeColoredLine(sb, fmt.Sprintf("%s- %s: %v", pad, key, formatDetailedValue(val)), colorCode, opts)
 		}
 	}
-}
-
-// sortedMapKeys returns the keys of a map[string]any in sorted order.
-func sortedMapKeys(m map[string]any) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return keys
 }
 
 // renderListItems renders items of a []any list with proper type dispatch.

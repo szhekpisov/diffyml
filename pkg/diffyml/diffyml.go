@@ -288,18 +288,6 @@ func sortDiffsWithOrder(diffs []Difference, pathOrder map[string]int) {
 		pathI := diffI.Path
 		pathJ := diffJ.Path
 
-		// Root-level additions (will be displayed as "(root level)") always come first
-		// These are DiffAdded with no dots in path and not list entries
-		isRootAddI := diffI.Type == DiffAdded && !strings.Contains(pathI, ".") && !isListEntryDiff(diffI)
-		isRootAddJ := diffJ.Type == DiffAdded && !strings.Contains(pathJ, ".") && !isListEntryDiff(diffJ)
-
-		if isRootAddI && !isRootAddJ {
-			return -1
-		}
-		if !isRootAddI && isRootAddJ {
-			return 1
-		}
-
 		// Extract root component (first segment before dot)
 		rootI := pathI
 		rootJ := pathJ

@@ -1,6 +1,6 @@
-// detailed_formatter_linediff.go - LCS line-diff algorithm for detailed output.
+// detailed_formatter_linediff.go - Myers line-diff algorithm for detailed output.
 //
-// Computes line-level diffs using the Longest Common Subsequence algorithm
+// Computes line-level diffs using the Myers diff algorithm (Eugene Myers, 1986)
 // and renders inline diffs with context collapsing for multiline strings.
 package diffyml
 
@@ -101,46 +101,94 @@ func (f *DetailedFormatter) formatMultilineDiff(sb *strings.Builder, from, to st
 	sb.WriteString("\n")
 }
 
-// computeLineDiff computes line-level diff using LCS algorithm.
+// computeLineDiff computes line-level diff using the Myers diff algorithm.
+// It finds the shortest edit script (SES) in O(ND) time where N=m+n and D=edit distance.
 func computeLineDiff(fromLines, toLines []string) []editOp {
 	m := len(fromLines)
 	n := len(toLines)
 
-	// Build LCS table
-	dp := make([][]int, m+1)
-	for i := range dp {
-		dp[i] = make([]int, n+1)
-	}
-	for i := 1; i <= m; i++ {
-		for j := 1; j <= n; j++ {
-			//nolint:gocritic // if-else kept intentionally: switch/case conditions fall outside Go coverage blocks, causing gremlins to misclassify mutations as NOT COVERED
-			if fromLines[i-1] == toLines[j-1] {
-				dp[i][j] = dp[i-1][j-1] + 1
+	// Forward pass: find shortest edit script.
+	// V[k+offset] stores the furthest-reaching x-coordinate on diagonal k.
+	offset := m + n
+	vSize := 2*(m+n) + 1
+	v := make([]int, vSize)
+	var trace [][]int
+	finalD := 0
+
+	for d := range m + n + 1 {
+		snapshot := make([]int, vSize)
+		copy(snapshot, v)
+		trace = append(trace, snapshot)
+
+		found := false
+		for k := -d; k <= d; k += 2 {
+			var x int
+			if k == -d || (k != d && v[k-1+offset] < v[k+1+offset]) {
+				x = v[k+1+offset]
 			} else {
-				dp[i][j] = max(dp[i-1][j], dp[i][j-1])
+				x = v[k-1+offset] + 1
+			}
+			y := x - k
+
+			for x < m && y < n && fromLines[x] == toLines[y] {
+				x++
+				y++
+			}
+
+			v[k+offset] = x
+
+			if x == m && y == n {
+				finalD = d
+				found = true
+				break
 			}
 		}
-	}
-
-	// Backtrack to produce edit operations
-	var ops []editOp
-	i, j := m, n
-	for i > 0 || j > 0 {
-		//nolint:gocritic // if-else kept intentionally: switch/case conditions fall outside Go coverage blocks, causing gremlins to misclassify mutations as NOT COVERED
-		if i > 0 && j > 0 && fromLines[i-1] == toLines[j-1] {
-			ops = append(ops, editOp{Type: editKeep, Line: fromLines[i-1]})
-			i--
-			j--
-		} else if j > 0 && (i == 0 || dp[i][j-1] >= dp[i-1][j]) {
-			ops = append(ops, editOp{Type: editInsert, Line: toLines[j-1]})
-			j--
-		} else {
-			ops = append(ops, editOp{Type: editDelete, Line: fromLines[i-1]})
-			i--
+		if found {
+			break
 		}
 	}
 
-	// Reverse to get correct order
+	// Backtrack through trace to produce edit operations.
+	var ops []editOp
+	x, y := m, n
+
+	for d := finalD; d > 0; d-- {
+		prev := trace[d]
+		k := x - y
+
+		var prevK int
+		if k == -d || (k != d && prev[k-1+offset] < prev[k+1+offset]) {
+			prevK = k + 1
+		} else {
+			prevK = k - 1
+		}
+
+		prevX := prev[prevK+offset]
+		prevY := prevX - prevK
+
+		// Record diagonal matches (snake) in reverse
+		for x > prevX && y > prevY {
+			x--
+			y--
+			ops = append(ops, editOp{Type: editKeep, Line: fromLines[x]})
+		}
+
+		// Record the non-diagonal move
+		if prevK == k-1 {
+			x--
+			ops = append(ops, editOp{Type: editDelete, Line: fromLines[x]})
+		} else {
+			y--
+			ops = append(ops, editOp{Type: editInsert, Line: toLines[y]})
+		}
+	}
+
+	// Record any remaining diagonal matches from the d=0 snake
+	for x > 0 {
+		x--
+		ops = append(ops, editOp{Type: editKeep, Line: fromLines[x]})
+	}
+
 	slices.Reverse(ops)
 
 	return ops

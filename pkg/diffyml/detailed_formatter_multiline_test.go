@@ -399,14 +399,11 @@ func TestDetailedFormatter_CollapsedLineCount(t *testing.T) {
 	}
 }
 
-func TestComputeLineDiff_LCSTieBreaking(t *testing.T) {
-	// detailed_formatter.go:462 — `dp[i-1][j] >= dp[i][j-1]` → `>`
-	// This affects tie-breaking in the LCS algorithm.
-	// When dp[i-1][j] == dp[i][j-1], the original prefers deletion (from line).
-	// Mutation to `>` would prefer insertion (to line) instead.
+func TestComputeLineDiff_TieBreaking(t *testing.T) {
+	// Verifies deterministic tie-breaking in the Myers diff algorithm.
+	// When multiple shortest edit scripts exist, the algorithm should
+	// consistently prefer one over another.
 	// We craft inputs where tie-breaking produces different edit sequences.
-
-	// Lines designed so that at some point dp values tie
 	fromLines := []string{"A", "B", "C"}
 	toLines := []string{"A", "C", "B"}
 
@@ -427,7 +424,6 @@ func TestComputeLineDiff_LCSTieBreaking(t *testing.T) {
 		}
 	}
 
-	// With the original >= tie-breaking, we should get a specific sequence.
 	// The key property: the diff should be valid (applying it transforms from → to)
 	if keeps+deletes+inserts != len(ops) {
 		t.Errorf("unexpected op count: keeps=%d deletes=%d inserts=%d total=%d", keeps, deletes, inserts, len(ops))
@@ -456,19 +452,15 @@ func TestComputeLineDiff_LCSTieBreaking(t *testing.T) {
 }
 
 func TestComputeLineDiff_TieBreakingDeterminism(t *testing.T) {
-	// detailed_formatter.go:462 — ensure consistent tie-breaking behavior
-	// The >= comparison means "prefer delete over insert when tied".
-	// If mutated to >, the preference flips to "prefer insert over delete".
-	// We can detect this by checking the exact operation sequence.
+	// Ensures consistent tie-breaking behavior in the Myers diff algorithm.
+	// When the algorithm has a choice between delete and insert, it should
+	// produce a deterministic, valid edit sequence.
 
 	fromLines := []string{"X", "Y"}
 	toLines := []string{"Y", "X"}
 
 	ops := computeLineDiff(fromLines, toLines)
 
-	// With >= (original): at (2,2) where dp[1][2]==dp[2][1]==1,
-	// it takes dp[i-1][j] (delete X first).
-	// With > (mutant): it would take dp[i][j-1] (insert X first).
 	// The resulting ops should be deterministic.
 	if len(ops) < 3 {
 		t.Fatalf("expected at least 3 ops for swap, got %d", len(ops))
@@ -502,15 +494,10 @@ func TestComputeLineDiff_TieBreakingDeterminism(t *testing.T) {
 	}
 }
 
-func TestComputeLineDiff_LastColumnDP(t *testing.T) {
-	// Targets mutation: line 490 `j <= n` → `j < n` (CONDITIONALS_BOUNDARY).
-	// When the inner loop skips j=n, dp[i][n]=0 for all i, and the
-	// backtracking cannot find the optimal LCS through the last column.
-	//
-	// With from=["A","B","C"], to=["C","A","B"]:
-	//   Normal: LCS = {"A","B"} (length 2) → [insert C, keep A, keep B, delete C]
-	//   Mutant: dp[*][3]=0 → LCS degrades to {"C"} (length 1)
-	//           → [delete A, delete B, keep C, insert A, insert B]
+func TestComputeLineDiff_OptimalEditScript(t *testing.T) {
+	// Verifies that the Myers algorithm finds the optimal (shortest) edit script.
+	// With from=["A","B","C"], to=["C","A","B"], the optimal LCS has length 2,
+	// so the edit script should have exactly 2 keep operations.
 	fromLines := []string{"A", "B", "C"}
 	toLines := []string{"C", "A", "B"}
 
@@ -523,7 +510,7 @@ func TestComputeLineDiff_LastColumnDP(t *testing.T) {
 		}
 	}
 	if keeps != 2 {
-		t.Errorf("expected 2 keep operations (optimal LCS length 2), got %d keeps out of %d ops", keeps, len(ops))
+		t.Errorf("expected 2 keep operations (optimal edit script), got %d keeps out of %d ops", keeps, len(ops))
 	}
 }
 
@@ -574,42 +561,10 @@ func TestDetailedFormatter_CollapseSkipBoundary(t *testing.T) {
 	}
 }
 
-func TestComputeLineDiff_LCSTieBreakingExactOrder(t *testing.T) {
-	// Kills CONDITIONALS_BOUNDARY at detailed_formatter_linediff.go:129
-	// (dp[i][j-1] >= dp[i-1][j] → dp[i][j-1] > dp[i-1][j])
-	//
-	// With >= (original): when tied, prefer insert (j-1 branch).
-	// With > (mutant): when tied, prefer delete (i-1 branch).
-	// After slices.Reverse, the order in the final result differs.
-	//
-	// Input: from=["A","B"], to=["B","A"]
-	// LCS table:
-	//     ""  B  A
-	// ""   0  0  0
-	// A    0  0  1
-	// B    0  1  1
-	//
-	// Backtrack from (2,2): dp[2][1]=1, dp[1][2]=1 → tied
-	// With >= (original): take j-1 branch → insert A, then at (2,1): match B → keep B, then at (1,0): delete A
-	//   ops built in reverse: [delete A, keep B, insert A]
-	//   After Reverse: [insert A, keep B, delete A]
-	//   Wait, let me recalculate.
-	//
-	// Actually: backtrack from (2,2): from[1]="B" ≠ to[1]="A"
-	//   dp[i][j-1] = dp[2][1] = 1, dp[i-1][j] = dp[1][2] = 1 → tied
-	//   With >=: take j-1 branch → insert to[1]="A", j=1
-	//   At (2,1): from[1]="B" == to[0]="B" → keep "B", i=1, j=0
-	//   At (1,0): j=0, i>0 → delete from[0]="A", i=0
-	//   ops = [insert "A", keep "B", delete "A"]
-	//   After reverse: [delete "A", keep "B", insert "A"]
-	//
-	//   With > (mutant): take i-1 branch → delete from[1]="B", i=1
-	//   At (1,2): from[0]="A" == to[1]="A" → keep "A", i=0, j=1
-	//   At (0,1): i=0, j>0 → insert to[0]="B", j=0
-	//   ops = [delete "B", keep "A", insert "B"]
-	//   After reverse: [insert "B", keep "A", delete "B"]
-	//
-	// So with >=: first op is delete "A"; with >: first op is insert "B"
+func TestComputeLineDiff_TieBreakingExactOrder(t *testing.T) {
+	// Verifies the exact operation order produced by the Myers algorithm
+	// when swapping two elements. With from=["A","B"], to=["B","A"],
+	// the algorithm should produce: [delete "A", keep "B", insert "A"].
 	fromLines := []string{"A", "B"}
 	toLines := []string{"B", "A"}
 	ops := computeLineDiff(fromLines, toLines)
@@ -618,7 +573,7 @@ func TestComputeLineDiff_LCSTieBreakingExactOrder(t *testing.T) {
 		t.Fatalf("expected 3 ops, got %d: %v", len(ops), ops)
 	}
 
-	// With >= (original): [delete "A", keep "B", insert "A"]
+	// Expected: [delete "A", keep "B", insert "A"]
 	if ops[0].Type != editDelete || ops[0].Line != "A" {
 		t.Errorf("ops[0] should be delete 'A', got type=%d line=%q", ops[0].Type, ops[0].Line)
 	}

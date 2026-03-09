@@ -24,25 +24,17 @@ The mutation testing workflow (`.github/workflows/mutation.yml`) runs on every P
 
 ## Report
 
-**Last full run:** 2026-03-07 — efficacy 100.00% (561 killed / 561 covered), 0 lived
-**Mutator coverage:** 99.29%
+**Last full run:** 2026-03-09 — efficacy 100.00% (578 killed / 578 covered), 0 lived
+**Mutator coverage:** 99.31%
 
 | Status | Count |
 |--------|-------|
-| Killed | 561 |
+| Killed | 578 |
 | Lived | 0 |
-| Timed out | 1 |
+| Timed out | 0 |
 | Not covered | 4 |
 | **Efficacy** | **100.00%** |
-| **Mutator coverage** | **99.29%** |
-
-## Timed Out (1 mutant)
-
-| File | Line | Mutator | Code |
-|------|------|---------|------|
-| `parser.go` | 163:9 | `CONDITIONALS_NEGATION` | `err == nil` guard in `wrapParseError` — negating causes infinite recursion or hang |
-
----
+| **Mutator coverage** | **99.31%** |
 
 ## Not Covered (4 mutants)
 

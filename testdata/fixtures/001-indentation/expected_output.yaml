@@ -37,10 +37,10 @@ configmaps.nginx-config.data.nginx.conf
       events {
     -   worker_connections 1024;
     +   worker_connections 2048;
-    + }
+      }
     + http {
     +   gzip on;
-      }
+    + }
       
 
 configmaps.prometheus-config.data.prometheus.yml

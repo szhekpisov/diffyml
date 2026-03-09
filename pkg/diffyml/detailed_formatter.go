@@ -128,12 +128,12 @@ func (f *DetailedFormatter) formatGroupDiffs(sb *strings.Builder, group pathGrou
 		}
 	}
 
-	if len(added) > 0 {
-		f.formatEntryBatch(sb, added, "added", opts)
-	}
-
 	if len(removed) > 0 {
 		f.formatEntryBatch(sb, removed, "removed", opts)
+	}
+
+	if len(added) > 0 {
+		f.formatEntryBatch(sb, added, "added", opts)
 	}
 
 	for _, diff := range others {

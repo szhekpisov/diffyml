@@ -1,6 +1,8 @@
 Found two differences
 
 (document)
+  - one list entry removed:
+
   + one list entry added:
     - kind: ConfigMap
       apiVersion: v1
@@ -19,6 +21,4 @@ Found two differences
             - approved
             - mergeable
             id: /.*/
-
-  - one list entry removed:
 

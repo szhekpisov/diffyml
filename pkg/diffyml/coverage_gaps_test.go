@@ -415,7 +415,7 @@ func TestIsTerminal_ReturnValue(t *testing.T) {
 
 // === Section 3: Target NOT COVERED mutants ===
 
-// --- computeLineDiff direct unit tests (detailed_formatter.go:464-483) ---
+// --- computeLineDiff direct unit tests (detailed_formatter_linediff.go) ---
 
 func TestComputeLineDiff_PartialMatch(t *testing.T) {
 	from := []string{"a", "b", "c"}
@@ -532,8 +532,8 @@ func TestCompareListsPositional_FromLonger(t *testing.T) {
 // --- remote.go: constant value assertions (remote.go:14,16) ---
 
 func TestComputeLineDiff_MatchAtLastPosition(t *testing.T) {
-	// Kills CONDITIONALS_BOUNDARY at detailed_formatter.go:490 (j <= n → j < n)
-	// With j < n, dp[*][n] stays 0 — the LCS match at the last position of toLines is lost.
+	// Verifies that a match at the last position of toLines is found.
+	// The algorithm must consider all positions to find the optimal edit script.
 	from := []string{"a", "b"}
 	to := []string{"c", "a"}
 	ops := computeLineDiff(from, to)
@@ -545,7 +545,7 @@ func TestComputeLineDiff_MatchAtLastPosition(t *testing.T) {
 		}
 	}
 	if keeps != 1 {
-		t.Errorf("expected 1 keep (LCS match at last position), got %d", keeps)
+		t.Errorf("expected 1 keep (match at last position), got %d", keeps)
 	}
 }
 

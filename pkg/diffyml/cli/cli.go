@@ -510,59 +510,17 @@ func NewRunConfig() *RunConfig {
 	}
 }
 
-// Run executes the main comparison flow with the given configuration.
-// Returns an ExitResult with the appropriate exit code and any error.
-func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
-	if rc == nil {
-		rc = NewRunConfig()
-	}
-
-	// Handle help flag
-	if cfg.ShowHelp {
-		fmt.Fprint(rc.Stdout, cfg.Usage())
-		return NewExitResult(ExitCodeSuccess, nil)
-	}
-
-	// Validate configuration (unless using pre-loaded content for testing)
-	if rc.FromContent == nil && rc.ToContent == nil {
-		if err := cfg.Validate(); err != nil {
-			fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
-			return NewExitResult(ExitCodeError, err)
-		}
-	}
-
-	// Directory detection (skip when test content is pre-loaded)
-	if rc.FromContent == nil && rc.ToContent == nil && rc.FilePairs == nil {
-		fromIsDir := diffyml.IsDirectory(cfg.FromFile)
-		toIsDir := diffyml.IsDirectory(cfg.ToFile)
-
-		if fromIsDir && toIsDir {
-			return runDirectory(cfg, rc, cfg.FromFile, cfg.ToFile)
-		}
-		if fromIsDir != toIsDir {
-			err := fmt.Errorf("both arguments must be the same type (both files or both directories)")
-			fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
-			return NewExitResult(ExitCodeError, err)
-		}
-	}
-
-	// Get the formatter
-	formatter, err := diffyml.FormatterByName(cfg.Output)
-	if err != nil {
-		fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
-		return NewExitResult(ExitCodeError, err)
-	}
-
-	// Load file contents
+// loadContents loads from/to file contents from pre-loaded RunConfig or filesystem.
+func loadContents(cfg *CLIConfig, rc *RunConfig) ([]byte, []byte, error) {
 	var fromContent, toContent []byte
+	var err error
 
 	if rc.FromContent != nil {
 		fromContent = rc.FromContent
 	} else {
 		fromContent, err = diffyml.LoadContent(cfg.FromFile)
 		if err != nil {
-			fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
-			return NewExitResult(ExitCodeError, err)
+			return nil, nil, err
 		}
 	}
 
@@ -571,22 +529,17 @@ func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
 	} else {
 		toContent, err = diffyml.LoadContent(cfg.ToFile)
 		if err != nil {
-			fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
-			return NewExitResult(ExitCodeError, err)
+			return nil, nil, err
 		}
 	}
 
-	// Setup options
+	return fromContent, toContent, nil
+}
+
+// runComparison performs the compare, filter, format, and optional AI summary for a single file pair.
+func runComparison(cfg *CLIConfig, rc *RunConfig, fromContent, toContent []byte, formatter diffyml.Formatter, formatOpts *diffyml.FormatOptions) *ExitResult {
 	compareOpts := cfg.ToCompareOptions()
 	filterOpts := cfg.ToFilterOptions()
-	formatOpts := cfg.ToFormatOptions()
-
-	// Apply color configuration
-	colorMode, _ := diffyml.ParseColorMode(cfg.Color)
-	trueColorMode, _ := diffyml.ParseColorMode(cfg.TrueColor)
-	colorCfg := diffyml.NewColorConfig(colorMode, trueColorMode == diffyml.ColorModeAlways)
-	colorCfg.DetectTerminal()
-	colorCfg.ToFormatOptions(formatOpts)
 
 	// Compare files
 	diffs, err := diffyml.Compare(fromContent, toContent, compareOpts)
@@ -623,13 +576,13 @@ func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
 			summarizer.apiURL = rc.SummaryAPIURL
 		}
 		groups := []diffyml.DiffGroup{{FilePath: normalizeFilePath(cfg.ToFile, rc.Stderr), Diffs: diffs}}
-		summary, err := summarizer.Summarize(context.Background(), groups)
-		if err != nil {
+		summary, summaryErr := summarizer.Summarize(context.Background(), groups)
+		if summaryErr != nil {
 			if isBriefSummary {
 				// Fallback: show brief output since AI summary failed
 				fmt.Fprint(rc.Stdout, formatter.Format(diffs, formatOpts))
 			}
-			fmt.Fprintf(rc.Stderr, "Warning: AI summary unavailable: %v\n", err)
+			fmt.Fprintf(rc.Stderr, "Warning: AI summary unavailable: %v\n", summaryErr)
 		} else {
 			fmt.Fprint(rc.Stdout, diffyml.FormatSummaryOutput(summary, formatOpts))
 		}
@@ -641,6 +594,57 @@ func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
 	// Determine exit code
 	exitCode := DetermineExitCode(cfg.SetExitCode, len(diffs), nil)
 	return NewExitResult(exitCode, nil)
+}
+
+// Run executes the main comparison flow with the given configuration.
+// Returns an ExitResult with the appropriate exit code and any error.
+func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
+	if rc == nil {
+		rc = NewRunConfig()
+	}
+
+	// Handle help flag
+	if cfg.ShowHelp {
+		fmt.Fprint(rc.Stdout, cfg.Usage())
+		return NewExitResult(ExitCodeSuccess, nil)
+	}
+
+	// Validate configuration (unless using pre-loaded content for testing)
+	if rc.FromContent == nil && rc.ToContent == nil {
+		if err := cfg.Validate(); err != nil {
+			fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
+			return NewExitResult(ExitCodeError, err)
+		}
+	}
+
+	// Directory detection (skip when test content is pre-loaded)
+	if rc.FromContent == nil && rc.ToContent == nil && rc.FilePairs == nil {
+		fromIsDir := diffyml.IsDirectory(cfg.FromFile)
+		toIsDir := diffyml.IsDirectory(cfg.ToFile)
+
+		if fromIsDir && toIsDir {
+			return runDirectory(cfg, rc, cfg.FromFile, cfg.ToFile)
+		}
+		if fromIsDir != toIsDir {
+			err := fmt.Errorf("both arguments must be the same type (both files or both directories)")
+			fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
+			return NewExitResult(ExitCodeError, err)
+		}
+	}
+
+	formatter, formatOpts, err := setupDirFormatting(cfg)
+	if err != nil {
+		fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
+		return NewExitResult(ExitCodeError, err)
+	}
+
+	fromContent, toContent, err := loadContents(cfg, rc)
+	if err != nil {
+		fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
+		return NewExitResult(ExitCodeError, err)
+	}
+
+	return runComparison(cfg, rc, fromContent, toContent, formatter, formatOpts)
 }
 
 // normalizeFilePath converts a file path to a clean relative path.

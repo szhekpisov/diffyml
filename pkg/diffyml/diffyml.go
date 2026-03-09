@@ -123,6 +123,59 @@ func Compare(from, to []byte, opts *Options) ([]Difference, error) {
 	return diffs, nil
 }
 
+// registerPath registers a path in the pathOrder map if not already present.
+func registerPath(pathOrder map[string]int, index *int, prefix string) {
+	if prefix == "" {
+		return
+	}
+	if _, exists := pathOrder[prefix]; !exists {
+		pathOrder[prefix] = *index
+		*index++
+	}
+}
+
+// extractPathsFromValue recursively extracts path ordering from a parsed YAML value.
+func extractPathsFromValue(prefix string, val any, opts *Options, pathOrder map[string]int, index *int) {
+	switch v := val.(type) {
+	case *OrderedMap:
+		registerPath(pathOrder, index, prefix)
+		for _, key := range v.Keys {
+			childPath := key
+			if prefix != "" {
+				childPath = prefix + "." + key
+			}
+			extractPathsFromValue(childPath, v.Values[key], opts, pathOrder, index)
+		}
+	case map[string]any:
+		registerPath(pathOrder, index, prefix)
+		var keys []string
+		for key := range v {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			childPath := key
+			if prefix != "" {
+				childPath = prefix + "." + key
+			}
+			extractPathsFromValue(childPath, v[key], opts, pathOrder, index)
+		}
+	case []any:
+		registerPath(pathOrder, index, prefix)
+		for i, item := range v {
+			var childPath string
+			if id := getIdentifier(item, opts); isComparableIdentifier(id) {
+				childPath = fmt.Sprintf("%s.%v", prefix, id)
+			} else {
+				childPath = fmt.Sprintf("%s.%d", prefix, i)
+			}
+			extractPathsFromValue(childPath, item, opts, pathOrder, index)
+		}
+	default:
+		registerPath(pathOrder, index, prefix)
+	}
+}
+
 // sortDiffs sorts differences by path for consistent output.
 // Sorts root-level additions first, then by path depth and alphabetically.
 // extractPathOrder extracts the order of all paths from parsed documents
@@ -130,84 +183,50 @@ func extractPathOrder(fromDocs, toDocs []any, opts *Options) map[string]int {
 	pathOrder := make(map[string]int)
 	index := 0
 
-	var extractFromValue func(prefix string, val any)
-	extractFromValue = func(prefix string, val any) {
-		switch v := val.(type) {
-		case *OrderedMap:
-			// Register the prefix itself
-			if prefix != "" {
-				if _, exists := pathOrder[prefix]; !exists {
-					pathOrder[prefix] = index
-					index++
-				}
-			}
-			// Then recurse into children in order
-			for _, key := range v.Keys {
-				childPath := key
-				if prefix != "" {
-					childPath = prefix + "." + key
-				}
-				extractFromValue(childPath, v.Values[key])
-			}
-		case map[string]any:
-			// Register the prefix itself
-			if prefix != "" {
-				if _, exists := pathOrder[prefix]; !exists {
-					pathOrder[prefix] = index
-					index++
-				}
-			}
-			// For regular maps, sort keys alphabetically for deterministic order
-			var keys []string
-			for key := range v {
-				keys = append(keys, key)
-			}
-			sort.Strings(keys)
-			for _, key := range keys {
-				childPath := key
-				if prefix != "" {
-					childPath = prefix + "." + key
-				}
-				extractFromValue(childPath, v[key])
-			}
-		case []any:
-			// Register the prefix itself
-			if prefix != "" {
-				if _, exists := pathOrder[prefix]; !exists {
-					pathOrder[prefix] = index
-					index++
-				}
-			}
-			// For lists, process items by identifier if available
-			for i, item := range v {
-				var childPath string
-				if id := getIdentifier(item, opts); isComparableIdentifier(id) {
-					childPath = fmt.Sprintf("%s.%v", prefix, id)
-				} else {
-					childPath = fmt.Sprintf("%s.%d", prefix, i)
-				}
-				extractFromValue(childPath, item)
-			}
-		default:
-			// Scalar - just register the path
-			if prefix != "" {
-				if _, exists := pathOrder[prefix]; !exists {
-					pathOrder[prefix] = index
-					index++
-				}
-			}
-		}
-	}
-
-	// Extract from both documents to cover all keys
 	for _, doc := range fromDocs {
-		extractFromValue("", doc)
+		extractPathsFromValue("", doc, opts, pathOrder, &index)
 	}
 	for _, doc := range toDocs {
-		extractFromValue("", doc)
+		extractPathsFromValue("", doc, opts, pathOrder, &index)
 	}
 
 	return pathOrder
+}
+
+// hasNumericPathSuffix checks if a path ends with a numeric suffix after a dot (e.g., ".0", ".1").
+func hasNumericPathSuffix(path string) bool {
+	lastDot := strings.LastIndex(path, ".")
+	if lastDot < 0 || lastDot >= len(path)-1 {
+		return false
+	}
+	suffix := path[lastDot+1:]
+	for _, c := range suffix {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+// hasIdentifierField checks if a value is a map containing "name" or "id" fields.
+func hasIdentifierField(val any) bool {
+	if om, ok := val.(*OrderedMap); ok {
+		if _, hasName := om.Values["name"]; hasName {
+			return true
+		}
+		if _, hasID := om.Values["id"]; hasID {
+			return true
+		}
+	}
+	if m, ok := val.(map[string]any); ok {
+		if _, hasName := m["name"]; hasName {
+			return true
+		}
+		if _, hasID := m["id"]; hasID {
+			return true
+		}
+	}
+	return false
 }
 
 // isListEntry checks if a difference represents a list entry
@@ -220,56 +239,76 @@ func isListEntryDiff(diff Difference) bool {
 		return true
 	}
 
-	// Check for dot notation .0, .1, etc. (path ends with .digit)
-	lastDot := strings.LastIndex(path, ".")
-	if lastDot >= 0 && lastDot < len(path)-1 {
-		suffix := path[lastDot+1:]
-		// Check if suffix is all digits
-		isDigit := true
-		for _, c := range suffix {
-			if c < '0' || c > '9' {
-				isDigit = false
-				break
-			}
-		}
-		if isDigit {
-			return true
-		}
+	if hasNumericPathSuffix(path) {
+		return true
 	}
 
-	// Check if the value is a map with identifier fields (typical for list items)
+	// Check if the value is a map with identifier fields
 	var val any
 	if diff.To != nil {
 		val = diff.To
 	} else {
 		val = diff.From
 	}
+	return hasIdentifierField(val)
+}
 
-	// Check OrderedMap
-	if om, ok := val.(*OrderedMap); ok {
-		if _, hasName := om.Values["name"]; hasName {
-			return true
-		}
-		if _, hasID := om.Values["id"]; hasID {
-			return true
+// compareByRootOrder compares two diff paths by their root component's document order.
+// Returns (comparison result, true) if roots differ and can be compared, (0, false) otherwise.
+func compareByRootOrder(pathI, pathJ string, pathOrder map[string]int) (int, bool) {
+	rootI := pathI
+	rootJ := pathJ
+	if dotIdx := strings.Index(pathI, "."); dotIdx != -1 {
+		rootI = pathI[:dotIdx]
+	}
+	if dotIdx := strings.Index(pathJ, "."); dotIdx != -1 {
+		rootJ = pathJ[:dotIdx]
+	}
+
+	if rootI == rootJ {
+		return 0, false
+	}
+
+	orderI, okI := pathOrder[rootI]
+	orderJ, okJ := pathOrder[rootJ]
+	if okI && okJ {
+		return cmp.Compare(orderI, orderJ), true
+	}
+	return cmp.Compare(rootI, rootJ), true
+}
+
+// compareByExactOrParentOrder compares two paths within the same root using exact or parent order.
+func compareByExactOrParentOrder(pathI, pathJ string, pathOrder map[string]int, findParentOrder func(string) (int, bool)) int {
+	// First try exact path match
+	orderI, okI := pathOrder[pathI]
+	orderJ, okJ := pathOrder[pathJ]
+	if okI && okJ {
+		return cmp.Compare(orderI, orderJ)
+	}
+	if okI && !okJ {
+		return -1
+	}
+	if !okI && okJ {
+		return 1
+	}
+
+	parentOrderI, okI := findParentOrder(pathI)
+	parentOrderJ, okJ := findParentOrder(pathJ)
+	if okI && okJ {
+		if c := cmp.Compare(parentOrderI, parentOrderJ); c != 0 {
+			return c
 		}
 	}
 
-	// Check regular map
-	if m, ok := val.(map[string]any); ok {
-		if _, hasName := m["name"]; hasName {
-			return true
-		}
-		if _, hasID := m["id"]; hasID {
-			return true
-		}
+	// Within same parent, sort by depth first
+	if c := cmp.Compare(strings.Count(pathI, "."), strings.Count(pathJ, ".")); c != 0 {
+		return c
 	}
 
-	return false
+	return cmp.Compare(pathI, pathJ)
 }
 
 func sortDiffsWithOrder(diffs []Difference, pathOrder map[string]int) {
-	// findParentOrder walks up the path hierarchy to find a parent with a known order.
 	findParentOrder := func(path string) (int, bool) {
 		for {
 			if order, ok := pathOrder[path]; ok {
@@ -288,56 +327,10 @@ func sortDiffsWithOrder(diffs []Difference, pathOrder map[string]int) {
 		pathI := diffI.Path
 		pathJ := diffJ.Path
 
-		// Extract root component (first segment before dot)
-		rootI := pathI
-		rootJ := pathJ
-		if dotIdx := strings.Index(pathI, "."); dotIdx != -1 {
-			rootI = pathI[:dotIdx]
-		}
-		if dotIdx := strings.Index(pathJ, "."); dotIdx != -1 {
-			rootJ = pathJ[:dotIdx]
-		}
-
-		// Group by root component using document order
-		if rootI != rootJ {
-			orderI, okI := pathOrder[rootI]
-			orderJ, okJ := pathOrder[rootJ]
-			if okI && okJ {
-				return cmp.Compare(orderI, orderJ)
-			}
-			return cmp.Compare(rootI, rootJ) // Fallback to alphabetical
-		}
-
-		// Within same root component, use path order from document
-		// First try exact path match
-		orderI, okI := pathOrder[pathI]
-		orderJ, okJ := pathOrder[pathJ]
-		if okI && okJ {
-			return cmp.Compare(orderI, orderJ)
-		}
-
-		// If one has order and other doesn't, prefer the one with order
-		if okI && !okJ {
-			return -1
-		}
-		if !okI && okJ {
-			return 1
-		}
-
-		parentOrderI, okI := findParentOrder(pathI)
-		parentOrderJ, okJ := findParentOrder(pathJ)
-		if okI && okJ {
-			if c := cmp.Compare(parentOrderI, parentOrderJ); c != 0 {
-				return c
-			}
-		}
-
-		// Within same parent, sort by depth first
-		if c := cmp.Compare(strings.Count(pathI, "."), strings.Count(pathJ, ".")); c != 0 {
+		if c, decided := compareByRootOrder(pathI, pathJ, pathOrder); decided {
 			return c
 		}
 
-		// Then sort alphabetically as last resort
-		return cmp.Compare(pathI, pathJ)
+		return compareByExactOrParentOrder(pathI, pathJ, pathOrder, findParentOrder)
 	})
 }

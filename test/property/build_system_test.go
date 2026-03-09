@@ -342,16 +342,7 @@ func TestProperty5_DependencyIntegrity_NoUnversionedDeps(t *testing.T) {
 			}
 
 			if depLine != "" && !strings.Contains(depLine, "//") {
-				parts := strings.Fields(depLine)
-				if len(parts) >= 2 {
-					version := parts[1]
-					hasValidVersion := strings.HasPrefix(version, "v") &&
-						(strings.Contains(version, ".") || strings.Contains(version, "-"))
-
-					if !hasValidVersion {
-						t.Fatalf("Dependency without valid version: %s", depLine)
-					}
-				}
+				checkDependencyVersion(t, depLine)
 			}
 		}
 	}
@@ -387,6 +378,21 @@ func TestProperty5_DependencyIntegrity_BuildWithVerify(t *testing.T) {
 
 	if !info.Mode().IsRegular() || info.Mode()&0111 == 0 {
 		t.Fatal("Binary is not a regular executable file")
+	}
+}
+
+// checkDependencyVersion validates that a dependency line has a valid version.
+func checkDependencyVersion(t *testing.T, depLine string) {
+	t.Helper()
+	parts := strings.Fields(depLine)
+	if len(parts) < 2 {
+		return
+	}
+	version := parts[1]
+	hasValidVersion := strings.HasPrefix(version, "v") &&
+		(strings.Contains(version, ".") || strings.Contains(version, "-"))
+	if !hasValidVersion {
+		t.Fatalf("Dependency without valid version: %s", depLine)
 	}
 }
 

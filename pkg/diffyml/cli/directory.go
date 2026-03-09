@@ -142,124 +142,147 @@ func buildFilePairsFromMap(m map[string][2][]byte) []diffyml.FilePair {
 	return pairs
 }
 
-// runDirectory executes directory-mode comparison.
-// Unexported; called from Run() when both arguments are directories.
-func runDirectory(cfg *CLIConfig, rc *RunConfig, fromDir, toDir string) *ExitResult {
-	// Handle swap: swap directories before planning to avoid double-swap
-	if cfg.Swap {
-		fromDir, toDir = toDir, fromDir
+// processDirPair processes a single file pair in directory mode.
+// Returns the diffs and an error if processing failed.
+func processDirPair(pair diffyml.FilePair, filePairs map[string][2][]byte, compareOpts *diffyml.Options, filterOpts *diffyml.FilterOptions) ([]diffyml.Difference, error) {
+	fromContent, toContent, err := loadFilePairContent(pair, filePairs)
+	if err != nil {
+		return nil, fmt.Errorf("reading %s: %w", pair.Name, err)
 	}
-
-	// Build file pair plan
-	var pairs []diffyml.FilePair
-	if rc.FilePairs != nil {
-		// Testing mode: use in-memory file pairs
-		pairs = buildFilePairsFromMap(rc.FilePairs)
-	} else {
-		var err error
-		pairs, err = diffyml.BuildFilePairPlan(fromDir, toDir)
-		if err != nil {
-			fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
-			return NewExitResult(ExitCodeError, err)
-		}
+	diffs, err := compareAndFilterPair(fromContent, toContent, compareOpts, filterOpts)
+	if err != nil {
+		return nil, fmt.Errorf("comparing %s: %w", pair.Name, err)
 	}
+	return diffs, nil
+}
 
-	// Get the formatter
+// setupDirFormatting creates the formatter and format options for directory mode.
+func setupDirFormatting(cfg *CLIConfig) (diffyml.Formatter, *diffyml.FormatOptions, error) {
 	formatter, err := diffyml.FormatterByName(cfg.Output)
 	if err != nil {
-		fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
-		return NewExitResult(ExitCodeError, err)
+		return nil, nil, err
 	}
 
-	// Build options once
-	compareOpts := cfg.ToCompareOptions()
-	// Disable swap in compareOpts since we already swapped dirs
-	if cfg.Swap {
-		compareOpts.Swap = false
-	}
-	filterOpts := cfg.ToFilterOptions()
 	formatOpts := cfg.ToFormatOptions()
-
-	// Apply color configuration
 	colorMode, _ := diffyml.ParseColorMode(cfg.Color)
 	trueColorMode, _ := diffyml.ParseColorMode(cfg.TrueColor)
 	colorCfg := diffyml.NewColorConfig(colorMode, trueColorMode == diffyml.ColorModeAlways)
 	colorCfg.DetectTerminal()
 	colorCfg.ToFormatOptions(formatOpts)
 
-	// Check if formatter supports structured (aggregated) output
+	return formatter, formatOpts, nil
+}
+
+// buildDirFilePairs builds the file pair plan for directory comparison.
+func buildDirFilePairs(rc *RunConfig, fromDir, toDir string) ([]diffyml.FilePair, error) {
+	if rc.FilePairs != nil {
+		return buildFilePairsFromMap(rc.FilePairs), nil
+	}
+	return diffyml.BuildFilePairPlan(fromDir, toDir)
+}
+
+// dirPairCollector accumulates diff results during directory-mode iteration.
+type dirPairCollector struct {
+	// Loop-invariant context
+	rc             *RunConfig
+	formatter      diffyml.Formatter
+	formatOpts     *diffyml.FormatOptions
+	isStructured   bool
+	isBriefSummary bool
+	wantSummary    bool
+
+	// Accumulated state
+	groups         []diffyml.DiffGroup
+	summaryEntries []summaryEntry
+	hasDiffs       bool
+	hasErrors      bool
+}
+
+// collectPairResult records the diff results for a single file pair, emitting output as needed.
+func (c *dirPairCollector) collectPairResult(pair diffyml.FilePair, diffs []diffyml.Difference) {
+	c.hasDiffs = true
+
+	if c.isStructured {
+		filePath := strings.TrimPrefix(pair.Name, "./")
+		c.groups = append(c.groups, diffyml.DiffGroup{
+			FilePath: filePath,
+			Diffs:    diffs,
+		})
+		return
+	}
+
+	if c.wantSummary {
+		c.summaryEntries = append(c.summaryEntries, summaryEntry{
+			Group:    diffyml.DiffGroup{FilePath: pair.Name, Diffs: diffs},
+			PairType: pair.Type,
+		})
+	}
+	if !c.isBriefSummary {
+		fmt.Fprint(c.rc.Stdout, diffyml.FormatFileHeader(pair.Name, pair.Type, c.formatOpts))
+		fmt.Fprint(c.rc.Stdout, c.formatter.Format(diffs, c.formatOpts))
+	}
+}
+
+// runDirectory executes directory-mode comparison.
+// Unexported; called from Run() when both arguments are directories.
+func runDirectory(cfg *CLIConfig, rc *RunConfig, fromDir, toDir string) *ExitResult {
+	if cfg.Swap {
+		fromDir, toDir = toDir, fromDir
+	}
+
+	pairs, err := buildDirFilePairs(rc, fromDir, toDir)
+	if err != nil {
+		fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
+		return NewExitResult(ExitCodeError, err)
+	}
+
+	formatter, formatOpts, err := setupDirFormatting(cfg)
+	if err != nil {
+		fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
+		return NewExitResult(ExitCodeError, err)
+	}
+
+	compareOpts := cfg.ToCompareOptions()
+	if cfg.Swap {
+		compareOpts.Swap = false
+	}
+	filterOpts := cfg.ToFilterOptions()
+
 	sf, isStructured := formatter.(diffyml.StructuredFormatter)
 
-	isBriefSummary := cfg.Output == "brief" && cfg.Summary
-
-	hasDiffs := false
-	hasErrors := false
-
-	// For structured formatters, collect all diff groups
-	var groups []diffyml.DiffGroup
-
-	// For non-structured summary: collect entries to invoke summarizer after all files
-	var summaryEntries []summaryEntry
-
+	c := dirPairCollector{
+		rc:             rc,
+		formatter:      formatter,
+		formatOpts:     formatOpts,
+		isStructured:   isStructured,
+		isBriefSummary: cfg.Output == "brief" && cfg.Summary,
+		wantSummary:    cfg.Summary,
+	}
 	for _, pair := range pairs {
-		fromContent, toContent, loadErr := loadFilePairContent(pair, rc.FilePairs)
-		if loadErr != nil {
-			fmt.Fprintf(rc.Stderr, "Error reading %s: %v\n", pair.Name, loadErr)
-			hasErrors = true
-			continue
-		}
-
-		diffs, diffErr := compareAndFilterPair(fromContent, toContent, compareOpts, filterOpts)
+		diffs, diffErr := processDirPair(pair, rc.FilePairs, compareOpts, filterOpts)
 		if diffErr != nil {
-			fmt.Fprintf(rc.Stderr, "Error comparing %s: %v\n", pair.Name, diffErr)
-			hasErrors = true
+			fmt.Fprintf(rc.Stderr, "Error: %v\n", diffErr)
+			c.hasErrors = true
 			continue
 		}
-
-		if len(diffs) == 0 {
-			continue
-		}
-
-		hasDiffs = true
-
-		if isStructured {
-			filePath := strings.TrimPrefix(pair.Name, "./")
-			groups = append(groups, diffyml.DiffGroup{
-				FilePath: filePath,
-				Diffs:    diffs,
-			})
-		} else {
-			if cfg.Summary {
-				summaryEntries = append(summaryEntries, summaryEntry{
-					Group:    diffyml.DiffGroup{FilePath: pair.Name, Diffs: diffs},
-					PairType: pair.Type,
-				})
-			}
-
-			if !isBriefSummary {
-				fmt.Fprint(rc.Stdout, diffyml.FormatFileHeader(pair.Name, pair.Type, formatOpts))
-				fmt.Fprint(rc.Stdout, formatter.Format(diffs, formatOpts))
-			}
+		if len(diffs) > 0 {
+			c.collectPairResult(pair, diffs)
 		}
 	}
 
-	// For structured formatters, always write output (even when empty)
 	if isStructured {
-		output := sf.FormatAll(groups, formatOpts)
-		fmt.Fprint(rc.Stdout, output)
-		hasDiffs = len(groups) > 0
+		fmt.Fprint(rc.Stdout, sf.FormatAll(c.groups, formatOpts))
+		c.hasDiffs = len(c.groups) > 0
 	}
 
-	// AI Summary
 	if cfg.Summary {
-		emitDirectorySummary(cfg, rc, groups, summaryEntries, formatOpts, formatter, isStructured, isBriefSummary)
+		emitDirectorySummary(cfg, rc, c.groups, c.summaryEntries, formatOpts, formatter, isStructured, c.isBriefSummary)
 	}
 
-	// Compute aggregated exit code (directory-specific precedence)
-	if cfg.SetExitCode && hasDiffs {
+	if cfg.SetExitCode && c.hasDiffs {
 		return NewExitResult(ExitCodeDifferences, nil)
 	}
-	if hasErrors {
+	if c.hasErrors {
 		return NewExitResult(ExitCodeError, nil)
 	}
 	return NewExitResult(ExitCodeSuccess, nil)

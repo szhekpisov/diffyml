@@ -25,15 +25,8 @@ type editOp struct {
 	Line string
 }
 
-// formatMultilineDiff renders an inline line-by-line diff for multiline strings.
-func (f *DetailedFormatter) formatMultilineDiff(sb *strings.Builder, from, to string, opts *FormatOptions) {
-	fromLines := strings.Split(from, "\n")
-	toLines := strings.Split(to, "\n")
-	ops := computeLineDiff(fromLines, toLines)
-
-	// Count additions and deletions
-	additions := 0
-	deletions := 0
+// countEditOps counts the number of insertions and deletions in a sequence of edit operations.
+func countEditOps(ops []editOp) (additions, deletions int) {
 	for _, op := range ops {
 		switch op.Type {
 		case editInsert:
@@ -42,6 +35,46 @@ func (f *DetailedFormatter) formatMultilineDiff(sb *strings.Builder, from, to st
 			deletions++
 		}
 	}
+	return additions, deletions
+}
+
+// renderLineDiffOps renders edit operations with context collapsing.
+func (f *DetailedFormatter) renderLineDiffOps(sb *strings.Builder, ops []editOp, nearChange []bool, opts *FormatOptions) {
+	skipUntil := 0
+	for i, op := range ops {
+		if i < skipUntil {
+			continue
+		}
+		if op.Type != editKeep || nearChange[i] {
+			switch op.Type {
+			case editKeep:
+				f.writeColoredLine(sb, fmt.Sprintf("      %s", op.Line), f.colorContext(opts), opts)
+			case editInsert:
+				f.writeColoredLine(sb, fmt.Sprintf("    + %s", op.Line), f.colorAdded(opts), opts)
+			case editDelete:
+				f.writeColoredLine(sb, fmt.Sprintf("    - %s", op.Line), f.colorRemoved(opts), opts)
+			}
+		} else {
+			collapsed := 0
+			for _, sub := range ops[i:] {
+				if sub.Type != editKeep || nearChange[i+collapsed] {
+					break
+				}
+				collapsed++
+			}
+			skipUntil = i + collapsed
+			f.writeColoredLine(sb, fmt.Sprintf("    [%d %s unchanged]", collapsed, pluralize(collapsed, "line", "lines")), f.colorContext(opts), opts)
+		}
+	}
+}
+
+// formatMultilineDiff renders an inline line-by-line diff for multiline strings.
+func (f *DetailedFormatter) formatMultilineDiff(sb *strings.Builder, from, to string, opts *FormatOptions) {
+	fromLines := strings.Split(from, "\n")
+	toLines := strings.Split(to, "\n")
+	ops := computeLineDiff(fromLines, toLines)
+
+	additions, deletions := countEditOps(ops)
 
 	descriptor := fmt.Sprintf("  ± value change in multiline text (%s %s, %s %s)",
 		formatCount(additions), pluralize(additions, "insert", "inserts"),
@@ -58,41 +91,13 @@ func (f *DetailedFormatter) formatMultilineDiff(sb *strings.Builder, from, to st
 	nearChange := make([]bool, len(ops))
 	for i, op := range ops {
 		if op.Type != editKeep {
-			// Mark surrounding context
 			for j := max(0, i-contextLines); j <= min(len(ops)-1, i+contextLines); j++ {
 				nearChange[j] = true
 			}
 		}
 	}
 
-	// Render with collapsing
-	skipUntil := 0
-	for i, op := range ops {
-		if i < skipUntil {
-			continue
-		}
-		if op.Type != editKeep || nearChange[i] {
-			switch op.Type {
-			case editKeep:
-				f.writeColoredLine(sb, fmt.Sprintf("      %s", op.Line), f.colorContext(opts), opts)
-			case editInsert:
-				f.writeColoredLine(sb, fmt.Sprintf("    + %s", op.Line), f.colorAdded(opts), opts)
-			case editDelete:
-				f.writeColoredLine(sb, fmt.Sprintf("    - %s", op.Line), f.colorRemoved(opts), opts)
-			}
-		} else {
-			// Count consecutive non-near-change keep ops
-			collapsed := 0
-			for _, sub := range ops[i:] {
-				if sub.Type != editKeep || nearChange[i+collapsed] {
-					break
-				}
-				collapsed++
-			}
-			skipUntil = i + collapsed
-			f.writeColoredLine(sb, fmt.Sprintf("    [%d %s unchanged]", collapsed, pluralize(collapsed, "line", "lines")), f.colorContext(opts), opts)
-		}
-	}
+	f.renderLineDiffOps(sb, ops, nearChange, opts)
 	sb.WriteString("\n")
 }
 

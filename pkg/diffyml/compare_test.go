@@ -27,7 +27,7 @@ import (
 	"github.com/szhekpisov/diffyml/pkg/diffyml"
 )
 
-func TestCompare(t *testing.T) {
+func TestCompare_ScalarModifications(t *testing.T) {
 	tests := []struct {
 		name    string
 		from    string
@@ -130,6 +130,34 @@ some:
 				}
 			},
 		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			from := yml(tt.from)
+			to := yml(tt.to)
+
+			diffs, err := compare(from, to, tt.opts)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("compare() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if tt.check != nil {
+				tt.check(t, diffs)
+			}
+		})
+	}
+}
+
+func TestCompare_ValueAddRemove(t *testing.T) {
+	tests := []struct {
+		name    string
+		from    string
+		to      string
+		opts    *diffyml.Options
+		wantErr bool
+		check   func(t *testing.T, diffs []diffyml.Difference)
+	}{
 		{
 			name: "value added",
 			from: `---
@@ -206,17 +234,356 @@ some:
 				}
 			},
 		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			from := yml(tt.from)
+			to := yml(tt.to)
+
+			diffs, err := compare(from, to, tt.opts)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("compare() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if tt.check != nil {
+				tt.check(t, diffs)
+			}
+		})
+	}
+}
+
+func TestCompare_NullAndTypeChanges(t *testing.T) {
+	tests := []struct {
+		name    string
+		from    string
+		to      string
+		opts    *diffyml.Options
+		wantErr bool
+		check   func(t *testing.T, diffs []diffyml.Difference)
+	}{
 		{
-			name: "ignore whitespace changes",
-			from: `{"foo": "bar"}`,
-			to:   `{"foo": "bar "}`,
-			opts: &diffyml.Options{IgnoreWhitespaceChanges: true},
+			name: "null to value change",
+			from: `foo: null`,
+			to:   `foo: "bar"`,
 			check: func(t *testing.T, diffs []diffyml.Difference) {
-				if len(diffs) != 0 {
-					t.Errorf("expected 0 diffs, got %d", len(diffs))
+				if len(diffs) < 1 {
+					t.Fatal("expected at least 1 diff")
 				}
 			},
 		},
+		{
+			name: "value to null change",
+			from: `foo: "bar"`,
+			to:   `foo: null`,
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				if len(diffs) < 1 {
+					t.Fatal("expected at least 1 diff")
+				}
+				if !hasDiffType(diffs, diffyml.DiffModified) {
+					t.Error("expected value to null to be reported as modification")
+				}
+			},
+		},
+		{
+			name: "type change string to map",
+			from: `value: hello`,
+			to: `value:
+  nested: data`,
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				if len(diffs) < 1 {
+					t.Fatal("expected at least 1 diff")
+				}
+				if !hasDiffType(diffs, diffyml.DiffModified) {
+					t.Error("expected type change to be reported as modification")
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			from := yml(tt.from)
+			to := yml(tt.to)
+
+			diffs, err := compare(from, to, tt.opts)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("compare() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if tt.check != nil {
+				tt.check(t, diffs)
+			}
+		})
+	}
+}
+
+func TestCompare_MapPaths(t *testing.T) {
+	tests := []struct {
+		name    string
+		from    string
+		to      string
+		opts    *diffyml.Options
+		wantErr bool
+		check   func(t *testing.T, diffs []diffyml.Difference)
+	}{
+		{
+			name: "map key added with correct path",
+			from: `---
+root:
+  nested:
+    existing: value
+`,
+			to: `---
+root:
+  nested:
+    existing: value
+    newkey: newvalue
+`,
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				if len(diffs) != 1 {
+					t.Fatalf("expected 1 diff, got %d", len(diffs))
+				}
+				if diffs[0].Path != "root.nested.newkey" {
+					t.Errorf("expected path 'root.nested.newkey', got '%s'", diffs[0].Path)
+				}
+				if diffs[0].Type != diffyml.DiffAdded {
+					t.Errorf("expected DiffAdded, got %v", diffs[0].Type)
+				}
+				if diffs[0].To != "newvalue" {
+					t.Errorf("expected To='newvalue', got %v", diffs[0].To)
+				}
+			},
+		},
+		{
+			name: "map key removed with correct path",
+			from: `---
+root:
+  nested:
+    existing: value
+    oldkey: oldvalue
+`,
+			to: `---
+root:
+  nested:
+    existing: value
+`,
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				if len(diffs) != 1 {
+					t.Fatalf("expected 1 diff, got %d", len(diffs))
+				}
+				if diffs[0].Path != "root.nested.oldkey" {
+					t.Errorf("expected path 'root.nested.oldkey', got '%s'", diffs[0].Path)
+				}
+				if diffs[0].Type != diffyml.DiffRemoved {
+					t.Errorf("expected DiffRemoved, got %v", diffs[0].Type)
+				}
+				if diffs[0].From != "oldvalue" {
+					t.Errorf("expected From='oldvalue', got %v", diffs[0].From)
+				}
+			},
+		},
+		{
+			name: "deeply nested map modifications",
+			from: `---
+level1:
+  level2:
+    level3:
+      level4:
+        value: original
+`,
+			to: `---
+level1:
+  level2:
+    level3:
+      level4:
+        value: changed
+`,
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				if len(diffs) != 1 {
+					t.Fatalf("expected 1 diff, got %d", len(diffs))
+				}
+				if diffs[0].Path != "level1.level2.level3.level4.value" {
+					t.Errorf("expected path 'level1.level2.level3.level4.value', got '%s'", diffs[0].Path)
+				}
+				if diffs[0].Type != diffyml.DiffModified {
+					t.Errorf("expected DiffModified, got %v", diffs[0].Type)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			from := yml(tt.from)
+			to := yml(tt.to)
+
+			diffs, err := compare(from, to, tt.opts)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("compare() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if tt.check != nil {
+				tt.check(t, diffs)
+			}
+		})
+	}
+}
+
+func TestCompare_MultipleMapChanges(t *testing.T) {
+	from := yml(`---
+config:
+  key1: value1
+  key2: value2
+  key3: value3
+`)
+	to := yml(`---
+config:
+  key1: changed
+  key3: value3
+  key4: added
+`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() error = %v", err)
+	}
+	if len(diffs) != 3 {
+		t.Fatalf("expected 3 diffs (modified, removed, added), got %d", len(diffs))
+	}
+	var hasModified, hasRemoved, hasAdded bool
+	for _, d := range diffs {
+		switch d.Path {
+		case "config.key1":
+			hasModified = d.Type == diffyml.DiffModified
+		case "config.key2":
+			hasRemoved = d.Type == diffyml.DiffRemoved
+		case "config.key4":
+			hasAdded = d.Type == diffyml.DiffAdded
+		}
+	}
+	if !hasModified {
+		t.Error("expected modified diff for config.key1")
+	}
+	if !hasRemoved {
+		t.Error("expected removed diff for config.key2")
+	}
+	if !hasAdded {
+		t.Error("expected added diff for config.key4")
+	}
+}
+
+func TestCompare_MapEdgeCases(t *testing.T) {
+	tests := []struct {
+		name    string
+		from    string
+		to      string
+		opts    *diffyml.Options
+		wantErr bool
+		check   func(t *testing.T, diffs []diffyml.Difference)
+	}{
+		{
+			name: "empty map to non-empty map",
+			from: `data: {}`,
+			to:   `data: {key: value}`,
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				if len(diffs) != 1 {
+					t.Fatalf("expected 1 diff, got %d", len(diffs))
+				}
+				if diffs[0].Type != diffyml.DiffAdded {
+					t.Errorf("expected DiffAdded, got %v", diffs[0].Type)
+				}
+				if diffs[0].Path != "data.key" {
+					t.Errorf("expected path 'data.key', got '%s'", diffs[0].Path)
+				}
+			},
+		},
+		{
+			name: "non-empty map to empty map",
+			from: `data: {key: value}`,
+			to:   `data: {}`,
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				if len(diffs) != 1 {
+					t.Fatalf("expected 1 diff, got %d", len(diffs))
+				}
+				if diffs[0].Type != diffyml.DiffRemoved {
+					t.Errorf("expected DiffRemoved, got %v", diffs[0].Type)
+				}
+				if diffs[0].Path != "data.key" {
+					t.Errorf("expected path 'data.key', got '%s'", diffs[0].Path)
+				}
+			},
+		},
+		{
+			name: "identical YAMLs - no diff",
+			from: `---
+foo:
+  bar: baz
+  list:
+  - one
+  - two
+`,
+			to: `---
+foo:
+  bar: baz
+  list:
+  - one
+  - two
+`,
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				if len(diffs) != 0 {
+					t.Errorf("expected 0 diffs for identical YAMLs, got %d", len(diffs))
+				}
+			},
+		},
+		{
+			name: "hash order change only - no diff",
+			from: `---
+list:
+- enabled: true
+- foo: bar
+  version: 1
+`,
+			to: `---
+list:
+- enabled: true
+- version: 1
+  foo: bar
+`,
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				if len(diffs) != 0 {
+					t.Errorf("expected 0 diffs for hash order change, got %d", len(diffs))
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			from := yml(tt.from)
+			to := yml(tt.to)
+
+			diffs, err := compare(from, to, tt.opts)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("compare() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if tt.check != nil {
+				tt.check(t, diffs)
+			}
+		})
+	}
+}
+
+func TestCompare_ListScalarOps(t *testing.T) {
+	tests := []struct {
+		name    string
+		from    string
+		to      string
+		opts    *diffyml.Options
+		wantErr bool
+		check   func(t *testing.T, diffs []diffyml.Difference)
+	}{
 		{
 			name: "string list entry added",
 			from: `---
@@ -317,303 +684,34 @@ some:
 				}
 			},
 		},
-		{
-			name: "hash order change only - no diff",
-			from: `---
-list:
-- enabled: true
-- foo: bar
-  version: 1
-`,
-			to: `---
-list:
-- enabled: true
-- version: 1
-  foo: bar
-`,
-			check: func(t *testing.T, diffs []diffyml.Difference) {
-				if len(diffs) != 0 {
-					t.Errorf("expected 0 diffs for hash order change, got %d", len(diffs))
-				}
-			},
-		},
-		{
-			name: "nested structure differences",
-			from: `---
-instance_groups:
-- name: web
-  instances: 1
-  networks:
-  - name: concourse
-    static_ips: 192.168.1.1
-`,
-			to: `---
-instance_groups:
-- name: web
-  instances: 1
-  networks:
-  - name: concourse
-    static_ips: 192.168.0.1
-`,
-			check: func(t *testing.T, diffs []diffyml.Difference) {
-				if len(diffs) < 1 {
-					t.Fatal("expected at least 1 diff")
-				}
-				if !hasModification(diffs, "192.168.1.1", "192.168.0.1") {
-					t.Error("expected IP address modification")
-				}
-			},
-		},
-		{
-			name: "list as root",
-			from: `---
-- name: one
-  version: 1
-- name: two
-  version: 2
-- name: three
-  version: 4
-`,
-			to: `---
-- name: one
-  version: 1
-- name: two
-  version: 2
-- name: three
-  version: 3
-`,
-			check: func(t *testing.T, diffs []diffyml.Difference) {
-				if len(diffs) < 1 {
-					t.Fatal("expected at least 1 diff")
-				}
-			},
-		},
-		{
-			name: "identical YAMLs - no diff",
-			from: `---
-foo:
-  bar: baz
-  list:
-  - one
-  - two
-`,
-			to: `---
-foo:
-  bar: baz
-  list:
-  - one
-  - two
-`,
-			check: func(t *testing.T, diffs []diffyml.Difference) {
-				if len(diffs) != 0 {
-					t.Errorf("expected 0 diffs for identical YAMLs, got %d", len(diffs))
-				}
-			},
-		},
-		{
-			name: "null to value change",
-			from: `foo: null`,
-			to:   `foo: "bar"`,
-			check: func(t *testing.T, diffs []diffyml.Difference) {
-				if len(diffs) < 1 {
-					t.Fatal("expected at least 1 diff")
-				}
-			},
-		},
-		{
-			name: "value to null change",
-			from: `foo: "bar"`,
-			to:   `foo: null`,
-			check: func(t *testing.T, diffs []diffyml.Difference) {
-				if len(diffs) < 1 {
-					t.Fatal("expected at least 1 diff")
-				}
-				if !hasDiffType(diffs, diffyml.DiffModified) {
-					t.Error("expected value to null to be reported as modification")
-				}
-			},
-		},
-		{
-			name: "type change string to map",
-			from: `value: hello`,
-			to: `value:
-  nested: data`,
-			check: func(t *testing.T, diffs []diffyml.Difference) {
-				if len(diffs) < 1 {
-					t.Fatal("expected at least 1 diff")
-				}
-				if !hasDiffType(diffs, diffyml.DiffModified) {
-					t.Error("expected type change to be reported as modification")
-				}
-			},
-		},
-		{
-			name: "ignore list order when configured",
-			from: `list: [a, b, c]`,
-			to:   `list: [c, b, a]`,
-			opts: &diffyml.Options{IgnoreOrderChanges: true},
-			check: func(t *testing.T, diffs []diffyml.Difference) {
-				if len(diffs) != 0 {
-					t.Errorf("expected 0 diffs when ignoring order, got %d", len(diffs))
-				}
-			},
-		},
-		{
-			name: "map key added with correct path",
-			from: `---
-root:
-  nested:
-    existing: value
-`,
-			to: `---
-root:
-  nested:
-    existing: value
-    newkey: newvalue
-`,
-			check: func(t *testing.T, diffs []diffyml.Difference) {
-				if len(diffs) != 1 {
-					t.Fatalf("expected 1 diff, got %d", len(diffs))
-				}
-				if diffs[0].Path != "root.nested.newkey" {
-					t.Errorf("expected path 'root.nested.newkey', got '%s'", diffs[0].Path)
-				}
-				if diffs[0].Type != diffyml.DiffAdded {
-					t.Errorf("expected DiffAdded, got %v", diffs[0].Type)
-				}
-				if diffs[0].To != "newvalue" {
-					t.Errorf("expected To='newvalue', got %v", diffs[0].To)
-				}
-			},
-		},
-		{
-			name: "map key removed with correct path",
-			from: `---
-root:
-  nested:
-    existing: value
-    oldkey: oldvalue
-`,
-			to: `---
-root:
-  nested:
-    existing: value
-`,
-			check: func(t *testing.T, diffs []diffyml.Difference) {
-				if len(diffs) != 1 {
-					t.Fatalf("expected 1 diff, got %d", len(diffs))
-				}
-				if diffs[0].Path != "root.nested.oldkey" {
-					t.Errorf("expected path 'root.nested.oldkey', got '%s'", diffs[0].Path)
-				}
-				if diffs[0].Type != diffyml.DiffRemoved {
-					t.Errorf("expected DiffRemoved, got %v", diffs[0].Type)
-				}
-				if diffs[0].From != "oldvalue" {
-					t.Errorf("expected From='oldvalue', got %v", diffs[0].From)
-				}
-			},
-		},
-		{
-			name: "deeply nested map modifications",
-			from: `---
-level1:
-  level2:
-    level3:
-      level4:
-        value: original
-`,
-			to: `---
-level1:
-  level2:
-    level3:
-      level4:
-        value: changed
-`,
-			check: func(t *testing.T, diffs []diffyml.Difference) {
-				if len(diffs) != 1 {
-					t.Fatalf("expected 1 diff, got %d", len(diffs))
-				}
-				if diffs[0].Path != "level1.level2.level3.level4.value" {
-					t.Errorf("expected path 'level1.level2.level3.level4.value', got '%s'", diffs[0].Path)
-				}
-				if diffs[0].Type != diffyml.DiffModified {
-					t.Errorf("expected DiffModified, got %v", diffs[0].Type)
-				}
-			},
-		},
-		{
-			name: "multiple map changes at same level",
-			from: `---
-config:
-  key1: value1
-  key2: value2
-  key3: value3
-`,
-			to: `---
-config:
-  key1: changed
-  key3: value3
-  key4: added
-`,
-			check: func(t *testing.T, diffs []diffyml.Difference) {
-				if len(diffs) != 3 {
-					t.Fatalf("expected 3 diffs (modified, removed, added), got %d", len(diffs))
-				}
-				var hasModified, hasRemoved, hasAdded bool
-				for _, d := range diffs {
-					switch d.Path {
-					case "config.key1":
-						hasModified = d.Type == diffyml.DiffModified
-					case "config.key2":
-						hasRemoved = d.Type == diffyml.DiffRemoved
-					case "config.key4":
-						hasAdded = d.Type == diffyml.DiffAdded
-					}
-				}
-				if !hasModified {
-					t.Error("expected modified diff for config.key1")
-				}
-				if !hasRemoved {
-					t.Error("expected removed diff for config.key2")
-				}
-				if !hasAdded {
-					t.Error("expected added diff for config.key4")
-				}
-			},
-		},
-		{
-			name: "empty map to non-empty map",
-			from: `data: {}`,
-			to:   `data: {key: value}`,
-			check: func(t *testing.T, diffs []diffyml.Difference) {
-				if len(diffs) != 1 {
-					t.Fatalf("expected 1 diff, got %d", len(diffs))
-				}
-				if diffs[0].Type != diffyml.DiffAdded {
-					t.Errorf("expected DiffAdded, got %v", diffs[0].Type)
-				}
-				if diffs[0].Path != "data.key" {
-					t.Errorf("expected path 'data.key', got '%s'", diffs[0].Path)
-				}
-			},
-		},
-		{
-			name: "non-empty map to empty map",
-			from: `data: {key: value}`,
-			to:   `data: {}`,
-			check: func(t *testing.T, diffs []diffyml.Difference) {
-				if len(diffs) != 1 {
-					t.Fatalf("expected 1 diff, got %d", len(diffs))
-				}
-				if diffs[0].Type != diffyml.DiffRemoved {
-					t.Errorf("expected DiffRemoved, got %v", diffs[0].Type)
-				}
-				if diffs[0].Path != "data.key" {
-					t.Errorf("expected path 'data.key', got '%s'", diffs[0].Path)
-				}
-			},
-		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			from := yml(tt.from)
+			to := yml(tt.to)
+
+			diffs, err := compare(from, to, tt.opts)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("compare() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if tt.check != nil {
+				tt.check(t, diffs)
+			}
+		})
+	}
+}
+
+func TestCompare_ListEntryPaths(t *testing.T) {
+	tests := []struct {
+		name    string
+		from    string
+		to      string
+		opts    *diffyml.Options
+		wantErr bool
+		check   func(t *testing.T, diffs []diffyml.Difference)
+	}{
 		{
 			name: "list entry added with correct path",
 			from: `---
@@ -670,6 +768,34 @@ items:
 				}
 			},
 		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			from := yml(tt.from)
+			to := yml(tt.to)
+
+			diffs, err := compare(from, to, tt.opts)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("compare() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if tt.check != nil {
+				tt.check(t, diffs)
+			}
+		})
+	}
+}
+
+func TestCompare_ListNestedPaths(t *testing.T) {
+	tests := []struct {
+		name    string
+		from    string
+		to      string
+		opts    *diffyml.Options
+		wantErr bool
+		check   func(t *testing.T, diffs []diffyml.Difference)
+	}{
 		{
 			name: "list of maps with nested changes",
 			from: `---
@@ -690,7 +816,6 @@ users:
 				if len(diffs) != 1 {
 					t.Fatalf("expected 1 diff, got %d", len(diffs))
 				}
-				// Path uses identifier (name: alice) instead of index
 				if diffs[0].Path != "users.alice.age" {
 					t.Errorf("expected path 'users.alice.age', got '%s'", diffs[0].Path)
 				}
@@ -726,6 +851,34 @@ config:
 				}
 			},
 		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			from := yml(tt.from)
+			to := yml(tt.to)
+
+			diffs, err := compare(from, to, tt.opts)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("compare() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if tt.check != nil {
+				tt.check(t, diffs)
+			}
+		})
+	}
+}
+
+func TestCompare_ListByIdentifier(t *testing.T) {
+	tests := []struct {
+		name    string
+		from    string
+		to      string
+		opts    *diffyml.Options
+		wantErr bool
+		check   func(t *testing.T, diffs []diffyml.Difference)
+	}{
 		{
 			name: "list of maps - item added by identifier",
 			from: `---
@@ -807,6 +960,129 @@ root:
 				}
 			},
 		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			from := yml(tt.from)
+			to := yml(tt.to)
+
+			diffs, err := compare(from, to, tt.opts)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("compare() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if tt.check != nil {
+				tt.check(t, diffs)
+			}
+		})
+	}
+}
+
+func TestCompare_ListEdgeCases(t *testing.T) {
+	tests := []struct {
+		name    string
+		from    string
+		to      string
+		opts    *diffyml.Options
+		wantErr bool
+		check   func(t *testing.T, diffs []diffyml.Difference)
+	}{
+		{
+			name: "list with mixed types",
+			from: `data: [1, "two", true, {key: value}]`,
+			to:   `data: [1, "two", false, {key: value}]`,
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				if len(diffs) != 1 {
+					t.Fatalf("expected 1 diff, got %d", len(diffs))
+				}
+				if diffs[0].Path != "data.2" {
+					t.Errorf("expected path 'data.2', got '%s'", diffs[0].Path)
+				}
+				if diffs[0].Type != diffyml.DiffModified {
+					t.Errorf("expected DiffModified, got %v", diffs[0].Type)
+				}
+			},
+		},
+		{
+			name: "list as root",
+			from: `---
+- name: one
+  version: 1
+- name: two
+  version: 2
+- name: three
+  version: 4
+`,
+			to: `---
+- name: one
+  version: 1
+- name: two
+  version: 2
+- name: three
+  version: 3
+`,
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				if len(diffs) < 1 {
+					t.Fatal("expected at least 1 diff")
+				}
+			},
+		},
+		{
+			name: "nested structure differences",
+			from: `---
+instance_groups:
+- name: web
+  instances: 1
+  networks:
+  - name: concourse
+    static_ips: 192.168.1.1
+`,
+			to: `---
+instance_groups:
+- name: web
+  instances: 1
+  networks:
+  - name: concourse
+    static_ips: 192.168.0.1
+`,
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				if len(diffs) < 1 {
+					t.Fatal("expected at least 1 diff")
+				}
+				if !hasModification(diffs, "192.168.1.1", "192.168.0.1") {
+					t.Error("expected IP address modification")
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			from := yml(tt.from)
+			to := yml(tt.to)
+
+			diffs, err := compare(from, to, tt.opts)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("compare() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if tt.check != nil {
+				tt.check(t, diffs)
+			}
+		})
+	}
+}
+
+func TestCompare_ListEmptyNonEmpty(t *testing.T) {
+	tests := []struct {
+		name    string
+		from    string
+		to      string
+		opts    *diffyml.Options
+		wantErr bool
+		check   func(t *testing.T, diffs []diffyml.Difference)
+	}{
 		{
 			name: "empty list to non-empty list",
 			from: `items: []`,
@@ -837,23 +1113,34 @@ root:
 				}
 			},
 		},
-		{
-			name: "list with mixed types",
-			from: `data: [1, "two", true, {key: value}]`,
-			to:   `data: [1, "two", false, {key: value}]`,
-			check: func(t *testing.T, diffs []diffyml.Difference) {
-				if len(diffs) != 1 {
-					t.Fatalf("expected 1 diff, got %d", len(diffs))
-				}
-				if diffs[0].Path != "data.2" {
-					t.Errorf("expected path 'data.2', got '%s'", diffs[0].Path)
-				}
-				if diffs[0].Type != diffyml.DiffModified {
-					t.Errorf("expected DiffModified, got %v", diffs[0].Type)
-				}
-			},
-		},
-		// Comparison options tests
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			from := yml(tt.from)
+			to := yml(tt.to)
+
+			diffs, err := compare(from, to, tt.opts)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("compare() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if tt.check != nil {
+				tt.check(t, diffs)
+			}
+		})
+	}
+}
+
+func TestCompare_SwapOption(t *testing.T) {
+	tests := []struct {
+		name    string
+		from    string
+		to      string
+		opts    *diffyml.Options
+		wantErr bool
+		check   func(t *testing.T, diffs []diffyml.Difference)
+	}{
 		{
 			name: "swap reverses from and to",
 			from: `value: original`,
@@ -889,6 +1176,34 @@ newkey: newvalue`,
 				}
 			},
 		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			from := yml(tt.from)
+			to := yml(tt.to)
+
+			diffs, err := compare(from, to, tt.opts)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("compare() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if tt.check != nil {
+				tt.check(t, diffs)
+			}
+		})
+	}
+}
+
+func TestCompare_IgnoreValues(t *testing.T) {
+	tests := []struct {
+		name    string
+		from    string
+		to      string
+		opts    *diffyml.Options
+		wantErr bool
+		check   func(t *testing.T, diffs []diffyml.Difference)
+	}{
 		{
 			name: "ignore value changes - only report structure",
 			from: `---
@@ -944,6 +1259,45 @@ oldkey: removed`,
 				}
 			},
 		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			from := yml(tt.from)
+			to := yml(tt.to)
+
+			diffs, err := compare(from, to, tt.opts)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("compare() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if tt.check != nil {
+				tt.check(t, diffs)
+			}
+		})
+	}
+}
+
+func TestCompare_IgnoreWhitespace(t *testing.T) {
+	tests := []struct {
+		name    string
+		from    string
+		to      string
+		opts    *diffyml.Options
+		wantErr bool
+		check   func(t *testing.T, diffs []diffyml.Difference)
+	}{
+		{
+			name: "ignore whitespace changes",
+			from: `{"foo": "bar"}`,
+			to:   `{"foo": "bar "}`,
+			opts: &diffyml.Options{IgnoreWhitespaceChanges: true},
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				if len(diffs) != 0 {
+					t.Errorf("expected 0 diffs, got %d", len(diffs))
+				}
+			},
+		},
 		{
 			name: "ignore whitespace - leading spaces",
 			from: `message: "hello"`,
@@ -988,6 +1342,45 @@ oldkey: removed`,
 				}
 				if diffs[0].Type != diffyml.DiffModified {
 					t.Errorf("expected DiffModified, got %v", diffs[0].Type)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			from := yml(tt.from)
+			to := yml(tt.to)
+
+			diffs, err := compare(from, to, tt.opts)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("compare() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if tt.check != nil {
+				tt.check(t, diffs)
+			}
+		})
+	}
+}
+
+func TestCompare_IgnoreOrder(t *testing.T) {
+	tests := []struct {
+		name    string
+		from    string
+		to      string
+		opts    *diffyml.Options
+		wantErr bool
+		check   func(t *testing.T, diffs []diffyml.Difference)
+	}{
+		{
+			name: "ignore list order when configured",
+			from: `list: [a, b, c]`,
+			to:   `list: [c, b, a]`,
+			opts: &diffyml.Options{IgnoreOrderChanges: true},
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				if len(diffs) != 0 {
+					t.Errorf("expected 0 diffs when ignoring order, got %d", len(diffs))
 				}
 			},
 		},
@@ -1053,6 +1446,34 @@ items:
 				}
 			},
 		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			from := yml(tt.from)
+			to := yml(tt.to)
+
+			diffs, err := compare(from, to, tt.opts)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("compare() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if tt.check != nil {
+				tt.check(t, diffs)
+			}
+		})
+	}
+}
+
+func TestCompare_CombinedOptions(t *testing.T) {
+	tests := []struct {
+		name    string
+		from    string
+		to      string
+		opts    *diffyml.Options
+		wantErr bool
+		check   func(t *testing.T, diffs []diffyml.Difference)
+	}{
 		{
 			name: "combined options - swap and ignore whitespace",
 			from: `value: "hello"`,

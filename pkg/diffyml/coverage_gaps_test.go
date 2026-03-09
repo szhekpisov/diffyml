@@ -547,6 +547,28 @@ func TestComputeLineDiff_MatchAtLastPosition(t *testing.T) {
 	if keeps != 1 {
 		t.Errorf("expected 1 keep (match at last position), got %d", keeps)
 	}
+
+	// Verify the edit ops correctly reconstruct both from and to.
+	// This kills the backtrack mutant at line 155:45 (< → <=) which produces
+	// an incorrect edit script when prev[k-1+offset] == prev[k+1+offset].
+	var reconstructedFrom, reconstructedTo []string
+	for _, op := range ops {
+		switch op.Type {
+		case editKeep:
+			reconstructedFrom = append(reconstructedFrom, op.Line)
+			reconstructedTo = append(reconstructedTo, op.Line)
+		case editDelete:
+			reconstructedFrom = append(reconstructedFrom, op.Line)
+		case editInsert:
+			reconstructedTo = append(reconstructedTo, op.Line)
+		}
+	}
+	if strings.Join(reconstructedFrom, ",") != strings.Join(from, ",") {
+		t.Errorf("reconstructed from %v != original %v", reconstructedFrom, from)
+	}
+	if strings.Join(reconstructedTo, ",") != strings.Join(to, ",") {
+		t.Errorf("reconstructed to %v != original %v", reconstructedTo, to)
+	}
 }
 
 func TestDetectRenames_AsymmetricTiebreaker(t *testing.T) {

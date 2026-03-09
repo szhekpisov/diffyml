@@ -110,7 +110,7 @@ func computeLineDiff(fromLines, toLines []string) []editOp {
 	var trace [][]int
 	finalD := 0
 
-	for d := 0; d <= m+n; d++ {
+	for d := range m + n + 1 {
 		snapshot := make([]int, vSize)
 		copy(snapshot, v)
 		trace = append(trace, snapshot)
@@ -169,7 +169,7 @@ func computeLineDiff(fromLines, toLines []string) []editOp {
 		}
 
 		// Record the non-diagonal move
-		if prevK < k {
+		if prevK == k-1 {
 			x--
 			ops = append(ops, editOp{Type: editDelete, Line: fromLines[x]})
 		} else {
@@ -179,9 +179,8 @@ func computeLineDiff(fromLines, toLines []string) []editOp {
 	}
 
 	// Record any remaining diagonal matches from the d=0 snake
-	for x > 0 && y > 0 {
+	for x > 0 {
 		x--
-		y--
 		ops = append(ops, editOp{Type: editKeep, Line: fromLines[x]})
 	}
 

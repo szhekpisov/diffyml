@@ -1,6 +1,6 @@
 # diffyml
 
-Structural diff for YAML files. Understands YAML semantics and detects Kubernetes resources.
+The fastest, most correct YAML diff tool — in a single-dependency binary.
 
 [![Tests](https://github.com/szhekpisov/diffyml/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/szhekpisov/diffyml/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/szhekpisov/diffyml/branch/main/graph/badge.svg)](https://codecov.io/gh/szhekpisov/diffyml)
@@ -9,16 +9,28 @@ Structural diff for YAML files. Understands YAML semantics and detects Kubernete
 [![Benchmark](https://github.com/szhekpisov/diffyml/actions/workflows/benchmark.yml/badge.svg?branch=main)](https://github.com/szhekpisov/diffyml/actions/workflows/benchmark.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/szhekpisov/diffyml/badge)](https://scorecard.dev/viewer/?uri=github.com/szhekpisov/diffyml)
 
+## Why diffyml?
+
+**Fastest at scale.** 7.8x faster than dyff at 5K lines, 23.9x faster at 50K lines, with the lowest memory footprint at every file size and near-linear scaling. See [benchmarks](#performance).
+
+**One dependency, zero surprises.** A single runtime dependency ([yaml.v3](https://github.com/yaml/go-yaml)) and pure Go stdlib. Minimal attack surface, auditable in minutes.
+
+**Gets YAML right.** Dotted keys, type preservation, mixed-type lists, nil values — concrete edge cases other tools get wrong. diffyml treats YAML semantics as first-class, not an afterthought.
+
+## Kubernetes Intelligence
+
+diffyml auto-detects Kubernetes resources and matches them by `apiVersion`, `kind`, and `metadata.name` — so diffs stay meaningful even when document order changes.
+
+- **Rename detection** — detects renamed/moved resources by content similarity (e.g., kustomize `configMapGenerator` hash-suffix changes like `app-config-abc123` → `app-config-def456`) and shows field-level diffs instead of bulk add/remove
+- **API migration support** — `--ignore-api-version` drops `apiVersion` from the matching key, so an upgrade from `apps/v1beta1` to `apps/v1` shows field-level diffs instead of a remove + add
+- **Drop-in for kubectl** — compare two directories of YAML files and use as `KUBECTL_EXTERNAL_DIFF` with no extra setup
+
 ## Features
 
-- **Minimal dependencies** — single runtime dependency ([yaml.v3](https://github.com/yaml/go-yaml)); pure Go stdlib otherwise. Small attack surface, fast by design ([benchmarks](#performance))
-- **Kubernetes-aware** — auto-detects and matches resources by apiVersion, kind, and metadata; optional apiVersion-agnostic matching for API migrations
-- **Rename detection** — detects renamed/moved Kubernetes resources by content similarity (e.g., kustomize configMapGenerator hash-suffix changes) and shows field-level diffs instead of bulk add/remove
 - **6 output formats** — detailed, compact, brief, GitHub, GitLab, Gitea
 - **Path filtering** — include/exclude paths with exact match or regex
 - **Remote files** — compare directly from HTTP/HTTPS URLs
 - **Certificate inspection** — inspects and compares embedded x509 certificates
-- **Directory comparison** — compare two directories of YAML files; works as `KUBECTL_EXTERNAL_DIFF`
 - **Chroot navigation** — focus comparison on a specific YAML subtree
 - ⭐ **AI-powered summaries** ⭐ — natural language summaries of changes via Anthropic API
 
@@ -271,7 +283,7 @@ Core packages enforce 95–100% test coverage thresholds in CI. [Mutation testin
 
 ## Performance
 
-Benchmarked against 4 Go-based YAML diff tools using [hyperfine](https://github.com/sharkdp/hyperfine) (20 runs, 5 warmup). Environment: Apple M1 Pro, macOS, Go 1.26.1.
+diffyml is the fastest YAML-aware diff tool at real-world file sizes. Benchmarked against 4 Go-based alternatives using [hyperfine](https://github.com/sharkdp/hyperfine) (20 runs, 5 warmup). Environment: Apple M1 Pro, macOS, Go 1.26.1.
 
 | File size | diffyml | [dyff](https://github.com/homeport/dyff) | [semihbkgr/yamldiff](https://github.com/semihbkgr/yamldiff) | [sters/yaml-diff](https://github.com/sters/yaml-diff) | [sahilm/yamldiff](https://github.com/sahilm/yamldiff) | diff |
 |-----------|--------:|-----:|----------:|------:|-------:|-----:|

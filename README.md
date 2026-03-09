@@ -11,7 +11,7 @@ The fastest, most correct YAML diff tool — in a single-dependency binary.
 
 ## Why diffyml?
 
-**Fastest at scale.** 7.8x faster than dyff at 5K lines, 23.9x faster at 50K lines, with the lowest memory footprint at every file size and near-linear scaling. See [benchmarks](#performance).
+**Fastest at scale.** Lowest memory footprint at every file size and near-linear scaling. See [benchmarks](#performance).
 
 **One dependency, zero surprises.** A single runtime dependency ([yaml.v3](https://github.com/yaml/go-yaml)) and pure Go stdlib. Minimal attack surface, auditable in minutes.
 
@@ -283,16 +283,7 @@ Core packages enforce 95–100% test coverage thresholds in CI. [Mutation testin
 
 ## Performance
 
-diffyml is the fastest YAML-aware diff tool at real-world file sizes. Benchmarked against 4 Go-based alternatives using [hyperfine](https://github.com/sharkdp/hyperfine) (20 runs, 5 warmup). Environment: Apple M1 Pro, macOS, Go 1.26.1.
-
-| File size | diffyml | [dyff](https://github.com/homeport/dyff) | [semihbkgr/yamldiff](https://github.com/semihbkgr/yamldiff) | [sters/yaml-diff](https://github.com/sters/yaml-diff) | [sahilm/yamldiff](https://github.com/sahilm/yamldiff) | diff |
-|-----------|--------:|-----:|----------:|------:|-------:|-----:|
-| ~70 lines | 5.7 ms | 15.3 ms | 3.9 ms | 4.0 ms | **3.7 ms** | 2.2 ms |
-| ~530 lines | 6.3 ms | 29.2 ms | **5.2 ms** | 11.5 ms | 16.1 ms | 2.6 ms |
-| ~5K lines | **22.3 ms** | 173.8 ms | 27.9 ms | 984 ms | 1,370 ms | 6.2 ms |
-| ~50K lines | **152.3 ms** | 3,647 ms | 245.7 ms | — | — | 46.2 ms |
-
-Lowest memory footprint at every size (18.4 MB at 5K lines vs 21–326 MB for alternatives). See [PERFORMANCE.md](PERFORMANCE.md) for full methodology and results.
+diffyml is the fastest YAML-aware diff tool at real-world file sizes, with the lowest memory footprint at every size. See [PERFORMANCE.md](PERFORMANCE.md) for full methodology and results.
 
 <details>
 <summary>Reproduce benchmarks</summary>
@@ -356,7 +347,7 @@ make mutation       # run mutation testing (requires gremlins)
 
 ## Acknowledgments
 
-diffyml is inspired by [dyff](https://github.com/homeport/dyff) by [HQS Quantum Simulations](https://github.com/homeport).
+This project is heavily inspired by [dyff](https://github.com/homeport/dyff), and it wouldn't be possible without the hard work of the maintainers and contributors of that project.
 
 ## License
 

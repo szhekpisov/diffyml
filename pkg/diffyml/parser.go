@@ -160,10 +160,6 @@ func (e *ParseError) Unwrap() error {
 
 // wrapParseError wraps a yaml parsing error with line information if available.
 func wrapParseError(err error) error {
-	if err == nil {
-		return nil
-	}
-
 	// yaml.v3 includes line info in the error message
 	// Try to extract it if possible
 	if typeErr, ok := err.(*yaml.TypeError); ok {

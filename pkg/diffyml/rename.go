@@ -86,102 +86,97 @@ type renamePair struct {
 	score   int
 }
 
-// detectRenames finds renamed documents among unmatched K8s resources.
-func detectRenames(from, to []any, unmatchedFrom, unmatchedTo []int, opts *Options) (renameMatched map[int]int, remainingFrom, remainingTo []int) {
-	renameMatched = make(map[int]int)
-
-	// Early return if disabled or either list is empty
-	if !opts.DetectRenames || len(unmatchedFrom) == 0 || len(unmatchedTo) == 0 {
-		return renameMatched, unmatchedFrom, unmatchedTo
-	}
-
-	// Filter to K8s documents only; non-K8s pass straight through to remaining
-	var k8sFrom, k8sTo []int
-	for _, idx := range unmatchedFrom {
-		if from[idx] != nil && IsKubernetesResource(from[idx]) {
-			k8sFrom = append(k8sFrom, idx)
+// filterK8sDocuments separates unmatched indices into K8s and non-K8s groups.
+func filterK8sDocuments(docs []any, indices []int) (k8s, nonK8s []int) {
+	for _, idx := range indices {
+		if docs[idx] != nil && IsKubernetesResource(docs[idx]) {
+			k8s = append(k8s, idx)
 		} else {
-			remainingFrom = append(remainingFrom, idx)
+			nonK8s = append(nonK8s, idx)
 		}
 	}
-	for _, idx := range unmatchedTo {
-		if to[idx] != nil && IsKubernetesResource(to[idx]) {
-			k8sTo = append(k8sTo, idx)
-		} else {
-			remainingTo = append(remainingTo, idx)
-		}
-	}
+	return k8s, nonK8s
+}
 
-	// Check rename limit
-	maxCandidates := max(len(k8sFrom), len(k8sTo))
-	if maxCandidates > renameLimit {
-		remainingFrom = append(remainingFrom, k8sFrom...)
-		remainingTo = append(remainingTo, k8sTo...)
-		return renameMatched, remainingFrom, remainingTo
-	}
-
-	// If either K8s list is empty after filtering, no renames possible
-	if len(k8sFrom) == 0 || len(k8sTo) == 0 {
-		remainingFrom = append(remainingFrom, k8sFrom...)
-		remainingTo = append(remainingTo, k8sTo...)
-		return renameMatched, remainingFrom, remainingTo
-	}
-
-	// Serialize candidates and build similarity indices
+// buildRenamePairs builds scored rename pairs from K8s candidate indices.
+func buildRenamePairs(from, to []any, k8sFrom, k8sTo []int) []renamePair {
 	fromCandidates := make(map[int]*similarityIndex)
 	toCandidates := make(map[int]*similarityIndex)
 
 	for _, idx := range k8sFrom {
 		fromCandidates[idx] = newSimilarityIndex(serializeDocument(from[idx]))
 	}
-
 	for _, idx := range k8sTo {
 		toCandidates[idx] = newSimilarityIndex(serializeDocument(to[idx]))
 	}
 
-	// Build scored pairs with size-ratio early rejection
 	var pairs []renamePair
 	for _, fromIdx := range k8sFrom {
 		fc := fromCandidates[fromIdx]
 		for _, toIdx := range k8sTo {
 			tc := toCandidates[toIdx]
-
-			// Size ratio early rejection
 			minLen := min(fc.numBytes, tc.numBytes)
 			maxLen := max(fc.numBytes, tc.numBytes)
 			if maxLen != 0 && minLen*100/maxLen < renameScoreThreshold {
 				continue
 			}
-
 			s := fc.score(tc)
 			if s >= renameScoreThreshold {
 				pairs = append(pairs, renamePair{fromIdx: fromIdx, toIdx: toIdx, score: s})
 			}
 		}
 	}
+	return pairs
+}
 
-	// Sort descending by score, tiebreak by ascending fromIdx then toIdx
-	slices.SortStableFunc(pairs, func(a, b renamePair) int {
-		return cmp.Or(
-			cmp.Compare(b.score, a.score),     // descending score
-			cmp.Compare(a.fromIdx, b.fromIdx), // ascending fromIdx
-			cmp.Compare(a.toIdx, b.toIdx),     // ascending toIdx
-		)
-	})
-
-	// Greedy assignment
-	assignedFrom := make(map[int]bool)
-	assignedTo := make(map[int]bool)
+// greedyAssignRenames performs greedy assignment of rename pairs by descending score.
+func greedyAssignRenames(pairs []renamePair) (matched map[int]int, assignedFrom, assignedTo map[int]bool) {
+	matched = make(map[int]int)
+	assignedFrom = make(map[int]bool)
+	assignedTo = make(map[int]bool)
 	for _, pair := range pairs {
 		if assignedFrom[pair.fromIdx] || assignedTo[pair.toIdx] {
 			continue
 		}
-		renameMatched[pair.fromIdx] = pair.toIdx
+		matched[pair.fromIdx] = pair.toIdx
 		assignedFrom[pair.fromIdx] = true
 		assignedTo[pair.toIdx] = true
 	}
+	return matched, assignedFrom, assignedTo
+}
 
-	// Remaining = non-K8s passthrough (already added) + unassigned K8s candidates
+// detectRenames finds renamed documents among unmatched K8s resources.
+func detectRenames(from, to []any, unmatchedFrom, unmatchedTo []int, opts *Options) (renameMatched map[int]int, remainingFrom, remainingTo []int) {
+	renameMatched = make(map[int]int)
+
+	if !opts.DetectRenames || len(unmatchedFrom) == 0 || len(unmatchedTo) == 0 {
+		return renameMatched, unmatchedFrom, unmatchedTo
+	}
+
+	k8sFrom, nonK8sFrom := filterK8sDocuments(from, unmatchedFrom)
+	k8sTo, nonK8sTo := filterK8sDocuments(to, unmatchedTo)
+	remainingFrom = nonK8sFrom
+	remainingTo = nonK8sTo
+
+	maxCandidates := max(len(k8sFrom), len(k8sTo))
+	if maxCandidates > renameLimit || len(k8sFrom) == 0 || len(k8sTo) == 0 {
+		remainingFrom = append(remainingFrom, k8sFrom...)
+		remainingTo = append(remainingTo, k8sTo...)
+		return renameMatched, remainingFrom, remainingTo
+	}
+
+	pairs := buildRenamePairs(from, to, k8sFrom, k8sTo)
+
+	slices.SortStableFunc(pairs, func(a, b renamePair) int {
+		return cmp.Or(
+			cmp.Compare(b.score, a.score),
+			cmp.Compare(a.fromIdx, b.fromIdx),
+			cmp.Compare(a.toIdx, b.toIdx),
+		)
+	})
+
+	renameMatched, assignedFrom, assignedTo := greedyAssignRenames(pairs)
+
 	for _, idx := range k8sFrom {
 		if !assignedFrom[idx] {
 			remainingFrom = append(remainingFrom, idx)

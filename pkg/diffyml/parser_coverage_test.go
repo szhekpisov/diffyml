@@ -8,6 +8,45 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// drainDocumentParser reads all documents from a DocumentParser and returns them.
+// If wantErr is true, returns (nil, true) when an error is encountered.
+func drainDocumentParser(t *testing.T, p *DocumentParser, wantErr bool) (docs []any, gotErr bool) {
+	t.Helper()
+	for {
+		doc, err := p.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			if wantErr {
+				return nil, true
+			}
+			t.Fatalf("unexpected error: %v", err)
+		}
+		docs = append(docs, doc)
+	}
+	return docs, false
+}
+
+// drainNodeDocumentParser reads all nodes from a NodeDocumentParser and returns them.
+func drainNodeDocumentParser(t *testing.T, p *NodeDocumentParser, wantErr bool) (nodes []*yaml.Node, gotErr bool) {
+	t.Helper()
+	for {
+		node, err := p.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			if wantErr {
+				return nil, true
+			}
+			t.Fatalf("unexpected error: %v", err)
+		}
+		nodes = append(nodes, node)
+	}
+	return nodes, false
+}
+
 func TestDocumentParser(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -49,19 +88,9 @@ func TestDocumentParser(t *testing.T) {
 				t.Fatalf("expected initial doc count 0, got %d", p.DocumentCount())
 			}
 
-			var docs []any
-			for {
-				doc, err := p.Next()
-				if err == io.EOF {
-					break
-				}
-				if err != nil {
-					if tt.wantErr {
-						return
-					}
-					t.Fatalf("unexpected error: %v", err)
-				}
-				docs = append(docs, doc)
+			docs, gotErr := drainDocumentParser(t, p, tt.wantErr)
+			if gotErr {
+				return
 			}
 
 			if tt.wantErr {
@@ -84,16 +113,7 @@ func TestDocumentParser(t *testing.T) {
 	// Sub-test: done stays EOF
 	t.Run("done stays EOF", func(t *testing.T) {
 		p := NewDocumentParser([]byte("x: 1\n"))
-		// Drain
-		for {
-			_, err := p.Next()
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-		}
+		drainDocumentParser(t, p, false)
 		// Subsequent call should still be EOF
 		_, err := p.Next()
 		if err != io.EOF {
@@ -142,19 +162,9 @@ func TestNodeDocumentParser(t *testing.T) {
 				t.Fatalf("expected initial doc count 0, got %d", p.DocumentCount())
 			}
 
-			var nodes []*yaml.Node
-			for {
-				node, err := p.Next()
-				if err == io.EOF {
-					break
-				}
-				if err != nil {
-					if tt.wantErr {
-						return
-					}
-					t.Fatalf("unexpected error: %v", err)
-				}
-				nodes = append(nodes, node)
+			nodes, gotErr := drainNodeDocumentParser(t, p, tt.wantErr)
+			if gotErr {
+				return
 			}
 
 			if tt.wantErr {
@@ -176,15 +186,7 @@ func TestNodeDocumentParser(t *testing.T) {
 
 	t.Run("done stays EOF", func(t *testing.T) {
 		p := NewNodeDocumentParser([]byte("x: 1\n"))
-		for {
-			_, err := p.Next()
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-		}
+		drainNodeDocumentParser(t, p, false)
 		_, err := p.Next()
 		if err != io.EOF {
 			t.Errorf("expected io.EOF on repeated call, got %v", err)

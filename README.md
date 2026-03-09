@@ -11,7 +11,7 @@ The fastest, most correct YAML diff tool — in a single-dependency binary.
 
 ## Why diffyml?
 
-**Fastest at scale.** Lowest memory footprint at every file size and near-linear scaling. See [benchmarks](#performance).
+**Fastest at scale.** Lowest memory footprint at every file size and near-linear scaling. See [PERFORMANCE.md](PERFORMANCE.md) for methodology and results.
 
 **One dependency, zero surprises.** A single runtime dependency ([yaml.v3](https://github.com/yaml/go-yaml)) and pure Go stdlib. Minimal attack surface, auditable in minutes.
 
@@ -281,26 +281,6 @@ Every push and PR is checked by:
 
 Core packages enforce 95–100% test coverage thresholds in CI. [Mutation testing](https://github.com/go-gremlins/gremlins) validates that tests catch real bugs, not just exercise code paths.
 
-## Performance
-
-diffyml is the fastest YAML-aware diff tool at real-world file sizes, with the lowest memory footprint at every size. See [PERFORMANCE.md](PERFORMANCE.md) for full methodology and results.
-
-<details>
-<summary>Reproduce benchmarks</summary>
-
-```bash
-# Full benchmark (small, medium, large)
-make bench-compare
-
-# Include xlarge (sters/yaml-diff and sahilm/yamldiff are auto-excluded at this size)
-bash bench/compare/run.sh --sizes small,medium,large,xlarge
-
-# Quick check with fewer runs
-bash bench/compare/run.sh --runs 3
-```
-
-</details>
-
 ## Contributing
 
 Contributions welcome! [Open an issue](https://github.com/szhekpisov/diffyml/issues) for bugs or feature requests.
@@ -332,7 +312,7 @@ pre-commit install
 make test           # run all tests
 make ci             # full CI pipeline locally (fmt + vet + test + coverage + security)
 make bench          # run benchmarks
-make bench-compare  # compare against alternative tools
+make bench-compare  # compare against alternative tools (see PERFORMANCE.md)
 make coverage       # generate HTML coverage report
 make mutation       # run mutation testing (requires gremlins)
 ```

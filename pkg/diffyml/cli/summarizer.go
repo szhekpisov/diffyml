@@ -142,23 +142,8 @@ func (s *Summarizer) Summarize(ctx context.Context, groups []diffyml.DiffGroup) 
 	}
 
 	// Handle HTTP error status codes
-	//nolint:gocritic // if-else kept intentionally: switch/case conditions fall outside Go coverage blocks, causing gremlins to misclassify mutations as NOT COVERED
-	if resp.StatusCode == 401 {
-		return "", fmt.Errorf("invalid API key")
-	} else if resp.StatusCode == 429 {
-		return "", fmt.Errorf("rate limited")
-	} else if resp.StatusCode >= 500 {
-		msg := "unknown error"
-		if result.Error != nil && result.Error.Message != "" {
-			msg = result.Error.Message
-		}
-		return "", fmt.Errorf("server error: %s", msg)
-	} else if resp.StatusCode != 200 {
-		msg := fmt.Sprintf("HTTP %d", resp.StatusCode)
-		if result.Error != nil && result.Error.Message != "" {
-			msg = result.Error.Message
-		}
-		return "", fmt.Errorf("API error: %s", msg)
+	if err := checkHTTPError(resp.StatusCode, &result); err != nil {
+		return "", err
 	}
 
 	// Extract text from first text content block
@@ -172,6 +157,29 @@ func (s *Summarizer) Summarize(ctx context.Context, groups []diffyml.DiffGroup) 
 	}
 
 	return "", fmt.Errorf("unexpected response format: no text content")
+}
+
+// checkHTTPError converts HTTP error status codes into descriptive errors.
+func checkHTTPError(statusCode int, result *messagesResponse) error {
+	//nolint:gocritic // if-else kept intentionally: switch/case conditions fall outside Go coverage blocks, causing gremlins to misclassify mutations as NOT COVERED
+	if statusCode == 401 {
+		return fmt.Errorf("invalid API key")
+	} else if statusCode == 429 {
+		return fmt.Errorf("rate limited")
+	} else if statusCode >= 500 {
+		msg := "unknown error"
+		if result.Error != nil && result.Error.Message != "" {
+			msg = result.Error.Message
+		}
+		return fmt.Errorf("server error: %s", msg)
+	} else if statusCode != 200 {
+		msg := fmt.Sprintf("HTTP %d", statusCode)
+		if result.Error != nil && result.Error.Message != "" {
+			msg = result.Error.Message
+		}
+		return fmt.Errorf("API error: %s", msg)
+	}
+	return nil
 }
 
 // diffTypeLabel returns the prompt label for a DiffType.

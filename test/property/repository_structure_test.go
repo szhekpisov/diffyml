@@ -346,7 +346,6 @@ func TestProperty18_NoPrebuiltBinaries(t *testing.T) {
 		}
 
 		if info.Mode()&0111 != 0 {
-			// Exclude script files
 			if strings.HasSuffix(path, ".sh") ||
 				strings.HasSuffix(path, ".bash") ||
 				strings.HasSuffix(path, ".py") ||
@@ -354,19 +353,7 @@ func TestProperty18_NoPrebuiltBinaries(t *testing.T) {
 				strings.HasSuffix(path, ".pl") {
 				return nil
 			}
-
-			content, err := os.ReadFile(path)
-			if err != nil {
-				return nil
-			}
-
-			if len(content) > 0 {
-				for _, b := range content[:minInt(len(content), 512)] {
-					if b == 0 {
-						t.Fatalf("Found pre-built binary: %s", path)
-					}
-				}
-			}
+			checkForBinaryContent(t, path)
 		}
 
 		return nil
@@ -408,6 +395,22 @@ func TestProperty18_NoPrebuiltBinaries_WithCommonNames(t *testing.T) {
 				if _, err := os.Stat(binaryPath); err == nil {
 					t.Fatalf("Found pre-built binary in %s: %s", dir, binaryName)
 				}
+			}
+		}
+	}
+}
+
+// checkForBinaryContent checks if a file contains binary content (null bytes in first 512 bytes).
+func checkForBinaryContent(t *testing.T, path string) {
+	t.Helper()
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return
+	}
+	if len(content) > 0 {
+		for _, b := range content[:minInt(len(content), 512)] {
+			if b == 0 {
+				t.Fatalf("Found pre-built binary: %s", path)
 			}
 		}
 	}

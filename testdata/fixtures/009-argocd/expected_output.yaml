@@ -7496,19 +7496,19 @@ Found 313 differences
     - /var/run/argocd/argocd-cmp-server
 
 50:spec.template.spec.containers.argocd-server.env
-  + one list entry added:
-    - name: ARGOCD_APPLICATIONSET_CONTROLLER_ENABLE_GITHUB_API_METRICS
-      valueFrom:
-        configMapKeyRef:
-          key: applicationsetcontroller.enable.github.api.metrics
-          name: argocd-cmd-params-cm
-          optional: true
-
   - one list entry removed:
     - name: ARGOCD_SERVER_LOGIN_ATTEMPTS_EXPIRATION
       valueFrom:
         configMapKeyRef:
           key: server.login.attempts.expiration
+          name: argocd-cmd-params-cm
+          optional: true
+
+  + one list entry added:
+    - name: ARGOCD_APPLICATIONSET_CONTROLLER_ENABLE_GITHUB_API_METRICS
+      valueFrom:
+        configMapKeyRef:
+          key: applicationsetcontroller.enable.github.api.metrics
           name: argocd-cmd-params-cm
           optional: true
 

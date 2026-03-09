@@ -148,7 +148,7 @@ func (f *CompactFormatter) formatHeader(sb *strings.Builder, diffs []Difference,
 	sb.WriteString(colorStart(opts, colorYellow))
 	fmt.Fprintf(sb, "Found %d difference(s)", len(diffs))
 	sb.WriteString(colorEnd(opts))
-	fmt.Fprintf(sb, " (%d added, %d removed, %d modified)\n\n", added, removed, modified)
+	fmt.Fprintf(sb, " (%d removed, %d added, %d modified)\n\n", removed, added, modified)
 }
 
 func (f *CompactFormatter) formatDiff(sb *strings.Builder, diff Difference, opts *FormatOptions) {
@@ -289,11 +289,11 @@ func (f *BriefFormatter) Format(diffs []Difference, _ *FormatOptions) string {
 	}
 
 	var parts []string
-	if added > 0 {
-		parts = append(parts, fmt.Sprintf("%d added", added))
-	}
 	if removed > 0 {
 		parts = append(parts, fmt.Sprintf("%d removed", removed))
+	}
+	if added > 0 {
+		parts = append(parts, fmt.Sprintf("%d added", added))
 	}
 	if modified > 0 {
 		parts = append(parts, fmt.Sprintf("%d modified", modified))

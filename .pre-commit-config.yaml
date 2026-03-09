@@ -29,6 +29,13 @@ repos:
         pass_filenames: false
         always_run: true
 
+      - id: check-doc
+        name: check doc.go sync
+        entry: make check-doc
+        language: system
+        pass_filenames: false
+        always_run: true
+
       - id: govulncheck
         name: govulncheck
         entry: make govulncheck

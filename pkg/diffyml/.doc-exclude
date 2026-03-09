@@ -1,0 +1,53 @@
+# Exported symbols intentionally omitted from doc.go overview.
+# When adding a new export, the check-doc hook will fail unless you either:
+#   1. Add [SymbolName] to doc.go  (for important API surfaces)
+#   2. Add SymbolName here         (for internal/supporting symbols)
+
+# Color / terminal helpers (used by CLI layer, not typical library consumers)
+ColorConfig
+ColorMode
+ColorReset
+ContextColorCode
+DetailedColorCode
+IsTerminal
+NewColorConfig
+ParseColorMode
+ResolveColorMode
+TrueColorCode
+
+# Certificate inspection internals
+FormatCertificate
+IsPEMCertificate
+
+# Chroot error type (returned by Compare, documented via error interface)
+ChrootError
+
+# Directory-mode supporting types (documented via BuildFilePairPlan)
+FilePair
+FilePairType
+FormatFileHeader
+
+# Formatter supporting types (documented via Formatter / FormatterByName)
+DiffGroup
+DiffType
+FormatOptions
+StructuredFormatter
+
+# Kubernetes matching internals
+CanMatchByIdentifierWithAdditional
+IdentifierWithAdditional
+
+# Parser internals (most users call Compare directly)
+DocumentParser
+NewDocumentParser
+NodeDocumentParser
+NewNodeDocumentParser
+ParseError
+
+# Constructors documented under their parent type
+NewOrderedMap
+
+# Serialization / summary helpers
+FormatSummaryOutput
+SerializeValue
+ValidateFileExists

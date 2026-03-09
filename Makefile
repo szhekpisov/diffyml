@@ -1,4 +1,4 @@
-.PHONY: build coverage check-coverage bench bench-cpu bench-mem bench-compare govulncheck golangci-lint security test e2e fmt lint vet ci fixture changelog fuzz fuzz-long mutation mutation-dry
+.PHONY: build coverage check-coverage check-doc bench bench-cpu bench-mem bench-compare govulncheck golangci-lint security test e2e fmt lint vet ci fixture changelog fuzz fuzz-long mutation mutation-dry
 
 BIN = /tmp/diffyml-dev
 
@@ -41,6 +41,31 @@ check-coverage:
 		exit 1; \
 	fi; \
 	echo "All coverage thresholds passed"
+
+check-doc:
+	@DOC=pkg/diffyml/doc.go; \
+	EXCLUDE=pkg/diffyml/.doc-exclude; \
+	FAIL=0; \
+	echo ""; \
+	echo "=== doc.go Sync Check ==="; \
+	DOC_LINKS=$$(grep -oE '\[[A-Z][A-Za-z0-9]*\]' "$$DOC" | tr -d '[]' | sort -u); \
+	for link in $$DOC_LINKS; do \
+		if ! go doc ./pkg/diffyml/ "$$link" >/dev/null 2>&1; then \
+			echo "  BROKEN: [$$link] references a non-existent symbol"; \
+			FAIL=1; \
+		fi; \
+	done; \
+	EXCLUDES=""; \
+	if [ -f "$$EXCLUDE" ]; then EXCLUDES=$$(grep -vE '^(#|$$)' "$$EXCLUDE"); fi; \
+	for sym in $$(find pkg/diffyml -maxdepth 1 -type f -name '*.go' ! -name '*_test.go' -exec grep -hE '^(type|func) [A-Z][A-Za-z0-9]+' {} + | sed -E 's/^(type|func) ([A-Z][A-Za-z0-9]*).*/\2/' | sort -u); do \
+		if echo "$$DOC_LINKS" | grep -qx "$$sym"; then continue; fi; \
+		if [ -n "$$EXCLUDES" ] && echo "$$EXCLUDES" | grep -qx "$$sym"; then continue; fi; \
+		echo "  UNDOCUMENTED: $$sym (add [$$sym] to doc.go or $$sym to .doc-exclude)"; \
+		FAIL=1; \
+	done; \
+	echo ""; \
+	if [ "$$FAIL" -eq 1 ]; then echo "doc.go sync check FAILED"; exit 1; fi; \
+	echo "doc.go sync check passed"
 
 bench:
 	go test -bench=. -benchmem -count=1 ./pkg/diffyml/

@@ -24,7 +24,7 @@ linters:
         - shadow
     gosec:
       excludes:
-        # G602 (slice bounds) — false positive on LCS diff algorithm with guarded indices
+        # G602 (slice bounds) — false positive on Myers diff algorithm with guarded indices
         - G602
     staticcheck:
       checks:

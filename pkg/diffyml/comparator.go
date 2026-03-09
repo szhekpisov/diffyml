@@ -68,36 +68,38 @@ func hasK8sDocuments(from, to []any) bool {
 	return false
 }
 
-// compareNodes recursively compares two YAML nodes.
-func compareNodes(path string, from, to any, opts *Options) []Difference {
-	var diffs []Difference
-
-	// Handle nil cases
+// compareNodeNils handles nil cases for compareNodes.
+// Returns diffs and true if an early return is appropriate.
+func compareNodeNils(path string, from, to any, opts *Options) ([]Difference, bool) {
 	if from == nil && to == nil {
-		return diffs
+		return nil, true
 	}
-
 	if from == nil {
-		// Value was added
 		return []Difference{{
 			Path: cleanPath(path),
 			Type: DiffAdded,
 			From: nil,
 			To:   to,
-		}}
+		}}, true
 	}
-
 	if to == nil {
-		// Value changed to null - treat as modification (key still exists)
 		if opts != nil && opts.IgnoreValueChanges {
-			return diffs
+			return nil, true
 		}
 		return []Difference{{
 			Path: cleanPath(path),
 			Type: DiffModified,
 			From: from,
 			To:   nil,
-		}}
+		}}, true
+	}
+	return nil, false
+}
+
+// compareNodes recursively compares two YAML nodes.
+func compareNodes(path string, from, to any, opts *Options) []Difference {
+	if diffs, done := compareNodeNils(path, from, to, opts); done {
+		return diffs
 	}
 
 	// Get types
@@ -107,7 +109,7 @@ func compareNodes(path string, from, to any, opts *Options) []Difference {
 	// Type mismatch - treat as modification
 	if fromType != toType {
 		if opts != nil && opts.IgnoreValueChanges {
-			return diffs
+			return nil
 		}
 		return []Difference{{
 			Path: cleanPath(path),
@@ -121,32 +123,31 @@ func compareNodes(path string, from, to any, opts *Options) []Difference {
 	switch fromVal := from.(type) {
 	case *OrderedMap:
 		toOrderedMap := to.(*OrderedMap) // safe: type switch guarantees matching type
-		diffs = append(diffs, compareOrderedMaps(path, fromVal, toOrderedMap, opts)...)
+		return compareOrderedMaps(path, fromVal, toOrderedMap, opts)
 
 	case map[string]any:
 		toMap := to.(map[string]any) // safe: type switch guarantees matching type
-		diffs = append(diffs, compareMaps(path, fromVal, toMap, opts)...)
+		return compareMaps(path, fromVal, toMap, opts)
 
 	case []any:
 		toVal := to.([]any) // safe: type switch guarantees matching type
-		diffs = append(diffs, compareLists(path, fromVal, toVal, opts)...)
+		return compareLists(path, fromVal, toVal, opts)
 
 	default:
 		// Scalar comparison
 		if !equalValues(from, to, opts) {
 			if opts != nil && opts.IgnoreValueChanges {
-				return diffs
+				return nil
 			}
-			diffs = append(diffs, Difference{
+			return []Difference{{
 				Path: cleanPath(path),
 				Type: DiffModified,
 				From: from,
 				To:   to,
-			})
+			}}
 		}
+		return nil
 	}
-
-	return diffs
 }
 
 // compareOrderedMaps compares two OrderedMap nodes preserving source document order
@@ -431,6 +432,104 @@ func getIdentifier(val any, opts *Options) any {
 	return nil
 }
 
+// detectListOrderChanges detects order changes among matched list identifiers.
+func detectListOrderChanges(path string, fromIDs []any, fromIndex, toIndex map[any]int, toIDCount int) *Difference {
+	hasUniqueIDs := len(fromIDs) == len(fromIndex) && len(toIndex) == toIDCount
+
+	if !hasUniqueIDs {
+		return nil
+	}
+
+	// Collect identifiers that exist in both, in from-order
+	var commonFromOrder []any
+	for _, id := range fromIDs {
+		if _, ok := toIndex[id]; ok {
+			commonFromOrder = append(commonFromOrder, id)
+		}
+	}
+
+	if len(commonFromOrder) < 2 {
+		return nil
+	}
+
+	// Build to-order for the common identifiers
+	type idxID struct {
+		idx int
+		id  any
+	}
+	var toSorted []idxID
+	for _, id := range commonFromOrder {
+		toSorted = append(toSorted, idxID{toIndex[id], id})
+	}
+	slices.SortFunc(toSorted, func(a, b idxID) int {
+		return cmp.Compare(a.idx, b.idx)
+	})
+
+	// Check if from-order and to-order differ
+	orderChanged := false
+	for i, id := range commonFromOrder {
+		if id != toSorted[i].id {
+			orderChanged = true
+			break
+		}
+	}
+
+	if !orderChanged {
+		return nil
+	}
+
+	toOrder := make([]any, len(toSorted))
+	for i, s := range toSorted {
+		toOrder[i] = s.id
+	}
+	return &Difference{
+		Path: cleanPath(path),
+		Type: DiffOrderChanged,
+		From: commonFromOrder,
+		To:   toOrder,
+	}
+}
+
+// compareUnidentifiedItems compares list items that lack usable identifiers using unordered matching.
+func compareUnidentifiedItems(path string, from, to []any, fromNoID, toNoID []int, opts *Options) []Difference {
+	var diffs []Difference
+	toNoIDMatched := make([]bool, len(toNoID))
+	for _, fromIdx := range fromNoID {
+		fromItem := from[fromIdx]
+		found := false
+		for j, toIdx := range toNoID {
+			if toNoIDMatched[j] {
+				continue
+			}
+			if deepEqual(fromItem, to[toIdx], opts) {
+				toNoIDMatched[j] = true
+				found = true
+				break
+			}
+		}
+		if !found {
+			diffs = append(diffs, Difference{
+				Path: fmt.Sprintf("%s.%d", cleanPath(path), fromIdx),
+				Type: DiffRemoved,
+				From: fromItem,
+				To:   nil,
+			})
+		}
+	}
+	for j, toIdx := range toNoID {
+		if toNoIDMatched[j] {
+			continue
+		}
+		diffs = append(diffs, Difference{
+			Path: fmt.Sprintf("%s.%d", cleanPath(path), toIdx),
+			Type: DiffAdded,
+			From: nil,
+			To:   to[toIdx],
+		})
+	}
+	return diffs
+}
+
 // compareListsByIdentifier compares lists matching by identifier field.
 func compareListsByIdentifier(path string, from, to []any, opts *Options) []Difference {
 	var diffs []Difference
@@ -464,53 +563,9 @@ func compareListsByIdentifier(path string, from, to []any, opts *Options) []Diff
 	}
 
 	// Detect order changes among matched identifiers.
-	// Only when identifiers are unique in both lists (duplicates make order comparison meaningless).
-	hasUniqueIDs := len(fromIDs) == len(fromIndex) && len(toIndex) == toIDCount
-	if hasUniqueIDs && (opts == nil || !opts.IgnoreOrderChanges) {
-		// Collect identifiers that exist in both, in from-order
-		var commonFromOrder []any
-		for _, id := range fromIDs {
-			if _, ok := toIndex[id]; ok {
-				commonFromOrder = append(commonFromOrder, id)
-			}
-		}
-
-		if len(commonFromOrder) >= 2 {
-			// Build to-order for the common identifiers
-			// Collect (toIdx, id) pairs for common IDs, then sort by toIdx
-			type idxID struct {
-				idx int
-				id  any
-			}
-			var toSorted []idxID
-			for _, id := range commonFromOrder {
-				toSorted = append(toSorted, idxID{toIndex[id], id})
-			}
-			slices.SortFunc(toSorted, func(a, b idxID) int {
-				return cmp.Compare(a.idx, b.idx)
-			})
-
-			// Check if from-order and to-order differ
-			orderChanged := false
-			for i, id := range commonFromOrder {
-				if id != toSorted[i].id {
-					orderChanged = true
-					break
-				}
-			}
-
-			if orderChanged {
-				toOrder := make([]any, len(toSorted))
-				for i, s := range toSorted {
-					toOrder[i] = s.id
-				}
-				diffs = append(diffs, Difference{
-					Path: cleanPath(path),
-					Type: DiffOrderChanged,
-					From: commonFromOrder,
-					To:   toOrder,
-				})
-			}
+	if opts == nil || !opts.IgnoreOrderChanges {
+		if orderDiff := detectListOrderChanges(path, fromIDs, fromIndex, toIndex, toIDCount); orderDiff != nil {
+			diffs = append(diffs, *orderDiff)
 		}
 	}
 
@@ -552,42 +607,8 @@ func compareListsByIdentifier(path string, from, to []any, opts *Options) []Diff
 		}
 	}
 
-	// Fallback for entries that do not have usable identifiers:
-	// compare them as unordered values so removals/additions are still reported.
-	toNoIDMatched := make([]bool, len(toNoID))
-	for _, fromIdx := range fromNoID {
-		fromItem := from[fromIdx]
-		found := false
-		for j, toIdx := range toNoID {
-			if toNoIDMatched[j] {
-				continue
-			}
-			if deepEqual(fromItem, to[toIdx], opts) {
-				toNoIDMatched[j] = true
-				found = true
-				break
-			}
-		}
-		if !found {
-			diffs = append(diffs, Difference{
-				Path: fmt.Sprintf("%s.%d", cleanPath(path), fromIdx),
-				Type: DiffRemoved,
-				From: fromItem,
-				To:   nil,
-			})
-		}
-	}
-	for j, toIdx := range toNoID {
-		if toNoIDMatched[j] {
-			continue
-		}
-		diffs = append(diffs, Difference{
-			Path: fmt.Sprintf("%s.%d", cleanPath(path), toIdx),
-			Type: DiffAdded,
-			From: nil,
-			To:   to[toIdx],
-		})
-	}
+	// Fallback for entries that do not have usable identifiers
+	diffs = append(diffs, compareUnidentifiedItems(path, from, to, fromNoID, toNoID, opts)...)
 
 	return diffs
 }
@@ -606,60 +627,66 @@ func equalValues(from, to any, opts *Options) bool {
 	return reflect.DeepEqual(from, to)
 }
 
+// deepEqualOrderedMaps checks deep equality between two OrderedMaps.
+func deepEqualOrderedMaps(from, to *OrderedMap, opts *Options) bool {
+	if len(from.Values) != len(to.Values) {
+		return false
+	}
+	for k, fv := range from.Values {
+		tv, ok := to.Values[k]
+		if !ok || !deepEqual(fv, tv, opts) {
+			return false
+		}
+	}
+	return true
+}
+
+// deepEqualMaps checks deep equality between two maps.
+func deepEqualMaps(from, to map[string]any, opts *Options) bool {
+	if len(from) != len(to) {
+		return false
+	}
+	for k, fv := range from {
+		tv, ok := to[k]
+		if !ok || !deepEqual(fv, tv, opts) {
+			return false
+		}
+	}
+	return true
+}
+
+// deepEqualSlices checks deep equality between two slices.
+func deepEqualSlices(from, to []any, opts *Options) bool {
+	if len(from) != len(to) {
+		return false
+	}
+	for i := range from {
+		if !deepEqual(from[i], to[i], opts) {
+			return false
+		}
+	}
+	return true
+}
+
 // deepEqual compares two values deeply with options.
 func deepEqual(from, to any, opts *Options) bool {
-	// Handle nil
 	if from == nil && to == nil {
 		return true
 	}
 	if from == nil || to == nil {
 		return false
 	}
-
-	// Check types
 	if reflect.TypeOf(from) != reflect.TypeOf(to) {
 		return false
 	}
 
 	switch fromVal := from.(type) {
 	case *OrderedMap:
-		toOrderedMap := to.(*OrderedMap) // safe: type switch guarantees matching type
-		if len(fromVal.Values) != len(toOrderedMap.Values) {
-			return false
-		}
-		for k, fv := range fromVal.Values {
-			tv, ok := toOrderedMap.Values[k]
-			if !ok || !deepEqual(fv, tv, opts) {
-				return false
-			}
-		}
-		return true
-
+		return deepEqualOrderedMaps(fromVal, to.(*OrderedMap), opts)
 	case map[string]any:
-		toMap := to.(map[string]any) // safe: type switch guarantees matching type
-		if len(fromVal) != len(toMap) {
-			return false
-		}
-		for k, fv := range fromVal {
-			tv, ok := toMap[k]
-			if !ok || !deepEqual(fv, tv, opts) {
-				return false
-			}
-		}
-		return true
-
+		return deepEqualMaps(fromVal, to.(map[string]any), opts)
 	case []any:
-		toVal := to.([]any) // safe: type switch guarantees matching type
-		if len(fromVal) != len(toVal) {
-			return false
-		}
-		for i := range fromVal {
-			if !deepEqual(fromVal[i], toVal[i], opts) {
-				return false
-			}
-		}
-		return true
-
+		return deepEqualSlices(fromVal, to.([]any), opts)
 	default:
 		return equalValues(from, to, opts)
 	}

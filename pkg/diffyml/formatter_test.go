@@ -1901,11 +1901,11 @@ func TestCompactFormatter_HeaderCounts(t *testing.T) {
 	output := f.Format(diffs, opts)
 
 	// Use exact format to distinguish "N category" from "-N category" (INCREMENT_DECREMENT mutation)
-	if !strings.Contains(output, "(2 added,") {
-		t.Errorf("expected '(2 added,' in header, got: %s", output)
+	if !strings.Contains(output, "(1 removed,") {
+		t.Errorf("expected '(1 removed,' in header, got: %s", output)
 	}
-	if !strings.Contains(output, " 1 removed,") {
-		t.Errorf("expected ' 1 removed,' in header, got: %s", output)
+	if !strings.Contains(output, " 2 added,") {
+		t.Errorf("expected ' 2 added,' in header, got: %s", output)
 	}
 	if !strings.Contains(output, " 1 modified)") {
 		t.Errorf("expected ' 1 modified)' in header, got: %s", output)

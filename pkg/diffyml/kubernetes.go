@@ -231,6 +231,72 @@ func matchK8sDocuments(from, to []any, opts *Options) (matched map[int]int, unma
 	return matched, unmatchedFrom, unmatchedTo
 }
 
+// detectK8sOrderChanges detects document order changes among matched K8s documents.
+func detectK8sOrderChanges(matched map[int]int, from []any, ignoreApiVersion bool) *Difference {
+	if len(matched) < 2 {
+		return nil
+	}
+
+	type idxPair struct{ fromIdx, toIdx int }
+	pairs := make([]idxPair, 0, len(matched))
+	for fromIdx, toIdx := range matched {
+		pairs = append(pairs, idxPair{fromIdx, toIdx})
+	}
+	slices.SortFunc(pairs, func(a, b idxPair) int { return cmp.Compare(a.fromIdx, b.fromIdx) })
+
+	orderChanged := !slices.IsSortedFunc(pairs, func(a, b idxPair) int { return cmp.Compare(a.toIdx, b.toIdx) })
+
+	if !orderChanged {
+		return nil
+	}
+
+	fromOrder := make([]any, len(pairs))
+	for i, p := range pairs {
+		fromOrder[i] = K8sResourceIdentifier(from[p.fromIdx], ignoreApiVersion)
+	}
+	slices.SortFunc(pairs, func(a, b idxPair) int { return cmp.Compare(a.toIdx, b.toIdx) })
+	toOrder := make([]any, len(pairs))
+	for i, p := range pairs {
+		toOrder[i] = K8sResourceIdentifier(from[p.fromIdx], ignoreApiVersion)
+	}
+
+	return &Difference{
+		Path: k8sDocumentPath,
+		Type: DiffOrderChanged,
+		From: fromOrder,
+		To:   toOrder,
+	}
+}
+
+// compareMatchedK8sDocs compares matched and rename-matched K8s document pairs.
+func compareMatchedK8sDocs(matched map[int]int, from, to []any, opts *Options, useToIdx bool) []Difference {
+	var diffs []Difference
+	for fromIdx, toIdx := range matched {
+		fromDoc := from[fromIdx]
+		toDoc := to[toIdx]
+
+		pathPrefix := ""
+		if len(from) > 1 || len(to) > 1 {
+			idx := fromIdx
+			if useToIdx {
+				idx = toIdx
+			}
+			pathPrefix = fmt.Sprintf("[%d]", idx)
+		}
+
+		nodeDiffs := compareNodes(pathPrefix, fromDoc, toDoc, opts)
+		docIdx := fromIdx
+		if useToIdx {
+			docIdx = toIdx
+		}
+		for i := range nodeDiffs {
+			nodeDiffs[i].DocumentIndex = docIdx
+		}
+		diffs = append(diffs, nodeDiffs...)
+	}
+	return diffs
+}
+
 // compareK8sDocs compares Kubernetes documents matching by resource identifier.
 func compareK8sDocs(from, to []any, opts *Options) []Difference {
 	var diffs []Difference
@@ -239,79 +305,22 @@ func compareK8sDocs(from, to []any, opts *Options) []Difference {
 	ignoreApiVersion := opts != nil && opts.IgnoreApiVersion
 
 	// Detect document order changes
-	if !opts.IgnoreOrderChanges && len(matched) >= 2 {
-		// Build sorted (fromIdx, toIdx) pairs in one pass
-		type idxPair struct{ fromIdx, toIdx int }
-		pairs := make([]idxPair, 0, len(matched))
-		for fromIdx, toIdx := range matched {
-			pairs = append(pairs, idxPair{fromIdx, toIdx})
-		}
-		slices.SortFunc(pairs, func(a, b idxPair) int { return cmp.Compare(a.fromIdx, b.fromIdx) })
-
-		// Check if toIdx values are monotonically increasing
-		orderChanged := !slices.IsSortedFunc(pairs, func(a, b idxPair) int { return cmp.Compare(a.toIdx, b.toIdx) })
-
-		if orderChanged {
-			fromOrder := make([]any, len(pairs))
-			for i, p := range pairs {
-				fromOrder[i] = K8sResourceIdentifier(from[p.fromIdx], ignoreApiVersion)
-			}
-			// Re-sort by toIdx for to-order
-			slices.SortFunc(pairs, func(a, b idxPair) int { return cmp.Compare(a.toIdx, b.toIdx) })
-			toOrder := make([]any, len(pairs))
-			for i, p := range pairs {
-				toOrder[i] = K8sResourceIdentifier(from[p.fromIdx], ignoreApiVersion)
-			}
-
-			diffs = append(diffs, Difference{
-				Path: k8sDocumentPath,
-				Type: DiffOrderChanged,
-				From: fromOrder,
-				To:   toOrder,
-			})
+	if !opts.IgnoreOrderChanges {
+		if orderDiff := detectK8sOrderChanges(matched, from, ignoreApiVersion); orderDiff != nil {
+			diffs = append(diffs, *orderDiff)
 		}
 	}
 
 	// Compare matched documents
-	for fromIdx, toIdx := range matched {
-		fromDoc := from[fromIdx]
-		toDoc := to[toIdx]
-
-		// Build path prefix using 'from' index for consistency
-		pathPrefix := ""
-		if len(from) > 1 || len(to) > 1 {
-			pathPrefix = fmt.Sprintf("[%d]", fromIdx)
-		}
-
-		nodeDiffs := compareNodes(pathPrefix, fromDoc, toDoc, opts)
-		// Set DocumentIndex for all differences in this document
-		for i := range nodeDiffs {
-			nodeDiffs[i].DocumentIndex = fromIdx
-		}
-		diffs = append(diffs, nodeDiffs...)
-	}
+	diffs = append(diffs, compareMatchedK8sDocs(matched, from, to, opts, false)...)
 
 	// Detect renames among unmatched documents
 	renameMatched, remainingFrom, remainingTo := detectRenames(from, to, unmatchedFrom, unmatchedTo, opts)
 
 	// Compare rename-matched pairs using "to" index for path context
-	for fromIdx, toIdx := range renameMatched {
-		fromDoc := from[fromIdx]
-		toDoc := to[toIdx]
+	diffs = append(diffs, compareMatchedK8sDocs(renameMatched, from, to, opts, true)...)
 
-		pathPrefix := ""
-		if len(from) > 1 || len(to) > 1 {
-			pathPrefix = fmt.Sprintf("[%d]", toIdx)
-		}
-
-		nodeDiffs := compareNodes(pathPrefix, fromDoc, toDoc, opts)
-		for i := range nodeDiffs {
-			nodeDiffs[i].DocumentIndex = toIdx
-		}
-		diffs = append(diffs, nodeDiffs...)
-	}
-
-	// Report removed documents (in 'from' but not matched or rename-matched in 'to')
+	// Report removed documents
 	for _, fromIdx := range remainingFrom {
 		if from[fromIdx] == nil {
 			continue
@@ -326,7 +335,7 @@ func compareK8sDocs(from, to []any, opts *Options) []Difference {
 		})
 	}
 
-	// Report added documents (in 'to' but not matched or rename-matched from 'from')
+	// Report added documents
 	for _, toIdx := range remainingTo {
 		if to[toIdx] == nil {
 			continue

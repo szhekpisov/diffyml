@@ -77,16 +77,14 @@ spec:
           image: nginx:latest
 `
 
-func TestKubectlDiffWithDiffyml(t *testing.T) {
-	skipIfNoDocker(t)
-	skipIfNoKind(t)
-	skipIfNoKubectl(t)
+// setupKindCluster builds the diffyml binary, creates a kind cluster, and returns
+// the environment with KUBECONFIG set. Registers cleanup to delete the cluster.
+func setupKindCluster(t *testing.T) (diffymlBin string, baseEnv []string) {
+	t.Helper()
 
-	// Build diffyml binary
 	tmpDir := t.TempDir()
-	diffymlBin := filepath.Join(tmpDir, "diffyml")
+	diffymlBin = filepath.Join(tmpDir, "diffyml")
 
-	// Find project root (two levels up from test/e2e/)
 	projectRoot, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
 		t.Fatalf("failed to resolve project root: %v", err)
@@ -98,7 +96,6 @@ func TestKubectlDiffWithDiffyml(t *testing.T) {
 		t.Fatalf("failed to build diffyml: %v\n%s", buildErr, out)
 	}
 
-	// Create kind cluster with unique name
 	clusterName := fmt.Sprintf("diffyml-e2e-%d", rand.IntN(100000))
 	t.Logf("Creating kind cluster %s...", clusterName)
 
@@ -114,7 +111,6 @@ func TestKubectlDiffWithDiffyml(t *testing.T) {
 		}
 	})
 
-	// Get kubeconfig for this cluster
 	kubeconfigPath := filepath.Join(tmpDir, "kubeconfig")
 	kcCmd := exec.Command("kind", "get", "kubeconfig", "--name", clusterName)
 	kcOut, err := kcCmd.Output()
@@ -125,7 +121,16 @@ func TestKubectlDiffWithDiffyml(t *testing.T) {
 		t.Fatalf("failed to write kubeconfig: %v", err)
 	}
 
-	baseEnv := append(os.Environ(), "KUBECONFIG="+kubeconfigPath)
+	baseEnv = append(os.Environ(), "KUBECONFIG="+kubeconfigPath)
+	return diffymlBin, baseEnv
+}
+
+func TestKubectlDiffWithDiffyml(t *testing.T) {
+	skipIfNoDocker(t)
+	skipIfNoKind(t)
+	skipIfNoKubectl(t)
+
+	diffymlBin, baseEnv := setupKindCluster(t)
 
 	// Apply base manifest
 	applyCmd := exec.Command("kubectl", "apply", "-f", "-")

@@ -68,6 +68,31 @@ export KUBECTL_EXTERNAL_DIFF="diffyml --omit-header --set-exit-code"
 kubectl diff -f manifests/
 ```
 
+## Library Usage
+
+diffyml can be used as a Go library for programmatic YAML comparison.
+
+```go
+import "github.com/szhekpisov/diffyml/pkg/diffyml"
+
+// Compare two YAML documents
+from, _ := diffyml.LoadContent("old.yaml")
+to, _   := diffyml.LoadContent("new.yaml")
+
+diffs, err := diffyml.Compare(from, to, &diffyml.Options{
+    DetectKubernetes: true,
+})
+if err != nil {
+    log.Fatal(err)
+}
+
+// Format the differences
+formatter, _ := diffyml.FormatterByName("compact")
+fmt.Print(formatter.Format(diffs, diffyml.DefaultFormatOptions()))
+```
+
+See the [package documentation](https://pkg.go.dev/github.com/szhekpisov/diffyml/pkg/diffyml) for the full API reference.
+
 ## Usage
 
 ```bash

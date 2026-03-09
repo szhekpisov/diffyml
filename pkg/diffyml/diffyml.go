@@ -1,4 +1,3 @@
-// Package diffyml provides YAML diff functionality for comparing YAML documents.
 package diffyml
 
 import (

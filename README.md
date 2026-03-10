@@ -2,7 +2,7 @@
 
 The fastest YAML diff tool with built-in Kubernetes intelligence. Built on a single dependency for a minimal attack surface, with native CI output for GitHub, GitLab, and Gitea.
 
-<img src="doc/output.png" alt="diffyml output" width="600">
+<img src="doc/demo.png" alt="diffyml output" width="600">
 
 [![Tests](https://github.com/szhekpisov/diffyml/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/szhekpisov/diffyml/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/szhekpisov/diffyml/branch/main/graph/badge.svg)](https://codecov.io/gh/szhekpisov/diffyml)
@@ -151,6 +151,8 @@ This makes diffyml a drop-in `KUBECTL_EXTERNAL_DIFF` provider — kubectl passes
 export KUBECTL_EXTERNAL_DIFF="diffyml --omit-header --set-exit-code"
 kubectl diff -f manifests/
 ```
+
+<img src="doc/kubectl-demo.png" alt="kubectl diff with diffyml" width="600">
 
 ### Filtering
 

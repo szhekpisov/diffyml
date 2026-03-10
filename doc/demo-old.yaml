@@ -9,6 +9,9 @@ spec:
     matchLabels:
       app: web-api
   template:
+    metadata:
+      labels:
+        app: web-api
     spec:
       containers:
       - name: web-api

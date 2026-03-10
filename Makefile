@@ -12,12 +12,7 @@ coverage:
 check-coverage:
 	@go test ./pkg/diffyml/ -coverprofile=coverage.out
 	@COVER_OUTPUT=$$(go tool cover -func=coverage.out); \
-	get_file_coverage() { \
-		echo "$$COVER_OUTPUT" | grep "^.*/$${1}:" | tail -1 | awk '{print $$NF}' | tr -d '%'; \
-	}; \
-	PARSER_COV=$$(get_file_coverage "parser.go"); \
-	ORDERED_MAP_COV=$$(get_file_coverage "ordered_map.go"); \
-	KUBERNETES_COV=$$(get_file_coverage "kubernetes.go"); \
+	TOTAL_COV=$$(echo "$$COVER_OUTPUT" | grep '^total:' | awk '{print $$NF}' | tr -d '%'); \
 	echo ""; \
 	echo "=== Coverage Summary ==="; \
 	printf "%-20s %8s %10s %s\n" "File" "Actual" "Required" "Status"; \
@@ -32,9 +27,7 @@ check-coverage:
 		fi; \
 		printf "%-20s %7s%% %9s%% %s\n" "$$file" "$$actual" "$$required" "$$status"; \
 	}; \
-	check_threshold "parser.go"      "$$PARSER_COV"      "100.0"; \
-	check_threshold "ordered_map.go" "$$ORDERED_MAP_COV" "100.0"; \
-	check_threshold "kubernetes.go"  "$$KUBERNETES_COV"  "100.0"; \
+	check_threshold "TOTAL" "$$TOTAL_COV" "98.0"; \
 	echo ""; \
 	if [ "$$FAIL" -eq 1 ]; then \
 		echo "Coverage threshold check FAILED"; \

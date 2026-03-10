@@ -87,40 +87,8 @@ diffyml local.yaml https://example.com/remote.yaml
 # Use in CI — exit code 1 when differences found
 diffyml -s deployment-old.yaml deployment-new.yaml
 
-# Use as kubectl external diff provider
+# Use as kubectl external diff provider:
 export KUBECTL_EXTERNAL_DIFF="diffyml --omit-header --set-exit-code"
-kubectl diff -f manifests/
-```
-
-### Example Output
-
-```
-Found five differences
-
-spec.replicas
-  ± value change
-    - 2
-    + 3
-
-spec.template.spec.containers.web-api.image
-  ± value change
-    - myapp:1.4.2
-    + myapp:2.0.0
-
-spec.template.spec.containers.web-api.env
-  + one list entry added:
-    - name: ENABLE_METRICS
-      value: true
-
-spec.template.spec.containers.web-api.env.LOG_LEVEL.value
-  ± value change
-    - info
-    + debug
-
-spec.template.spec.containers.web-api.env.MAX_CONNECTIONS.value
-  ± value change
-    - 100
-    + 200
 ```
 
 <img src="doc/kubectl-demo.png" alt="kubectl diff with diffyml" width="600">
@@ -133,31 +101,6 @@ spec.template.spec.containers.web-api.env.MAX_CONNECTIONS.value
 - **Certificate inspection** — inspects and compares embedded x509 certificates
 - **Chroot navigation** — focus comparison on a specific YAML subtree
 - ⭐ **AI-powered summaries** ⭐ — natural language summaries of changes via Anthropic API
-
-## Library Usage
-
-diffyml can be used as a Go library for programmatic YAML comparison.
-
-```go
-import "github.com/szhekpisov/diffyml/pkg/diffyml"
-
-// Compare two YAML documents
-from, _ := diffyml.LoadContent("old.yaml")
-to, _   := diffyml.LoadContent("new.yaml")
-
-diffs, err := diffyml.Compare(from, to, &diffyml.Options{
-    DetectKubernetes: true,
-})
-if err != nil {
-    log.Fatal(err)
-}
-
-// Format the differences
-formatter, _ := diffyml.FormatterByName("compact")
-fmt.Print(formatter.Format(diffs, diffyml.DefaultFormatOptions()))
-```
-
-See the [package documentation](https://pkg.go.dev/github.com/szhekpisov/diffyml/pkg/diffyml) for the full API reference.
 
 ## Usage
 
@@ -319,6 +262,31 @@ The summary is appended after the standard diff output. If the API call fails, a
 
 </details>
 
+## Library Usage
+
+diffyml can be used as a Go library for programmatic YAML comparison.
+
+```go
+import "github.com/szhekpisov/diffyml/pkg/diffyml"
+
+// Compare two YAML documents
+from, _ := diffyml.LoadContent("old.yaml")
+to, _   := diffyml.LoadContent("new.yaml")
+
+diffs, err := diffyml.Compare(from, to, &diffyml.Options{
+    DetectKubernetes: true,
+})
+if err != nil {
+    log.Fatal(err)
+}
+
+// Format the differences
+formatter, _ := diffyml.FormatterByName("compact")
+fmt.Print(formatter.Format(diffs, diffyml.DefaultFormatOptions()))
+```
+
+See the [package documentation](https://pkg.go.dev/github.com/szhekpisov/diffyml/pkg/diffyml) for the full API reference.
+
 ## Code Quality
 
 Every push and PR is checked by:
@@ -333,7 +301,7 @@ Every push and PR is checked by:
   [misspell](https://github.com/client9/misspell),
   [staticcheck](https://staticcheck.dev/) (all checks except style conventions)
 
-900+ tests (unit, e2e, property-based), 98.9% code coverage, 100% [mutation testing](https://github.com/go-gremlins/gremlins) efficacy (578/578 mutants killed). Core packages enforce 95–100% coverage thresholds in CI.
+900+ tests (unit, e2e, property-based), 98.9% code coverage, 100% [mutation testing](https://github.com/go-gremlins/gremlins) efficacy (578/578 mutants killed). CI enforces a 98% coverage floor.
 
 ## Contributing
 
@@ -356,7 +324,7 @@ pre-commit install
 |------|---------------|
 | `gofmt` | Code formatting |
 | `go vet` | Static analysis |
-| `check-coverage` | Coverage thresholds (100% parser, 100% ordered_map, 95% kubernetes) |
+| `check-coverage` | Coverage threshold (98% overall) |
 | `govulncheck` | Known vulnerabilities |
 | `golangci-lint` | 7 linters (errcheck, gocritic, gosec, govet, ineffassign, misspell, staticcheck) |
 

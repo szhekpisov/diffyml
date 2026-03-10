@@ -17,7 +17,7 @@ diffyml compares YAML files and shows meaningful, structured differences — not
 
 ## Why diffyml?
 
-**Fastest at scale.** 7.7x faster than [dyff](https://github.com/homeport/dyff) on 78 KB files, 21x faster on 780 KB files, with the lowest memory footprint among YAML-aware tools at scale. Near-linear scaling. See [PERFORMANCE.md](PERFORMANCE.md) for methodology and results.
+**Fastest at scale.** 7.7x faster than [dyff](https://github.com/homeport/dyff) on 78 KB files, 21x faster on 780 KB files, with the lowest memory footprint among YAML-aware tools at scale. Near-linear scaling. See [PERFORMANCE.md](doc/PERFORMANCE.md) for methodology and results.
 
 **One dependency, zero surprises.** A single runtime dependency ([yaml.v3](https://github.com/yaml/go-yaml)) and pure Go stdlib. Minimal attack surface, auditable in minutes.
 
@@ -37,7 +37,7 @@ diffyml compares YAML files and shows meaningful, structured differences — not
 | Performance (78 KB) | 20 ms | 156 ms (7.7x slower) | 7 ms |
 | Performance (780 KB) | 151 ms | 3,213 ms (21x slower) | 45 ms |
 
-Comparison based on dyff v1.9 and diffyml v1.5. See [PERFORMANCE.md](PERFORMANCE.md) for benchmark methodology. [Open an issue](https://github.com/szhekpisov/diffyml/issues) if anything is outdated.
+Comparison based on dyff v1.9 and diffyml v1.5. See [PERFORMANCE.md](doc/PERFORMANCE.md) for benchmark methodology. [Open an issue](https://github.com/szhekpisov/diffyml/issues) if anything is outdated.
 
 ## Kubernetes Intelligence
 
@@ -370,7 +370,7 @@ pre-commit install
 make test           # run all tests
 make ci             # full CI pipeline locally (fmt + vet + test + coverage + security)
 make bench          # run benchmarks
-make bench-compare  # compare against alternative tools (see PERFORMANCE.md)
+make bench-compare  # compare against alternative tools (see doc/PERFORMANCE.md)
 make coverage       # generate HTML coverage report
 make mutation       # run mutation testing (requires gremlins)
 ```

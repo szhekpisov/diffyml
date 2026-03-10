@@ -62,6 +62,7 @@ brews:
     description: "Structural diff tool for YAML files"
     license: "MIT"
     skip_upload: auto
+    commit_msg_template: "Update diffyml to {{ .Version }}"
     test: |
       assert_match version.to_s, shell_output("#{bin}/diffyml --version")
 

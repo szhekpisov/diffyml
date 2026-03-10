@@ -296,6 +296,7 @@ See the [package documentation](https://pkg.go.dev/github.com/szhekpisov/diffyml
 Every push and PR is checked by:
 
 - [govulncheck](https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck) — known vulnerability detection
+- [zizmor](https://github.com/zizmorcore/zizmor-action) — GitHub Actions workflow security scanning
 - [golangci-lint](https://golangci-lint.run/) running:
   [errcheck](https://github.com/kisielk/errcheck),
   [gocritic](https://github.com/go-critic/go-critic),
@@ -305,7 +306,7 @@ Every push and PR is checked by:
   [misspell](https://github.com/client9/misspell),
   [staticcheck](https://staticcheck.dev/) (all checks except style conventions)
 
-900+ tests (unit, e2e, property-based), 98.9% code coverage, 100% [mutation testing](https://github.com/go-gremlins/gremlins) efficacy (578/578 mutants killed). CI enforces a 98% coverage floor.
+1,200+ tests (unit, e2e, fuzz, property-based), 98.9% code coverage, 100% [mutation testing](https://github.com/go-gremlins/gremlins) efficacy (578/578 mutants killed). CI enforces a 98% coverage floor.
 
 ## Contributing
 

@@ -1,6 +1,6 @@
 # diffyml
 
-A structural YAML diff tool with built-in Kubernetes intelligence. One dependency, minimal attack surface, native CI annotations for GitHub, GitLab, and Gitea.
+A fast, structural YAML diff tool with built-in Kubernetes intelligence. One dependency, minimal attack surface, native CI annotations for GitHub, GitLab, and Gitea.
 
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/szhekpisov/diffyml/badge)](https://scorecard.dev/viewer/?uri=github.com/szhekpisov/diffyml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/szhekpisov/diffyml)](https://goreportcard.com/report/github.com/szhekpisov/diffyml)

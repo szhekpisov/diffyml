@@ -1,6 +1,6 @@
 # diffyml
 
-The fastest YAML diff tool with built-in Kubernetes intelligence. Built on a single dependency for a minimal attack surface, with native CI output for GitHub, GitLab, and Gitea.
+A structural YAML diff tool with built-in Kubernetes intelligence. One dependency, minimal attack surface, native CI annotations for GitHub, GitLab, and Gitea.
 
 [![Tests](https://github.com/szhekpisov/diffyml/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/szhekpisov/diffyml/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/szhekpisov/diffyml/branch/main/graph/badge.svg)](https://codecov.io/gh/szhekpisov/diffyml)
@@ -8,16 +8,35 @@ The fastest YAML diff tool with built-in Kubernetes intelligence. Built on a sin
 [![Security & Static Analysis](https://github.com/szhekpisov/diffyml/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/szhekpisov/diffyml/actions/workflows/security.yml)
 [![Benchmark](https://github.com/szhekpisov/diffyml/actions/workflows/benchmark.yml/badge.svg?branch=main)](https://github.com/szhekpisov/diffyml/actions/workflows/benchmark.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/szhekpisov/diffyml/badge)](https://scorecard.dev/viewer/?uri=github.com/szhekpisov/diffyml)
+[![Release](https://img.shields.io/github/v/release/szhekpisov/diffyml)](https://github.com/szhekpisov/diffyml/releases/latest)
 
 <img src="doc/demo.png" alt="diffyml output" width="600">
 
+diffyml compares YAML files and shows meaningful, structured differences — not line-by-line text diffs.
+
 ## Why diffyml?
 
-**Fastest at scale.** Lowest memory footprint at every file size and near-linear scaling. See [PERFORMANCE.md](PERFORMANCE.md) for methodology and results.
+**Fastest at scale.** 7.7x faster than dyff on 78 KB files, 21x faster on 780 KB files, with the lowest memory footprint among YAML-aware tools at scale. Near-linear scaling. See [PERFORMANCE.md](PERFORMANCE.md) for methodology and results.
 
 **One dependency, zero surprises.** A single runtime dependency ([yaml.v3](https://github.com/yaml/go-yaml)) and pure Go stdlib. Minimal attack surface, auditable in minutes.
 
 **Gets YAML right.** Dotted keys, type preservation, mixed-type lists, nil values — concrete edge cases other tools get wrong. diffyml treats YAML semantics as first-class, not an afterthought.
+
+## How It Compares
+
+| Feature | diffyml | dyff | plain `diff` |
+|---------|---------|------|------------|
+| YAML-aware (structural diff) | Yes | Yes | No (line-based) |
+| Kubernetes resource matching | By apiVersion + kind + name | By document position | No |
+| Rename detection | Yes (content similarity) | No | No |
+| API version migration | Yes (`--ignore-api-version`) | No | No |
+| CI annotation formats | 3 (GitHub, GitLab, Gitea) | 0 | 0 |
+| Runtime dependencies | 1 (yaml.v3) | 20+ | 0 |
+| Directory comparison | Yes | No | Yes |
+| Performance (78 KB) | 20 ms | 156 ms (7.7x slower) | 7 ms |
+| Performance (780 KB) | 151 ms | 3,213 ms (21x slower) | 45 ms |
+
+Comparison based on dyff v1.9 and diffyml v1.5. See [PERFORMANCE.md](PERFORMANCE.md) for benchmark methodology. [Open an issue](https://github.com/szhekpisov/diffyml/issues) if anything is outdated.
 
 ## Kubernetes Intelligence
 
@@ -26,15 +45,6 @@ diffyml auto-detects Kubernetes resources and matches them by `apiVersion`, `kin
 - **Rename detection** — detects renamed/moved resources by content similarity (e.g., kustomize `configMapGenerator` hash-suffix changes like `app-config-abc123` → `app-config-def456`) and shows field-level diffs instead of bulk add/remove
 - **API migration support** — `--ignore-api-version` drops `apiVersion` from the matching key, so an upgrade from `apps/v1beta1` to `apps/v1` shows field-level diffs instead of a remove + add
 - **Drop-in for kubectl** — compare two directories of YAML files and use as `KUBECTL_EXTERNAL_DIFF` with no extra setup
-
-## Features
-
-- **6 output formats** — detailed, compact, brief, GitHub, GitLab, Gitea
-- **Path filtering** — include/exclude paths with exact match or regex
-- **Remote files** — compare directly from HTTP/HTTPS URLs
-- **Certificate inspection** — inspects and compares embedded x509 certificates
-- **Chroot navigation** — focus comparison on a specific YAML subtree
-- ⭐ **AI-powered summaries** ⭐ — natural language summaries of changes via Anthropic API
 
 ## Installation
 
@@ -82,7 +92,47 @@ export KUBECTL_EXTERNAL_DIFF="diffyml --omit-header --set-exit-code"
 kubectl diff -f manifests/
 ```
 
+### Example Output
+
+```
+Found five differences
+
+spec.replicas
+  ± value change
+    - 2
+    + 3
+
+spec.template.spec.containers.web-api.image
+  ± value change
+    - myapp:1.4.2
+    + myapp:2.0.0
+
+spec.template.spec.containers.web-api.env
+  + one list entry added:
+    - name: ENABLE_METRICS
+      value: true
+
+spec.template.spec.containers.web-api.env.LOG_LEVEL.value
+  ± value change
+    - info
+    + debug
+
+spec.template.spec.containers.web-api.env.MAX_CONNECTIONS.value
+  ± value change
+    - 100
+    + 200
+```
+
 <img src="doc/kubectl-demo.png" alt="kubectl diff with diffyml" width="600">
+
+## Features
+
+- **6 output formats** — detailed, compact, brief, GitHub, GitLab, Gitea
+- **Path filtering** — include/exclude paths with exact match or regex
+- **Remote files** — compare directly from HTTP/HTTPS URLs
+- **Certificate inspection** — inspects and compares embedded x509 certificates
+- **Chroot navigation** — focus comparison on a specific YAML subtree
+- ⭐ **AI-powered summaries** ⭐ — natural language summaries of changes via Anthropic API
 
 ## Library Usage
 

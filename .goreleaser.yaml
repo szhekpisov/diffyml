@@ -54,6 +54,9 @@ brews:
       owner: szhekpisov
       name: homebrew-diffyml
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    commit_author:
+      name: github-actions[bot]
+      email: github-actions[bot]@users.noreply.github.com
     directory: Formula
     homepage: "https://github.com/szhekpisov/diffyml"
     description: "Structural diff tool for YAML files"

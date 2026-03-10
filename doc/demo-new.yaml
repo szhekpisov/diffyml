@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-api
+  namespace: production
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: web-api
+  template:
+    spec:
+      containers:
+      - name: web-api
+        image: myapp:2.0.0
+        ports:
+        - containerPort: 8080
+        env:
+        - name: LOG_LEVEL
+          value: debug
+        - name: MAX_CONNECTIONS
+          value: "200"
+        - name: ENABLE_METRICS
+          value: "true"

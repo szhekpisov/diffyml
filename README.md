@@ -333,7 +333,7 @@ Every push and PR is checked by:
   [misspell](https://github.com/client9/misspell),
   [staticcheck](https://staticcheck.dev/) (all checks except style conventions)
 
-Core packages enforce 95–100% test coverage thresholds in CI. [Mutation testing](https://github.com/go-gremlins/gremlins) validates that tests catch real bugs, not just exercise code paths.
+900+ tests (unit, e2e, property-based), 98.9% code coverage, 100% [mutation testing](https://github.com/go-gremlins/gremlins) efficacy (578/578 mutants killed). Core packages enforce 95–100% coverage thresholds in CI.
 
 ## Contributing
 

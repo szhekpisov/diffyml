@@ -2,14 +2,14 @@
 
 The fastest YAML diff tool with built-in Kubernetes intelligence. Built on a single dependency for a minimal attack surface, with native CI output for GitHub, GitLab, and Gitea.
 
-<img src="doc/demo.png" alt="diffyml output" width="600">
-
 [![Tests](https://github.com/szhekpisov/diffyml/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/szhekpisov/diffyml/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/szhekpisov/diffyml/branch/main/graph/badge.svg)](https://codecov.io/gh/szhekpisov/diffyml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/szhekpisov/diffyml)](https://goreportcard.com/report/github.com/szhekpisov/diffyml)
 [![Security & Static Analysis](https://github.com/szhekpisov/diffyml/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/szhekpisov/diffyml/actions/workflows/security.yml)
 [![Benchmark](https://github.com/szhekpisov/diffyml/actions/workflows/benchmark.yml/badge.svg?branch=main)](https://github.com/szhekpisov/diffyml/actions/workflows/benchmark.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/szhekpisov/diffyml/badge)](https://scorecard.dev/viewer/?uri=github.com/szhekpisov/diffyml)
+
+<img src="doc/demo.png" alt="diffyml output" width="600">
 
 ## Why diffyml?
 
@@ -82,6 +82,8 @@ export KUBECTL_EXTERNAL_DIFF="diffyml --omit-header --set-exit-code"
 kubectl diff -f manifests/
 ```
 
+<img src="doc/kubectl-demo.png" alt="kubectl diff with diffyml" width="600">
+
 ## Library Usage
 
 diffyml can be used as a Go library for programmatic YAML comparison.
@@ -151,8 +153,6 @@ This makes diffyml a drop-in `KUBECTL_EXTERNAL_DIFF` provider — kubectl passes
 export KUBECTL_EXTERNAL_DIFF="diffyml --omit-header --set-exit-code"
 kubectl diff -f manifests/
 ```
-
-<img src="doc/kubectl-demo.png" alt="kubectl diff with diffyml" width="600">
 
 ### Filtering
 

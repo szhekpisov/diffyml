@@ -75,6 +75,33 @@ cd diffyml
 go build -o diffyml
 ```
 
+### Verifying Releases
+
+Every release includes cryptographic verification artifacts:
+
+- **Checksums** (`checksums.txt`) — SHA256 hashes for all archives
+- **Cosign signature** (`checksums.txt.sigstore.json`) — keyless Sigstore signature
+- **SBOMs** (`*.spdx.json`) — SPDX Software Bill of Materials for each archive
+- **SLSA provenance** — Level 3 provenance attestation
+
+**Verify the checksums signature:**
+
+```bash
+cosign verify-blob checksums.txt \
+  --bundle checksums.txt.sigstore.json \
+  --certificate-identity-regexp 'https://github.com/szhekpisov/diffyml/' \
+  --certificate-oidc-issuer 'https://token.actions.githubusercontent.com'
+
+sha256sum --check checksums.txt --ignore-missing
+```
+
+**Verify SLSA provenance:**
+
+```bash
+gh attestation verify diffyml_<VERSION>_linux_amd64.tar.gz \
+  --repo szhekpisov/diffyml
+```
+
 ## Quick Start
 
 ```bash

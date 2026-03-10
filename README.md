@@ -10,8 +10,6 @@ A structural YAML diff tool with built-in Kubernetes intelligence. One dependenc
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tests](https://github.com/szhekpisov/diffyml/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/szhekpisov/diffyml/actions/workflows/test.yml)
 [![Security & Static Analysis](https://github.com/szhekpisov/diffyml/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/szhekpisov/diffyml/actions/workflows/security.yml)
-[![Benchmark](https://github.com/szhekpisov/diffyml/actions/workflows/benchmark.yml/badge.svg?branch=main)](https://github.com/szhekpisov/diffyml/actions/workflows/benchmark.yml)
-
 <img src="doc/demo.png" alt="diffyml output" width="600">
 
 diffyml compares YAML files and shows meaningful, structured differences — not line-by-line text diffs.

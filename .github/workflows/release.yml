@@ -78,7 +78,7 @@ jobs:
 
       - name: Run GoReleaser
         id: goreleaser
-        uses: goreleaser/goreleaser-action@ec59f474b9834571250b370d4735c50f8e2d1e29
+        uses: goreleaser/goreleaser-action@ec59f474b9834571250b370d4735c50f8e2d1e29 # v7.0.0
         with:
           version: "~> v2"
           args: release --clean
@@ -143,4 +143,3 @@ jobs:
           fi
           git commit -m "chore: update CHANGELOG.md for ${TAG}"
           git push
-

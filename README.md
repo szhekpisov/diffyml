@@ -92,7 +92,10 @@ cosign verify-blob checksums.txt \
   --certificate-identity-regexp 'https://github.com/szhekpisov/diffyml/' \
   --certificate-oidc-issuer 'https://token.actions.githubusercontent.com'
 
+# Linux
 sha256sum --check checksums.txt --ignore-missing
+# macOS
+shasum -a 256 --check checksums.txt --ignore-missing
 ```
 
 **Verify SLSA provenance:**

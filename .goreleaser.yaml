@@ -49,6 +49,15 @@ signs:
       - "--yes"
     artifacts: sbom
 
+brews:
+  - repository:
+      owner: szhekpisov
+      name: homebrew-diffyml
+    directory: Formula
+    homepage: "https://github.com/szhekpisov/diffyml"
+    description: "Structural diff tool for YAML files"
+    license: "MIT"
+
 changelog:
   sort: asc
   filters:

@@ -16,7 +16,7 @@ diffyml compares YAML files and shows meaningful, structured differences — not
 
 ## Why diffyml?
 
-**Fastest at scale.** 7.7x faster than dyff on 78 KB files, 21x faster on 780 KB files, with the lowest memory footprint among YAML-aware tools at scale. Near-linear scaling. See [PERFORMANCE.md](PERFORMANCE.md) for methodology and results.
+**Fastest at scale.** 7.7x faster than [dyff](https://github.com/homeport/dyff) on 78 KB files, 21x faster on 780 KB files, with the lowest memory footprint among YAML-aware tools at scale. Near-linear scaling. See [PERFORMANCE.md](PERFORMANCE.md) for methodology and results.
 
 **One dependency, zero surprises.** A single runtime dependency ([yaml.v3](https://github.com/yaml/go-yaml)) and pure Go stdlib. Minimal attack surface, auditable in minutes.
 
@@ -121,18 +121,22 @@ diffyml [flags] <from> <to>
 
 ### Kubernetes Support
 
-Kubernetes resources are automatically detected and matched by `apiVersion`, `kind`, and `metadata.name`. When resources cannot be matched by identifier (e.g., kustomize `configMapGenerator` hash-suffix changes like `app-config-abc123` → `app-config-def456`), diffyml compares unmatched documents by content similarity and pairs those above a 60% threshold, showing field-level diffs instead of bulk add/remove. Use `--detect-renames=false` to disable this behavior.
+Resources are auto-detected and matched by `apiVersion` + `kind` + `metadata.name`, so diffs stay meaningful even when document order changes.
 
-Use `--ignore-api-version` to drop `apiVersion` from the matching key — resources are paired by `kind` + `name` only, so an API migration (e.g. `apps/v1beta1` → `apps/v1`) shows field-level diffs instead of a remove + add. Use `--detect-kubernetes=false` to disable K8s-aware matching entirely and compare documents by position.
+**Rename detection** — when resources can't be matched by identifier (e.g., kustomize `configMapGenerator` hash-suffix changes like `app-config-abc123` → `app-config-def456`), diffyml pairs unmatched documents by content similarity (60% threshold) and shows field-level diffs instead of bulk add/remove. Disable with `--detect-renames=false`.
+
+**API migration** — `--ignore-api-version` drops `apiVersion` from the matching key, so an upgrade from `apps/v1beta1` to `apps/v1` shows field-level diffs instead of a remove + add.
+
+**Opt out** — `--detect-kubernetes=false` disables K8s-aware matching entirely and compares documents by position.
 
 ```bash
 # Compare two Kubernetes manifests
 diffyml manifests-v1.yaml manifests-v2.yaml
 
-# Ignore apiVersion when matching — useful for API migrations (e.g. apps/v1beta1 → apps/v1)
+# API migration — match by kind + name only
 diffyml --ignore-api-version manifests-v1.yaml manifests-v2.yaml
 
-# Disable Kubernetes detection — compare documents by position
+# Disable Kubernetes detection
 diffyml --detect-kubernetes=false file1.yaml file2.yaml
 ```
 

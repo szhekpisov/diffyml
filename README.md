@@ -2,7 +2,7 @@
 
 The fastest YAML diff tool with built-in Kubernetes intelligence. Built on a single dependency for a minimal attack surface, with native CI output for GitHub, GitLab, and Gitea.
 
-![diffyml output](doc/output.png)
+<img src="doc/output.png" alt="diffyml output" width="600">
 
 [![Tests](https://github.com/szhekpisov/diffyml/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/szhekpisov/diffyml/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/szhekpisov/diffyml/branch/main/graph/badge.svg)](https://codecov.io/gh/szhekpisov/diffyml)

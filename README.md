@@ -1,6 +1,6 @@
 # diffyml
 
-The fastest, most correct YAML diff tool — in a single-dependency binary.
+The fastest YAML diff tool with built-in Kubernetes intelligence. Built on a single dependency for a minimal attack surface, with native CI output for GitHub, GitLab, and Gitea.
 
 [![Tests](https://github.com/szhekpisov/diffyml/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/szhekpisov/diffyml/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/szhekpisov/diffyml/branch/main/graph/badge.svg)](https://codecov.io/gh/szhekpisov/diffyml)

@@ -1538,6 +1538,67 @@ func TestDetailedFormatter_RenderDocumentValue_MapStringAny(t *testing.T) {
 	}
 }
 
+func TestDetailedFormatter_RenderDocumentValue_Removed(t *testing.T) {
+	f, _ := FormatterByName("detailed")
+	opts := DefaultFormatOptions()
+	opts.OmitHeader = true
+
+	om := NewOrderedMap()
+	om.Keys = append(om.Keys, "apiVersion", "kind")
+	om.Values["apiVersion"] = "v1"
+	om.Values["kind"] = "Service"
+
+	diffs := []Difference{
+		{Path: "[0]", Type: DiffRemoved, From: om},
+	}
+	output := f.Format(diffs, opts)
+	if !strings.Contains(output, "---") {
+		t.Errorf("expected '---' separator for removed document, got:\n%s", output)
+	}
+	if !strings.Contains(output, "apiVersion: v1") {
+		t.Errorf("expected 'apiVersion: v1' in output, got:\n%s", output)
+	}
+}
+
+func TestDetailedFormatter_RenderDocumentValue_Scalar(t *testing.T) {
+	f, _ := FormatterByName("detailed")
+	opts := DefaultFormatOptions()
+	opts.OmitHeader = true
+
+	diffs := []Difference{
+		{Path: "[0]", Type: DiffAdded, To: "just-a-string"},
+	}
+	output := f.Format(diffs, opts)
+	if !strings.Contains(output, "---") {
+		t.Errorf("expected '---' separator for scalar document, got:\n%s", output)
+	}
+	if !strings.Contains(output, "just-a-string") {
+		t.Errorf("expected 'just-a-string' in output, got:\n%s", output)
+	}
+}
+
+func TestDetailedFormatter_RenderDocumentValue_TrueColor(t *testing.T) {
+	f, _ := FormatterByName("detailed")
+	opts := DefaultFormatOptions()
+	opts.OmitHeader = true
+	opts.TrueColor = true
+
+	om := NewOrderedMap()
+	om.Keys = append(om.Keys, "apiVersion")
+	om.Values["apiVersion"] = "v1"
+
+	diffs := []Difference{
+		{Path: "[0]", Type: DiffAdded, To: om},
+	}
+	output := f.Format(diffs, opts)
+	if !strings.Contains(output, "---") {
+		t.Errorf("expected '---' separator with TrueColor, got:\n%s", output)
+	}
+	if !strings.Contains(output, "apiVersion: v1") {
+		t.Errorf("expected 'apiVersion: v1' in output, got:\n%s", output)
+	}
+}
+
 // renderEntryValue edge cases
 
 func TestDetailedFormatter_RenderEntryValue_ListScalar(t *testing.T) {

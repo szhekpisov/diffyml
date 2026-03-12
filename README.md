@@ -337,7 +337,7 @@ Every push and PR is checked by:
   [misspell](https://github.com/client9/misspell),
   [staticcheck](https://staticcheck.dev/) (all checks except style conventions)
 
-1,200+ tests (unit, e2e, fuzz, property-based), 99.9% code coverage, 100% [mutation testing](https://github.com/go-gremlins/gremlins) efficacy (573/573 mutants killed). CI enforces a 99% coverage floor.
+1,200+ tests (unit, e2e, fuzz, property-based), 99.9% code coverage, 100% [mutation testing](https://github.com/go-gremlins/gremlins) efficacy (575/575 mutants killed). CI enforces a 99% coverage floor.
 
 ## Contributing
 

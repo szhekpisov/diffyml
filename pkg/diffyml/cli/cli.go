@@ -657,6 +657,11 @@ func normalizeFilePath(path string, stderr io.Writer) string {
 		return ""
 	}
 
+	// /dev/ paths (process substitution, stdin) are inherently non-relative; skip warning
+	if strings.HasPrefix(path, "/dev/") {
+		return path
+	}
+
 	if filepath.IsAbs(path) {
 		cwd, err := os.Getwd()
 		if err == nil {

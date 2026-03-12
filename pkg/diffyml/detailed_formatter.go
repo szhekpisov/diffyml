@@ -146,6 +146,7 @@ func (f *DetailedFormatter) formatEntryBatch(sb *strings.Builder, diffs []Differ
 	n := len(diffs)
 
 	// Detect document-level diffs (path is bare "[N]")
+	// All diffs in a batch share the same path structure; checking the first is sufficient.
 	_, isDocLevel := parseBareDocIndex(diffs[0].Path)
 
 	isListEntry := isListEntryDiff(diffs[0])

@@ -58,7 +58,6 @@ func (f *DetailedFormatter) renderDocumentValue(sb *strings.Builder, val any, sy
 			f.renderKeyValueYAML(sb, key, v[key], indent, code, opts)
 		}
 	default:
-		pad := strings.Repeat(" ", indent)
 		f.writeColoredLine(sb, fmt.Sprintf("%s%v", pad, formatDetailedValue(val)), code, opts)
 	}
 }

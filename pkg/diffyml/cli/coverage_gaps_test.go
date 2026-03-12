@@ -403,9 +403,9 @@ func TestLoadFilePairContent_ErrorCases(t *testing.T) {
 		{
 			name: "OnlyTo_Error",
 			pair: diffyml.FilePair{
-				Name:     "test.yaml",
-				Type:     diffyml.FilePairOnlyTo,
-				ToPath:   "/nonexistent/to.yaml",
+				Name:   "test.yaml",
+				Type:   diffyml.FilePairOnlyTo,
+				ToPath: "/nonexistent/to.yaml",
 			},
 		},
 	}

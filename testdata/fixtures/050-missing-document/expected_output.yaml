@@ -1,6 +1,6 @@
 Found two differences
 
-(document 0) spec.template.spec.containers.migrate.image
+spec.template.spec.containers.migrate.image (document 0)
   ± value change
     - myapp:v1.0
     + myapp:v2.0

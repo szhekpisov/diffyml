@@ -1,11 +1,11 @@
 Found two differences
 
-(document 1) data.log_level
+data.log_level (document 1)
   ± value change
     - info
     + warn
 
-(document 1) metadata.name
+metadata.name (document 1)
   ± value change
     - app-config-abc123
     + app-config-def456

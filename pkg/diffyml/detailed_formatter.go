@@ -170,7 +170,11 @@ func (f *DetailedFormatter) formatEntryBatch(sb *strings.Builder, diffs []Differ
 	}
 
 	sb.WriteString("  ")
-	sb.WriteString(colorStart(opts, colorFn(opts)))
+	descriptorColor := colorFn(opts)
+	if isDocLevel {
+		descriptorColor = f.colorModified(opts)
+	}
+	sb.WriteString(colorStart(opts, descriptorColor))
 	fmt.Fprintf(sb, "%s %s %s %s:", symbol, countStr, noun, action)
 	sb.WriteString(colorEnd(opts))
 	sb.WriteString("\n")

@@ -1282,11 +1282,11 @@ func TestDetailedFormatter_DocumentHeading(t *testing.T) {
 			{Path: "[1]", Type: DiffAdded, To: "value2", DocumentIndex: 1},
 		}
 		output := f.Format(diffs, opts)
+		if !strings.Contains(output, "(document 0)") {
+			t.Errorf("expected '(document 0)' in output, got: %q", output)
+		}
 		if !strings.Contains(output, "(document 1)") {
 			t.Errorf("expected '(document 1)' in output, got: %q", output)
-		}
-		if !strings.Contains(output, "(document 2)") {
-			t.Errorf("expected '(document 2)' in output, got: %q", output)
 		}
 	})
 
@@ -1447,8 +1447,8 @@ func TestDetailedFormatter_ColonNotation(t *testing.T) {
 			{Path: "[0].spec.field", Type: DiffModified, From: "old", To: "new"},
 		}
 		output := f.Format(diffs, opts)
-		if !strings.Contains(output, "0:spec.field") {
-			t.Errorf("expected '0:spec.field' in output, got: %q", output)
+		if !strings.Contains(output, "(document 0) spec.field") {
+			t.Errorf("expected '(document 0) spec.field' in output, got: %q", output)
 		}
 		if strings.Contains(output, "[0]") {
 			t.Errorf("should not contain '[0]' in output, got: %q", output)
@@ -1460,8 +1460,8 @@ func TestDetailedFormatter_ColonNotation(t *testing.T) {
 			{Path: "[2].metadata.name", Type: DiffModified, From: "old", To: "new"},
 		}
 		output := f.Format(diffs, opts)
-		if !strings.Contains(output, "2:metadata.name") {
-			t.Errorf("expected '2:metadata.name' in output, got: %q", output)
+		if !strings.Contains(output, "(document 2) metadata.name") {
+			t.Errorf("expected '(document 2) metadata.name' in output, got: %q", output)
 		}
 	})
 
@@ -1473,8 +1473,8 @@ func TestDetailedFormatter_ColonNotation(t *testing.T) {
 			{Path: "[0].spec.field", Type: DiffModified, From: "old", To: "new"},
 		}
 		output := f.Format(diffs, gpOpts)
-		if !strings.Contains(output, "0:/spec/field") {
-			t.Errorf("expected '0:/spec/field' in output, got: %q", output)
+		if !strings.Contains(output, "(document 0) /spec/field") {
+			t.Errorf("expected '(document 0) /spec/field' in output, got: %q", output)
 		}
 	})
 

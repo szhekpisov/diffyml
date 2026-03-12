@@ -5,22 +5,22 @@ Found five differences
     - Deployment:production/web-app, ConfigMap:production/app-config
     + ConfigMap:production/app-config, Deployment:production/web-app
 
-0:apiVersion
+(document 0) apiVersion
   ± value change
     - apps/v1beta1
     + apps/v1
 
-0:spec.replicas
+(document 0) spec.replicas
   ± value change
     - 3
     + 5
 
-0:spec.template.spec.containers.web.image
+(document 0) spec.template.spec.containers.web.image
   ± value change
     - nginx:1.21
     + nginx:1.25
 
-1:data.log_level
+(document 1) data.log_level
   ± value change
     - info
     + warn

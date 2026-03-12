@@ -1,0 +1,23 @@
+Found two differences
+
+(document 0) spec.template.spec.containers.migrate.image
+  ± value change
+    - myapp:v1.0
+    + myapp:v2.0
+
+(document 1)
+  + one document added:
+    ---
+    apiVersion: batch/v1
+    kind: Job
+    metadata:
+      generateName: cleanup-
+      namespace: default
+    spec:
+      template:
+        spec:
+          containers:
+            - name: cleanup
+              image: myapp:v2.0
+          restartPolicy: Never
+

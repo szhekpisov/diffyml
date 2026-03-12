@@ -1,0 +1,12 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: data-migration-
+  namespace: default
+spec:
+  template:
+    spec:
+      containers:
+      - name: migrate
+        image: myapp:v1.0
+      restartPolicy: Never

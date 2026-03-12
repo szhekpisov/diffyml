@@ -91,7 +91,7 @@ func (f *DetailedFormatter) formatPathHeading(sb *strings.Builder, path string, 
 		}
 	} else if idx, ok := parseBareDocIndex(path); ok {
 		if isMultiDoc {
-			heading = fmt.Sprintf("(document %d)", idx)
+			heading = fmt.Sprintf("(root level) (document %d)", idx)
 		} else {
 			heading = k8sDocumentPath
 		}

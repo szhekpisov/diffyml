@@ -1282,11 +1282,11 @@ func TestDetailedFormatter_DocumentHeading(t *testing.T) {
 			{Path: "[1]", Type: DiffAdded, To: "value2", DocumentIndex: 1},
 		}
 		output := f.Format(diffs, opts)
-		if !strings.Contains(output, "(document 0)") {
-			t.Errorf("expected '(document 0)' in output, got: %q", output)
+		if !strings.Contains(output, "(root level) (document 0)") {
+			t.Errorf("expected '(root level) (document 0)' in output, got: %q", output)
 		}
-		if !strings.Contains(output, "(document 1)") {
-			t.Errorf("expected '(document 1)' in output, got: %q", output)
+		if !strings.Contains(output, "(root level) (document 1)") {
+			t.Errorf("expected '(root level) (document 1)' in output, got: %q", output)
 		}
 	})
 

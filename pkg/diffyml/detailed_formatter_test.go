@@ -1489,6 +1489,55 @@ func TestDetailedFormatter_ColonNotation(t *testing.T) {
 	})
 }
 
+// renderDocumentValue edge cases
+
+func TestDetailedFormatter_RenderDocumentValue_OrderedMap(t *testing.T) {
+	f, _ := FormatterByName("detailed")
+	opts := DefaultFormatOptions()
+	opts.OmitHeader = true
+
+	om := NewOrderedMap()
+	om.Keys = append(om.Keys, "apiVersion", "kind")
+	om.Values["apiVersion"] = "v1"
+	om.Values["kind"] = "Service"
+
+	diffs := []Difference{
+		{Path: "[0]", Type: DiffAdded, To: om},
+	}
+	output := f.Format(diffs, opts)
+	if !strings.Contains(output, "apiVersion: v1") {
+		t.Errorf("expected 'apiVersion: v1' in output, got:\n%s", output)
+	}
+	if !strings.Contains(output, "kind: Service") {
+		t.Errorf("expected 'kind: Service' in output, got:\n%s", output)
+	}
+	// Must NOT have list bullet prefix
+	if strings.Contains(output, "- apiVersion:") {
+		t.Errorf("document value should not have list bullet prefix, got:\n%s", output)
+	}
+}
+
+func TestDetailedFormatter_RenderDocumentValue_MapStringAny(t *testing.T) {
+	f, _ := FormatterByName("detailed")
+	opts := DefaultFormatOptions()
+	opts.OmitHeader = true
+
+	diffs := []Difference{
+		{Path: "[0]", Type: DiffAdded, To: map[string]any{"name": "test", "value": "123"}},
+	}
+	output := f.Format(diffs, opts)
+	if !strings.Contains(output, "name: test") {
+		t.Errorf("expected 'name: test' in output, got:\n%s", output)
+	}
+	if !strings.Contains(output, "value: 123") {
+		t.Errorf("expected 'value: 123' in output, got:\n%s", output)
+	}
+	// Must NOT have list bullet prefix
+	if strings.Contains(output, "- name:") {
+		t.Errorf("document value should not have list bullet prefix, got:\n%s", output)
+	}
+}
+
 // renderEntryValue edge cases
 
 func TestDetailedFormatter_RenderEntryValue_ListScalar(t *testing.T) {

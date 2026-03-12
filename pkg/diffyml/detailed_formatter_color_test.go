@@ -750,3 +750,27 @@ func TestDetailedFormatter_Integration_AutoColorModeNoTerminal(t *testing.T) {
 		t.Errorf("auto color mode with non-terminal should emit no ANSI codes, got: %q", output)
 	}
 }
+
+func TestDetailedFormatter_ColorEnabled_DocumentRemovalRed(t *testing.T) {
+	f, _ := FormatterByName("detailed")
+	opts := DefaultFormatOptions()
+	opts.Color = true
+	opts.OmitHeader = true
+
+	om := NewOrderedMap()
+	om.Keys = append(om.Keys, "apiVersion", "kind")
+	om.Values["apiVersion"] = "v1"
+	om.Values["kind"] = "Service"
+
+	diffs := []Difference{
+		{Path: "[0]", Type: DiffRemoved, From: om},
+	}
+	output := f.Format(diffs, opts)
+	// Document removal value lines should use red color, not green
+	if strings.Contains(output, "\033[32m") {
+		t.Errorf("document removal should not use green color, got:\n%s", output)
+	}
+	if !strings.Contains(output, "\033[31m") && !strings.Contains(output, "\033[38;2;") {
+		t.Errorf("expected red color code for document removal, got:\n%s", output)
+	}
+}

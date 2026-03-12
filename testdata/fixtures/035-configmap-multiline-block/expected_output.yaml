@@ -1,9 +1,9 @@
 Found two differences
 
 (document)
-  - one list entry removed:
+  - one document removed:
 
-  + one list entry added:
+  + one document added:
     - kind: ConfigMap
       apiVersion: v1
       metadata:

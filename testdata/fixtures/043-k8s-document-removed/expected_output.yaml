@@ -1,7 +1,7 @@
 Found one difference
 
 (document)
-  - one list entry removed:
+  - one document removed:
     - apiVersion: v1
       kind: Service
       metadata:

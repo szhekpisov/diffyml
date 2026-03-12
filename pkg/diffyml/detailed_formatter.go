@@ -144,6 +144,10 @@ func (f *DetailedFormatter) formatGroupDiffs(sb *strings.Builder, group pathGrou
 // formatEntryBatch renders a group of additions or removals with a count descriptor.
 func (f *DetailedFormatter) formatEntryBatch(sb *strings.Builder, diffs []Difference, action string, opts *FormatOptions) {
 	n := len(diffs)
+
+	// Detect document-level diffs (path is bare "[N]")
+	_, isDocLevel := parseBareDocIndex(diffs[0].Path)
+
 	isListEntry := isListEntryDiff(diffs[0])
 	entryType := "map"
 	if isListEntry {
@@ -151,7 +155,12 @@ func (f *DetailedFormatter) formatEntryBatch(sb *strings.Builder, diffs []Differ
 	}
 
 	countStr := formatCount(n)
-	noun := pluralize(n, entryType+" entry", entryType+" entries")
+	var noun string
+	if isDocLevel {
+		noun = pluralize(n, "document", "documents")
+	} else {
+		noun = pluralize(n, entryType+" entry", entryType+" entries")
+	}
 	symbol := "+"
 	colorFn := f.colorAdded
 	if action == "removed" {

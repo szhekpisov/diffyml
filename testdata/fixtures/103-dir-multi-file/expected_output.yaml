@@ -54,7 +54,7 @@ spec.containers.app.image
 --- a/ingress.yaml
 +++ /dev/null
 (document)
-  - one list entry removed:
+  - one document removed:
     - apiVersion: networking.k8s.io/v1
       kind: Ingress
       metadata:
@@ -69,7 +69,7 @@ spec.containers.app.image
 --- /dev/null
 +++ b/secret.yaml
 (document)
-  + one list entry added:
+  + one document added:
     - apiVersion: v1
       kind: Secret
       metadata:

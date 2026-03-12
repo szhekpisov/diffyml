@@ -1,7 +1,7 @@
 Found two differences
 
 (document)
-  - one list entry removed:
+  - one document removed:
     - apiVersion: v1
       kind: ConfigMap
       metadata:
@@ -12,7 +12,7 @@ Found two differences
         log_level: info
         max_retries: 3
 
-  + one list entry added:
+  + one document added:
     - apiVersion: v1
       kind: ConfigMap
       metadata:

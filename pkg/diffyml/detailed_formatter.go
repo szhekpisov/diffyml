@@ -163,18 +163,12 @@ func (f *DetailedFormatter) formatEntryBatch(sb *strings.Builder, diffs []Differ
 		noun = pluralize(n, entryType+" entry", entryType+" entries")
 	}
 	symbol := "+"
-	colorFn := f.colorAdded
 	if action == "removed" {
 		symbol = "-"
-		colorFn = f.colorRemoved
 	}
 
 	sb.WriteString("  ")
-	descriptorColor := colorFn(opts)
-	if isDocLevel {
-		descriptorColor = f.colorModified(opts)
-	}
-	sb.WriteString(colorStart(opts, descriptorColor))
+	sb.WriteString(colorStart(opts, f.colorModified(opts)))
 	fmt.Fprintf(sb, "%s %s %s %s:", symbol, countStr, noun, action)
 	sb.WriteString(colorEnd(opts))
 	sb.WriteString("\n")

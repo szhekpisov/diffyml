@@ -38,6 +38,28 @@ func (f *DetailedFormatter) renderEntryValue(sb *strings.Builder, val any, symbo
 	}
 }
 
+// renderDocumentValue renders a whole YAML document (top-level key-value pairs without list "- " prefix).
+func (f *DetailedFormatter) renderDocumentValue(sb *strings.Builder, val any, symbol string, indent int, opts *FormatOptions) {
+	code := f.colorRemoved(opts)
+	if symbol == "+" {
+		code = f.colorAdded(opts)
+	}
+
+	switch v := val.(type) {
+	case *OrderedMap:
+		for _, key := range v.Keys {
+			f.renderKeyValueYAML(sb, key, v.Values[key], indent, code, opts)
+		}
+	case map[string]any:
+		for _, key := range sortedMapKeys(v) {
+			f.renderKeyValueYAML(sb, key, v[key], indent, code, opts)
+		}
+	default:
+		pad := strings.Repeat(" ", indent)
+		f.writeColoredLine(sb, fmt.Sprintf("%s%v", pad, formatDetailedValue(val)), code, opts)
+	}
+}
+
 // renderKeyValueYAML renders a key: value pair in plain YAML style with color.
 // Uses standard YAML indentation (2 spaces per level), no pipe guides.
 func (f *DetailedFormatter) renderKeyValueYAML(sb *strings.Builder, key string, val any, indent int, colorCode string, opts *FormatOptions) {

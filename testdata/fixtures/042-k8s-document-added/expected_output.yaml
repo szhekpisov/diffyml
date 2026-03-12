@@ -2,8 +2,8 @@ Found one difference
 
 (document)
   + one document added:
-    - apiVersion: v1
-      kind: Service
-      metadata:
-        name: y
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: y
 

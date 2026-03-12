@@ -186,7 +186,11 @@ func (f *DetailedFormatter) formatEntryBatch(sb *strings.Builder, diffs []Differ
 				val = FormatCertificate(s)
 			}
 		}
-		f.renderEntryValue(sb, val, symbol, 4, diff.Path, isListEntry, opts)
+		if isDocLevel {
+			f.renderDocumentValue(sb, val, symbol, 4, opts)
+		} else {
+			f.renderEntryValue(sb, val, symbol, 4, diff.Path, isListEntry, opts)
+		}
 	}
 	sb.WriteString("\n")
 }

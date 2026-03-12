@@ -55,28 +55,28 @@ spec.containers.app.image
 +++ /dev/null
 (document)
   - one document removed:
-    - apiVersion: networking.k8s.io/v1
-      kind: Ingress
-      metadata:
-        name: myapp-ingress
-      spec:
-        defaultBackend:
-          service:
-            name: myapp
-            port:
-              number: 80
+    apiVersion: networking.k8s.io/v1
+    kind: Ingress
+    metadata:
+      name: myapp-ingress
+    spec:
+      defaultBackend:
+        service:
+          name: myapp
+          port:
+            number: 80
 
 --- /dev/null
 +++ b/secret.yaml
 (document)
   + one document added:
-    - apiVersion: v1
-      kind: Secret
-      metadata:
-        name: myapp-secret
-      type: Opaque
-      data:
-        token: YWJjMTIz
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      name: myapp-secret
+    type: Opaque
+    data:
+      token: YWJjMTIz
 
 --- a/service.yaml
 +++ b/service.yaml

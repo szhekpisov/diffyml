@@ -4,21 +4,21 @@ Found two differences
   - one document removed:
 
   + one document added:
-    - kind: ConfigMap
-      apiVersion: v1
-      metadata:
-        name: atlantis-repo-config
-        namespace: default
-        labels:
-          app: atlantis
-          chart: atlantis-3.14.0
-          heritage: Tiller
-          release: default
-      data:
-        repos.yaml: |
-          repos:
-          - apply_requirements:
-            - approved
-            - mergeable
-            id: /.*/
+    kind: ConfigMap
+    apiVersion: v1
+    metadata:
+      name: atlantis-repo-config
+      namespace: default
+      labels:
+        app: atlantis
+        chart: atlantis-3.14.0
+        heritage: Tiller
+        release: default
+    data:
+      repos.yaml: |
+        repos:
+        - apply_requirements:
+          - approved
+          - mergeable
+          id: /.*/
 

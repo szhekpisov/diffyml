@@ -733,3 +733,225 @@ func TestRemoteConstants(t *testing.T) {
 		t.Errorf("DefaultTimeout should be 30s, got %v", DefaultTimeout)
 	}
 }
+
+// === Section 4: Code coverage gap tests ===
+
+// --- chroot.go: parsePath and splitPath edge cases ---
+
+func TestParsePath_EmptyPath(t *testing.T) {
+	segments, err := parsePath("")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(segments) != 0 {
+		t.Errorf("expected 0 segments for empty path, got %d", len(segments))
+	}
+}
+
+func TestParsePath_ConsecutiveDots(t *testing.T) {
+	// "a..b" has an empty part between the two dots that should be skipped
+	segments, err := parsePath("a..b")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(segments) != 2 {
+		t.Fatalf("expected 2 segments, got %d", len(segments))
+	}
+	if segments[0].key != "a" || segments[1].key != "b" {
+		t.Errorf("expected [a, b], got [%s, %s]", segments[0].key, segments[1].key)
+	}
+}
+
+func TestSplitPath_NestedBrackets(t *testing.T) {
+	_, err := splitPath("a[[0]]")
+	if err == nil {
+		t.Fatal("expected error for nested brackets")
+	}
+}
+
+func TestSplitPath_UnmatchedClosingBracket(t *testing.T) {
+	_, err := splitPath("a]b")
+	if err == nil {
+		t.Fatal("expected error for unmatched closing bracket")
+	}
+}
+
+// --- chroot.go: applyChrootToDocs empty path ---
+
+func TestApplyChrootToDocs_EmptyPath(t *testing.T) {
+	docs := []any{map[string]any{"key": "value"}}
+	result, err := applyChrootToDocs(docs, "", false)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) != 1 {
+		t.Fatalf("expected 1 doc, got %d", len(result))
+	}
+}
+
+// --- comparator.go: detectListOrderChanges with non-unique IDs ---
+
+func TestDetectListOrderChanges_NonUniqueIDs(t *testing.T) {
+	// Duplicate IDs → fromIDs length != fromIndex length → return nil
+	fromIDs := []any{"a", "a", "b"}
+	fromIndex := map[any]int{"a": 0, "b": 2} // len=2, but fromIDs len=3
+	toIndex := map[any]int{"a": 0, "b": 1}
+	result := detectListOrderChanges("items", fromIDs, fromIndex, toIndex, 2)
+	if result != nil {
+		t.Error("expected nil for non-unique IDs")
+	}
+}
+
+// --- diffyml.go: Compare error paths ---
+
+func TestCompare_InvalidFromYAML(t *testing.T) {
+	_, err := Compare([]byte("{{invalid"), []byte("key: val"), nil)
+	if err == nil {
+		t.Fatal("expected parse error for invalid 'from' YAML")
+	}
+}
+
+func TestCompare_InvalidToYAML(t *testing.T) {
+	_, err := Compare([]byte("key: val"), []byte("{{invalid"), nil)
+	if err == nil {
+		t.Fatal("expected parse error for invalid 'to' YAML")
+	}
+}
+
+func TestCompare_ChrootError(t *testing.T) {
+	// Chroot with a path that doesn't exist in the from doc → error
+	from := []byte("key: val")
+	to := []byte("key: val")
+	opts := &Options{Chroot: "nonexistent.deep.path"}
+	_, err := Compare(from, to, opts)
+	if err == nil {
+		t.Fatal("expected chroot error for missing path in 'from'")
+	}
+}
+
+func TestCompare_ChrootToErrorWithChroot(t *testing.T) {
+	// Chroot path exists in 'from' but not in 'to'
+	from := []byte("nonexistent:\n  deep:\n    path: val")
+	to := []byte("other: val")
+	opts := &Options{Chroot: "nonexistent.deep.path"}
+	_, err := Compare(from, to, opts)
+	if err == nil {
+		t.Fatal("expected chroot error for missing path in 'to'")
+	}
+}
+
+func TestCompare_ChrootFromError(t *testing.T) {
+	// ChrootFrom with non-existent path → error (else branch, from)
+	from := []byte("key: val")
+	to := []byte("key: val")
+	opts := &Options{ChrootFrom: "nonexistent.path"}
+	_, err := Compare(from, to, opts)
+	if err == nil {
+		t.Fatal("expected chroot error for ChrootFrom with missing path")
+	}
+}
+
+func TestCompare_ChrootToError(t *testing.T) {
+	// ChrootTo with non-existent path → error (else branch, to)
+	from := []byte("key: val")
+	to := []byte("key: val")
+	opts := &Options{ChrootTo: "nonexistent.path"}
+	_, err := Compare(from, to, opts)
+	if err == nil {
+		t.Fatal("expected chroot error for ChrootTo with missing path")
+	}
+}
+
+// --- diffyml.go: hasIdentifierField branches ---
+
+func TestHasIdentifierField_OrderedMapWithID(t *testing.T) {
+	om := &OrderedMap{
+		Keys:   []string{"id", "value"},
+		Values: map[string]any{"id": "123", "value": "x"},
+	}
+	if !hasIdentifierField(om) {
+		t.Error("expected true for OrderedMap with 'id' field")
+	}
+}
+
+func TestHasIdentifierField_PlainMapWithName(t *testing.T) {
+	m := map[string]any{"name": "myapp", "value": "1"}
+	if !hasIdentifierField(m) {
+		t.Error("expected true for plain map with 'name' field")
+	}
+}
+
+func TestHasIdentifierField_PlainMapWithID(t *testing.T) {
+	m := map[string]any{"id": "123", "value": "x"}
+	if !hasIdentifierField(m) {
+		t.Error("expected true for plain map with 'id' field")
+	}
+}
+
+// --- diffyml.go: compareByExactOrParentOrder !okI && okJ branch ---
+
+func TestCompareByExactOrParentOrder_OnlyJInOrder(t *testing.T) {
+	pathOrder := map[string]int{
+		"known": 0,
+	}
+	// pathI is not in pathOrder, pathJ is → should return 1 (!okI && okJ)
+	result := compareByExactOrParentOrder("unknown", "known", pathOrder, func(path string) (int, bool) {
+		return 0, false
+	})
+	if result != 1 {
+		t.Errorf("expected 1 when only J is in order, got %d", result)
+	}
+}
+
+// --- kubernetes.go: detectK8sOrderChanges same order → nil ---
+
+// --- chroot.go: parsePath additional edge cases ---
+
+func TestParsePath_InvalidBracketSyntax(t *testing.T) {
+	// Multiple brackets like "key[0][1]" triggers invalid bracket syntax error
+	_, err := parsePath("key[0][1]")
+	if err == nil {
+		t.Fatal("expected error for invalid bracket syntax")
+	}
+}
+
+func TestParsePath_EmptyListIndex(t *testing.T) {
+	// "key[]" has empty index string → error
+	_, err := parsePath("key[]")
+	if err == nil {
+		t.Fatal("expected error for empty list index")
+	}
+}
+
+// --- chroot.go: navigateToPath index on non-list ---
+
+func TestNavigateToPath_IndexOnNonList(t *testing.T) {
+	// Navigate with index accessor on a string value → error
+	doc := &OrderedMap{
+		Keys:   []string{"key"},
+		Values: map[string]any{"key": "not-a-list"},
+	}
+	_, err := navigateToPath(doc, "key[0]")
+	if err == nil {
+		t.Fatal("expected error when indexing a non-list value")
+	}
+}
+
+func TestDetectK8sOrderChanges_SameOrder(t *testing.T) {
+	// Two matched docs in the same order → orderChanged is false → return nil
+	matched := map[int]int{0: 0, 1: 1}
+	from := []any{
+		&OrderedMap{
+			Keys:   []string{"apiVersion", "kind", "metadata"},
+			Values: map[string]any{"apiVersion": "v1", "kind": "Service", "metadata": &OrderedMap{Keys: []string{"name"}, Values: map[string]any{"name": "svc1"}}},
+		},
+		&OrderedMap{
+			Keys:   []string{"apiVersion", "kind", "metadata"},
+			Values: map[string]any{"apiVersion": "v1", "kind": "Service", "metadata": &OrderedMap{Keys: []string{"name"}, Values: map[string]any{"name": "svc2"}}},
+		},
+	}
+	result := detectK8sOrderChanges(matched, from, false)
+	if result != nil {
+		t.Error("expected nil when docs are in same order")
+	}
+}

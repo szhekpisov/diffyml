@@ -27,7 +27,7 @@ check-coverage:
 		fi; \
 		printf "%-20s %7s%% %9s%% %s\n" "$$file" "$$actual" "$$required" "$$status"; \
 	}; \
-	check_threshold "TOTAL" "$$TOTAL_COV" "98.0"; \
+	check_threshold "TOTAL" "$$TOTAL_COV" "99.0"; \
 	echo ""; \
 	if [ "$$FAIL" -eq 1 ]; then \
 		echo "Coverage threshold check FAILED"; \

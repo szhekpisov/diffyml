@@ -321,3 +321,251 @@ func TestBuildFilePairsFromMap_Mixed(t *testing.T) {
 		t.Errorf("deleted.yaml: expected FilePairOnlyFrom, got %v", types["deleted.yaml"])
 	}
 }
+
+// === Section 2: Code coverage gap tests ===
+
+// --- cli.go: loadContents ToFile error ---
+
+func TestLoadContents_ToFileError(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.FromFile = "/dev/null" // valid file that loads empty
+	cfg.ToFile = "/nonexistent/path/to/file.yaml"
+	rc := &RunConfig{Stdout: &strings.Builder{}, Stderr: &strings.Builder{}}
+	_, _, err := loadContents(cfg, rc)
+	if err == nil {
+		t.Fatal("expected error loading non-existent ToFile")
+	}
+}
+
+// --- cli.go: Run with nil RunConfig ---
+
+func TestRun_NilRunConfig(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.ShowHelp = true
+	// Run with rc=nil should not panic; it creates a default RunConfig
+	result := Run(cfg, nil)
+	if result.Code != ExitCodeSuccess {
+		t.Errorf("expected success for help flag, got %d", result.Code)
+	}
+}
+
+// --- cli.go: Run with invalid output format ---
+
+func TestRun_InvalidOutputFormat_SetupError(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.Output = "nonexistent_format"
+	var stdout, stderr strings.Builder
+	rc := &RunConfig{
+		Stdout:      &stdout,
+		Stderr:      &stderr,
+		FromContent: []byte("key: old"),
+		ToContent:   []byte("key: new"),
+	}
+	result := Run(cfg, rc)
+	if result.Code != ExitCodeError {
+		t.Errorf("expected error for invalid output format, got %d", result.Code)
+	}
+}
+
+// --- directory.go: loadFilePairContent error cases ---
+
+func TestLoadFilePairContent_ErrorCases(t *testing.T) {
+	tests := []struct {
+		name string
+		pair diffyml.FilePair
+	}{
+		{
+			name: "BothExist_FromError",
+			pair: diffyml.FilePair{
+				Name:     "test.yaml",
+				Type:     diffyml.FilePairBothExist,
+				FromPath: "/nonexistent/from.yaml",
+				ToPath:   "/dev/null",
+			},
+		},
+		{
+			name: "BothExist_ToError",
+			pair: diffyml.FilePair{
+				Name:     "test.yaml",
+				Type:     diffyml.FilePairBothExist,
+				FromPath: "/dev/null",
+				ToPath:   "/nonexistent/to.yaml",
+			},
+		},
+		{
+			name: "OnlyFrom_Error",
+			pair: diffyml.FilePair{
+				Name:     "test.yaml",
+				Type:     diffyml.FilePairOnlyFrom,
+				FromPath: "/nonexistent/from.yaml",
+			},
+		},
+		{
+			name: "OnlyTo_Error",
+			pair: diffyml.FilePair{
+				Name:     "test.yaml",
+				Type:     diffyml.FilePairOnlyTo,
+				ToPath:   "/nonexistent/to.yaml",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, _, err := loadFilePairContent(tt.pair, nil)
+			if err == nil {
+				t.Fatal("expected error for non-existent file path")
+			}
+		})
+	}
+}
+
+// --- directory.go: processDirPair errors ---
+
+func TestProcessDirPair_LoadError(t *testing.T) {
+	pair := diffyml.FilePair{
+		Name:     "bad.yaml",
+		Type:     diffyml.FilePairBothExist,
+		FromPath: "/nonexistent/from.yaml",
+		ToPath:   "/nonexistent/to.yaml",
+	}
+	_, err := processDirPair(pair, nil, &diffyml.Options{}, &diffyml.FilterOptions{})
+	if err == nil {
+		t.Fatal("expected error for non-existent file in processDirPair")
+	}
+}
+
+func TestProcessDirPair_CompareError(t *testing.T) {
+	// Invalid YAML in the filePairs map triggers a compare error
+	filePairs := map[string][2][]byte{
+		"bad.yaml": {[]byte("{{invalid yaml"), []byte("key: val")},
+	}
+	pair := diffyml.FilePair{
+		Name: "bad.yaml",
+		Type: diffyml.FilePairBothExist,
+	}
+	_, err := processDirPair(pair, filePairs, &diffyml.Options{}, &diffyml.FilterOptions{})
+	if err == nil {
+		t.Fatal("expected error for invalid YAML in processDirPair")
+	}
+}
+
+// --- directory.go: setupDirFormatting invalid format ---
+
+func TestSetupDirFormatting_InvalidFormat(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.Output = "nonexistent_formatter"
+	_, _, err := setupDirFormatting(cfg)
+	if err == nil {
+		t.Fatal("expected error for invalid formatter name")
+	}
+}
+
+// --- directory.go: runDirectory errors ---
+
+func TestRunDirectory_BuildPairsError(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.Output = "compact"
+	var stdout, stderr strings.Builder
+	rc := &RunConfig{Stdout: &stdout, Stderr: &stderr}
+	// Non-existent directories → buildDirFilePairs error
+	result := runDirectory(cfg, rc, "/nonexistent/dir1", "/nonexistent/dir2")
+	if result.Code != ExitCodeError {
+		t.Errorf("expected error for non-existent directories, got %d", result.Code)
+	}
+}
+
+func TestRunDirectory_SetupFormattingError(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.Output = "nonexistent_format"
+	var stdout, stderr strings.Builder
+	rc := &RunConfig{
+		Stdout: &stdout,
+		Stderr: &stderr,
+		FilePairs: map[string][2][]byte{
+			"test.yaml": {[]byte("key: old"), []byte("key: new")},
+		},
+	}
+	result := runDirectory(cfg, rc, "", "")
+	if result.Code != ExitCodeError {
+		t.Errorf("expected error for invalid output format, got %d", result.Code)
+	}
+}
+
+// --- directory.go: emitDirectorySummary structured error ---
+
+func TestEmitDirectorySummary_StructuredError(t *testing.T) {
+	t.Setenv("ANTHROPIC_API_KEY", "test-key")
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(500)
+		fmt.Fprint(w, `{"type":"error","error":{"type":"api_error","message":"server down"}}`)
+	}))
+	defer server.Close()
+
+	cfg := NewCLIConfig()
+	cfg.Output = "github"
+	var stdout, stderr strings.Builder
+	rc := &RunConfig{Stdout: &stdout, Stderr: &stderr, SummaryAPIURL: server.URL}
+	formatOpts := &diffyml.FormatOptions{}
+	formatter, _ := diffyml.FormatterByName("github")
+
+	groups := []diffyml.DiffGroup{
+		{FilePath: "f.yaml", Diffs: []diffyml.Difference{{Path: "a", Type: diffyml.DiffAdded, To: "v"}}},
+	}
+
+	emitDirectorySummary(cfg, rc, groups, nil, formatOpts, formatter, true, false)
+
+	if !strings.Contains(stderr.String(), "AI summary unavailable") {
+		t.Errorf("expected warning in stderr, got: %s", stderr.String())
+	}
+}
+
+// --- summarizer.go: Summarize invalid response body ---
+
+func TestSummarize_InvalidResponseBody(t *testing.T) {
+	mock := &mockHTTPDoer{
+		statusCode: 200,
+		body:       "not json at all",
+	}
+	s := NewSummarizerWithClient("test-model", "test-key", mock)
+
+	groups := []diffyml.DiffGroup{
+		{FilePath: "f.yaml", Diffs: []diffyml.Difference{{Path: "a", Type: diffyml.DiffAdded, To: "v"}}},
+	}
+
+	_, err := s.Summarize(t.Context(), groups)
+	if err == nil {
+		t.Fatal("expected error for non-JSON response body")
+	}
+	if !strings.Contains(err.Error(), "unexpected response format") {
+		t.Errorf("expected 'unexpected response format' error, got: %v", err)
+	}
+}
+
+// --- summarizer.go: Summarize invalid URL ---
+
+func TestSummarize_InvalidURL(t *testing.T) {
+	t.Setenv("ANTHROPIC_API_KEY", "test-key")
+	s := NewSummarizer("test-model")
+	// URL with control character causes http.NewRequestWithContext to fail
+	s.apiURL = "http://\x00invalid"
+
+	groups := []diffyml.DiffGroup{
+		{FilePath: "f.yaml", Diffs: []diffyml.Difference{{Path: "a", Type: diffyml.DiffAdded, To: "v"}}},
+	}
+
+	_, err := s.Summarize(t.Context(), groups)
+	if err == nil {
+		t.Fatal("expected error for invalid URL")
+	}
+}
+
+// --- summarizer.go: diffTypeLabel default case ---
+
+func TestDiffTypeLabel_Unknown(t *testing.T) {
+	label := diffTypeLabel(diffyml.DiffType(99))
+	if label != "UNKNOWN" {
+		t.Errorf("expected UNKNOWN for unknown DiffType, got %q", label)
+	}
+}

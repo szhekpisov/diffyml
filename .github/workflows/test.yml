@@ -118,7 +118,7 @@ jobs:
             printf "%-20s %7s%% %9s%% %s\n" "$file" "$actual" "$required" "$status"
           }
 
-          check_threshold "TOTAL" "$TOTAL_COV" "98.0"
+          check_threshold "TOTAL" "$TOTAL_COV" "99.0"
 
           echo ""
 

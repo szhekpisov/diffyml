@@ -24,12 +24,12 @@ The mutation testing workflow (`.github/workflows/mutation.yml`) runs on every P
 
 ## Report
 
-**Last full run:** 2026-03-09 — efficacy 100.00% (578 killed / 578 covered), 0 lived
+**Last full run:** 2026-03-12 — efficacy 100.00% (573 killed / 573 covered), 0 lived
 **Mutator coverage:** 99.31%
 
 | Status | Count |
 |--------|-------|
-| Killed | 578 |
+| Killed | 573 |
 | Lived | 0 |
 | Timed out | 0 |
 | Not covered | 4 |

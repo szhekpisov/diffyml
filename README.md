@@ -337,7 +337,7 @@ Every push and PR is checked by:
   [misspell](https://github.com/client9/misspell),
   [staticcheck](https://staticcheck.dev/) (all checks except style conventions)
 
-1,200+ tests (unit, e2e, fuzz, property-based), 98.9% code coverage, 100% [mutation testing](https://github.com/go-gremlins/gremlins) efficacy (578/578 mutants killed). CI enforces a 98% coverage floor.
+1,200+ tests (unit, e2e, fuzz, property-based), 99.9% code coverage, 100% [mutation testing](https://github.com/go-gremlins/gremlins) efficacy (573/573 mutants killed). CI enforces a 99% coverage floor.
 
 ## Contributing
 
@@ -360,7 +360,7 @@ pre-commit install
 |------|---------------|
 | `gofmt` | Code formatting |
 | `go vet` | Static analysis |
-| `check-coverage` | Coverage threshold (98% overall) |
+| `check-coverage` | Coverage threshold (99% overall) |
 | `govulncheck` | Known vulnerabilities |
 | `golangci-lint` | 7 linters (errcheck, gocritic, gosec, govet, ineffassign, misspell, staticcheck) |
 

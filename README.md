@@ -17,7 +17,7 @@ diffyml compares YAML files and shows meaningful, structured differences — not
 
 ## Why diffyml?
 
-**Fastest at scale.** 7.7x faster than [dyff](https://github.com/homeport/dyff) on 78 KB files, 21x faster on 780 KB files, with the lowest memory footprint among YAML-aware tools at scale. Near-linear scaling. See [PERFORMANCE.md](doc/PERFORMANCE.md) for methodology and results.
+**Fastest at scale.** 6x faster than [dyff](https://github.com/homeport/dyff) on 78 KB files, 8x faster on 780 KB files, with the lowest memory footprint among YAML-aware tools at scale. Near-linear scaling. See [PERFORMANCE.md](doc/PERFORMANCE.md) for methodology and results.
 
 **One dependency, zero surprises.** A single runtime dependency ([yaml.v3](https://github.com/yaml/go-yaml)) and pure Go stdlib. Minimal attack surface, auditable in minutes.
 
@@ -28,16 +28,16 @@ diffyml compares YAML files and shows meaningful, structured differences — not
 | Feature | diffyml | dyff | plain `diff` |
 |---------|---------|------|------------|
 | YAML-aware (structural diff) | Yes | Yes | No (line-based) |
-| Kubernetes resource matching | By apiVersion + kind + name | By document position | No |
-| Rename detection | Yes (content similarity) | No | No |
+| Kubernetes resource matching | By apiVersion + kind + name | By apiVersion + kind + name | No |
+| Rename detection | Yes (content similarity — handles name changes) | Yes (identifier-based — name must stay the same) | No |
 | API version migration | Yes (`--ignore-api-version`) | No | No |
 | CI annotation formats | 3 (GitHub, GitLab, Gitea) | 0 | 0 |
-| Runtime dependencies | 1 (yaml.v3) | 20+ | 0 |
+| Runtime dependencies | 1 (yaml.v3) | 14 | 0 |
 | Directory comparison | Yes | No | Yes |
-| Performance (78 KB) | 20 ms | 156 ms (7.7x slower) | 7 ms |
-| Performance (780 KB) | 151 ms | 3,213 ms (21x slower) | 45 ms |
+| Performance (78 KB) | 21 ms | 128 ms (6x slower) | 6 ms |
+| Performance (780 KB) | 152 ms | 1,220 ms (8x slower) | 45 ms |
 
-Comparison based on dyff v1.9 and diffyml v1.5. See [PERFORMANCE.md](doc/PERFORMANCE.md) for benchmark methodology. [Open an issue](https://github.com/szhekpisov/diffyml/issues) if anything is outdated.
+Comparison based on dyff v1.11.2 and diffyml v1.5.5. See [PERFORMANCE.md](doc/PERFORMANCE.md) for benchmark methodology. [Open an issue](https://github.com/szhekpisov/diffyml/issues) if anything is outdated.
 
 ## Kubernetes Intelligence
 

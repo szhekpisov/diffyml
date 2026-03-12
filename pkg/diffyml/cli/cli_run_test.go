@@ -544,7 +544,7 @@ func TestRun_GitLab_FallbackOnParentTraversingPath(t *testing.T) {
 	rc.FromContent = []byte(yaml1)
 	rc.ToContent = []byte(yaml2)
 	// Use an absolute path that's outside CWD, which will produce ../..
-	cfg.ToFile = "/tmp/outside/deploy.yaml"
+	cfg.ToFile = "/nonexistent/outside/deploy.yaml"
 
 	Run(cfg, rc)
 
@@ -563,9 +563,9 @@ func TestRun_GitLab_FallbackOnParentTraversingPath(t *testing.T) {
 	if path == "" {
 		t.Error("location.path should not be empty")
 	}
-	// Should warn on stderr if absolute path used
-	if strings.HasPrefix(path, "/") && !strings.Contains(stderr.String(), "Warning") {
-		t.Errorf("expected warning on stderr when using absolute path, stderr: %q", stderr.String())
+	// Absolute path outside CWD should not produce a warning
+	if strings.Contains(stderr.String(), "Warning") {
+		t.Errorf("expected no warning on stderr, got: %q", stderr.String())
 	}
 }
 

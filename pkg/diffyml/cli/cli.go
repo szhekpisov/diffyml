@@ -558,7 +558,7 @@ func runComparison(cfg *CLIConfig, rc *RunConfig, fromContent, toContent []byte,
 	}
 
 	// Set file path for formatters that use it (e.g., GitLab)
-	formatOpts.FilePath = normalizeFilePath(cfg.ToFile, rc.Stderr)
+	formatOpts.FilePath = normalizeFilePath(cfg.ToFile)
 
 	// For brief + summary: defer output until we know if the API call succeeds
 	isBriefSummary := cfg.Output == "brief" && cfg.Summary
@@ -575,7 +575,7 @@ func runComparison(cfg *CLIConfig, rc *RunConfig, fromContent, toContent []byte,
 		if rc.SummaryAPIURL != "" {
 			summarizer.apiURL = rc.SummaryAPIURL
 		}
-		groups := []diffyml.DiffGroup{{FilePath: normalizeFilePath(cfg.ToFile, rc.Stderr), Diffs: diffs}}
+		groups := []diffyml.DiffGroup{{FilePath: normalizeFilePath(cfg.ToFile), Diffs: diffs}}
 		summary, summaryErr := summarizer.Summarize(context.Background(), groups)
 		if summaryErr != nil {
 			if isBriefSummary {
@@ -650,14 +650,13 @@ func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
 // normalizeFilePath converts a file path to a clean relative path.
 // Strips "./" prefix, converts absolute paths to relative from CWD.
 // Falls back to the original path if relative conversion fails or
-// produces a parent-traversing path (".."). Emits a warning to stderr
-// if the fallback results in an absolute path.
-func normalizeFilePath(path string, stderr io.Writer) string {
+// produces a parent-traversing path ("..").
+func normalizeFilePath(path string) string {
 	if path == "" {
 		return ""
 	}
 
-	// /dev/ paths (process substitution, stdin) are inherently non-relative; skip warning
+	// /dev/ paths (process substitution, stdin) are inherently non-relative
 	if strings.HasPrefix(path, "/dev/") {
 		return path
 	}
@@ -669,10 +668,6 @@ func normalizeFilePath(path string, stderr io.Writer) string {
 			if err == nil && !strings.HasPrefix(rel, "..") {
 				return strings.TrimPrefix(rel, "./")
 			}
-		}
-		// Fallback: absolute path couldn't be made relative
-		if stderr != nil {
-			fmt.Fprintf(stderr, "Warning: could not determine relative path for %s, using absolute path\n", path)
 		}
 		return path
 	}

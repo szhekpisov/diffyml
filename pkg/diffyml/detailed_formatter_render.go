@@ -45,6 +45,9 @@ func (f *DetailedFormatter) renderDocumentValue(sb *strings.Builder, val any, sy
 		code = f.colorAdded(opts)
 	}
 
+	pad := strings.Repeat(" ", indent)
+	f.writeColoredLine(sb, pad+"---", code, opts)
+
 	switch v := val.(type) {
 	case *OrderedMap:
 		for _, key := range v.Keys {

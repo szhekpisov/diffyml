@@ -1505,8 +1505,8 @@ func TestDetailedFormatter_RenderDocumentValue_OrderedMap(t *testing.T) {
 		{Path: "[0]", Type: DiffAdded, To: om},
 	}
 	output := f.Format(diffs, opts)
-	if !strings.Contains(output, "apiVersion: v1") {
-		t.Errorf("expected 'apiVersion: v1' in output, got:\n%s", output)
+	if !strings.Contains(output, "    ---\n    apiVersion: v1") {
+		t.Errorf("expected '---' separator before document keys, got:\n%s", output)
 	}
 	if !strings.Contains(output, "kind: Service") {
 		t.Errorf("expected 'kind: Service' in output, got:\n%s", output)
@@ -1526,8 +1526,8 @@ func TestDetailedFormatter_RenderDocumentValue_MapStringAny(t *testing.T) {
 		{Path: "[0]", Type: DiffAdded, To: map[string]any{"name": "test", "value": "123"}},
 	}
 	output := f.Format(diffs, opts)
-	if !strings.Contains(output, "name: test") {
-		t.Errorf("expected 'name: test' in output, got:\n%s", output)
+	if !strings.Contains(output, "    ---\n    name: test") {
+		t.Errorf("expected '---' separator before document keys, got:\n%s", output)
 	}
 	if !strings.Contains(output, "value: 123") {
 		t.Errorf("expected 'value: 123' in output, got:\n%s", output)

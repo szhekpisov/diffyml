@@ -2,8 +2,10 @@ Found two differences
 
 (document)
   - one document removed:
+    ---
 
   + one document added:
+    ---
     kind: ConfigMap
     apiVersion: v1
     metadata:

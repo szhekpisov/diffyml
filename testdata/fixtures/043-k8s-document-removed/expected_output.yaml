@@ -2,6 +2,7 @@ Found one difference
 
 (document)
   - one document removed:
+    ---
     apiVersion: v1
     kind: Service
     metadata:

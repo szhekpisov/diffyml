@@ -2,6 +2,7 @@ Found two differences
 
 (document)
   - one document removed:
+    ---
     apiVersion: v1
     kind: ConfigMap
     metadata:
@@ -13,6 +14,7 @@ Found two differences
       max_retries: 3
 
   + one document added:
+    ---
     apiVersion: v1
     kind: ConfigMap
     metadata:

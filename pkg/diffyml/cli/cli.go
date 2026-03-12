@@ -652,12 +652,12 @@ func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
 // Falls back to the original path if relative conversion fails or
 // produces a parent-traversing path (".."). Emits a warning to stderr
 // if the fallback results in an absolute path.
-func normalizeFilePath(path string, stderr io.Writer) string {
+func normalizeFilePath(path string, _ io.Writer) string {
 	if path == "" {
 		return ""
 	}
 
-	// /dev/ paths (process substitution, stdin) are inherently non-relative; skip warning
+	// /dev/ paths (process substitution, stdin) are inherently non-relative
 	if strings.HasPrefix(path, "/dev/") {
 		return path
 	}
@@ -669,10 +669,6 @@ func normalizeFilePath(path string, stderr io.Writer) string {
 			if err == nil && !strings.HasPrefix(rel, "..") {
 				return strings.TrimPrefix(rel, "./")
 			}
-		}
-		// Fallback: absolute path couldn't be made relative
-		if stderr != nil {
-			fmt.Fprintf(stderr, "Warning: could not determine relative path for %s, using absolute path\n", path)
 		}
 		return path
 	}

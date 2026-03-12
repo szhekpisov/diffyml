@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -75,8 +74,8 @@ func TestNormalizeFilePath_AbsoluteOutsideCwd(t *testing.T) {
 	if got != "/nonexistent/path/file.yaml" {
 		t.Errorf("expected absolute path back, got %q", got)
 	}
-	if !strings.Contains(stderr.String(), "Warning") {
-		t.Errorf("expected warning, got %q", stderr.String())
+	if stderr.Len() > 0 {
+		t.Errorf("expected no warning, got %q", stderr.String())
 	}
 }
 

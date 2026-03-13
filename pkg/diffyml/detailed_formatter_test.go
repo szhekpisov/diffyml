@@ -837,9 +837,11 @@ func TestDetailedFormatter_OrderChangedWithValues(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
-		{Path: "items", Type: DiffOrderChanged,
+		{
+			Path: "items", Type: DiffOrderChanged,
 			From: []any{"x", "y", "z"},
-			To:   []any{"z", "y", "x"}},
+			To:   []any{"z", "y", "x"},
+		},
 	}
 
 	output := f.Format(diffs, opts)
@@ -1006,9 +1008,11 @@ func TestDetailedFormatter_TrailingSeparator_OrderChange(t *testing.T) {
 	opts.OmitHeader = true
 
 	diffs := []Difference{
-		{Path: "items", Type: DiffOrderChanged,
+		{
+			Path: "items", Type: DiffOrderChanged,
 			From: []any{"a", "b"},
-			To:   []any{"b", "a"}},
+			To:   []any{"b", "a"},
+		},
 	}
 
 	output := f.Format(diffs, opts)
@@ -1067,9 +1071,11 @@ func TestDetailedFormatter_OrderChange_CommaSeparated(t *testing.T) {
 	opts.OmitHeader = true
 
 	diffs := []Difference{
-		{Path: "items", Type: DiffOrderChanged,
+		{
+			Path: "items", Type: DiffOrderChanged,
 			From: []any{"a", "b", "c"},
-			To:   []any{"c", "a", "b"}},
+			To:   []any{"c", "a", "b"},
+		},
 	}
 
 	output := f.Format(diffs, opts)
@@ -1087,9 +1093,11 @@ func TestDetailedFormatter_OrderChange_SingleItem(t *testing.T) {
 	opts.OmitHeader = true
 
 	diffs := []Difference{
-		{Path: "items", Type: DiffOrderChanged,
+		{
+			Path: "items", Type: DiffOrderChanged,
 			From: []any{"a"},
-			To:   []any{"a"}},
+			To:   []any{"a"},
+		},
 	}
 
 	output := f.Format(diffs, opts)
@@ -1107,9 +1115,11 @@ func TestDetailedFormatter_OrderChange_NonStringItems(t *testing.T) {
 	opts.OmitHeader = true
 
 	diffs := []Difference{
-		{Path: "nums", Type: DiffOrderChanged,
+		{
+			Path: "nums", Type: DiffOrderChanged,
 			From: []any{1, 2, 3},
-			To:   []any{3, 1, 2}},
+			To:   []any{3, 1, 2},
+		},
 	}
 
 	output := f.Format(diffs, opts)
@@ -1127,9 +1137,11 @@ func TestDetailedFormatter_OrderChange_Snapshot(t *testing.T) {
 	opts.OmitHeader = true
 
 	diffs := []Difference{
-		{Path: "items", Type: DiffOrderChanged,
+		{
+			Path: "items", Type: DiffOrderChanged,
 			From: []any{"a", "b"},
-			To:   []any{"b", "a"}},
+			To:   []any{"b", "a"},
+		},
 	}
 
 	output := f.Format(diffs, opts)

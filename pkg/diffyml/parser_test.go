@@ -1,6 +1,7 @@
 package diffyml
 
 import (
+	"errors"
 	"strings"
 	"testing"
 )
@@ -263,7 +264,8 @@ valid: content
 	}
 
 	// Check if error can be converted to ParseError
-	if pe, ok := err.(*ParseError); ok {
+	var pe *ParseError
+	if errors.As(err, &pe) {
 		if pe.Line == 0 {
 			t.Error("expected non-zero line number in ParseError")
 		}

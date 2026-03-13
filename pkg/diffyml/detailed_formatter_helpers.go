@@ -99,8 +99,10 @@ func formatTimestamp(t time.Time) string {
 // formatCount returns a human-readable count string.
 // Numbers 1-12 are spelled out as English words.
 func formatCount(n int) string {
-	words := []string{"zero", "one", "two", "three", "four", "five",
-		"six", "seven", "eight", "nine", "ten", "eleven", "twelve"}
+	words := []string{
+		"zero", "one", "two", "three", "four", "five",
+		"six", "seven", "eight", "nine", "ten", "eleven", "twelve",
+	}
 	if n >= 0 && n < len(words) {
 		return words[n]
 	}

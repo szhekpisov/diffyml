@@ -24,7 +24,6 @@ func TestProperty10_OpenSourceDependencies(t *testing.T) {
 	// Run go-licenses check to verify all dependencies have acceptable licenses
 	cmd := exec.Command(goLicensesPath, "check", "./...")
 	output, err := cmd.CombinedOutput()
-
 	if err != nil {
 		// Check if the error is due to go-licenses not being installed
 		if strings.Contains(string(output), "not found") ||
@@ -57,7 +56,6 @@ func TestProperty10_OpenSourceDependencies_Report(t *testing.T) {
 	// Run go-licenses report to get license information
 	cmd := exec.Command(goLicensesPath, "report", "./...")
 	output, err := cmd.CombinedOutput()
-
 	if err != nil {
 		if strings.Contains(string(output), "not found") ||
 			strings.Contains(err.Error(), "not found") ||
@@ -134,7 +132,6 @@ func TestProperty10_OpenSourceDependencies_NoProprietaryLicenses(t *testing.T) {
 	// Run go-licenses report
 	cmd := exec.Command(goLicensesPath, "report", "./...")
 	output, err := cmd.CombinedOutput()
-
 	if err != nil {
 		if strings.Contains(string(output), "not found") ||
 			strings.Contains(err.Error(), "not found") ||

@@ -20,7 +20,6 @@ func TestProperty6_TestExecutionSuccess(t *testing.T) {
 	// Run go test for just the pkg/diffyml package (faster than ./...)
 	cmd := exec.Command("go", "test", "./pkg/diffyml/...")
 	output, err := cmd.CombinedOutput()
-
 	// Test execution must succeed
 	if err != nil {
 		t.Fatalf("go test failed: %v\nOutput: %s", err, string(output))
@@ -56,7 +55,6 @@ func TestProperty6_TestExecutionSuccess_PackageDiscovery(t *testing.T) {
 	// Run go test for the specific package
 	cmd := exec.Command("go", "test", "./pkg/diffyml/...")
 	output, err := cmd.CombinedOutput()
-
 	if err != nil {
 		t.Fatalf("go test failed for pkg/diffyml: %v\nOutput: %s", err, string(output))
 	}
@@ -82,7 +80,6 @@ func TestProperty6_TestExecutionSuccess_ListTests(t *testing.T) {
 	// Run go test -list to list all tests
 	cmd := exec.Command("go", "test", "-list", ".*", "./pkg/diffyml/...")
 	output, err := cmd.CombinedOutput()
-
 	if err != nil {
 		t.Fatalf("go test -list failed: %v\nOutput: %s", err, string(output))
 	}
@@ -142,7 +139,6 @@ func TestProperty7_TestFixturesPresence(t *testing.T) {
 		}
 		return nil
 	})
-
 	if err != nil {
 		t.Fatalf("Error walking testdata: %v", err)
 	}

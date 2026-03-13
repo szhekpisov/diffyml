@@ -2,7 +2,9 @@ version: "2"
 
 linters:
   enable:
+    - depguard
     - errcheck
+    - errorlint
     - gocritic
     - gosec
     - govet
@@ -10,6 +12,16 @@ linters:
     - misspell
     - staticcheck
   settings:
+    depguard:
+      rules:
+        main:
+          list-mode: strict
+          files:
+            - "!$test"
+          allow:
+            - $gostd
+            - github.com/szhekpisov/diffyml
+            - gopkg.in/yaml.v3
     errcheck:
       # Terminal output and cleanup — errors are intentionally ignored
       exclude-functions:
@@ -37,3 +49,7 @@ linters:
       - path: _test\.go
         linters:
           - gosec
+
+formatters:
+  enable:
+    - gofumpt

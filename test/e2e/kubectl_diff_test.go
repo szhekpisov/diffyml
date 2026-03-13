@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"errors"
 	"fmt"
 	"math/rand/v2"
 	"os"
@@ -117,7 +118,7 @@ func setupKindCluster(t *testing.T) (diffymlBin string, baseEnv []string) {
 	if err != nil {
 		t.Fatalf("failed to get kubeconfig: %v", err)
 	}
-	if err := os.WriteFile(kubeconfigPath, kcOut, 0600); err != nil {
+	if err := os.WriteFile(kubeconfigPath, kcOut, 0o600); err != nil {
 		t.Fatalf("failed to write kubeconfig: %v", err)
 	}
 
@@ -159,7 +160,8 @@ func TestKubectlDiffWithDiffyml(t *testing.T) {
 
 		err := diffCmd.Run()
 		if err != nil {
-			if exitErr, ok := err.(*exec.ExitError); ok {
+			var exitErr *exec.ExitError
+			if errors.As(err, &exitErr) {
 				exitCode = exitErr.ExitCode()
 			} else {
 				t.Fatalf("kubectl diff failed unexpectedly: %v\nstderr: %s", err, errBuf.String())

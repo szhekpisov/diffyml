@@ -34,7 +34,7 @@ func TestProperty2_BuildSystemSuccess(t *testing.T) {
 		t.Fatal("Binary is not a regular file")
 	}
 
-	if info.Mode()&0111 == 0 {
+	if info.Mode()&0o111 == 0 {
 		t.Fatal("Binary is not executable")
 	}
 }
@@ -70,7 +70,7 @@ func TestProperty2_BuildSystemSuccess_WithCleanEnvironment(t *testing.T) {
 		t.Fatalf("Binary not found: %v", err)
 	}
 
-	if !info.Mode().IsRegular() || info.Mode()&0111 == 0 {
+	if !info.Mode().IsRegular() || info.Mode()&0o111 == 0 {
 		t.Fatal("Binary is not a regular executable file")
 	}
 }
@@ -98,7 +98,7 @@ func TestProperty2_BuildSystemSuccess_WithLdflags(t *testing.T) {
 		t.Fatalf("Binary not found: %v", err)
 	}
 
-	if !info.Mode().IsRegular() || info.Mode()&0111 == 0 {
+	if !info.Mode().IsRegular() || info.Mode()&0o111 == 0 {
 		t.Fatal("Binary is not a regular executable file")
 	}
 
@@ -158,7 +158,7 @@ func TestProperty4_SingleBinaryOutput(t *testing.T) {
 		t.Fatal("Output is not a regular file")
 	}
 
-	if info.Mode()&0111 == 0 {
+	if info.Mode()&0o111 == 0 {
 		t.Fatal("Output is not executable")
 	}
 
@@ -195,7 +195,7 @@ func TestProperty4_SingleBinaryOutput_WithDefaultName(t *testing.T) {
 		t.Fatalf("Default binary not found: %v", err)
 	}
 
-	if !info.Mode().IsRegular() || info.Mode()&0111 == 0 {
+	if !info.Mode().IsRegular() || info.Mode()&0o111 == 0 {
 		t.Fatal("Binary is not a regular executable file")
 	}
 }
@@ -376,7 +376,7 @@ func TestProperty5_DependencyIntegrity_BuildWithVerify(t *testing.T) {
 		t.Fatalf("Binary not found: %v", err)
 	}
 
-	if !info.Mode().IsRegular() || info.Mode()&0111 == 0 {
+	if !info.Mode().IsRegular() || info.Mode()&0o111 == 0 {
 		t.Fatal("Binary is not a regular executable file")
 	}
 }

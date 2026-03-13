@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 )
@@ -91,7 +92,7 @@ func TestExitResult_WithError(t *testing.T) {
 	if result.Code != ExitCodeError {
 		t.Errorf("expected code %d, got %d", ExitCodeError, result.Code)
 	}
-	if result.Err != err {
+	if !errors.Is(result.Err, err) {
 		t.Errorf("expected error %v, got %v", err, result.Err)
 	}
 	if result.IsSuccess() {

@@ -14,7 +14,7 @@ func drainDocumentParser(t *testing.T, p *DocumentParser, wantErr bool) (docs []
 	t.Helper()
 	for {
 		doc, err := p.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
@@ -33,7 +33,7 @@ func drainNodeDocumentParser(t *testing.T, p *NodeDocumentParser, wantErr bool) 
 	t.Helper()
 	for {
 		node, err := p.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
@@ -116,7 +116,7 @@ func TestDocumentParser(t *testing.T) {
 		drainDocumentParser(t, p, false)
 		// Subsequent call should still be EOF
 		_, err := p.Next()
-		if err != io.EOF {
+		if !errors.Is(err, io.EOF) {
 			t.Errorf("expected io.EOF on repeated call, got %v", err)
 		}
 	})
@@ -188,7 +188,7 @@ func TestNodeDocumentParser(t *testing.T) {
 		p := NewNodeDocumentParser([]byte("x: 1\n"))
 		drainNodeDocumentParser(t, p, false)
 		_, err := p.Next()
-		if err != io.EOF {
+		if !errors.Is(err, io.EOF) {
 			t.Errorf("expected io.EOF on repeated call, got %v", err)
 		}
 	})
@@ -280,11 +280,11 @@ func TestWrapParseError(t *testing.T) {
 	t.Run("yaml TypeError", func(t *testing.T) {
 		typeErr := &yaml.TypeError{Errors: []string{"test error"}}
 		got := wrapParseError(typeErr)
-		pe, ok := got.(*ParseError)
-		if !ok {
+		var pe *ParseError
+		if !errors.As(got, &pe) {
 			t.Fatalf("expected *ParseError, got %T", got)
 		}
-		if pe.Err != typeErr {
+		if !errors.Is(pe.Err, typeErr) {
 			t.Error("expected Err to wrap original TypeError")
 		}
 	})
@@ -292,7 +292,7 @@ func TestWrapParseError(t *testing.T) {
 	t.Run("other error", func(t *testing.T) {
 		orig := errors.New("some other error")
 		got := wrapParseError(orig)
-		if got != orig {
+		if !errors.Is(got, orig) {
 			t.Errorf("expected original error returned unchanged, got %v", got)
 		}
 	})

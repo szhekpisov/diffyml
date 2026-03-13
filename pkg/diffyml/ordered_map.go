@@ -8,6 +8,7 @@ package diffyml
 
 import (
 	"bytes"
+	"errors"
 	"io"
 
 	"gopkg.in/yaml.v3"
@@ -36,7 +37,7 @@ func ParseWithOrder(content []byte) ([]any, error) {
 	for {
 		var node yaml.Node
 		err := decoder.Decode(&node)
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {

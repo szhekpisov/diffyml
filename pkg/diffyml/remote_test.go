@@ -212,10 +212,10 @@ func TestValidateFileExists_IsDirectory(t *testing.T) {
 func TestValidateFileExists_PermissionError(t *testing.T) {
 	dir := t.TempDir()
 	nested := dir + "/noperm"
-	if err := os.Mkdir(nested, 0000); err != nil {
+	if err := os.Mkdir(nested, 0o000); err != nil {
 		t.Fatalf("failed to create dir: %v", err)
 	}
-	defer func() { _ = os.Chmod(nested, 0700) }()
+	defer func() { _ = os.Chmod(nested, 0o700) }()
 
 	err := ValidateFileExists(nested + "/file.yaml")
 	if err == nil {
@@ -229,10 +229,10 @@ func TestValidateFileExists_PermissionError(t *testing.T) {
 func TestLoadContent_UnreadableFile(t *testing.T) {
 	dir := t.TempDir()
 	path := dir + "/unreadable.yaml"
-	if err := os.WriteFile(path, []byte("data"), 0000); err != nil {
+	if err := os.WriteFile(path, []byte("data"), 0o000); err != nil {
 		t.Fatalf("failed to create file: %v", err)
 	}
-	defer func() { _ = os.Chmod(path, 0600) }()
+	defer func() { _ = os.Chmod(path, 0o600) }()
 
 	_, err := LoadContent(path)
 	if err == nil {
@@ -290,5 +290,5 @@ func TestFetchURL_HTTP300Rejected(t *testing.T) {
 
 // writeTestFile is a helper to create test files.
 func writeTestFile(path string, content []byte) error {
-	return os.WriteFile(path, content, 0600)
+	return os.WriteFile(path, content, 0o600)
 }

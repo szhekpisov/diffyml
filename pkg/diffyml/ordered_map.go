@@ -9,6 +9,9 @@ package diffyml
 import (
 	"bytes"
 	"io"
+	"math"
+	"strconv"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -71,7 +74,11 @@ func nodeToInterfaceWithCycleDetection(node *yaml.Node, seen map[*yaml.Node]bool
 
 	switch node.Kind {
 	case yaml.MappingNode:
-		om := NewOrderedMap()
+		n := len(node.Content) / 2
+		om := &OrderedMap{
+			Keys:   make([]string, 0, n),
+			Values: make(map[string]any, n),
+		}
 		for i := 0; i+1 < len(node.Content); i += 2 {
 			key := node.Content[i].Value
 			if key == "<<" {
@@ -94,9 +101,9 @@ func nodeToInterfaceWithCycleDetection(node *yaml.Node, seen map[*yaml.Node]bool
 		return om
 
 	case yaml.SequenceNode:
-		list := make([]any, 0, len(node.Content))
-		for _, child := range node.Content {
-			list = append(list, nodeToInterfaceWithCycleDetection(child, seen))
+		list := make([]any, len(node.Content))
+		for i, child := range node.Content {
+			list[i] = nodeToInterfaceWithCycleDetection(child, seen)
 		}
 		return list
 
@@ -118,11 +125,151 @@ func nodeToInterfaceWithCycleDetection(node *yaml.Node, seen map[*yaml.Node]bool
 }
 
 // resolveScalar converts a scalar yaml.Node into the appropriate Go type.
+// Uses direct tag-based resolution instead of node.Decode for performance.
 func resolveScalar(node *yaml.Node) any {
-	// Use yaml.v3's own resolution by decoding into any
-	var val any
-	if err := node.Decode(&val); err != nil {
-		return node.Value
+	tag := node.Tag
+	value := node.Value
+
+	// Resolve implicit tags (untagged scalars)
+	if tag == "" || tag == "!" {
+		return resolveUntaggedScalar(node, value)
 	}
-	return val
+
+	switch tag {
+	case "!!str":
+		return value
+	case "!!int":
+		if i, err := strconv.ParseInt(value, 0, 64); err == nil {
+			if i >= math.MinInt && i <= math.MaxInt {
+				return int(i)
+			}
+			return i
+		}
+		if ui, err := strconv.ParseUint(value, 0, 64); err == nil {
+			return ui
+		}
+		return value
+	case "!!float":
+		switch strings.ToLower(value) {
+		case ".inf", "+.inf":
+			return math.Inf(1)
+		case "-.inf":
+			return math.Inf(-1)
+		case ".nan":
+			return math.NaN()
+		default:
+			if f, err := strconv.ParseFloat(value, 64); err == nil {
+				return f
+			}
+			return value
+		}
+	case "!!bool":
+		switch strings.ToLower(value) {
+		case "true", "yes", "on":
+			return true
+		case "false", "no", "off":
+			return false
+		default:
+			return value
+		}
+	case "!!null":
+		return nil
+	case "!!timestamp":
+		// Decode to time.Time for proper type comparison
+		var val any
+		if err := node.Decode(&val); err == nil {
+			return val
+		}
+		return value
+	case "!!binary":
+		return value
+	default:
+		// Unknown tag — fall back to Decode for correctness
+		var val any
+		if err := node.Decode(&val); err != nil {
+			return value
+		}
+		return val
+	}
+}
+
+// looksLikeTimestamp checks if a value might be a YAML timestamp (YYYY-MM-DD...).
+// This is a fast heuristic to avoid falling back to node.Decode for most strings.
+func looksLikeTimestamp(value string) bool {
+	// Minimum: YYYY-MM-DD = 10 chars
+	if len(value) < 10 {
+		return false
+	}
+	// Must start with 4 digits, then a hyphen
+	return value[0] >= '0' && value[0] <= '9' &&
+		value[1] >= '0' && value[1] <= '9' &&
+		value[2] >= '0' && value[2] <= '9' &&
+		value[3] >= '0' && value[3] <= '9' &&
+		value[4] == '-'
+}
+
+// resolveUntaggedScalar resolves an untagged YAML scalar value to its Go type.
+func resolveUntaggedScalar(node *yaml.Node, value string) any {
+	// Null
+	switch strings.ToLower(value) {
+	case "", "~", "null":
+		return nil
+	}
+
+	// Bool
+	switch strings.ToLower(value) {
+	case "true", "yes", "on":
+		return true
+	case "false", "no", "off":
+		return false
+	}
+
+	// Integer (try common bases)
+	if i, err := strconv.ParseInt(value, 0, 64); err == nil {
+		if i >= math.MinInt && i <= math.MaxInt {
+			return int(i)
+		}
+		return i
+	}
+
+	// Octal (YAML 1.1 style: 0o777 or 0777)
+	if len(value) > 1 && value[0] == '0' {
+		if value[1] == 'o' || value[1] == 'O' {
+			if i, err := strconv.ParseInt(value[2:], 8, 64); err == nil {
+				if i >= math.MinInt && i <= math.MaxInt {
+					return int(i)
+				}
+				return i
+			}
+		}
+	}
+
+	// Float
+	switch strings.ToLower(value) {
+	case ".inf", "+.inf":
+		return math.Inf(1)
+	case "-.inf":
+		return math.Inf(-1)
+	case ".nan":
+		return math.NaN()
+	}
+	if f, err := strconv.ParseFloat(value, 64); err == nil {
+		// Only return float if it looks like a float (has dot or e/E)
+		for _, c := range value {
+			if c == '.' || c == 'e' || c == 'E' {
+				return f
+			}
+		}
+	}
+
+	// Timestamp — fall back to node.Decode for correctness (rare path)
+	if looksLikeTimestamp(value) {
+		var val any
+		if err := node.Decode(&val); err == nil {
+			return val
+		}
+	}
+
+	// Default: string
+	return value
 }

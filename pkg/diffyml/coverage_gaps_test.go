@@ -937,6 +937,113 @@ func TestNavigateToPath_IndexOnNonList(t *testing.T) {
 	}
 }
 
+func TestSameScalarType(t *testing.T) {
+	tests := []struct {
+		name string
+		a, b any
+		want bool
+	}{
+		{"string-string", "a", "b", true},
+		{"int-int", 1, 2, true},
+		{"int64-int64", int64(1), int64(2), true},
+		{"float64-float64", 1.0, 2.0, true},
+		{"bool-bool", true, false, true},
+		{"uint64-uint64", uint64(1), uint64(2), true},
+		{"time-time", time.Now(), time.Now(), true},
+		{"nil-nil", nil, nil, true},
+		{"string-int", "a", 1, false},
+		{"int-string", 1, "a", false},
+		{"int64-int", int64(1), 1, false},
+		{"bool-string", true, "true", false},
+		{"float-int", 1.0, 1, false},
+		{"uint64-int", uint64(1), 1, false},
+		{"nil-string", nil, "a", false},
+		{"time-string", time.Now(), "2020-01-01", false},
+		{"struct-struct", struct{}{}, struct{}{}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := sameScalarType(tt.a, tt.b); got != tt.want {
+				t.Errorf("sameScalarType(%T, %T) = %v, want %v", tt.a, tt.b, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestEqualValues_TimeComparison(t *testing.T) {
+	t1 := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+	t2 := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+	t3 := time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	if !equalValues(t1, t2, nil) {
+		t.Error("expected equal times to be equal")
+	}
+	if equalValues(t1, t3, nil) {
+		t.Error("expected different times to not be equal")
+	}
+	if equalValues(t1, "not-a-time", nil) {
+		t.Error("expected time vs non-time to not be equal")
+	}
+}
+
+func TestDeepEqual_TypeMismatchPaths(t *testing.T) {
+	om := &OrderedMap{Keys: []string{"k"}, Values: map[string]any{"k": "v"}}
+	m := map[string]any{"k": "v"}
+	s := []any{"a"}
+
+	// OrderedMap vs non-OrderedMap
+	if deepEqual(om, "string", nil) {
+		t.Error("OrderedMap vs string should be false")
+	}
+	if deepEqual(om, m, nil) {
+		t.Error("OrderedMap vs map should be false")
+	}
+
+	// map vs non-map
+	if deepEqual(m, "string", nil) {
+		t.Error("map vs string should be false")
+	}
+	if deepEqual(m, s, nil) {
+		t.Error("map vs slice should be false")
+	}
+
+	// slice vs non-slice
+	if deepEqual(s, "string", nil) {
+		t.Error("slice vs string should be false")
+	}
+	if deepEqual(s, om, nil) {
+		t.Error("slice vs OrderedMap should be false")
+	}
+
+	// scalar type mismatch
+	if deepEqual(42, "42", nil) {
+		t.Error("int vs string should be false")
+	}
+}
+
+func TestCompareNodes_TypeMismatchWithIgnoreValueChanges(t *testing.T) {
+	// When from is OrderedMap and to is a string, it's a type mismatch
+	// With IgnoreValueChanges, should return nil
+	om := &OrderedMap{Keys: []string{"k"}, Values: map[string]any{"k": "v"}}
+	opts := &Options{IgnoreValueChanges: true}
+	diffs := compareNodes("path", om, "string", opts)
+	if len(diffs) != 0 {
+		t.Errorf("expected no diffs with IgnoreValueChanges for type mismatch, got %d", len(diffs))
+	}
+
+	// map vs string type mismatch
+	diffs = compareNodes("path", map[string]any{"k": "v"}, "string", opts)
+	if len(diffs) != 0 {
+		t.Errorf("expected no diffs for map vs string with IgnoreValueChanges, got %d", len(diffs))
+	}
+
+	// slice vs string type mismatch
+	diffs = compareNodes("path", []any{"a"}, "string", opts)
+	if len(diffs) != 0 {
+		t.Errorf("expected no diffs for slice vs string with IgnoreValueChanges, got %d", len(diffs))
+	}
+}
+
 func TestDetectK8sOrderChanges_SameOrder(t *testing.T) {
 	// Two matched docs in the same order → orderChanged is false → return nil
 	matched := map[int]int{0: 0, 1: 1}

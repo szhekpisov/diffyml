@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -164,9 +165,9 @@ func extractPathsFromValue(prefix string, val any, opts *Options, pathOrder map[
 		for i, item := range v {
 			var childPath string
 			if id := getIdentifier(item, opts); isComparableIdentifier(id) {
-				childPath = fmt.Sprintf("%s.%v", prefix, id)
+				childPath = prefix + "." + fmt.Sprint(id)
 			} else {
-				childPath = fmt.Sprintf("%s.%d", prefix, i)
+				childPath = prefix + "." + strconv.Itoa(i)
 			}
 			extractPathsFromValue(childPath, item, opts, pathOrder, index)
 		}

@@ -8,11 +8,10 @@ package diffyml
 import (
 	"cmp"
 	"fmt"
+	"reflect"
 	"slices"
 	"sort"
-	"strconv"
 	"strings"
-	"time"
 )
 
 // compareDocs compares two slices of YAML documents and returns differences.
@@ -40,7 +39,7 @@ func compareDocs(from, to []any, opts *Options) []Difference {
 		// Build path prefix for multi-document files
 		pathPrefix := ""
 		if maxLen > 1 {
-			pathPrefix = "[" + strconv.Itoa(i) + "]"
+			pathPrefix = fmt.Sprintf("[%d]", i)
 		}
 
 		nodeDiffs := compareNodes(pathPrefix, fromDoc, toDoc, opts)
@@ -103,79 +102,51 @@ func compareNodes(path string, from, to any, opts *Options) []Difference {
 		return diffs
 	}
 
-	// Compare based on type using type switches (avoids reflect.TypeOf)
-	switch fromVal := from.(type) {
-	case *OrderedMap:
-		if toVal, ok := to.(*OrderedMap); ok {
-			return compareOrderedMaps(path, fromVal, toVal, opts)
-		}
-	case map[string]any:
-		if toVal, ok := to.(map[string]any); ok {
-			return compareMaps(path, fromVal, toVal, opts)
-		}
-	case []any:
-		if toVal, ok := to.([]any); ok {
-			return compareLists(path, fromVal, toVal, opts)
-		}
-	default:
-		// Scalar — check if types match via type assertion on 'to'
-		if sameScalarType(from, to) {
-			if !equalValues(from, to, opts) {
-				if opts != nil && opts.IgnoreValueChanges {
-					return nil
-				}
-				return []Difference{{
-					Path: cleanPath(path),
-					Type: DiffModified,
-					From: from,
-					To:   to,
-				}}
-			}
+	// Get types
+	fromType := reflect.TypeOf(from)
+	toType := reflect.TypeOf(to)
+
+	// Type mismatch - treat as modification
+	if fromType != toType {
+		if opts != nil && opts.IgnoreValueChanges {
 			return nil
 		}
+		return []Difference{{
+			Path: cleanPath(path),
+			Type: DiffModified,
+			From: from,
+			To:   to,
+		}}
 	}
 
-	// Type mismatch
-	if opts != nil && opts.IgnoreValueChanges {
-		return nil
-	}
-	return []Difference{{
-		Path: cleanPath(path),
-		Type: DiffModified,
-		From: from,
-		To:   to,
-	}}
-}
+	// Compare based on type
+	switch fromVal := from.(type) {
+	case *OrderedMap:
+		toOrderedMap := to.(*OrderedMap) // safe: type switch guarantees matching type
+		return compareOrderedMaps(path, fromVal, toOrderedMap, opts)
 
-// sameScalarType returns true if both values are the same scalar type.
-func sameScalarType(a, b any) bool {
-	switch a.(type) {
-	case string:
-		_, ok := b.(string)
-		return ok
-	case int:
-		_, ok := b.(int)
-		return ok
-	case int64:
-		_, ok := b.(int64)
-		return ok
-	case float64:
-		_, ok := b.(float64)
-		return ok
-	case bool:
-		_, ok := b.(bool)
-		return ok
-	case uint64:
-		_, ok := b.(uint64)
-		return ok
-	case time.Time:
-		_, ok := b.(time.Time)
-		return ok
-	case nil:
-		return b == nil
+	case map[string]any:
+		toMap := to.(map[string]any) // safe: type switch guarantees matching type
+		return compareMaps(path, fromVal, toMap, opts)
+
+	case []any:
+		toVal := to.([]any) // safe: type switch guarantees matching type
+		return compareLists(path, fromVal, toVal, opts)
+
 	default:
-		// Rare types — fall back
-		return false
+		// Scalar comparison
+		if !equalValues(from, to, opts) {
+			if opts != nil && opts.IgnoreValueChanges {
+				return nil
+			}
+			return []Difference{{
+				Path: cleanPath(path),
+				Type: DiffModified,
+				From: from,
+				To:   to,
+			}}
+		}
+		return nil
 	}
 }
 
@@ -183,8 +154,12 @@ func sameScalarType(a, b any) bool {
 func compareOrderedMaps(path string, from, to *OrderedMap, opts *Options) []Difference {
 	var diffs []Difference
 
+	// Track which keys from 'to' have been seen
+	toSeen := make(map[string]bool)
+
 	// First iterate over 'from' keys in their original order
 	for _, key := range from.Keys {
+		toSeen[key] = true
 		childPath := joinPath(path, key)
 		fromVal := from.Values[key]
 		toVal, toOk := to.Values[key]
@@ -204,9 +179,8 @@ func compareOrderedMaps(path string, from, to *OrderedMap, opts *Options) []Diff
 	}
 
 	// Then iterate over 'to' keys to find additions (in their original order)
-	// Check against from.Values directly instead of maintaining a separate seen map
 	for _, key := range to.Keys {
-		if _, inFrom := from.Values[key]; !inFrom {
+		if !toSeen[key] {
 			childPath := joinPath(path, key)
 			diffs = append(diffs, Difference{
 				Path: cleanPath(childPath),
@@ -224,49 +198,49 @@ func compareOrderedMaps(path string, from, to *OrderedMap, opts *Options) []Diff
 func compareMaps(path string, from, to map[string]any, opts *Options) []Difference {
 	var diffs []Difference
 
-	// Collect all unique keys in a single slice (avoid separate map + slice)
-	sortedKeys := make([]string, 0, len(from)+len(to))
+	// Get all keys from both maps and sort for deterministic output
+	allKeys := make(map[string]bool)
 	for k := range from {
+		allKeys[k] = true
+	}
+	for k := range to {
+		allKeys[k] = true
+	}
+
+	// Sort keys for deterministic output
+	sortedKeys := make([]string, 0, len(allKeys))
+	for k := range allKeys {
 		sortedKeys = append(sortedKeys, k)
 	}
 	sort.Strings(sortedKeys)
 
-	// Collect to-only keys separately
-	toOnly := make([]string, 0)
-	for k := range to {
-		if _, inFrom := from[k]; !inFrom {
-			toOnly = append(toOnly, k)
-		}
-	}
-	sort.Strings(toOnly)
-
-	// Iterate over from keys first (sorted)
+	// Iterate over sorted keys
 	for _, key := range sortedKeys {
 		childPath := joinPath(path, key)
-		fromVal := from[key]
+		fromVal, fromOk := from[key]
 		toVal, toOk := to[key]
 
-		if !toOk {
+		switch {
+		case !fromOk:
+			// Key was added
+			diffs = append(diffs, Difference{
+				Path: cleanPath(childPath),
+				Type: DiffAdded,
+				From: nil,
+				To:   toVal,
+			})
+		case !toOk:
+			// Key was removed
 			diffs = append(diffs, Difference{
 				Path: cleanPath(childPath),
 				Type: DiffRemoved,
 				From: fromVal,
 				To:   nil,
 			})
-		} else {
+		default:
+			// Key exists in both - recurse
 			diffs = append(diffs, compareNodes(childPath, fromVal, toVal, opts)...)
 		}
-	}
-
-	// Then added keys (sorted)
-	for _, key := range toOnly {
-		childPath := joinPath(path, key)
-		diffs = append(diffs, Difference{
-			Path: cleanPath(childPath),
-			Type: DiffAdded,
-			From: nil,
-			To:   to[key],
-		})
 	}
 
 	return diffs
@@ -361,12 +335,12 @@ func compareListsPositional(path string, from, to []any, opts *Options) []Differ
 
 	// Compare elements present in both lists
 	for i := range minLen {
-		childPath := path + "." + strconv.Itoa(i)
+		childPath := fmt.Sprintf("%s.%d", path, i)
 		diffs = append(diffs, compareNodes(childPath, from[i], to[i], opts)...)
 	}
 	// Items added (present in 'to' but not 'from')
 	for i := minLen; i < len(to); i++ {
-		childPath := path + "." + strconv.Itoa(i)
+		childPath := fmt.Sprintf("%s.%d", path, i)
 		diffs = append(diffs, Difference{
 			Path: cleanPath(childPath),
 			Type: DiffAdded,
@@ -376,7 +350,7 @@ func compareListsPositional(path string, from, to []any, opts *Options) []Differ
 	}
 	// Items removed (present in 'from' but not 'to')
 	for i := minLen; i < len(from); i++ {
-		childPath := path + "." + strconv.Itoa(i)
+		childPath := fmt.Sprintf("%s.%d", path, i)
 		diffs = append(diffs, Difference{
 			Path: cleanPath(childPath),
 			Type: DiffRemoved,
@@ -410,7 +384,7 @@ func compareListsUnordered(path string, from, to []any, opts *Options) []Differe
 		if !found {
 			// Item was removed
 			diffs = append(diffs, Difference{
-				Path: cleanPath(path) + "." + strconv.Itoa(i),
+				Path: fmt.Sprintf("%s.%d", cleanPath(path), i),
 				Type: DiffRemoved,
 				From: fromItem,
 				To:   nil,
@@ -422,7 +396,7 @@ func compareListsUnordered(path string, from, to []any, opts *Options) []Differe
 	for j, toItem := range to {
 		if !toMatched[j] {
 			diffs = append(diffs, Difference{
-				Path: cleanPath(path) + "." + strconv.Itoa(j),
+				Path: fmt.Sprintf("%s.%d", cleanPath(path), j),
 				Type: DiffAdded,
 				From: nil,
 				To:   toItem,
@@ -535,7 +509,7 @@ func compareUnidentifiedItems(path string, from, to []any, fromNoID, toNoID []in
 		}
 		if !found {
 			diffs = append(diffs, Difference{
-				Path: cleanPath(path) + "." + strconv.Itoa(fromIdx),
+				Path: fmt.Sprintf("%s.%d", cleanPath(path), fromIdx),
 				Type: DiffRemoved,
 				From: fromItem,
 				To:   nil,
@@ -547,7 +521,7 @@ func compareUnidentifiedItems(path string, from, to []any, fromNoID, toNoID []in
 			continue
 		}
 		diffs = append(diffs, Difference{
-			Path: cleanPath(path) + "." + strconv.Itoa(toIdx),
+			Path: fmt.Sprintf("%s.%d", cleanPath(path), toIdx),
 			Type: DiffAdded,
 			From: nil,
 			To:   to[toIdx],
@@ -561,8 +535,8 @@ func compareListsByIdentifier(path string, from, to []any, opts *Options) []Diff
 	var diffs []Difference
 
 	// Build index of from items by identifier, preserving order
-	fromIndex := make(map[any]int, len(from))
-	fromIDs := make([]any, 0, len(from))
+	fromIndex := make(map[any]int)
+	fromIDs := make([]any, 0)
 	fromNoID := make([]int, 0)
 	for i, item := range from {
 		id := getIdentifier(item, opts)
@@ -575,7 +549,7 @@ func compareListsByIdentifier(path string, from, to []any, opts *Options) []Diff
 	}
 
 	// Build index of to items by identifier.
-	toIndex := make(map[any]int, len(to))
+	toIndex := make(map[any]int)
 	toNoID := make([]int, 0)
 	toIDCount := 0
 	for i, item := range to {
@@ -603,8 +577,8 @@ func compareListsByIdentifier(path string, from, to []any, opts *Options) []Diff
 			toItem := to[toIdx]
 			// Items match by identifier - compare their contents
 			// Use identifier value in path instead of index (dyff-style)
-			idStr := fmt.Sprint(id)
-			childPath := path + "." + idStr
+			idStr := fmt.Sprintf("%v", id)
+			childPath := fmt.Sprintf("%s.%s", path, idStr)
 			diffs = append(diffs, compareNodes(childPath, fromItem, toItem, opts)...)
 		} else {
 			// Item was removed - report at the list level (dyff-style)
@@ -650,15 +624,7 @@ func equalValues(from, to any, opts *Options) bool {
 		}
 	}
 
-	// time.Time is a struct and cannot be compared with ==
-	if fromTime, ok := from.(time.Time); ok {
-		if toTime, ok := to.(time.Time); ok {
-			return fromTime.Equal(toTime)
-		}
-		return false
-	}
-
-	return from == to
+	return reflect.DeepEqual(from, to)
 }
 
 // deepEqualOrderedMaps checks deep equality between two OrderedMaps.
@@ -710,27 +676,18 @@ func deepEqual(from, to any, opts *Options) bool {
 	if from == nil || to == nil {
 		return false
 	}
+	if reflect.TypeOf(from) != reflect.TypeOf(to) {
+		return false
+	}
 
 	switch fromVal := from.(type) {
 	case *OrderedMap:
-		if toVal, ok := to.(*OrderedMap); ok {
-			return deepEqualOrderedMaps(fromVal, toVal, opts)
-		}
-		return false
+		return deepEqualOrderedMaps(fromVal, to.(*OrderedMap), opts)
 	case map[string]any:
-		if toVal, ok := to.(map[string]any); ok {
-			return deepEqualMaps(fromVal, toVal, opts)
-		}
-		return false
+		return deepEqualMaps(fromVal, to.(map[string]any), opts)
 	case []any:
-		if toVal, ok := to.([]any); ok {
-			return deepEqualSlices(fromVal, toVal, opts)
-		}
-		return false
+		return deepEqualSlices(fromVal, to.([]any), opts)
 	default:
-		if !sameScalarType(from, to) {
-			return false
-		}
 		return equalValues(from, to, opts)
 	}
 }

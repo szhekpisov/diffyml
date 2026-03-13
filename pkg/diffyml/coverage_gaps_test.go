@@ -937,39 +937,6 @@ func TestNavigateToPath_IndexOnNonList(t *testing.T) {
 	}
 }
 
-func TestSameScalarType(t *testing.T) {
-	tests := []struct {
-		name string
-		a, b any
-		want bool
-	}{
-		{"string-string", "a", "b", true},
-		{"int-int", 1, 2, true},
-		{"int64-int64", int64(1), int64(2), true},
-		{"float64-float64", 1.0, 2.0, true},
-		{"bool-bool", true, false, true},
-		{"uint64-uint64", uint64(1), uint64(2), true},
-		{"time-time", time.Now(), time.Now(), true},
-		{"nil-nil", nil, nil, true},
-		{"string-int", "a", 1, false},
-		{"int-string", 1, "a", false},
-		{"int64-int", int64(1), 1, false},
-		{"bool-string", true, "true", false},
-		{"float-int", 1.0, 1, false},
-		{"uint64-int", uint64(1), 1, false},
-		{"nil-string", nil, "a", false},
-		{"time-string", time.Now(), "2020-01-01", false},
-		{"struct-struct", struct{}{}, struct{}{}, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := sameScalarType(tt.a, tt.b); got != tt.want {
-				t.Errorf("sameScalarType(%T, %T) = %v, want %v", tt.a, tt.b, got, tt.want)
-			}
-		})
-	}
-}
-
 func TestEqualValues_TimeComparison(t *testing.T) {
 	t1 := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
 	t2 := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)

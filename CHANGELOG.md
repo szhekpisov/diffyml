@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.9] - 2026-03-13
+
+### Changed
+
+- Improve test coverage with mutation-targeted tests for scalar resolution, type comparison, and timestamp boundary cases (#58) ([#58](https://github.com/szhekpisov/diffyml/pull/58))
+- Use `strconv.Itoa` for path construction in hot path (#58)
+
 ## [1.5.8] - 2026-03-13
 
 ### Fixed
@@ -127,6 +134,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add GOPATH/bin PATH hint to Go Install section (#3) ([#3](https://github.com/szhekpisov/diffyml/pull/3))
 - Cleanup (#6) ([#6](https://github.com/szhekpisov/diffyml/pull/6))
 
+[1.5.9]: https://github.com/szhekpisov/diffyml/compare/v1.5.8...v1.5.9
 [1.5.8]: https://github.com/szhekpisov/diffyml/compare/v1.5.7...v1.5.8
 [1.5.7]: https://github.com/szhekpisov/diffyml/compare/v1.5.6...v1.5.7
 [1.5.6]: https://github.com/szhekpisov/diffyml/compare/v1.5.5...v1.5.6

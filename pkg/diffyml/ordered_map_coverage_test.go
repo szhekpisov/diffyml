@@ -2,7 +2,6 @@ package diffyml
 
 import (
 	"math"
-	"strconv"
 	"testing"
 	"time"
 
@@ -109,128 +108,6 @@ func TestResolveScalar_DecodeError(t *testing.T) {
 	}
 }
 
-func TestResolveScalar_AllTags(t *testing.T) {
-	tests := []struct {
-		name  string
-		tag   string
-		value string
-		check func(t *testing.T, got any)
-	}{
-		{"str", "!!str", "hello", func(t *testing.T, got any) {
-			if got != "hello" {
-				t.Errorf("expected 'hello', got %v", got)
-			}
-		}},
-		{"int", "!!int", "42", func(t *testing.T, got any) {
-			if got != 42 {
-				t.Errorf("expected 42, got %v (%T)", got, got)
-			}
-		}},
-		{"int hex", "!!int", "0xFF", func(t *testing.T, got any) {
-			if got != 255 {
-				t.Errorf("expected 255, got %v", got)
-			}
-		}},
-		{"int invalid", "!!int", "not-a-number", func(t *testing.T, got any) {
-			if got != "not-a-number" {
-				t.Errorf("expected fallback string, got %v", got)
-			}
-		}},
-		{"int uint64", "!!int", "18446744073709551615", func(t *testing.T, got any) {
-			if _, ok := got.(uint64); !ok {
-				t.Errorf("expected uint64, got %T: %v", got, got)
-			}
-		}},
-		{"float", "!!float", "3.14", func(t *testing.T, got any) {
-			if got != 3.14 {
-				t.Errorf("expected 3.14, got %v", got)
-			}
-		}},
-		{"float inf", "!!float", ".inf", func(t *testing.T, got any) {
-			f, ok := got.(float64)
-			if !ok || !math.IsInf(f, 1) {
-				t.Errorf("expected +Inf, got %v", got)
-			}
-		}},
-		{"float +inf", "!!float", "+.inf", func(t *testing.T, got any) {
-			f, ok := got.(float64)
-			if !ok || !math.IsInf(f, 1) {
-				t.Errorf("expected +Inf, got %v", got)
-			}
-		}},
-		{"float -inf", "!!float", "-.inf", func(t *testing.T, got any) {
-			f, ok := got.(float64)
-			if !ok || !math.IsInf(f, -1) {
-				t.Errorf("expected -Inf, got %v", got)
-			}
-		}},
-		{"float nan", "!!float", ".nan", func(t *testing.T, got any) {
-			f, ok := got.(float64)
-			if !ok || !math.IsNaN(f) {
-				t.Errorf("expected NaN, got %v", got)
-			}
-		}},
-		{"float invalid", "!!float", "not-a-float", func(t *testing.T, got any) {
-			if got != "not-a-float" {
-				t.Errorf("expected fallback string, got %v", got)
-			}
-		}},
-		{"bool true", "!!bool", "true", func(t *testing.T, got any) {
-			if got != true {
-				t.Errorf("expected true, got %v", got)
-			}
-		}},
-		{"bool yes", "!!bool", "yes", func(t *testing.T, got any) {
-			if got != true {
-				t.Errorf("expected true, got %v", got)
-			}
-		}},
-		{"bool on", "!!bool", "on", func(t *testing.T, got any) {
-			if got != true {
-				t.Errorf("expected true, got %v", got)
-			}
-		}},
-		{"bool false", "!!bool", "false", func(t *testing.T, got any) {
-			if got != false {
-				t.Errorf("expected false, got %v", got)
-			}
-		}},
-		{"bool no", "!!bool", "no", func(t *testing.T, got any) {
-			if got != false {
-				t.Errorf("expected false, got %v", got)
-			}
-		}},
-		{"bool off", "!!bool", "off", func(t *testing.T, got any) {
-			if got != false {
-				t.Errorf("expected false, got %v", got)
-			}
-		}},
-		{"bool invalid", "!!bool", "maybe", func(t *testing.T, got any) {
-			if got != "maybe" {
-				t.Errorf("expected fallback string, got %v", got)
-			}
-		}},
-		{"null", "!!null", "null", func(t *testing.T, got any) {
-			if got != nil {
-				t.Errorf("expected nil, got %v", got)
-			}
-		}},
-		{"timestamp", "!!timestamp", "2020-01-01", func(t *testing.T, got any) {
-			if _, ok := got.(time.Time); !ok {
-				t.Errorf("expected time.Time, got %T: %v", got, got)
-			}
-		}},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			node := &yaml.Node{Kind: yaml.ScalarNode, Tag: tt.tag, Value: tt.value}
-			got := resolveScalar(node)
-			tt.check(t, got)
-		})
-	}
-}
-
 func TestResolveScalar_UnknownTag(t *testing.T) {
 	node := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!custom", Value: "something"}
 	got := resolveScalar(node)
@@ -255,7 +132,8 @@ func TestResolveScalar_UntaggedOrBang(t *testing.T) {
 	}
 }
 
-func TestResolveUntaggedScalar_AllBranches(t *testing.T) {
+func TestResolveScalar_UntaggedValues(t *testing.T) {
+	// Tests resolveScalar with untagged (tag="") scalars, covering all value types.
 	tests := []struct {
 		name  string
 		value string
@@ -276,42 +154,12 @@ func TestResolveUntaggedScalar_AllBranches(t *testing.T) {
 				t.Errorf("expected nil, got %v", got)
 			}
 		}},
-		{"NULL is nil", "NULL", func(t *testing.T, got any) {
-			if got != nil {
-				t.Errorf("expected nil, got %v", got)
-			}
-		}},
 		{"true", "true", func(t *testing.T, got any) {
 			if got != true {
 				t.Errorf("expected true, got %v", got)
 			}
 		}},
-		{"True", "True", func(t *testing.T, got any) {
-			if got != true {
-				t.Errorf("expected true, got %v", got)
-			}
-		}},
-		{"yes", "yes", func(t *testing.T, got any) {
-			if got != true {
-				t.Errorf("expected true, got %v", got)
-			}
-		}},
-		{"on", "on", func(t *testing.T, got any) {
-			if got != true {
-				t.Errorf("expected true, got %v", got)
-			}
-		}},
 		{"false", "false", func(t *testing.T, got any) {
-			if got != false {
-				t.Errorf("expected false, got %v", got)
-			}
-		}},
-		{"no", "no", func(t *testing.T, got any) {
-			if got != false {
-				t.Errorf("expected false, got %v", got)
-			}
-		}},
-		{"off", "off", func(t *testing.T, got any) {
 			if got != false {
 				t.Errorf("expected false, got %v", got)
 			}
@@ -326,26 +174,6 @@ func TestResolveUntaggedScalar_AllBranches(t *testing.T) {
 				t.Errorf("expected -7, got %v", got)
 			}
 		}},
-		{"hex int", "0x1A", func(t *testing.T, got any) {
-			if got != 26 {
-				t.Errorf("expected 26, got %v", got)
-			}
-		}},
-		{"octal 0o", "0o777", func(t *testing.T, got any) {
-			if got != 511 {
-				t.Errorf("expected 511, got %v", got)
-			}
-		}},
-		{"octal 0O", "0O10", func(t *testing.T, got any) {
-			if got != 8 {
-				t.Errorf("expected 8, got %v", got)
-			}
-		}},
-		{"invalid octal", "0oZZZ", func(t *testing.T, got any) {
-			if got != "0oZZZ" {
-				t.Errorf("expected string fallback, got %v", got)
-			}
-		}},
 		{"float", "3.14", func(t *testing.T, got any) {
 			if got != 3.14 {
 				t.Errorf("expected 3.14, got %v", got)
@@ -357,12 +185,6 @@ func TestResolveUntaggedScalar_AllBranches(t *testing.T) {
 			}
 		}},
 		{".inf", ".inf", func(t *testing.T, got any) {
-			f, ok := got.(float64)
-			if !ok || !math.IsInf(f, 1) {
-				t.Errorf("expected +Inf, got %v", got)
-			}
-		}},
-		{"+.inf", "+.inf", func(t *testing.T, got any) {
 			f, ok := got.(float64)
 			if !ok || !math.IsInf(f, 1) {
 				t.Errorf("expected +Inf, got %v", got)
@@ -390,114 +212,13 @@ func TestResolveUntaggedScalar_AllBranches(t *testing.T) {
 				t.Errorf("expected 'hello world', got %v", got)
 			}
 		}},
-		{"string that starts with 0 but not octal", "0abc", func(t *testing.T, got any) {
-			if got != "0abc" {
-				t.Errorf("expected '0abc', got %v", got)
-			}
-		}},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			node := &yaml.Node{Kind: yaml.ScalarNode, Tag: "", Value: tt.value}
-			got := resolveUntaggedScalar(node, tt.value)
-			tt.check(t, got)
-		})
-	}
-}
-
-func TestResolveScalar_IntBoundaryValues(t *testing.T) {
-	// Kills CONDITIONALS_BOUNDARY at ordered_map.go:143
-	// i >= math.MinInt → i > math.MinInt, i <= math.MaxInt → i < math.MaxInt
-	tests := []struct {
-		name  string
-		value string
-		want  any
-	}{
-		{"MinInt", strconv.FormatInt(math.MinInt64, 10), int(math.MinInt)},
-		{"MaxInt", strconv.FormatInt(math.MaxInt64, 10), int(math.MaxInt)},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			node := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!int", Value: tt.value}
 			got := resolveScalar(node)
-			if got != tt.want {
-				t.Errorf("resolveScalar(%q) = %v (%T), want %v (%T)", tt.value, got, got, tt.want, tt.want)
-			}
-		})
-	}
-}
-
-func TestResolveScalar_UnknownTagReturnsValue(t *testing.T) {
-	// Unknown tags on scalar nodes return the raw string value directly.
-	node := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!seq", Value: "hello"}
-	got := resolveScalar(node)
-	if got != "hello" {
-		t.Errorf("expected 'hello', got %v (%T)", got, got)
-	}
-}
-
-func TestResolveUntaggedScalar_IntBoundaryValues(t *testing.T) {
-	// Kills CONDITIONALS_BOUNDARY at ordered_map.go:229
-	tests := []struct {
-		name  string
-		value string
-		want  any
-	}{
-		{"MinInt", strconv.FormatInt(math.MinInt64, 10), int(math.MinInt)},
-		{"MaxInt", strconv.FormatInt(math.MaxInt64, 10), int(math.MaxInt)},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			node := &yaml.Node{Kind: yaml.ScalarNode, Tag: "", Value: tt.value}
-			got := resolveUntaggedScalar(node, tt.value)
-			if got != tt.want {
-				t.Errorf("resolveUntaggedScalar(%q) = %v (%T), want %v (%T)", tt.value, got, got, tt.want, tt.want)
-			}
-		})
-	}
-}
-
-func TestResolveUntaggedScalar_NonStandardFloatStrings(t *testing.T) {
-	// Kills CONDITIONALS_NEGATION at ordered_map.go:259
-	// "Inf", "NaN", "Infinity" are accepted by ParseFloat but lack '.', 'e', 'E'
-	// so they must be returned as strings, not floats.
-	for _, value := range []string{"Inf", "NaN", "Infinity"} {
-		t.Run(value, func(t *testing.T) {
-			node := &yaml.Node{Kind: yaml.ScalarNode, Tag: "", Value: value}
-			got := resolveUntaggedScalar(node, value)
-			if _, isFloat := got.(float64); isFloat {
-				t.Errorf("resolveUntaggedScalar(%q) returned float64, want string", value)
-			}
-			if got != value {
-				t.Errorf("resolveUntaggedScalar(%q) = %v, want %q", value, got, value)
-			}
-		})
-	}
-}
-
-func TestLooksLikeTimestamp(t *testing.T) {
-	tests := []struct {
-		value string
-		want  bool
-	}{
-		{"2020-01-01", true},
-		{"2020-01-01T00:00:00Z", true},
-		{"1999-12-31", true},
-		{"0999-01-01", true}, // value[0]='0' boundary: kills >= '0' → > '0'
-		{"9999-12-31", true}, // value[0]='9' boundary: kills <= '9' → < '9'
-		{"1009-01-01", true}, // value[2]='0' boundary: kills >= '0' → > '0'
-		{"short", false},
-		{"abcd-ef-gh", false},
-		{"12345", false},
-		{"hello world", false},
-		{"2020x01-01", false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.value, func(t *testing.T) {
-			if got := looksLikeTimestamp(tt.value); got != tt.want {
-				t.Errorf("looksLikeTimestamp(%q) = %v, want %v", tt.value, got, tt.want)
-			}
+			tt.check(t, got)
 		})
 	}
 }

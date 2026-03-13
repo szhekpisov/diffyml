@@ -46,7 +46,7 @@ jobs:
           go-version: "1.26.1"
 
       - name: Run tests
-        run: go test ./...
+        run: go test -race ./...
 
   fuzz:
     needs: changes

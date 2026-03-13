@@ -82,10 +82,10 @@ golangci-lint:
 security: govulncheck golangci-lint
 
 test:
-	go test ./...
+	go test -race ./...
 
 e2e: build
-	go test -v -timeout 120s ./test/e2e/
+	go test -race -v -timeout 120s ./test/e2e/
 
 fmt:
 	gofmt -l -w .

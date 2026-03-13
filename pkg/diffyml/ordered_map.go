@@ -74,11 +74,7 @@ func nodeToInterfaceWithCycleDetection(node *yaml.Node, seen map[*yaml.Node]bool
 
 	switch node.Kind {
 	case yaml.MappingNode:
-		n := len(node.Content) / 2
-		om := &OrderedMap{
-			Keys:   make([]string, 0, n),
-			Values: make(map[string]any, n),
-		}
+		om := NewOrderedMap()
 		for i := 0; i+1 < len(node.Content); i += 2 {
 			key := node.Content[i].Value
 			if key == "<<" {
@@ -184,12 +180,9 @@ func resolveScalar(node *yaml.Node) any {
 	case "!!binary":
 		return value
 	default:
-		// Unknown tag — fall back to Decode for correctness
-		var val any
-		if err := node.Decode(&val); err != nil {
-			return value
-		}
-		return val
+		// Unknown tag on a scalar node — Decode always succeeds and returns the
+		// raw string, so just return the value directly.
+		return value
 	}
 }
 
@@ -230,18 +223,6 @@ func resolveUntaggedScalar(node *yaml.Node, value string) any {
 			return int(i)
 		}
 		return i
-	}
-
-	// Octal (YAML 1.1 style: 0o777 or 0777)
-	if len(value) > 1 && value[0] == '0' {
-		if value[1] == 'o' || value[1] == 'O' {
-			if i, err := strconv.ParseInt(value[2:], 8, 64); err == nil {
-				if i >= math.MinInt && i <= math.MaxInt {
-					return int(i)
-				}
-				return i
-			}
-		}
 	}
 
 	// Float

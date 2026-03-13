@@ -2,6 +2,7 @@ package diffyml
 
 import (
 	"math"
+	"strconv"
 	"testing"
 	"time"
 
@@ -405,6 +406,76 @@ func TestResolveUntaggedScalar_AllBranches(t *testing.T) {
 	}
 }
 
+func TestResolveScalar_IntBoundaryValues(t *testing.T) {
+	// Kills CONDITIONALS_BOUNDARY at ordered_map.go:143
+	// i >= math.MinInt → i > math.MinInt, i <= math.MaxInt → i < math.MaxInt
+	tests := []struct {
+		name  string
+		value string
+		want  any
+	}{
+		{"MinInt", strconv.FormatInt(math.MinInt64, 10), int(math.MinInt)},
+		{"MaxInt", strconv.FormatInt(math.MaxInt64, 10), int(math.MaxInt)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			node := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!int", Value: tt.value}
+			got := resolveScalar(node)
+			if got != tt.want {
+				t.Errorf("resolveScalar(%q) = %v (%T), want %v (%T)", tt.value, got, got, tt.want, tt.want)
+			}
+		})
+	}
+}
+
+func TestResolveScalar_UnknownTagReturnsValue(t *testing.T) {
+	// Unknown tags on scalar nodes return the raw string value directly.
+	node := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!seq", Value: "hello"}
+	got := resolveScalar(node)
+	if got != "hello" {
+		t.Errorf("expected 'hello', got %v (%T)", got, got)
+	}
+}
+
+func TestResolveUntaggedScalar_IntBoundaryValues(t *testing.T) {
+	// Kills CONDITIONALS_BOUNDARY at ordered_map.go:229
+	tests := []struct {
+		name  string
+		value string
+		want  any
+	}{
+		{"MinInt", strconv.FormatInt(math.MinInt64, 10), int(math.MinInt)},
+		{"MaxInt", strconv.FormatInt(math.MaxInt64, 10), int(math.MaxInt)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			node := &yaml.Node{Kind: yaml.ScalarNode, Tag: "", Value: tt.value}
+			got := resolveUntaggedScalar(node, tt.value)
+			if got != tt.want {
+				t.Errorf("resolveUntaggedScalar(%q) = %v (%T), want %v (%T)", tt.value, got, got, tt.want, tt.want)
+			}
+		})
+	}
+}
+
+func TestResolveUntaggedScalar_NonStandardFloatStrings(t *testing.T) {
+	// Kills CONDITIONALS_NEGATION at ordered_map.go:259
+	// "Inf", "NaN", "Infinity" are accepted by ParseFloat but lack '.', 'e', 'E'
+	// so they must be returned as strings, not floats.
+	for _, value := range []string{"Inf", "NaN", "Infinity"} {
+		t.Run(value, func(t *testing.T) {
+			node := &yaml.Node{Kind: yaml.ScalarNode, Tag: "", Value: value}
+			got := resolveUntaggedScalar(node, value)
+			if _, isFloat := got.(float64); isFloat {
+				t.Errorf("resolveUntaggedScalar(%q) returned float64, want string", value)
+			}
+			if got != value {
+				t.Errorf("resolveUntaggedScalar(%q) = %v, want %q", value, got, value)
+			}
+		})
+	}
+}
+
 func TestLooksLikeTimestamp(t *testing.T) {
 	tests := []struct {
 		value string
@@ -413,6 +484,9 @@ func TestLooksLikeTimestamp(t *testing.T) {
 		{"2020-01-01", true},
 		{"2020-01-01T00:00:00Z", true},
 		{"1999-12-31", true},
+		{"0999-01-01", true}, // value[0]='0' boundary: kills >= '0' → > '0'
+		{"9999-12-31", true}, // value[0]='9' boundary: kills <= '9' → < '9'
+		{"1009-01-01", true}, // value[2]='0' boundary: kills >= '0' → > '0'
 		{"short", false},
 		{"abcd-ef-gh", false},
 		{"12345", false},

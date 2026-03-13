@@ -499,9 +499,11 @@ func TestDetailedFormatter_ColorEnabled_OrderChangeWasRed(t *testing.T) {
 	opts.OmitHeader = true
 
 	diffs := []Difference{
-		{Path: "items", Type: DiffOrderChanged,
+		{
+			Path: "items", Type: DiffOrderChanged,
 			From: []any{"a", "b"},
-			To:   []any{"b", "a"}},
+			To:   []any{"b", "a"},
+		},
 	}
 
 	output := f.Format(diffs, opts)
@@ -519,9 +521,11 @@ func TestDetailedFormatter_ColorEnabled_OrderChangeNowGreen(t *testing.T) {
 	opts.OmitHeader = true
 
 	diffs := []Difference{
-		{Path: "items", Type: DiffOrderChanged,
+		{
+			Path: "items", Type: DiffOrderChanged,
 			From: []any{"a", "b"},
-			To:   []any{"b", "a"}},
+			To:   []any{"b", "a"},
+		},
 	}
 
 	output := f.Format(diffs, opts)
@@ -539,9 +543,11 @@ func TestDetailedFormatter_ColorDisabled_PlainOrderChange(t *testing.T) {
 	opts.OmitHeader = true
 
 	diffs := []Difference{
-		{Path: "items", Type: DiffOrderChanged,
+		{
+			Path: "items", Type: DiffOrderChanged,
 			From: []any{"a", "b"},
-			To:   []any{"b", "a"}},
+			To:   []any{"b", "a"},
+		},
 	}
 
 	output := f.Format(diffs, opts)
@@ -576,9 +582,11 @@ func TestDetailedFormatter_Integration_AllDiffTypesColored(t *testing.T) {
 		// Modified: scalar value change
 		{Path: "config.timeout", Type: DiffModified, From: "30", To: "60"},
 		// Order changed (exercises colored was/now)
-		{Path: "items", Type: DiffOrderChanged,
+		{
+			Path: "items", Type: DiffOrderChanged,
 			From: []any{"a", "b", "c"},
-			To:   []any{"c", "b", "a"}},
+			To:   []any{"c", "b", "a"},
+		},
 	}
 
 	output := f.Format(diffs, opts)
@@ -634,9 +642,11 @@ func TestDetailedFormatter_Integration_AllDiffTypesUncolored(t *testing.T) {
 		{Path: "config.oldKey", Type: DiffRemoved, From: "deprecated"},
 		{Path: "config.port", Type: DiffModified, From: 8080, To: "8080"},
 		{Path: "config.timeout", Type: DiffModified, From: "30", To: "60"},
-		{Path: "items", Type: DiffOrderChanged,
+		{
+			Path: "items", Type: DiffOrderChanged,
 			From: []any{"a", "b", "c"},
-			To:   []any{"c", "b", "a"}},
+			To:   []any{"c", "b", "a"},
+		},
 	}
 
 	output := f.Format(diffs, opts)
@@ -678,9 +688,11 @@ func TestDetailedFormatter_Integration_TrueColorBoldItalicCombination(t *testing
 			return om
 		}()},
 		// Order change to exercise true color red/green on was/now
-		{Path: "items", Type: DiffOrderChanged,
+		{
+			Path: "items", Type: DiffOrderChanged,
 			From: []any{"x", "y"},
-			To:   []any{"y", "x"}},
+			To:   []any{"y", "x"},
+		},
 	}
 
 	output := f.Format(diffs, opts)
@@ -739,9 +751,11 @@ func TestDetailedFormatter_Integration_AutoColorModeNoTerminal(t *testing.T) {
 			return om
 		}()},
 		{Path: "config.port", Type: DiffModified, From: 8080, To: "8080"},
-		{Path: "items", Type: DiffOrderChanged,
+		{
+			Path: "items", Type: DiffOrderChanged,
 			From: []any{"a", "b"},
-			To:   []any{"b", "a"}},
+			To:   []any{"b", "a"},
+		},
 	}
 
 	output := f.Format(diffs, opts)

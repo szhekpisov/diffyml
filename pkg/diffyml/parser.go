@@ -7,6 +7,7 @@ package diffyml
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 
@@ -40,7 +41,7 @@ func (p *DocumentParser) Next() (any, error) {
 
 	var doc any
 	err := p.decoder.Decode(&doc)
-	if err == io.EOF {
+	if errors.Is(err, io.EOF) {
 		p.done = true
 		// If we haven't parsed any documents, return one nil document
 		if p.docNum == 0 {
@@ -79,7 +80,7 @@ func parseNodes(content []byte) ([]*yaml.Node, error) {
 	for {
 		var node yaml.Node
 		err := decoder.Decode(&node)
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
@@ -115,7 +116,7 @@ func (p *NodeDocumentParser) Next() (*yaml.Node, error) {
 
 	var node yaml.Node
 	err := p.decoder.Decode(&node)
-	if err == io.EOF {
+	if errors.Is(err, io.EOF) {
 		p.done = true
 		return nil, io.EOF
 	}
@@ -162,7 +163,8 @@ func (e *ParseError) Unwrap() error {
 func wrapParseError(err error) error {
 	// yaml.v3 includes line info in the error message
 	// Try to extract it if possible
-	if typeErr, ok := err.(*yaml.TypeError); ok {
+	var typeErr *yaml.TypeError
+	if errors.As(err, &typeErr) {
 		return &ParseError{
 			Message: typeErr.Error(),
 			Err:     err,

@@ -76,7 +76,8 @@ func compareAndFilterPair(from, to []byte, compareOpts *diffyml.Options, filterO
 // emitDirectorySummary generates and emits AI summaries for directory mode.
 // Handles both structured (aggregated) and non-structured (per-file) formatters.
 func emitDirectorySummary(cfg *CLIConfig, rc *RunConfig, groups []diffyml.DiffGroup, entries []summaryEntry,
-	formatOpts *diffyml.FormatOptions, formatter diffyml.Formatter, isStructured, isBriefSummary bool) {
+	formatOpts *diffyml.FormatOptions, formatter diffyml.Formatter, isStructured, isBriefSummary bool,
+) {
 	if isStructured && len(groups) > 0 {
 		summarizer := NewSummarizer(cfg.SummaryModel)
 		if rc.SummaryAPIURL != "" {

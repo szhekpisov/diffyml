@@ -206,7 +206,6 @@ func TestProperty23_VersionFlagExitsWithoutProcessing(t *testing.T) {
 	// Run with --version and other arguments that would normally cause errors
 	cmd := exec.Command("./diffyml_test_exit", "--version", "invalid_file.yaml", "another_invalid.yaml")
 	output, err := cmd.CombinedOutput()
-
 	// Should exit successfully (exit code 0) despite invalid arguments
 	if err != nil {
 		t.Fatalf("--version with extra args failed: %v", err)

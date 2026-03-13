@@ -1,6 +1,7 @@
 package diffyml
 
 import (
+	"errors"
 	"io"
 	"testing"
 )
@@ -127,7 +128,7 @@ func FuzzDocumentParser(f *testing.F) {
 		// Cap iterations to prevent DoS on inputs with many "---" separators.
 		for i := 0; i < 10_000; i++ {
 			_, err := p.Next()
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 		}

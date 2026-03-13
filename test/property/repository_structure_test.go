@@ -179,7 +179,6 @@ func TestProperty17_LibraryCodeOrganization_WithPackageValidation(t *testing.T) 
 
 		return nil
 	})
-
 	if err != nil {
 		t.Fatalf("Failed to walk pkg/ directory: %v", err)
 	}
@@ -345,7 +344,7 @@ func TestProperty18_NoPrebuiltBinaries(t *testing.T) {
 			return nil
 		}
 
-		if info.Mode()&0111 != 0 {
+		if info.Mode()&0o111 != 0 {
 			if strings.HasSuffix(path, ".sh") ||
 				strings.HasSuffix(path, ".bash") ||
 				strings.HasSuffix(path, ".py") ||
@@ -358,7 +357,6 @@ func TestProperty18_NoPrebuiltBinaries(t *testing.T) {
 
 		return nil
 	})
-
 	if err != nil {
 		t.Fatalf("Failed to walk repository: %v", err)
 	}

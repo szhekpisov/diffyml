@@ -12,7 +12,7 @@ import (
 // renderEntryValue renders a value for an entry batch line.
 // For list entries, renders values with "- " prefix. For map entries, renders as "key: value".
 // The entire block is colored (green for adds, red for removes).
-func (f *DetailedFormatter) renderEntryValue(sb *strings.Builder, val any, symbol string, indent int, path string, isList bool, opts *FormatOptions) {
+func (f *DetailedFormatter) renderEntryValue(sb *strings.Builder, val any, symbol string, indent int, path DiffPath, isList bool, opts *FormatOptions) {
 	code := f.colorRemoved(opts)
 	if symbol == "+" {
 		code = f.colorAdded(opts)
@@ -20,7 +20,7 @@ func (f *DetailedFormatter) renderEntryValue(sb *strings.Builder, val any, symbo
 
 	// Map entries: extract key from path and render as key: value
 	if !isList {
-		key := extractLastKey(path)
+		key := path.Last()
 		f.renderKeyValueYAML(sb, key, val, indent, code, opts)
 		return
 	}

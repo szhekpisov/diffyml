@@ -37,9 +37,9 @@ func compareDocs(from, to []any, opts *Options) []Difference {
 		}
 
 		// Build path prefix for multi-document files
-		pathPrefix := ""
+		var pathPrefix DiffPath
 		if maxLen > 1 {
-			pathPrefix = "[" + strconv.Itoa(i) + "]"
+			pathPrefix = DiffPath{"[" + strconv.Itoa(i) + "]"}
 		}
 
 		nodeDiffs := compareNodes(pathPrefix, fromDoc, toDoc, opts)
@@ -70,13 +70,13 @@ func hasK8sDocuments(from, to []any) bool {
 
 // compareNodeNils handles nil cases for compareNodes.
 // Returns diffs and true if an early return is appropriate.
-func compareNodeNils(path string, from, to any, opts *Options) ([]Difference, bool) {
+func compareNodeNils(path DiffPath, from, to any, opts *Options) ([]Difference, bool) {
 	if from == nil && to == nil {
 		return nil, true
 	}
 	if from == nil {
 		return []Difference{{
-			Path: cleanPath(path),
+			Path: path,
 			Type: DiffAdded,
 			From: nil,
 			To:   to,
@@ -87,7 +87,7 @@ func compareNodeNils(path string, from, to any, opts *Options) ([]Difference, bo
 			return nil, true
 		}
 		return []Difference{{
-			Path: cleanPath(path),
+			Path: path,
 			Type: DiffModified,
 			From: from,
 			To:   nil,
@@ -97,7 +97,7 @@ func compareNodeNils(path string, from, to any, opts *Options) ([]Difference, bo
 }
 
 // compareNodes recursively compares two YAML nodes.
-func compareNodes(path string, from, to any, opts *Options) []Difference {
+func compareNodes(path DiffPath, from, to any, opts *Options) []Difference {
 	if diffs, done := compareNodeNils(path, from, to, opts); done {
 		return diffs
 	}
@@ -124,7 +124,7 @@ func compareNodes(path string, from, to any, opts *Options) []Difference {
 					return nil
 				}
 				return []Difference{{
-					Path: cleanPath(path),
+					Path: path,
 					Type: DiffModified,
 					From: from,
 					To:   to,
@@ -139,7 +139,7 @@ func compareNodes(path string, from, to any, opts *Options) []Difference {
 		return nil
 	}
 	return []Difference{{
-		Path: cleanPath(path),
+		Path: path,
 		Type: DiffModified,
 		From: from,
 		To:   to,
@@ -170,19 +170,19 @@ func sameScalarType(a, b any) bool {
 }
 
 // compareOrderedMaps compares two OrderedMap nodes preserving source document order
-func compareOrderedMaps(path string, from, to *OrderedMap, opts *Options) []Difference {
+func compareOrderedMaps(path DiffPath, from, to *OrderedMap, opts *Options) []Difference {
 	var diffs []Difference
 
 	// First iterate over 'from' keys in their original order
 	for _, key := range from.Keys {
-		childPath := joinPath(path, key)
+		childPath := path.Append(key)
 		fromVal := from.Values[key]
 		toVal, toOk := to.Values[key]
 
 		if !toOk {
 			// Key was removed
 			diffs = append(diffs, Difference{
-				Path: cleanPath(childPath),
+				Path: childPath,
 				Type: DiffRemoved,
 				From: fromVal,
 				To:   nil,
@@ -197,9 +197,9 @@ func compareOrderedMaps(path string, from, to *OrderedMap, opts *Options) []Diff
 	// Use from.Values for lookup instead of a separate tracking map
 	for _, key := range to.Keys {
 		if _, inFrom := from.Values[key]; !inFrom {
-			childPath := joinPath(path, key)
+			childPath := path.Append(key)
 			diffs = append(diffs, Difference{
-				Path: cleanPath(childPath),
+				Path: childPath,
 				Type: DiffAdded,
 				From: nil,
 				To:   to.Values[key],
@@ -211,7 +211,7 @@ func compareOrderedMaps(path string, from, to *OrderedMap, opts *Options) []Diff
 }
 
 // compareMaps compares two map nodes.
-func compareMaps(path string, from, to map[string]any, opts *Options) []Difference {
+func compareMaps(path DiffPath, from, to map[string]any, opts *Options) []Difference {
 	var diffs []Difference
 
 	// Get all keys from both maps and sort for deterministic output
@@ -232,7 +232,7 @@ func compareMaps(path string, from, to map[string]any, opts *Options) []Differen
 
 	// Iterate over sorted keys
 	for _, key := range sortedKeys {
-		childPath := joinPath(path, key)
+		childPath := path.Append(key)
 		fromVal, fromOk := from[key]
 		toVal, toOk := to[key]
 
@@ -240,7 +240,7 @@ func compareMaps(path string, from, to map[string]any, opts *Options) []Differen
 		case !fromOk:
 			// Key was added
 			diffs = append(diffs, Difference{
-				Path: cleanPath(childPath),
+				Path: childPath,
 				Type: DiffAdded,
 				From: nil,
 				To:   toVal,
@@ -248,7 +248,7 @@ func compareMaps(path string, from, to map[string]any, opts *Options) []Differen
 		case !toOk:
 			// Key was removed
 			diffs = append(diffs, Difference{
-				Path: cleanPath(childPath),
+				Path: childPath,
 				Type: DiffRemoved,
 				From: fromVal,
 				To:   nil,
@@ -263,7 +263,7 @@ func compareMaps(path string, from, to map[string]any, opts *Options) []Differen
 }
 
 // compareLists compares two list nodes.
-func compareLists(path string, from, to []any, opts *Options) []Difference {
+func compareLists(path DiffPath, from, to []any, opts *Options) []Difference {
 	// Try to match items by identifier (for lists of maps with name/id fields)
 	if canMatchByIdentifier(from, opts) && canMatchByIdentifier(to, opts) {
 		return compareListsByIdentifier(path, from, to, opts)
@@ -344,21 +344,20 @@ func areListItemsHeterogeneous(from, to []any) bool {
 
 // areListsMaps checks if all items in a list are maps
 // compareListsPositional compares lists by position.
-func compareListsPositional(path string, from, to []any, opts *Options) []Difference {
+func compareListsPositional(path DiffPath, from, to []any, opts *Options) []Difference {
 	var diffs []Difference
 
 	minLen := min(len(from), len(to))
 
 	// Compare elements present in both lists
 	for i := range minLen {
-		childPath := path + "." + strconv.Itoa(i)
+		childPath := path.Append(strconv.Itoa(i))
 		diffs = append(diffs, compareNodes(childPath, from[i], to[i], opts)...)
 	}
 	// Items added (present in 'to' but not 'from')
 	for i := minLen; i < len(to); i++ {
-		childPath := path + "." + strconv.Itoa(i)
 		diffs = append(diffs, Difference{
-			Path: cleanPath(childPath),
+			Path: path.Append(strconv.Itoa(i)),
 			Type: DiffAdded,
 			From: nil,
 			To:   to[i],
@@ -366,9 +365,8 @@ func compareListsPositional(path string, from, to []any, opts *Options) []Differ
 	}
 	// Items removed (present in 'from' but not 'to')
 	for i := minLen; i < len(from); i++ {
-		childPath := path + "." + strconv.Itoa(i)
 		diffs = append(diffs, Difference{
-			Path: cleanPath(childPath),
+			Path: path.Append(strconv.Itoa(i)),
 			Type: DiffRemoved,
 			From: from[i],
 			To:   nil,
@@ -379,7 +377,7 @@ func compareListsPositional(path string, from, to []any, opts *Options) []Differ
 }
 
 // compareListsUnordered compares lists ignoring order.
-func compareListsUnordered(path string, from, to []any, opts *Options) []Difference {
+func compareListsUnordered(path DiffPath, from, to []any, opts *Options) []Difference {
 	var diffs []Difference
 
 	// Track which items have been matched
@@ -400,7 +398,7 @@ func compareListsUnordered(path string, from, to []any, opts *Options) []Differe
 		if !found {
 			// Item was removed
 			diffs = append(diffs, Difference{
-				Path: cleanPath(path) + "." + strconv.Itoa(i),
+				Path: path.Append(strconv.Itoa(i)),
 				Type: DiffRemoved,
 				From: fromItem,
 				To:   nil,
@@ -412,7 +410,7 @@ func compareListsUnordered(path string, from, to []any, opts *Options) []Differe
 	for j, toItem := range to {
 		if !toMatched[j] {
 			diffs = append(diffs, Difference{
-				Path: cleanPath(path) + "." + strconv.Itoa(j),
+				Path: path.Append(strconv.Itoa(j)),
 				Type: DiffAdded,
 				From: nil,
 				To:   toItem,
@@ -449,7 +447,7 @@ func getIdentifier(val any, opts *Options) any {
 }
 
 // detectListOrderChanges detects order changes among matched list identifiers.
-func detectListOrderChanges(path string, fromIDs []any, fromIndex, toIndex map[any]int, toIDCount int) *Difference {
+func detectListOrderChanges(path DiffPath, fromIDs []any, fromIndex, toIndex map[any]int, toIDCount int) *Difference {
 	hasUniqueIDs := len(fromIDs) == len(fromIndex) && len(toIndex) == toIDCount
 
 	if !hasUniqueIDs {
@@ -499,7 +497,7 @@ func detectListOrderChanges(path string, fromIDs []any, fromIndex, toIndex map[a
 		toOrder[i] = s.id
 	}
 	return &Difference{
-		Path: cleanPath(path),
+		Path: path,
 		Type: DiffOrderChanged,
 		From: commonFromOrder,
 		To:   toOrder,
@@ -507,7 +505,7 @@ func detectListOrderChanges(path string, fromIDs []any, fromIndex, toIndex map[a
 }
 
 // compareUnidentifiedItems compares list items that lack usable identifiers using unordered matching.
-func compareUnidentifiedItems(path string, from, to []any, fromNoID, toNoID []int, opts *Options) []Difference {
+func compareUnidentifiedItems(path DiffPath, from, to []any, fromNoID, toNoID []int, opts *Options) []Difference {
 	var diffs []Difference
 	toNoIDMatched := make([]bool, len(toNoID))
 	for _, fromIdx := range fromNoID {
@@ -525,7 +523,7 @@ func compareUnidentifiedItems(path string, from, to []any, fromNoID, toNoID []in
 		}
 		if !found {
 			diffs = append(diffs, Difference{
-				Path: cleanPath(path) + "." + strconv.Itoa(fromIdx),
+				Path: path.Append(strconv.Itoa(fromIdx)),
 				Type: DiffRemoved,
 				From: fromItem,
 				To:   nil,
@@ -537,7 +535,7 @@ func compareUnidentifiedItems(path string, from, to []any, fromNoID, toNoID []in
 			continue
 		}
 		diffs = append(diffs, Difference{
-			Path: cleanPath(path) + "." + strconv.Itoa(toIdx),
+			Path: path.Append(strconv.Itoa(toIdx)),
 			Type: DiffAdded,
 			From: nil,
 			To:   to[toIdx],
@@ -547,7 +545,7 @@ func compareUnidentifiedItems(path string, from, to []any, fromNoID, toNoID []in
 }
 
 // compareListsByIdentifier compares lists matching by identifier field.
-func compareListsByIdentifier(path string, from, to []any, opts *Options) []Difference {
+func compareListsByIdentifier(path DiffPath, from, to []any, opts *Options) []Difference {
 	var diffs []Difference
 
 	// Build index of from items by identifier, preserving order
@@ -594,12 +592,12 @@ func compareListsByIdentifier(path string, from, to []any, opts *Options) []Diff
 			// Items match by identifier - compare their contents
 			// Use identifier value in path instead of index (dyff-style)
 			idStr := fmt.Sprint(id)
-			childPath := path + "." + idStr
+			childPath := path.Append(idStr)
 			diffs = append(diffs, compareNodes(childPath, fromItem, toItem, opts)...)
 		} else {
 			// Item was removed - report at the list level (dyff-style)
 			diffs = append(diffs, Difference{
-				Path: cleanPath(path),
+				Path: path,
 				Type: DiffRemoved,
 				From: fromItem,
 				To:   nil,
@@ -614,7 +612,7 @@ func compareListsByIdentifier(path string, from, to []any, opts *Options) []Diff
 			if _, inFrom := fromIndex[id]; !inFrom {
 				// Item was added - report at the list level (dyff-style)
 				diffs = append(diffs, Difference{
-					Path: cleanPath(path),
+					Path: path,
 					Type: DiffAdded,
 					From: nil,
 					To:   toItem,
@@ -717,25 +715,6 @@ func deepEqual(from, to any, opts *Options) bool {
 	}
 }
 
-// joinPath joins path segments with a dot.
-// Keys containing dots are bracket-quoted to avoid ambiguity with the path separator.
-func joinPath(base, key string) string {
-	if strings.Contains(key, ".") {
-		if base == "" {
-			return "[" + key + "]"
-		}
-		return base + "[" + key + "]"
-	}
-	if base == "" {
-		return key
-	}
-	return base + "." + key
-}
-
-// cleanPath removes leading dots from path.
-func cleanPath(path string) string {
-	return strings.TrimPrefix(path, ".")
-}
 
 // countToIDs counts the total number of items with comparable identifiers in a list.
 // Used to detect duplicate identifiers (if count != len(toIndex), there are duplicates).

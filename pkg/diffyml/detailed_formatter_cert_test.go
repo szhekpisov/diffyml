@@ -49,7 +49,7 @@ func TestDetailedFormatter_CertInspection_ModifiedCerts(t *testing.T) {
 	opts.OmitHeader = true
 
 	diffs := []Difference{
-		{Path: "tls.cert", Type: DiffModified, From: fromCert, To: toCert},
+		{Path: DiffPath{"tls", "cert"}, Type: DiffModified, From: fromCert, To: toCert},
 	}
 	output := f.Format(diffs, opts)
 
@@ -84,7 +84,7 @@ func TestDetailedFormatter_CertInspection_Disabled(t *testing.T) {
 	opts.NoCertInspection = true
 
 	diffs := []Difference{
-		{Path: "tls.cert", Type: DiffModified, From: fromCert, To: toCert},
+		{Path: DiffPath{"tls", "cert"}, Type: DiffModified, From: fromCert, To: toCert},
 	}
 	output := f.Format(diffs, opts)
 
@@ -108,7 +108,7 @@ func TestDetailedFormatter_CertInspection_OnlyOneSideIsCert(t *testing.T) {
 	opts.OmitHeader = true
 
 	diffs := []Difference{
-		{Path: "tls.cert", Type: DiffModified, From: "not a cert", To: certPEM},
+		{Path: DiffPath{"tls", "cert"}, Type: DiffModified, From: "not a cert", To: certPEM},
 	}
 	output := f.Format(diffs, opts)
 
@@ -129,7 +129,7 @@ func TestDetailedFormatter_CertInspection_AddedCert(t *testing.T) {
 	opts.OmitHeader = true
 
 	diffs := []Difference{
-		{Path: "secrets.tls-cert", Type: DiffAdded, To: certPEM},
+		{Path: DiffPath{"secrets", "tls-cert"}, Type: DiffAdded, To: certPEM},
 	}
 	output := f.Format(diffs, opts)
 
@@ -152,7 +152,7 @@ func TestDetailedFormatter_CertInspection_RemovedCert(t *testing.T) {
 	opts.OmitHeader = true
 
 	diffs := []Difference{
-		{Path: "secrets.tls-cert", Type: DiffRemoved, From: certPEM},
+		{Path: DiffPath{"secrets", "tls-cert"}, Type: DiffRemoved, From: certPEM},
 	}
 	output := f.Format(diffs, opts)
 
@@ -176,7 +176,7 @@ func TestDetailedFormatter_CertInspection_AddedCert_Disabled(t *testing.T) {
 	opts.NoCertInspection = true
 
 	diffs := []Difference{
-		{Path: "secrets.tls-cert", Type: DiffAdded, To: certPEM},
+		{Path: DiffPath{"secrets", "tls-cert"}, Type: DiffAdded, To: certPEM},
 	}
 	output := f.Format(diffs, opts)
 
@@ -195,7 +195,7 @@ func TestDetailedFormatter_CertInspection_NonStringValues(t *testing.T) {
 
 	// Non-string values should not trigger cert inspection
 	diffs := []Difference{
-		{Path: "config.port", Type: DiffModified, From: 8080, To: 9090},
+		{Path: DiffPath{"config", "port"}, Type: DiffModified, From: 8080, To: 9090},
 	}
 	output := f.Format(diffs, opts)
 

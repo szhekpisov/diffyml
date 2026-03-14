@@ -184,7 +184,7 @@ func TestDetailedFormatter_ListValueInFirstKey(t *testing.T) {
 
 	diffs := []Difference{
 		{
-			Path: "spec.containers.0",
+			Path: DiffPath{"spec", "containers", "0"},
 			Type: DiffAdded,
 			From: nil,
 			To:   om,
@@ -225,7 +225,7 @@ func TestCompareListsByIdentifier_NoIDFallback(t *testing.T) {
 		"shared-scalar",
 	}
 
-	diffs := compareListsByIdentifier("items", from, to, nil)
+	diffs := compareListsByIdentifier(DiffPath{"items"}, from, to, nil)
 
 	// "a" matched by name → modified value
 	// "scalar-from-only" has no identifier → removed (fallback)
@@ -297,7 +297,7 @@ func TestDetailedFormatter_MapContinuationIndent(t *testing.T) {
 	// With the mutation (indent-4), children would be at 0 spaces instead.
 	diffs := []Difference{
 		{
-			Path: "items.0",
+			Path: DiffPath{"items", "0"},
 			Type: DiffAdded,
 			From: nil,
 			To:   map[string]any{"aaa": map[string]any{"child": "value"}},
@@ -332,7 +332,7 @@ func TestDetailedFormatter_MapContinuationKeyIndent(t *testing.T) {
 	// at indent+2 (=6 spaces). With the mutation, it would be at 2 spaces.
 	diffs := []Difference{
 		{
-			Path: "items.0",
+			Path: DiffPath{"items", "0"},
 			Type: DiffAdded,
 			From: nil,
 			To:   map[string]any{"aaa": "val1", "zzz": "val2"},
@@ -372,7 +372,7 @@ func TestDetailedFormatter_FirstKeyMultilineIndent(t *testing.T) {
 	}
 	diffs := []Difference{
 		{
-			Path: "items.0",
+			Path: DiffPath{"items", "0"},
 			Type: DiffAdded,
 			From: nil,
 			To:   om,
@@ -502,7 +502,7 @@ func TestComputeLineDiff_IdenticalLines(t *testing.T) {
 func TestCompareListsPositional_ToLonger(t *testing.T) {
 	from := []any{"a", "b"}
 	to := []any{"a", "b", "c", "d"}
-	diffs := compareListsPositional("list", from, to, nil)
+	diffs := compareListsPositional(DiffPath{"list"}, from, to, nil)
 
 	added := 0
 	for _, d := range diffs {
@@ -518,7 +518,7 @@ func TestCompareListsPositional_ToLonger(t *testing.T) {
 func TestCompareListsPositional_FromLonger(t *testing.T) {
 	from := []any{"a", "b", "c"}
 	to := []any{"a"}
-	diffs := compareListsPositional("list", from, to, nil)
+	diffs := compareListsPositional(DiffPath{"list"}, from, to, nil)
 
 	removed := 0
 	for _, d := range diffs {
@@ -651,7 +651,7 @@ func TestCompareListsByIdentifier_NoIDMatchedSkip(t *testing.T) {
 		"shared-b",
 	}
 
-	diffs := compareListsByIdentifier("items", from, to, nil)
+	diffs := compareListsByIdentifier(DiffPath{"items"}, from, to, nil)
 	for _, d := range diffs {
 		if d.Type == DiffRemoved || d.Type == DiffAdded {
 			t.Errorf("unexpected diff: %+v", d)
@@ -673,7 +673,7 @@ func TestDetailedFormatter_RenderKeyValueYAML_ListIndent(t *testing.T) {
 	}
 
 	diffs := []Difference{
-		{Path: "spec.containers.0", Type: DiffAdded, From: nil, To: om},
+		{Path: DiffPath{"spec", "containers", "0"}, Type: DiffAdded, From: nil, To: om},
 	}
 
 	f := &DetailedFormatter{}
@@ -705,7 +705,7 @@ func TestDetailedFormatter_RenderFirstKeyValueYAML_ListIndent(t *testing.T) {
 	}
 
 	diffs := []Difference{
-		{Path: "spec.containers.0", Type: DiffAdded, From: nil, To: om},
+		{Path: DiffPath{"spec", "containers", "0"}, Type: DiffAdded, From: nil, To: om},
 	}
 
 	f := &DetailedFormatter{}
@@ -798,7 +798,7 @@ func TestDetectListOrderChanges_NonUniqueIDs(t *testing.T) {
 	fromIDs := []any{"a", "a", "b"}
 	fromIndex := map[any]int{"a": 0, "b": 2} // len=2, but fromIDs len=3
 	toIndex := map[any]int{"a": 0, "b": 1}
-	result := detectListOrderChanges("items", fromIDs, fromIndex, toIndex, 2)
+	result := detectListOrderChanges(DiffPath{"items"}, fromIDs, fromIndex, toIndex, 2)
 	if result != nil {
 		t.Error("expected nil for non-unique IDs")
 	}
@@ -897,7 +897,7 @@ func TestCompareByExactOrParentOrder_OnlyJInOrder(t *testing.T) {
 		"known": 0,
 	}
 	// pathI is not in pathOrder, pathJ is → should return 1 (!okI && okJ)
-	result := compareByExactOrParentOrder("unknown", "known", pathOrder, func(path string) (int, bool) {
+	result := compareByExactOrParentOrder(DiffPath{"unknown"}, DiffPath{"known"}, pathOrder, func(path DiffPath) (int, bool) {
 		return 0, false
 	})
 	if result != 1 {

@@ -251,7 +251,7 @@ func TestSummarize_ServerError502(t *testing.T) {
 	s := NewSummarizerWithClient("test-model", "test-key", mock)
 
 	groups := []diffyml.DiffGroup{
-		{FilePath: "f.yaml", Diffs: []diffyml.Difference{{Path: "a", Type: diffyml.DiffAdded, To: "v"}}},
+		{FilePath: "f.yaml", Diffs: []diffyml.Difference{{Path: diffyml.DiffPath{"a"}, Type: diffyml.DiffAdded, To: "v"}}},
 	}
 
 	_, err := s.Summarize(t.Context(), groups)
@@ -511,7 +511,7 @@ func TestEmitDirectorySummary_StructuredError(t *testing.T) {
 	formatter, _ := diffyml.FormatterByName("github")
 
 	groups := []diffyml.DiffGroup{
-		{FilePath: "f.yaml", Diffs: []diffyml.Difference{{Path: "a", Type: diffyml.DiffAdded, To: "v"}}},
+		{FilePath: "f.yaml", Diffs: []diffyml.Difference{{Path: diffyml.DiffPath{"a"}, Type: diffyml.DiffAdded, To: "v"}}},
 	}
 
 	emitDirectorySummary(cfg, rc, groups, nil, formatOpts, formatter, true, false)
@@ -531,7 +531,7 @@ func TestSummarize_InvalidResponseBody(t *testing.T) {
 	s := NewSummarizerWithClient("test-model", "test-key", mock)
 
 	groups := []diffyml.DiffGroup{
-		{FilePath: "f.yaml", Diffs: []diffyml.Difference{{Path: "a", Type: diffyml.DiffAdded, To: "v"}}},
+		{FilePath: "f.yaml", Diffs: []diffyml.Difference{{Path: diffyml.DiffPath{"a"}, Type: diffyml.DiffAdded, To: "v"}}},
 	}
 
 	_, err := s.Summarize(t.Context(), groups)
@@ -552,7 +552,7 @@ func TestSummarize_InvalidURL(t *testing.T) {
 	s.apiURL = "http://\x00invalid"
 
 	groups := []diffyml.DiffGroup{
-		{FilePath: "f.yaml", Diffs: []diffyml.Difference{{Path: "a", Type: diffyml.DiffAdded, To: "v"}}},
+		{FilePath: "f.yaml", Diffs: []diffyml.Difference{{Path: diffyml.DiffPath{"a"}, Type: diffyml.DiffAdded, To: "v"}}},
 	}
 
 	_, err := s.Summarize(t.Context(), groups)

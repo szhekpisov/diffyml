@@ -879,8 +879,8 @@ func TestFormatter_FilePathFieldIgnoredByNonGitLab(t *testing.T) {
 	nonGitLab := []string{"compact", "brief", "detailed"}
 
 	diffs := []diffyml.Difference{
-		{Path: "config.host", Type: diffyml.DiffModified, From: "localhost", To: "production"},
-		{Path: "config.port", Type: diffyml.DiffAdded, To: 8080},
+		{Path: diffyml.DiffPath{"config", "host"}, Type: diffyml.DiffModified, From: "localhost", To: "production"},
+		{Path: diffyml.DiffPath{"config", "port"}, Type: diffyml.DiffAdded, To: 8080},
 	}
 
 	for _, name := range nonGitLab {

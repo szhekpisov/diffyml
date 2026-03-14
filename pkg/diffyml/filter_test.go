@@ -6,9 +6,9 @@ import (
 
 func TestFilterDiffs_IncludePaths_SinglePath(t *testing.T) {
 	diffs := []Difference{
-		{Path: "config.name", Type: DiffModified, From: "old", To: "new"},
-		{Path: "config.version", Type: DiffModified, From: "1", To: "2"},
-		{Path: "metadata.label", Type: DiffAdded, From: nil, To: "value"},
+		{Path: DiffPath{"config", "name"}, Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"config", "version"}, Type: DiffModified, From: "1", To: "2"},
+		{Path: DiffPath{"metadata", "label"}, Type: DiffAdded, From: nil, To: "value"},
 	}
 
 	opts := &FilterOptions{
@@ -20,16 +20,16 @@ func TestFilterDiffs_IncludePaths_SinglePath(t *testing.T) {
 	if len(result) != 1 {
 		t.Fatalf("expected 1 diff, got %d", len(result))
 	}
-	if result[0].Path != "config.name" {
+	if result[0].Path.String() != "config.name" {
 		t.Errorf("expected path 'config.name', got '%s'", result[0].Path)
 	}
 }
 
 func TestFilterDiffs_IncludePaths_MultiplePaths(t *testing.T) {
 	diffs := []Difference{
-		{Path: "config.name", Type: DiffModified, From: "old", To: "new"},
-		{Path: "config.version", Type: DiffModified, From: "1", To: "2"},
-		{Path: "metadata.label", Type: DiffAdded, From: nil, To: "value"},
+		{Path: DiffPath{"config", "name"}, Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"config", "version"}, Type: DiffModified, From: "1", To: "2"},
+		{Path: DiffPath{"metadata", "label"}, Type: DiffAdded, From: nil, To: "value"},
 	}
 
 	opts := &FilterOptions{
@@ -45,10 +45,10 @@ func TestFilterDiffs_IncludePaths_MultiplePaths(t *testing.T) {
 
 func TestFilterDiffs_IncludePaths_PrefixMatch(t *testing.T) {
 	diffs := []Difference{
-		{Path: "config.name", Type: DiffModified, From: "old", To: "new"},
-		{Path: "config.version", Type: DiffModified, From: "1", To: "2"},
-		{Path: "config.nested.deep", Type: DiffAdded, From: nil, To: "value"},
-		{Path: "metadata.label", Type: DiffAdded, From: nil, To: "value"},
+		{Path: DiffPath{"config", "name"}, Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"config", "version"}, Type: DiffModified, From: "1", To: "2"},
+		{Path: DiffPath{"config", "nested", "deep"}, Type: DiffAdded, From: nil, To: "value"},
+		{Path: DiffPath{"metadata", "label"}, Type: DiffAdded, From: nil, To: "value"},
 	}
 
 	opts := &FilterOptions{
@@ -64,9 +64,9 @@ func TestFilterDiffs_IncludePaths_PrefixMatch(t *testing.T) {
 
 func TestFilterDiffs_ExcludePaths_SinglePath(t *testing.T) {
 	diffs := []Difference{
-		{Path: "config.name", Type: DiffModified, From: "old", To: "new"},
-		{Path: "config.version", Type: DiffModified, From: "1", To: "2"},
-		{Path: "metadata.label", Type: DiffAdded, From: nil, To: "value"},
+		{Path: DiffPath{"config", "name"}, Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"config", "version"}, Type: DiffModified, From: "1", To: "2"},
+		{Path: DiffPath{"metadata", "label"}, Type: DiffAdded, From: nil, To: "value"},
 	}
 
 	opts := &FilterOptions{
@@ -79,7 +79,7 @@ func TestFilterDiffs_ExcludePaths_SinglePath(t *testing.T) {
 		t.Fatalf("expected 2 diffs, got %d", len(result))
 	}
 	for _, d := range result {
-		if d.Path == "config.version" {
+		if d.Path.String() == "config.version" {
 			t.Error("config.version should have been excluded")
 		}
 	}
@@ -87,9 +87,9 @@ func TestFilterDiffs_ExcludePaths_SinglePath(t *testing.T) {
 
 func TestFilterDiffs_ExcludePaths_PrefixMatch(t *testing.T) {
 	diffs := []Difference{
-		{Path: "config.name", Type: DiffModified, From: "old", To: "new"},
-		{Path: "config.version", Type: DiffModified, From: "1", To: "2"},
-		{Path: "metadata.label", Type: DiffAdded, From: nil, To: "value"},
+		{Path: DiffPath{"config", "name"}, Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"config", "version"}, Type: DiffModified, From: "1", To: "2"},
+		{Path: DiffPath{"metadata", "label"}, Type: DiffAdded, From: nil, To: "value"},
 	}
 
 	opts := &FilterOptions{
@@ -101,17 +101,17 @@ func TestFilterDiffs_ExcludePaths_PrefixMatch(t *testing.T) {
 	if len(result) != 1 {
 		t.Fatalf("expected 1 diff after excluding 'config' prefix, got %d", len(result))
 	}
-	if result[0].Path != "metadata.label" {
+	if result[0].Path.String() != "metadata.label" {
 		t.Errorf("expected path 'metadata.label', got '%s'", result[0].Path)
 	}
 }
 
 func TestFilterDiffs_IncludeBeforeExclude(t *testing.T) {
 	diffs := []Difference{
-		{Path: "config.name", Type: DiffModified, From: "old", To: "new"},
-		{Path: "config.version", Type: DiffModified, From: "1", To: "2"},
-		{Path: "config.secret", Type: DiffModified, From: "xxx", To: "yyy"},
-		{Path: "metadata.label", Type: DiffAdded, From: nil, To: "value"},
+		{Path: DiffPath{"config", "name"}, Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"config", "version"}, Type: DiffModified, From: "1", To: "2"},
+		{Path: DiffPath{"config", "secret"}, Type: DiffModified, From: "xxx", To: "yyy"},
+		{Path: DiffPath{"metadata", "label"}, Type: DiffAdded, From: nil, To: "value"},
 	}
 
 	// Include all config, then exclude config.secret
@@ -126,10 +126,10 @@ func TestFilterDiffs_IncludeBeforeExclude(t *testing.T) {
 		t.Fatalf("expected 2 diffs (config.* minus config.secret), got %d", len(result))
 	}
 	for _, d := range result {
-		if d.Path == "config.secret" {
+		if d.Path.String() == "config.secret" {
 			t.Error("config.secret should have been excluded")
 		}
-		if d.Path == "metadata.label" {
+		if d.Path.String() == "metadata.label" {
 			t.Error("metadata.label should not be included")
 		}
 	}
@@ -137,8 +137,8 @@ func TestFilterDiffs_IncludeBeforeExclude(t *testing.T) {
 
 func TestFilterDiffs_NoFilters(t *testing.T) {
 	diffs := []Difference{
-		{Path: "config.name", Type: DiffModified, From: "old", To: "new"},
-		{Path: "config.version", Type: DiffModified, From: "1", To: "2"},
+		{Path: DiffPath{"config", "name"}, Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"config", "version"}, Type: DiffModified, From: "1", To: "2"},
 	}
 
 	opts := &FilterOptions{}
@@ -152,7 +152,7 @@ func TestFilterDiffs_NoFilters(t *testing.T) {
 
 func TestFilterDiffs_NilOptions(t *testing.T) {
 	diffs := []Difference{
-		{Path: "config.name", Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"config", "name"}, Type: DiffModified, From: "old", To: "new"},
 	}
 
 	result := FilterDiffs(diffs, nil)
@@ -178,9 +178,9 @@ func TestFilterDiffs_EmptyDiffs(t *testing.T) {
 
 func TestFilterDiffs_ArrayIndexPaths(t *testing.T) {
 	diffs := []Difference{
-		{Path: "items[0].name", Type: DiffModified, From: "old", To: "new"},
-		{Path: "items[1].name", Type: DiffModified, From: "old", To: "new"},
-		{Path: "items[2].value", Type: DiffAdded, From: nil, To: "added"},
+		{Path: DiffPath{"items[0]", "name"}, Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"items[1]", "name"}, Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"items[2]", "value"}, Type: DiffAdded, From: nil, To: "added"},
 	}
 
 	opts := &FilterOptions{
@@ -192,16 +192,16 @@ func TestFilterDiffs_ArrayIndexPaths(t *testing.T) {
 	if len(result) != 1 {
 		t.Fatalf("expected 1 diff matching items[0], got %d", len(result))
 	}
-	if result[0].Path != "items[0].name" {
+	if result[0].Path.String() != "items[0].name" {
 		t.Errorf("expected path 'items[0].name', got '%s'", result[0].Path)
 	}
 }
 
 func TestFilterDiffs_ExactMatch(t *testing.T) {
 	diffs := []Difference{
-		{Path: "config", Type: DiffModified, From: "old", To: "new"},
-		{Path: "config.name", Type: DiffModified, From: "old", To: "new"},
-		{Path: "configuration", Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"config"}, Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"config", "name"}, Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"configuration"}, Type: DiffModified, From: "old", To: "new"},
 	}
 
 	opts := &FilterOptions{
@@ -215,7 +215,7 @@ func TestFilterDiffs_ExactMatch(t *testing.T) {
 		t.Fatalf("expected 2 diffs, got %d", len(result))
 	}
 	for _, d := range result {
-		if d.Path == "configuration" {
+		if d.Path.String() == "configuration" {
 			t.Error("configuration should not match config prefix")
 		}
 	}
@@ -262,9 +262,9 @@ func TestPathMatches_ArrayPathMatch(t *testing.T) {
 
 func TestFilterDiffsRegex_IncludePattern_SinglePattern(t *testing.T) {
 	diffs := []Difference{
-		{Path: "config.name", Type: DiffModified, From: "old", To: "new"},
-		{Path: "config.version", Type: DiffModified, From: "1", To: "2"},
-		{Path: "metadata.label", Type: DiffAdded, From: nil, To: "value"},
+		{Path: DiffPath{"config", "name"}, Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"config", "version"}, Type: DiffModified, From: "1", To: "2"},
+		{Path: DiffPath{"metadata", "label"}, Type: DiffAdded, From: nil, To: "value"},
 	}
 
 	opts := &FilterOptions{
@@ -283,9 +283,9 @@ func TestFilterDiffsRegex_IncludePattern_SinglePattern(t *testing.T) {
 
 func TestFilterDiffsRegex_IncludePattern_MultiplePatterns(t *testing.T) {
 	diffs := []Difference{
-		{Path: "config.name", Type: DiffModified, From: "old", To: "new"},
-		{Path: "metadata.label", Type: DiffAdded, From: nil, To: "value"},
-		{Path: "spec.containers", Type: DiffModified, From: "a", To: "b"},
+		{Path: DiffPath{"config", "name"}, Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"metadata", "label"}, Type: DiffAdded, From: nil, To: "value"},
+		{Path: DiffPath{"spec", "containers"}, Type: DiffModified, From: "a", To: "b"},
 	}
 
 	opts := &FilterOptions{
@@ -304,9 +304,9 @@ func TestFilterDiffsRegex_IncludePattern_MultiplePatterns(t *testing.T) {
 
 func TestFilterDiffsRegex_ExcludePattern(t *testing.T) {
 	diffs := []Difference{
-		{Path: "config.name", Type: DiffModified, From: "old", To: "new"},
-		{Path: "config.secret", Type: DiffModified, From: "xxx", To: "yyy"},
-		{Path: "metadata.label", Type: DiffAdded, From: nil, To: "value"},
+		{Path: DiffPath{"config", "name"}, Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"config", "secret"}, Type: DiffModified, From: "xxx", To: "yyy"},
+		{Path: DiffPath{"metadata", "label"}, Type: DiffAdded, From: nil, To: "value"},
 	}
 
 	opts := &FilterOptions{
@@ -322,7 +322,7 @@ func TestFilterDiffsRegex_ExcludePattern(t *testing.T) {
 		t.Fatalf("expected 2 diffs after excluding 'secret', got %d", len(result))
 	}
 	for _, d := range result {
-		if d.Path == "config.secret" {
+		if d.Path.String() == "config.secret" {
 			t.Error("config.secret should have been excluded")
 		}
 	}
@@ -330,10 +330,10 @@ func TestFilterDiffsRegex_ExcludePattern(t *testing.T) {
 
 func TestFilterDiffsRegex_IncludeBeforeExclude(t *testing.T) {
 	diffs := []Difference{
-		{Path: "config.name", Type: DiffModified, From: "old", To: "new"},
-		{Path: "config.version", Type: DiffModified, From: "1", To: "2"},
-		{Path: "config.secret", Type: DiffModified, From: "xxx", To: "yyy"},
-		{Path: "metadata.label", Type: DiffAdded, From: nil, To: "value"},
+		{Path: DiffPath{"config", "name"}, Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"config", "version"}, Type: DiffModified, From: "1", To: "2"},
+		{Path: DiffPath{"config", "secret"}, Type: DiffModified, From: "xxx", To: "yyy"},
+		{Path: DiffPath{"metadata", "label"}, Type: DiffAdded, From: nil, To: "value"},
 	}
 
 	// Include all config, then exclude secrets
@@ -354,7 +354,7 @@ func TestFilterDiffsRegex_IncludeBeforeExclude(t *testing.T) {
 
 func TestFilterDiffsRegex_InvalidIncludePattern(t *testing.T) {
 	diffs := []Difference{
-		{Path: "config.name", Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"config", "name"}, Type: DiffModified, From: "old", To: "new"},
 	}
 
 	opts := &FilterOptions{
@@ -369,7 +369,7 @@ func TestFilterDiffsRegex_InvalidIncludePattern(t *testing.T) {
 
 func TestFilterDiffsRegex_InvalidExcludePattern(t *testing.T) {
 	diffs := []Difference{
-		{Path: "config.name", Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"config", "name"}, Type: DiffModified, From: "old", To: "new"},
 	}
 
 	opts := &FilterOptions{
@@ -384,8 +384,8 @@ func TestFilterDiffsRegex_InvalidExcludePattern(t *testing.T) {
 
 func TestFilterDiffsRegex_NoPatterns(t *testing.T) {
 	diffs := []Difference{
-		{Path: "config.name", Type: DiffModified, From: "old", To: "new"},
-		{Path: "config.version", Type: DiffModified, From: "1", To: "2"},
+		{Path: DiffPath{"config", "name"}, Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"config", "version"}, Type: DiffModified, From: "1", To: "2"},
 	}
 
 	opts := &FilterOptions{}
@@ -402,7 +402,7 @@ func TestFilterDiffsRegex_NoPatterns(t *testing.T) {
 
 func TestFilterDiffsRegex_NilOptions(t *testing.T) {
 	diffs := []Difference{
-		{Path: "config.name", Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"config", "name"}, Type: DiffModified, From: "old", To: "new"},
 	}
 
 	result, err := FilterDiffsWithRegexp(diffs, nil)
@@ -417,9 +417,9 @@ func TestFilterDiffsRegex_NilOptions(t *testing.T) {
 
 func TestFilterDiffsRegex_ArrayIndexPattern(t *testing.T) {
 	diffs := []Difference{
-		{Path: "items[0].name", Type: DiffModified, From: "old", To: "new"},
-		{Path: "items[1].name", Type: DiffModified, From: "old", To: "new"},
-		{Path: "items[10].name", Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"items[0]", "name"}, Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"items[1]", "name"}, Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"items[10]", "name"}, Type: DiffModified, From: "old", To: "new"},
 	}
 
 	opts := &FilterOptions{
@@ -438,10 +438,10 @@ func TestFilterDiffsRegex_ArrayIndexPattern(t *testing.T) {
 
 func TestFilterDiffsRegex_CombinedPathAndRegex(t *testing.T) {
 	diffs := []Difference{
-		{Path: "config.name", Type: DiffModified, From: "old", To: "new"},
-		{Path: "config.version", Type: DiffModified, From: "1", To: "2"},
-		{Path: "config.secret", Type: DiffModified, From: "xxx", To: "yyy"},
-		{Path: "metadata.label", Type: DiffAdded, From: nil, To: "value"},
+		{Path: DiffPath{"config", "name"}, Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"config", "version"}, Type: DiffModified, From: "1", To: "2"},
+		{Path: DiffPath{"config", "secret"}, Type: DiffModified, From: "xxx", To: "yyy"},
+		{Path: DiffPath{"metadata", "label"}, Type: DiffAdded, From: nil, To: "value"},
 	}
 
 	// Use path filter for include, regex for exclude
@@ -500,9 +500,9 @@ func TestCompileRegexPatterns_Empty(t *testing.T) {
 func TestFilterDiffsRegex_CombinedIncludePathAndRegex(t *testing.T) {
 	// Item matches IncludeRegexp but not IncludePaths → still included
 	diffs := []Difference{
-		{Path: "config.name", Type: DiffModified, From: "old", To: "new"},
-		{Path: "metadata.label", Type: DiffAdded, From: nil, To: "value"},
-		{Path: "spec.replicas", Type: DiffModified, From: 3, To: 5},
+		{Path: DiffPath{"config", "name"}, Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"metadata", "label"}, Type: DiffAdded, From: nil, To: "value"},
+		{Path: DiffPath{"spec", "replicas"}, Type: DiffModified, From: 3, To: 5},
 	}
 
 	opts := &FilterOptions{
@@ -521,7 +521,7 @@ func TestFilterDiffsRegex_CombinedIncludePathAndRegex(t *testing.T) {
 
 	paths := map[string]bool{}
 	for _, d := range result {
-		paths[d.Path] = true
+		paths[d.Path.String()] = true
 	}
 	if !paths["config.name"] {
 		t.Error("config.name should be included via path filter")
@@ -534,9 +534,9 @@ func TestFilterDiffsRegex_CombinedIncludePathAndRegex(t *testing.T) {
 func TestFilterDiffsRegex_CombinedExcludePathAndRegex(t *testing.T) {
 	// Item matches ExcludeRegexp but not ExcludePaths → still excluded
 	diffs := []Difference{
-		{Path: "config.name", Type: DiffModified, From: "old", To: "new"},
-		{Path: "config.secret", Type: DiffModified, From: "xxx", To: "yyy"},
-		{Path: "metadata.password", Type: DiffAdded, From: nil, To: "secret"},
+		{Path: DiffPath{"config", "name"}, Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"config", "secret"}, Type: DiffModified, From: "xxx", To: "yyy"},
+		{Path: DiffPath{"metadata", "password"}, Type: DiffAdded, From: nil, To: "secret"},
 	}
 
 	opts := &FilterOptions{
@@ -552,7 +552,7 @@ func TestFilterDiffsRegex_CombinedExcludePathAndRegex(t *testing.T) {
 	if len(result) != 1 {
 		t.Fatalf("expected 1 diff (only config.name), got %d", len(result))
 	}
-	if result[0].Path != "config.name" {
+	if result[0].Path.String() != "config.name" {
 		t.Errorf("expected config.name, got %q", result[0].Path)
 	}
 }

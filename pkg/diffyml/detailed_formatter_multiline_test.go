@@ -15,7 +15,7 @@ func TestDetailedFormatter_MultilineDescriptor(t *testing.T) {
 	to := "line1\nchanged\nline3"
 
 	diffs := []Difference{
-		{Path: "config.data", Type: DiffModified, From: from, To: to},
+		{Path: DiffPath{"config", "data"}, Type: DiffModified, From: from, To: to},
 	}
 
 	output := f.Format(diffs, opts)
@@ -32,7 +32,7 @@ func TestDetailedFormatter_MultilineAdditionDeletionCount(t *testing.T) {
 	to := "line1\nchanged\nline3\nline4"
 
 	diffs := []Difference{
-		{Path: "data", Type: DiffModified, From: from, To: to},
+		{Path: DiffPath{"data"}, Type: DiffModified, From: from, To: to},
 	}
 
 	output := f.Format(diffs, opts)
@@ -50,7 +50,7 @@ func TestDetailedFormatter_MultilineDiffMarkers(t *testing.T) {
 	to := "aaa\nBBB\nccc"
 
 	diffs := []Difference{
-		{Path: "text", Type: DiffModified, From: from, To: to},
+		{Path: DiffPath{"text"}, Type: DiffModified, From: from, To: to},
 	}
 
 	output := f.Format(diffs, opts)
@@ -94,7 +94,7 @@ func TestDetailedFormatter_MultilineCollapseUnchanged(t *testing.T) {
 	to := "CHANGED\nline2\nline3\nline4\nline5\nline6\nline7\nline8\nline9\nALSO_CHANGED"
 
 	diffs := []Difference{
-		{Path: "text", Type: DiffModified, From: from, To: to},
+		{Path: DiffPath{"text"}, Type: DiffModified, From: from, To: to},
 	}
 
 	output := f.Format(diffs, opts)
@@ -113,7 +113,7 @@ func TestDetailedFormatter_MultilineContextLinesOption(t *testing.T) {
 	to := "CHANGED\nb\nc\nd\ne\nf\ng\nh\ni\nCHANGED"
 
 	diffs := []Difference{
-		{Path: "text", Type: DiffModified, From: from, To: to},
+		{Path: DiffPath{"text"}, Type: DiffModified, From: from, To: to},
 	}
 
 	output := f.Format(diffs, opts)
@@ -129,7 +129,7 @@ func TestDetailedFormatter_SingleLineNotMultiline(t *testing.T) {
 
 	// Single-line strings should NOT use multiline diff path
 	diffs := []Difference{
-		{Path: "key", Type: DiffModified, From: "old value", To: "new value"},
+		{Path: DiffPath{"key"}, Type: DiffModified, From: "old value", To: "new value"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -215,7 +215,7 @@ func TestDetailedFormatter_WhitespaceOnlyChange(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
-		{Path: "key", Type: DiffModified, From: "hello world", To: "hello  world"},
+		{Path: DiffPath{"key"}, Type: DiffModified, From: "hello world", To: "hello  world"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -229,7 +229,7 @@ func TestDetailedFormatter_WhitespaceVisualization(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
-		{Path: "key", Type: DiffModified, From: "a b", To: "a  b"},
+		{Path: DiffPath{"key"}, Type: DiffModified, From: "a b", To: "a  b"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -244,7 +244,7 @@ func TestDetailedFormatter_WhitespaceNewlineVisualization(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
-		{Path: "key", Type: DiffModified, From: "hello\n", To: "hello"},
+		{Path: DiffPath{"key"}, Type: DiffModified, From: "hello\n", To: "hello"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -306,7 +306,7 @@ func TestDetailedFormatter_MultilineDiffNoCollapse(t *testing.T) {
 	to := "a\nB\nc\nd\ne"
 
 	diffs := []Difference{
-		{Path: "text", Type: DiffModified, From: from, To: to},
+		{Path: DiffPath{"text"}, Type: DiffModified, From: from, To: to},
 	}
 
 	output := f.Format(diffs, opts)
@@ -323,7 +323,7 @@ func TestDetailedFormatter_MultilineDiffSingleAddition(t *testing.T) {
 	to := "line1\nline2\nline3"
 
 	diffs := []Difference{
-		{Path: "text", Type: DiffModified, From: from, To: to},
+		{Path: DiffPath{"text"}, Type: DiffModified, From: from, To: to},
 	}
 
 	output := f.Format(diffs, opts)
@@ -343,7 +343,7 @@ func TestDetailedFormatter_ContextLinesZero(t *testing.T) {
 	toStr := "line1\nline2\nline3\nNEW\nline5\nline6\nline7"
 
 	diffs := []Difference{
-		{Path: "text", Type: DiffModified, From: fromStr, To: toStr},
+		{Path: DiffPath{"text"}, Type: DiffModified, From: fromStr, To: toStr},
 	}
 
 	f := &DetailedFormatter{}
@@ -374,7 +374,7 @@ func TestDetailedFormatter_CollapsedLineCount(t *testing.T) {
 	toStr := strings.Join(toLines, "\n")
 
 	diffs := []Difference{
-		{Path: "data", Type: DiffModified, From: fromStr, To: toStr},
+		{Path: DiffPath{"data"}, Type: DiffModified, From: fromStr, To: toStr},
 	}
 
 	f := &DetailedFormatter{}
@@ -535,7 +535,7 @@ func TestDetailedFormatter_CollapseSkipBoundary(t *testing.T) {
 	to := "CHANGED\nb\nc\nd\ne\nALSO_CHANGED"
 
 	diffs := []Difference{
-		{Path: "text", Type: DiffModified, From: from, To: to},
+		{Path: DiffPath{"text"}, Type: DiffModified, From: from, To: to},
 	}
 	output := f.Format(diffs, opts)
 
@@ -592,7 +592,7 @@ func TestDetailedFormatter_MultilineDiff_NegativeContextLines(t *testing.T) {
 	opts.ContextLines = -1 // should default to 4
 
 	diffs := []Difference{
-		{Path: "config.script", Type: DiffModified, From: "line1\nline2", To: "line1\nline3"},
+		{Path: DiffPath{"config", "script"}, Type: DiffModified, From: "line1\nline2", To: "line1\nline3"},
 	}
 	output := f.Format(diffs, opts)
 	if !strings.Contains(output, "value change in multiline text") {

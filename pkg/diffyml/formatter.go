@@ -152,9 +152,11 @@ func (f *CompactFormatter) formatHeader(sb *strings.Builder, diffs []Difference,
 }
 
 func (f *CompactFormatter) formatDiff(sb *strings.Builder, diff Difference, opts *FormatOptions) {
-	path := diff.Path
+	var path string
 	if opts.UseGoPatchStyle {
-		path = convertToGoPatchPath(path)
+		path = diff.Path.GoPatchString()
+	} else {
+		path = diff.Path.String()
 	}
 
 	var indicator string
@@ -500,7 +502,7 @@ func (f *GitLabFormatter) Format(diffs []Difference, opts *FormatOptions) string
 		desc := diffDescription(diff)
 		locationPath := opts.FilePath
 		if locationPath == "" {
-			locationPath = diff.Path
+			locationPath = diff.Path.String()
 		}
 		fmt.Fprintf(&sb,
 			`  {"description": %q, "check_name": %q, "fingerprint": %q, "severity": %q, "location": {"path": %q, "lines": {"begin": 1}}}`,

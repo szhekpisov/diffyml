@@ -11,7 +11,7 @@ func TestDetailedFormatter_Snapshot_ScalarModification(t *testing.T) {
 	opts.OmitHeader = true
 
 	diffs := []Difference{
-		{Path: "config.timeout", Type: DiffModified, From: "30", To: "60"},
+		{Path: DiffPath{"config", "timeout"}, Type: DiffModified, From: "30", To: "60"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -27,7 +27,7 @@ func TestDetailedFormatter_Snapshot_TypeChange(t *testing.T) {
 	opts.OmitHeader = true
 
 	diffs := []Difference{
-		{Path: "config.port", Type: DiffModified, From: 8080, To: "8080"},
+		{Path: DiffPath{"config", "port"}, Type: DiffModified, From: 8080, To: "8080"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -43,7 +43,7 @@ func TestDetailedFormatter_Snapshot_SingleListEntryAdded(t *testing.T) {
 	opts.OmitHeader = true
 
 	diffs := []Difference{
-		{Path: "items.0", Type: DiffAdded, To: "newItem"},
+		{Path: DiffPath{"items", "0"}, Type: DiffAdded, To: "newItem"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -59,7 +59,7 @@ func TestDetailedFormatter_Snapshot_SingleMapEntryRemoved(t *testing.T) {
 	opts.OmitHeader = true
 
 	diffs := []Difference{
-		{Path: "config.oldKey", Type: DiffRemoved, From: "value"},
+		{Path: DiffPath{"config", "oldKey"}, Type: DiffRemoved, From: "value"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -76,7 +76,7 @@ func TestDetailedFormatter_Snapshot_OrderChange(t *testing.T) {
 
 	diffs := []Difference{
 		{
-			Path: "items", Type: DiffOrderChanged,
+			Path: DiffPath{"items"}, Type: DiffOrderChanged,
 			From: []any{"a", "b"},
 			To:   []any{"b", "a"},
 		},
@@ -95,7 +95,7 @@ func TestDetailedFormatter_Snapshot_WhitespaceChange(t *testing.T) {
 	opts.OmitHeader = true
 
 	diffs := []Difference{
-		{Path: "key", Type: DiffModified, From: "a b", To: "a  b"},
+		{Path: DiffPath{"key"}, Type: DiffModified, From: "a b", To: "a  b"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -111,7 +111,7 @@ func TestDetailedFormatter_Snapshot_RootLevel(t *testing.T) {
 	opts.OmitHeader = true
 
 	diffs := []Difference{
-		{Path: "", Type: DiffModified, From: "old", To: "new"},
+		{Path: nil, Type: DiffModified, From: "old", To: "new"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -128,7 +128,7 @@ func TestDetailedFormatter_Snapshot_GoPatchRoot(t *testing.T) {
 	opts.UseGoPatchStyle = true
 
 	diffs := []Difference{
-		{Path: "", Type: DiffModified, From: "old", To: "new"},
+		{Path: nil, Type: DiffModified, From: "old", To: "new"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -149,7 +149,7 @@ func TestDetailedFormatter_Snapshot_StructuredMapAdded(t *testing.T) {
 	om.Values["port"] = 80
 
 	diffs := []Difference{
-		{Path: "services.0", Type: DiffAdded, To: om},
+		{Path: DiffPath{"services", "0"}, Type: DiffAdded, To: om},
 	}
 
 	output := f.Format(diffs, opts)
@@ -164,7 +164,7 @@ func TestDetailedFormatter_Snapshot_Header(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
-		{Path: "key", Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"key"}, Type: DiffModified, From: "old", To: "new"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -180,8 +180,8 @@ func TestDetailedFormatter_Snapshot_MultiplePathGroups(t *testing.T) {
 	opts.OmitHeader = true
 
 	diffs := []Difference{
-		{Path: "alpha", Type: DiffModified, From: "a1", To: "a2"},
-		{Path: "beta", Type: DiffModified, From: "b1", To: "b2"},
+		{Path: DiffPath{"alpha"}, Type: DiffModified, From: "a1", To: "a2"},
+		{Path: DiffPath{"beta"}, Type: DiffModified, From: "b1", To: "b2"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -201,7 +201,7 @@ func TestDetailedFormatter_Snapshot_MultilineDiff(t *testing.T) {
 	to := "line1\nchanged\nline3"
 
 	diffs := []Difference{
-		{Path: "text", Type: DiffModified, From: from, To: to},
+		{Path: DiffPath{"text"}, Type: DiffModified, From: from, To: to},
 	}
 
 	output := f.Format(diffs, opts)
@@ -231,35 +231,35 @@ func TestDetailedFormatter_Integration_NoRegressionSnapshots(t *testing.T) {
 	}{
 		{
 			name:     "scalar modification",
-			diffs:    []Difference{{Path: "key", Type: DiffModified, From: "old", To: "new"}},
+			diffs:    []Difference{{Path: DiffPath{"key"}, Type: DiffModified, From: "old", To: "new"}},
 			expected: "key\n  ± value change\n    - old\n    + new\n\n",
 		},
 		{
 			name:     "type change",
-			diffs:    []Difference{{Path: "port", Type: DiffModified, From: 8080, To: "8080"}},
+			diffs:    []Difference{{Path: DiffPath{"port"}, Type: DiffModified, From: 8080, To: "8080"}},
 			expected: "port\n  ± type change from int to string\n    - 8080\n    + 8080\n\n",
 		},
 		{
 			name:     "list entry added",
-			diffs:    []Difference{{Path: "items.0", Type: DiffAdded, To: "newItem"}},
+			diffs:    []Difference{{Path: DiffPath{"items", "0"}, Type: DiffAdded, To: "newItem"}},
 			expected: "items.0\n  + one list entry added:\n    - newItem\n\n",
 		},
 		{
 			name:     "map entry removed",
-			diffs:    []Difference{{Path: "config.key", Type: DiffRemoved, From: "value"}},
+			diffs:    []Difference{{Path: DiffPath{"config", "key"}, Type: DiffRemoved, From: "value"}},
 			expected: "config.key\n  - one map entry removed:\n    key: value\n\n",
 		},
 		{
 			name: "order change",
 			diffs: []Difference{{
-				Path: "items", Type: DiffOrderChanged,
+				Path: DiffPath{"items"}, Type: DiffOrderChanged,
 				From: []any{"a", "b"}, To: []any{"b", "a"},
 			}},
 			expected: "items\n  ⇆ order changed\n    - a, b\n    + b, a\n\n",
 		},
 		{
 			name:     "whitespace change",
-			diffs:    []Difference{{Path: "key", Type: DiffModified, From: "a b", To: "a  b"}},
+			diffs:    []Difference{{Path: DiffPath{"key"}, Type: DiffModified, From: "a b", To: "a  b"}},
 			expected: "key\n  ± whitespace only change\n    - a·b\n    + a··b\n\n",
 		},
 		{
@@ -269,7 +269,7 @@ func TestDetailedFormatter_Integration_NoRegressionSnapshots(t *testing.T) {
 				om.Keys = append(om.Keys, "name", "port")
 				om.Values["name"] = "nginx"
 				om.Values["port"] = 80
-				return []Difference{{Path: "services.0", Type: DiffAdded, To: om}}
+				return []Difference{{Path: DiffPath{"services", "0"}, Type: DiffAdded, To: om}}
 			}(),
 			expected: "services.0\n  + one list entry added:\n    - name: nginx\n      port: 80\n\n",
 		},
@@ -297,16 +297,16 @@ func TestDetailedFormatter_Snapshot_FullComparison(t *testing.T) {
 
 	diffs := []Difference{
 		// Scalar value change
-		{Path: "config.timeout", Type: DiffModified, From: "30", To: "60"},
+		{Path: DiffPath{"config", "timeout"}, Type: DiffModified, From: "30", To: "60"},
 		// Map entry added (scalar)
-		{Path: "config.verbose", Type: DiffAdded, To: true},
+		{Path: DiffPath{"config", "verbose"}, Type: DiffAdded, To: true},
 		// List entry added (structured)
-		{Path: "services.0", Type: DiffAdded, To: om},
+		{Path: DiffPath{"services", "0"}, Type: DiffAdded, To: om},
 		// Type change
-		{Path: "config.port", Type: DiffModified, From: 8080, To: "8080"},
+		{Path: DiffPath{"config", "port"}, Type: DiffModified, From: 8080, To: "8080"},
 		// Order change
 		{
-			Path: "items", Type: DiffOrderChanged,
+			Path: DiffPath{"items"}, Type: DiffOrderChanged,
 			From: []any{"a", "b"},
 			To:   []any{"b", "a"},
 		},

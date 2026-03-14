@@ -117,23 +117,10 @@ func pluralize(n int, singular, plural string) string {
 	return plural
 }
 
-// extractLastKey extracts the final key from a dot-notation path.
-// Handles bracket-quoted keys: "a.b[helm.sh/chart]" → "helm.sh/chart".
-func extractLastKey(path string) string {
-	if strings.HasSuffix(path, "]") {
-		if bracketStart := strings.LastIndex(path, "["); bracketStart >= 0 {
-			return path[bracketStart+1 : len(path)-1]
-		}
-	}
-	if idx := lastDotOutsideBrackets(path); idx >= 0 {
-		return path[idx+1:]
-	}
-	return path
-}
-
 // parseBareDocIndex extracts the index from a bare document index path like "[0]", "[1]".
 // Returns the index and true if the path is a bare document index, false otherwise.
 // Does NOT match paths like "items[0]" or "[0].spec".
+// Deprecated: prefer DiffPath.IsBareDocIndex() and DiffPath.DocIndex() for structured paths.
 func parseBareDocIndex(path string) (int, bool) {
 	if !strings.HasPrefix(path, "[") || !strings.HasSuffix(path, "]") {
 		return 0, false

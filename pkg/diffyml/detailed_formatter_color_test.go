@@ -13,7 +13,7 @@ func TestDetailedFormatter_ColorEnabled_AdditionGreen(t *testing.T) {
 	opts.Color = true
 
 	diffs := []Difference{
-		{Path: "items.0", Type: DiffAdded, To: "newItem"},
+		{Path: DiffPath{"items", "0"}, Type: DiffAdded, To: "newItem"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -29,7 +29,7 @@ func TestDetailedFormatter_ColorEnabled_RemovalRed(t *testing.T) {
 	opts.Color = true
 
 	diffs := []Difference{
-		{Path: "items.0", Type: DiffRemoved, From: "oldItem"},
+		{Path: DiffPath{"items", "0"}, Type: DiffRemoved, From: "oldItem"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -45,7 +45,7 @@ func TestDetailedFormatter_ColorEnabled_ModificationYellow(t *testing.T) {
 	opts.Color = true
 
 	diffs := []Difference{
-		{Path: "config.timeout", Type: DiffModified, From: "30", To: "60"},
+		{Path: DiffPath{"config", "timeout"}, Type: DiffModified, From: "30", To: "60"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -61,7 +61,7 @@ func TestDetailedFormatter_ColorEnabled_ModificationValues(t *testing.T) {
 	opts.Color = true
 
 	diffs := []Difference{
-		{Path: "config.timeout", Type: DiffModified, From: "30", To: "60"},
+		{Path: DiffPath{"config", "timeout"}, Type: DiffModified, From: "30", To: "60"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -83,7 +83,7 @@ func TestDetailedFormatter_ColorEnabled_ContextGray(t *testing.T) {
 	to := "aaa\nBBB\nccc"
 
 	diffs := []Difference{
-		{Path: "text", Type: DiffModified, From: from, To: to},
+		{Path: DiffPath{"text"}, Type: DiffModified, From: from, To: to},
 	}
 
 	output := f.Format(diffs, opts)
@@ -99,7 +99,7 @@ func TestDetailedFormatter_ColorEnabled_ResetCodes(t *testing.T) {
 	opts.Color = true
 
 	diffs := []Difference{
-		{Path: "config.timeout", Type: DiffModified, From: "30", To: "60"},
+		{Path: DiffPath{"config", "timeout"}, Type: DiffModified, From: "30", To: "60"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -115,9 +115,9 @@ func TestDetailedFormatter_ColorDisabled_NoAnsiCodes(t *testing.T) {
 	opts.Color = false
 
 	diffs := []Difference{
-		{Path: "items.0", Type: DiffAdded, To: "newItem"},
-		{Path: "config.timeout", Type: DiffModified, From: "30", To: "60"},
-		{Path: "old.key", Type: DiffRemoved, From: "value"},
+		{Path: DiffPath{"items", "0"}, Type: DiffAdded, To: "newItem"},
+		{Path: DiffPath{"config", "timeout"}, Type: DiffModified, From: "30", To: "60"},
+		{Path: DiffPath{"old", "key"}, Type: DiffRemoved, From: "value"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -136,7 +136,7 @@ func TestDetailedFormatter_TrueColor_AdditionGreen(t *testing.T) {
 	opts.TrueColor = true
 
 	diffs := []Difference{
-		{Path: "items.0", Type: DiffAdded, To: "newItem"},
+		{Path: DiffPath{"items", "0"}, Type: DiffAdded, To: "newItem"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -154,7 +154,7 @@ func TestDetailedFormatter_TrueColor_RemovalRed(t *testing.T) {
 	opts.TrueColor = true
 
 	diffs := []Difference{
-		{Path: "items.0", Type: DiffRemoved, From: "oldItem"},
+		{Path: DiffPath{"items", "0"}, Type: DiffRemoved, From: "oldItem"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -172,7 +172,7 @@ func TestDetailedFormatter_TrueColor_ModificationYellow(t *testing.T) {
 	opts.TrueColor = true
 
 	diffs := []Difference{
-		{Path: "config.timeout", Type: DiffModified, From: "30", To: "60"},
+		{Path: DiffPath{"config", "timeout"}, Type: DiffModified, From: "30", To: "60"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -189,7 +189,7 @@ func TestDetailedFormatter_ColorEnabled_OrderChangeYellow(t *testing.T) {
 	opts.Color = true
 
 	diffs := []Difference{
-		{Path: "items", Type: DiffOrderChanged, From: []any{"a", "b"}, To: []any{"b", "a"}},
+		{Path: DiffPath{"items"}, Type: DiffOrderChanged, From: []any{"a", "b"}, To: []any{"b", "a"}},
 	}
 
 	output := f.Format(diffs, opts)
@@ -205,7 +205,7 @@ func TestDetailedFormatter_ColorEnabled_TypeChangeYellow(t *testing.T) {
 	opts.Color = true
 
 	diffs := []Difference{
-		{Path: "config.port", Type: DiffModified, From: 8080, To: "8080"},
+		{Path: DiffPath{"config", "port"}, Type: DiffModified, From: 8080, To: "8080"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -224,7 +224,7 @@ func TestDetailedFormatter_ColorEnabled_MultilineDiffColors(t *testing.T) {
 	to := "aaa\nBBB\nccc"
 
 	diffs := []Difference{
-		{Path: "text", Type: DiffModified, From: from, To: to},
+		{Path: DiffPath{"text"}, Type: DiffModified, From: from, To: to},
 	}
 
 	output := f.Format(diffs, opts)
@@ -245,7 +245,7 @@ func TestDetailedFormatter_ColorEnabled_WhitespaceChangeYellow(t *testing.T) {
 	opts.Color = true
 
 	diffs := []Difference{
-		{Path: "key", Type: DiffModified, From: "hello world", To: "hello  world"},
+		{Path: DiffPath{"key"}, Type: DiffModified, From: "hello world", To: "hello  world"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -264,7 +264,7 @@ func TestDetailedFormatter_ColorEnabled_BoldPathHeading(t *testing.T) {
 	opts.OmitHeader = true
 
 	diffs := []Difference{
-		{Path: "config.timeout", Type: DiffModified, From: "30", To: "60"},
+		{Path: DiffPath{"config", "timeout"}, Type: DiffModified, From: "30", To: "60"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -281,7 +281,7 @@ func TestDetailedFormatter_ColorEnabled_BoldRootLevel(t *testing.T) {
 	opts.OmitHeader = true
 
 	diffs := []Difference{
-		{Path: "", Type: DiffModified, From: "old", To: "new"},
+		{Path: nil, Type: DiffModified, From: "old", To: "new"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -299,7 +299,7 @@ func TestDetailedFormatter_ColorEnabled_BoldGoPatchRoot(t *testing.T) {
 	opts.UseGoPatchStyle = true
 
 	diffs := []Difference{
-		{Path: "", Type: DiffModified, From: "old", To: "new"},
+		{Path: nil, Type: DiffModified, From: "old", To: "new"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -316,7 +316,7 @@ func TestDetailedFormatter_ColorDisabled_NoBoldPathHeading(t *testing.T) {
 	opts.OmitHeader = true
 
 	diffs := []Difference{
-		{Path: "config.timeout", Type: DiffModified, From: "30", To: "60"},
+		{Path: DiffPath{"config", "timeout"}, Type: DiffModified, From: "30", To: "60"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -335,7 +335,7 @@ func TestDetailedFormatter_ColorEnabled_ItalicTypeNames(t *testing.T) {
 	opts.OmitHeader = true
 
 	diffs := []Difference{
-		{Path: "config.port", Type: DiffModified, From: 8080, To: "8080"},
+		{Path: DiffPath{"config", "port"}, Type: DiffModified, From: 8080, To: "8080"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -355,7 +355,7 @@ func TestDetailedFormatter_ColorDisabled_NoItalicTypeNames(t *testing.T) {
 	opts.OmitHeader = true
 
 	diffs := []Difference{
-		{Path: "config.port", Type: DiffModified, From: 8080, To: "8080"},
+		{Path: DiffPath{"config", "port"}, Type: DiffModified, From: 8080, To: "8080"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -375,7 +375,7 @@ func TestDetailedFormatter_ColorEnabled_ItalicPreservesYellow(t *testing.T) {
 	opts.OmitHeader = true
 
 	diffs := []Difference{
-		{Path: "config.port", Type: DiffModified, From: 8080, To: "8080"},
+		{Path: DiffPath{"config", "port"}, Type: DiffModified, From: 8080, To: "8080"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -399,7 +399,7 @@ func TestDetailedFormatter_ColorEnabled_EntryValueColored(t *testing.T) {
 	om.Values["port"] = 80
 
 	diffs := []Difference{
-		{Path: "services.0", Type: DiffAdded, To: om},
+		{Path: DiffPath{"services", "0"}, Type: DiffAdded, To: om},
 	}
 
 	output := f.Format(diffs, opts)
@@ -430,7 +430,7 @@ func TestDetailedFormatter_ColorEnabled_NestedEntryValueColored(t *testing.T) {
 	outer.Values["config"] = inner
 
 	diffs := []Difference{
-		{Path: "apps.0", Type: DiffAdded, To: outer},
+		{Path: DiffPath{"apps", "0"}, Type: DiffAdded, To: outer},
 	}
 
 	output := f.Format(diffs, opts)
@@ -455,7 +455,7 @@ func TestDetailedFormatter_ColorDisabled_PlainEntryValues(t *testing.T) {
 	om.Values["port"] = 80
 
 	diffs := []Difference{
-		{Path: "services.0", Type: DiffAdded, To: om},
+		{Path: DiffPath{"services", "0"}, Type: DiffAdded, To: om},
 	}
 
 	output := f.Format(diffs, opts)
@@ -479,7 +479,7 @@ func TestDetailedFormatter_ColorEnabled_ListEntryValueColored(t *testing.T) {
 
 	listVal := []any{"alpha", "beta", "gamma"}
 	diffs := []Difference{
-		{Path: "items.0", Type: DiffAdded, To: listVal},
+		{Path: DiffPath{"items", "0"}, Type: DiffAdded, To: listVal},
 	}
 
 	output := f.Format(diffs, opts)
@@ -500,7 +500,7 @@ func TestDetailedFormatter_ColorEnabled_OrderChangeWasRed(t *testing.T) {
 
 	diffs := []Difference{
 		{
-			Path: "items", Type: DiffOrderChanged,
+			Path: DiffPath{"items"}, Type: DiffOrderChanged,
 			From: []any{"a", "b"},
 			To:   []any{"b", "a"},
 		},
@@ -522,7 +522,7 @@ func TestDetailedFormatter_ColorEnabled_OrderChangeNowGreen(t *testing.T) {
 
 	diffs := []Difference{
 		{
-			Path: "items", Type: DiffOrderChanged,
+			Path: DiffPath{"items"}, Type: DiffOrderChanged,
 			From: []any{"a", "b"},
 			To:   []any{"b", "a"},
 		},
@@ -544,7 +544,7 @@ func TestDetailedFormatter_ColorDisabled_PlainOrderChange(t *testing.T) {
 
 	diffs := []Difference{
 		{
-			Path: "items", Type: DiffOrderChanged,
+			Path: DiffPath{"items"}, Type: DiffOrderChanged,
 			From: []any{"a", "b"},
 			To:   []any{"b", "a"},
 		},
@@ -574,16 +574,16 @@ func TestDetailedFormatter_Integration_AllDiffTypesColored(t *testing.T) {
 
 	diffs := []Difference{
 		// Added: structured map entry (exercises pipe guides)
-		{Path: "services.0", Type: DiffAdded, To: om},
+		{Path: DiffPath{"services", "0"}, Type: DiffAdded, To: om},
 		// Removed: scalar
-		{Path: "config.oldKey", Type: DiffRemoved, From: "deprecated"},
+		{Path: DiffPath{"config", "oldKey"}, Type: DiffRemoved, From: "deprecated"},
 		// Modified: type change (exercises italic type names)
-		{Path: "config.port", Type: DiffModified, From: 8080, To: "8080"},
+		{Path: DiffPath{"config", "port"}, Type: DiffModified, From: 8080, To: "8080"},
 		// Modified: scalar value change
-		{Path: "config.timeout", Type: DiffModified, From: "30", To: "60"},
+		{Path: DiffPath{"config", "timeout"}, Type: DiffModified, From: "30", To: "60"},
 		// Order changed (exercises colored was/now)
 		{
-			Path: "items", Type: DiffOrderChanged,
+			Path: DiffPath{"items"}, Type: DiffOrderChanged,
 			From: []any{"a", "b", "c"},
 			To:   []any{"c", "b", "a"},
 		},
@@ -638,12 +638,12 @@ func TestDetailedFormatter_Integration_AllDiffTypesUncolored(t *testing.T) {
 	om.Values["port"] = 80
 
 	diffs := []Difference{
-		{Path: "services.0", Type: DiffAdded, To: om},
-		{Path: "config.oldKey", Type: DiffRemoved, From: "deprecated"},
-		{Path: "config.port", Type: DiffModified, From: 8080, To: "8080"},
-		{Path: "config.timeout", Type: DiffModified, From: "30", To: "60"},
+		{Path: DiffPath{"services", "0"}, Type: DiffAdded, To: om},
+		{Path: DiffPath{"config", "oldKey"}, Type: DiffRemoved, From: "deprecated"},
+		{Path: DiffPath{"config", "port"}, Type: DiffModified, From: 8080, To: "8080"},
+		{Path: DiffPath{"config", "timeout"}, Type: DiffModified, From: "30", To: "60"},
 		{
-			Path: "items", Type: DiffOrderChanged,
+			Path: DiffPath{"items"}, Type: DiffOrderChanged,
 			From: []any{"a", "b", "c"},
 			To:   []any{"c", "b", "a"},
 		},
@@ -678,9 +678,9 @@ func TestDetailedFormatter_Integration_TrueColorBoldItalicCombination(t *testing
 
 	diffs := []Difference{
 		// Type change to exercise italic + yellow true color
-		{Path: "config.port", Type: DiffModified, From: 8080, To: "8080"},
+		{Path: DiffPath{"config", "port"}, Type: DiffModified, From: 8080, To: "8080"},
 		// Added structured map to exercise pipe guides + true color context
-		{Path: "services.0", Type: DiffAdded, To: func() *OrderedMap {
+		{Path: DiffPath{"services", "0"}, Type: DiffAdded, To: func() *OrderedMap {
 			om := NewOrderedMap()
 			om.Keys = append(om.Keys, "name", "port")
 			om.Values["name"] = "nginx"
@@ -689,7 +689,7 @@ func TestDetailedFormatter_Integration_TrueColorBoldItalicCombination(t *testing
 		}()},
 		// Order change to exercise true color red/green on was/now
 		{
-			Path: "items", Type: DiffOrderChanged,
+			Path: DiffPath{"items"}, Type: DiffOrderChanged,
 			From: []any{"x", "y"},
 			To:   []any{"y", "x"},
 		},
@@ -743,16 +743,16 @@ func TestDetailedFormatter_Integration_AutoColorModeNoTerminal(t *testing.T) {
 
 	f, _ := FormatterByName("detailed")
 	diffs := []Difference{
-		{Path: "services.0", Type: DiffAdded, To: func() *OrderedMap {
+		{Path: DiffPath{"services", "0"}, Type: DiffAdded, To: func() *OrderedMap {
 			om := NewOrderedMap()
 			om.Keys = append(om.Keys, "name", "port")
 			om.Values["name"] = "nginx"
 			om.Values["port"] = 80
 			return om
 		}()},
-		{Path: "config.port", Type: DiffModified, From: 8080, To: "8080"},
+		{Path: DiffPath{"config", "port"}, Type: DiffModified, From: 8080, To: "8080"},
 		{
-			Path: "items", Type: DiffOrderChanged,
+			Path: DiffPath{"items"}, Type: DiffOrderChanged,
 			From: []any{"a", "b"},
 			To:   []any{"b", "a"},
 		},
@@ -777,7 +777,7 @@ func TestDetailedFormatter_ColorEnabled_DocumentRemovalRed(t *testing.T) {
 	om.Values["kind"] = "Service"
 
 	diffs := []Difference{
-		{Path: "[0]", Type: DiffRemoved, From: om},
+		{Path: DiffPath{"[0]"}, Type: DiffRemoved, From: om},
 	}
 	output := f.Format(diffs, opts)
 	// Document removal value lines should use red color, not green

@@ -20,7 +20,7 @@ type DetailedFormatter struct{}
 
 // pathGroup holds a path and its associated differences for grouping.
 type pathGroup struct {
-	Path  string
+	Path  DiffPath
 	Diffs []Difference
 }
 
@@ -66,10 +66,11 @@ func (f *DetailedFormatter) groupByPath(diffs []Difference) []pathGroup {
 	index := make(map[string]int) // path -> index in groups
 
 	for _, diff := range diffs {
-		if idx, exists := index[diff.Path]; exists {
+		key := diff.Path.String()
+		if idx, exists := index[key]; exists {
 			groups[idx].Diffs = append(groups[idx].Diffs, diff)
 		} else {
-			index[diff.Path] = len(groups)
+			index[key] = len(groups)
 			groups = append(groups, pathGroup{
 				Path:  diff.Path,
 				Diffs: []Difference{diff},
@@ -81,28 +82,31 @@ func (f *DetailedFormatter) groupByPath(diffs []Difference) []pathGroup {
 }
 
 // formatPathHeading renders the path line for a group of diffs.
-func (f *DetailedFormatter) formatPathHeading(sb *strings.Builder, path string, isMultiDoc bool, opts *FormatOptions) {
-	heading := path
-	if path == "" {
+func (f *DetailedFormatter) formatPathHeading(sb *strings.Builder, path DiffPath, isMultiDoc bool, opts *FormatOptions) {
+	var heading string
+	if path.IsEmpty() {
 		if opts.UseGoPatchStyle {
 			heading = "/"
 		} else {
 			heading = "(root level)"
 		}
-	} else if idx, ok := parseBareDocIndex(path); ok {
+	} else if path.IsBareDocIndex() {
+		idx, _ := path.DocIndex()
 		if isMultiDoc {
 			heading = fmt.Sprintf("(root level) (document %d)", idx)
 		} else {
-			heading = k8sDocumentPath
+			heading = k8sDocumentPath.String()
 		}
-	} else if idx, rest, ok := parseDocIndexPrefix(path); ok {
+	} else if idx, rest, ok := path.DocIndexPrefix(); ok {
 		if opts.UseGoPatchStyle {
-			heading = fmt.Sprintf("%s (document %d)", convertToGoPatchPath(rest), idx)
+			heading = fmt.Sprintf("%s (document %d)", rest.GoPatchString(), idx)
 		} else {
-			heading = fmt.Sprintf("%s (document %d)", rest, idx)
+			heading = fmt.Sprintf("%s (document %d)", rest.String(), idx)
 		}
 	} else if opts.UseGoPatchStyle {
-		heading = convertToGoPatchPath(path)
+		heading = path.GoPatchString()
+	} else {
+		heading = path.String()
 	}
 
 	sb.WriteString(colorStart(opts, styleBold))
@@ -147,7 +151,7 @@ func (f *DetailedFormatter) formatEntryBatch(sb *strings.Builder, diffs []Differ
 
 	// Detect document-level diffs (path is bare "[N]")
 	// All diffs in a batch share the same path structure; checking the first is sufficient.
-	_, isDocLevel := parseBareDocIndex(diffs[0].Path)
+	isDocLevel := diffs[0].Path.IsBareDocIndex()
 
 	isListEntry := isListEntryDiff(diffs[0])
 	entryType := "map"

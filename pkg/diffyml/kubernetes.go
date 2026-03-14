@@ -13,7 +13,7 @@ import (
 )
 
 // k8sDocumentPath is the diff path used for document-level changes (e.g. order).
-const k8sDocumentPath = "(document)"
+var k8sDocumentPath = DiffPath{"(document)"}
 
 // IsKubernetesResource checks if a document has the structure of a Kubernetes resource.
 // A Kubernetes resource must have apiVersion, kind, and metadata fields,
@@ -275,13 +275,13 @@ func compareMatchedK8sDocs(matched map[int]int, from, to []any, opts *Options, u
 		fromDoc := from[fromIdx]
 		toDoc := to[toIdx]
 
-		pathPrefix := ""
+		var pathPrefix DiffPath
 		if len(from) > 1 || len(to) > 1 {
 			idx := fromIdx
 			if useToIdx {
 				idx = toIdx
 			}
-			pathPrefix = fmt.Sprintf("[%d]", idx)
+			pathPrefix = DiffPath{fmt.Sprintf("[%d]", idx)}
 		}
 
 		nodeDiffs := compareNodes(pathPrefix, fromDoc, toDoc, opts)
@@ -325,9 +325,9 @@ func compareK8sDocs(from, to []any, opts *Options) []Difference {
 		if from[fromIdx] == nil {
 			continue
 		}
-		pathPrefix := fmt.Sprintf("[%d]", fromIdx)
+		pathPrefix := DiffPath{fmt.Sprintf("[%d]", fromIdx)}
 		diffs = append(diffs, Difference{
-			Path:          cleanPath(pathPrefix),
+			Path:          pathPrefix,
 			Type:          DiffRemoved,
 			From:          from[fromIdx],
 			To:            nil,
@@ -340,9 +340,9 @@ func compareK8sDocs(from, to []any, opts *Options) []Difference {
 		if to[toIdx] == nil {
 			continue
 		}
-		pathPrefix := fmt.Sprintf("[%d]", toIdx)
+		pathPrefix := DiffPath{fmt.Sprintf("[%d]", toIdx)}
 		diffs = append(diffs, Difference{
-			Path:          cleanPath(pathPrefix),
+			Path:          pathPrefix,
 			Type:          DiffAdded,
 			From:          nil,
 			To:            to[toIdx],

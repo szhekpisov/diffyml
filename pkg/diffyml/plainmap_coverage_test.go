@@ -15,7 +15,7 @@ func TestCompareNodes_PlainMaps_Equal(t *testing.T) {
 	from := map[string]any{"a": "1", "b": "2"}
 	to := map[string]any{"a": "1", "b": "2"}
 
-	diffs := compareNodes("root", from, to, nil)
+	diffs := compareNodes(DiffPath{"root"}, from, to, nil)
 	if len(diffs) != 0 {
 		t.Errorf("expected no diffs for equal plain maps, got %d: %v", len(diffs), diffs)
 	}
@@ -25,15 +25,15 @@ func TestCompareNodes_PlainMaps_Modified(t *testing.T) {
 	from := map[string]any{"a": "1", "b": "2"}
 	to := map[string]any{"a": "1", "b": "changed"}
 
-	diffs := compareNodes("root", from, to, nil)
+	diffs := compareNodes(DiffPath{"root"}, from, to, nil)
 	if len(diffs) != 1 {
 		t.Fatalf("expected 1 diff, got %d: %v", len(diffs), diffs)
 	}
 	if diffs[0].Type != DiffModified {
 		t.Errorf("expected DiffModified, got %v", diffs[0].Type)
 	}
-	if diffs[0].Path != "root.b" {
-		t.Errorf("expected path root.b, got %s", diffs[0].Path)
+	if diffs[0].Path.String() != "root.b" {
+		t.Errorf("expected path root.b, got %s", diffs[0].Path.String())
 	}
 }
 
@@ -41,7 +41,7 @@ func TestCompareNodes_PlainMaps_Added(t *testing.T) {
 	from := map[string]any{"a": "1"}
 	to := map[string]any{"a": "1", "b": "2"}
 
-	diffs := compareNodes("root", from, to, nil)
+	diffs := compareNodes(DiffPath{"root"}, from, to, nil)
 	if len(diffs) != 1 {
 		t.Fatalf("expected 1 diff, got %d: %v", len(diffs), diffs)
 	}
@@ -54,7 +54,7 @@ func TestCompareNodes_PlainMaps_Removed(t *testing.T) {
 	from := map[string]any{"a": "1", "b": "2"}
 	to := map[string]any{"a": "1"}
 
-	diffs := compareNodes("root", from, to, nil)
+	diffs := compareNodes(DiffPath{"root"}, from, to, nil)
 	if len(diffs) != 1 {
 		t.Fatalf("expected 1 diff, got %d: %v", len(diffs), diffs)
 	}
@@ -71,12 +71,12 @@ func TestCompareNodes_PlainMaps_Nested(t *testing.T) {
 		"parent": map[string]any{"child": "new"},
 	}
 
-	diffs := compareNodes("", from, to, nil)
+	diffs := compareNodes(nil, from, to, nil)
 	if len(diffs) != 1 {
 		t.Fatalf("expected 1 diff, got %d: %v", len(diffs), diffs)
 	}
-	if diffs[0].Path != "parent.child" {
-		t.Errorf("expected path parent.child, got %s", diffs[0].Path)
+	if diffs[0].Path.String() != "parent.child" {
+		t.Errorf("expected path parent.child, got %s", diffs[0].Path.String())
 	}
 }
 
@@ -142,7 +142,7 @@ func TestCompareListsPositional_ItemsAdded(t *testing.T) {
 	from := []any{"a"}
 	to := []any{"a", "b", "c"}
 
-	diffs := compareListsPositional("list", from, to, nil)
+	diffs := compareListsPositional(DiffPath{"list"}, from, to, nil)
 
 	added := 0
 	for _, d := range diffs {
@@ -159,7 +159,7 @@ func TestCompareListsPositional_ItemsRemoved(t *testing.T) {
 	from := []any{"a", "b", "c"}
 	to := []any{"a"}
 
-	diffs := compareListsPositional("list", from, to, nil)
+	diffs := compareListsPositional(DiffPath{"list"}, from, to, nil)
 
 	removed := 0
 	for _, d := range diffs {
@@ -176,7 +176,7 @@ func TestCompareListsPositional_BothAddedAndRemoved(t *testing.T) {
 	from := []any{"a", "b"}
 	to := []any{"x", "y", "z"}
 
-	diffs := compareListsPositional("list", from, to, nil)
+	diffs := compareListsPositional(DiffPath{"list"}, from, to, nil)
 
 	var modified, added int
 	for _, d := range diffs {
@@ -200,7 +200,7 @@ func TestCompareListsPositional_BothAddedAndRemoved(t *testing.T) {
 func TestDetailedFormatter_PlainMapValue(t *testing.T) {
 	diffs := []Difference{
 		{
-			Path: "items.0",
+			Path: DiffPath{"items", "0"},
 			Type: DiffAdded,
 			From: nil,
 			To:   map[string]any{"name": "test", "value": "123"},
@@ -220,7 +220,7 @@ func TestDetailedFormatter_PlainMapNested(t *testing.T) {
 	// Exercises renderFirstKeyValueYAML with map[string]any val (line 291-295)
 	diffs := []Difference{
 		{
-			Path: "items.0",
+			Path: DiffPath{"items", "0"},
 			Type: DiffAdded,
 			From: nil,
 			To: map[string]any{
@@ -242,7 +242,7 @@ func TestDetailedFormatter_PlainMapNested(t *testing.T) {
 func TestDetailedFormatter_PlainMapRemoved(t *testing.T) {
 	diffs := []Difference{
 		{
-			Path: "items.0",
+			Path: DiffPath{"items", "0"},
 			Type: DiffRemoved,
 			From: map[string]any{"key": "val"},
 			To:   nil,
@@ -262,7 +262,7 @@ func TestDetailedFormatter_PlainMapWithMultilineValue(t *testing.T) {
 	// Exercises renderFirstKeyValueYAML default case with multiline string (line 302-303)
 	diffs := []Difference{
 		{
-			Path: "items.0",
+			Path: DiffPath{"items", "0"},
 			Type: DiffAdded,
 			From: nil,
 			To: map[string]any{

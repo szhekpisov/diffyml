@@ -41,15 +41,16 @@ func FilterDiffs(diffs []Difference, opts *FilterOptions) []Difference {
 	var result []Difference
 
 	for _, diff := range diffs {
+		pathStr := diff.Path.String()
 		// Step 1: Apply include filter (if specified)
 		if len(opts.IncludePaths) > 0 {
-			if !matchesAnyPath(diff.Path, opts.IncludePaths) {
+			if !matchesAnyPath(pathStr, opts.IncludePaths) {
 				continue // Not included, skip
 			}
 		}
 
 		// Step 2: Apply exclude filter (if specified)
-		if matchesAnyPath(diff.Path, opts.ExcludePaths) {
+		if matchesAnyPath(pathStr, opts.ExcludePaths) {
 			continue // Excluded, skip
 		}
 
@@ -144,12 +145,13 @@ func FilterDiffsWithRegexp(diffs []Difference, opts *FilterOptions) ([]Differenc
 	var result []Difference
 
 	for _, diff := range diffs {
+		pathStr := diff.Path.String()
 		included := true
 
 		// Step 1: Apply include filters (path or regex)
 		if hasIncludeFilters {
-			included = matchesAnyPath(diff.Path, opts.IncludePaths) ||
-				matchesAnyRegex(diff.Path, includeRegex)
+			included = matchesAnyPath(pathStr, opts.IncludePaths) ||
+				matchesAnyRegex(pathStr, includeRegex)
 		}
 
 		if !included {
@@ -157,8 +159,8 @@ func FilterDiffsWithRegexp(diffs []Difference, opts *FilterOptions) ([]Differenc
 		}
 
 		// Step 2: Apply exclude filters (path or regex)
-		if matchesAnyPath(diff.Path, opts.ExcludePaths) ||
-			matchesAnyRegex(diff.Path, excludeRegex) {
+		if matchesAnyPath(pathStr, opts.ExcludePaths) ||
+			matchesAnyRegex(pathStr, excludeRegex) {
 			continue
 		}
 

@@ -34,8 +34,8 @@ diffyml compares YAML files and shows meaningful, structured differences — not
 | CI annotation formats | 3 (GitHub, GitLab, Gitea) | 0 | 0 |
 | Runtime dependencies | 1 (yaml.v3) | 14 | 0 |
 | Directory comparison | Yes | No | Yes |
-| Performance (78 KB) | 19 ms | 141 ms (7.5x slower) | 6 ms |
-| Performance (780 KB) | 128 ms | 1,354 ms (10.6x slower) | 46 ms |
+| Performance (78 KB) | 19 ms | 142 ms (7.6x slower) | 7 ms |
+| Performance (780 KB) | 129 ms | 1,369 ms (10.6x slower) | 46 ms |
 
 Comparison based on dyff v1.11.2 and diffyml v1.5.8. See [PERFORMANCE.md](doc/PERFORMANCE.md) for benchmark methodology. [Open an issue](https://github.com/szhekpisov/diffyml/issues) if anything is outdated.
 

@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 // Tests targeting remaining coverage gaps identified by gremlins mutation testing.
@@ -953,5 +955,193 @@ func TestDetectK8sOrderChanges_SameOrder(t *testing.T) {
 	result := detectK8sOrderChanges(matched, from, false)
 	if result != nil {
 		t.Error("expected nil when docs are in same order")
+	}
+}
+
+// --- sameScalarType: default fallback for rare types ---
+
+func TestSameScalarType_DefaultFallback(t *testing.T) {
+	// time.Time is produced by yaml.v3 decoder for !!timestamp
+	a := time.Now()
+	b := time.Now()
+	if !sameScalarType(a, b) {
+		t.Error("expected same type for two time.Time values")
+	}
+	if sameScalarType(a, "string") {
+		t.Error("expected different type for time.Time vs string")
+	}
+}
+
+// --- deepEqual: type mismatch branches ---
+
+func TestDeepEqual_TypeMismatch_OrderedMapVsString(t *testing.T) {
+	om := NewOrderedMap()
+	om.Keys = append(om.Keys, "k")
+	om.Values["k"] = "v"
+	if deepEqual(om, "not-a-map", nil) {
+		t.Error("expected false for *OrderedMap vs string")
+	}
+}
+
+func TestDeepEqual_TypeMismatch_MapVsString(t *testing.T) {
+	m := map[string]any{"k": "v"}
+	if deepEqual(m, "not-a-map", nil) {
+		t.Error("expected false for map vs string")
+	}
+}
+
+func TestDeepEqual_TypeMismatch_SliceVsString(t *testing.T) {
+	s := []any{"a", "b"}
+	if deepEqual(s, "not-a-slice", nil) {
+		t.Error("expected false for slice vs string")
+	}
+}
+
+func TestDeepEqual_TypeMismatch_ScalarTypes(t *testing.T) {
+	if deepEqual("hello", 42, nil) {
+		t.Error("expected false for string vs int")
+	}
+	if deepEqual(3.14, true, nil) {
+		t.Error("expected false for float64 vs bool")
+	}
+}
+
+// --- resolveScalar: YAML float special values ---
+
+func TestResolveScalar_SpecialFloats(t *testing.T) {
+	tests := []struct {
+		name  string
+		value string
+	}{
+		{"positive infinity", ".inf"},
+		{"negative infinity", "-.inf"},
+		{"not a number", ".nan"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			node := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!float", Value: tt.value}
+			got := resolveScalar(node)
+			if got == nil {
+				t.Errorf("resolveScalar(%q) returned nil", tt.value)
+			}
+		})
+	}
+}
+
+// --- resolveScalar: bool and null edge cases ---
+
+func TestResolveScalar_BoolTrue(t *testing.T) {
+	node := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!bool", Value: "true"}
+	got := resolveScalar(node)
+	if got != true {
+		t.Errorf("expected true, got %v", got)
+	}
+}
+
+func TestResolveScalar_BoolFalse(t *testing.T) {
+	node := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!bool", Value: "false"}
+	got := resolveScalar(node)
+	if got != false {
+		t.Errorf("expected false, got %v (%T)", got, got)
+	}
+}
+
+func TestResolveScalar_NullVariants(t *testing.T) {
+	// !!null always returns nil regardless of value
+	for _, v := range []string{"", "null", "~", "Null", "NULL", "anything"} {
+		node := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!null", Value: v}
+		got := resolveScalar(node)
+		if got != nil {
+			t.Errorf("resolveScalar(tag=!!null, value=%q) = %v, want nil", v, got)
+		}
+	}
+}
+
+func TestResolveScalar_IntAndFloat(t *testing.T) {
+	intNode := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!int", Value: "42"}
+	got := resolveScalar(intNode)
+	if got != 42 {
+		t.Errorf("expected 42, got %v", got)
+	}
+
+	floatNode := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!float", Value: "3.14"}
+	gotF := resolveScalar(floatNode)
+	if gotF != 3.14 {
+		t.Errorf("expected 3.14, got %v", gotF)
+	}
+}
+
+// --- Mutation-killing tests for resolveScalar fast paths ---
+// These verify the fast path returns the same type as the yaml.v3 decoder
+// to kill mutants that negate err == nil conditions (swapping fast/slow path).
+
+func TestResolveScalar_IntFastPathType(t *testing.T) {
+	node := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!int", Value: "99"}
+	got := resolveScalar(node)
+	// The fast path must return int, not string
+	if _, ok := got.(int); !ok {
+		t.Errorf("expected int type from fast path, got %T: %v", got, got)
+	}
+}
+
+func TestResolveScalar_FloatFastPathType(t *testing.T) {
+	node := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!float", Value: "2.718"}
+	got := resolveScalar(node)
+	// The fast path must return float64, not string
+	if _, ok := got.(float64); !ok {
+		t.Errorf("expected float64 type from fast path, got %T: %v", got, got)
+	}
+}
+
+// Test that pre-sized OrderedMap capacity matches expected key count.
+// Kills ARITHMETIC_BASE mutant at ordered_map.go:79 (/2 → *2).
+func TestNodeToInterface_MappingPresize(t *testing.T) {
+	// 6 content nodes = 3 key-value pairs → capacity should be 3
+	node := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "a"},
+			{Kind: yaml.ScalarNode, Tag: "!!int", Value: "1"},
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "b"},
+			{Kind: yaml.ScalarNode, Tag: "!!int", Value: "2"},
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "c"},
+			{Kind: yaml.ScalarNode, Tag: "!!int", Value: "3"},
+		},
+	}
+	result := nodeToInterface(node)
+	om, ok := result.(*OrderedMap)
+	if !ok {
+		t.Fatalf("expected *OrderedMap, got %T", result)
+	}
+	if len(om.Keys) != 3 {
+		t.Errorf("expected 3 keys, got %d", len(om.Keys))
+	}
+	// Verify capacity was correctly pre-sized to len(Content)/2.
+	// A mutant changing /2 to *2 would set capacity to 6, which we detect here.
+	if cap(om.Keys) != 3 {
+		t.Errorf("expected capacity 3, got %d (pre-sizing may be wrong)", cap(om.Keys))
+	}
+}
+
+// Kill CONDITIONALS_NEGATION mutants for int/float fast paths.
+// If the mutant negates err==nil to err!=nil, invalid values would return
+// zero-values (0 or 0.0) instead of falling through to the decoder.
+func TestResolveScalar_InvalidIntFallsThrough(t *testing.T) {
+	node := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!int", Value: "not_a_number"}
+	got := resolveScalar(node)
+	// With negated mutant: Atoi("not_a_number") fails, err!=nil is true,
+	// so it returns i=0. We verify it does NOT return 0.
+	if got == 0 || got == int(0) {
+		t.Errorf("invalid !!int should not return 0, got %v (%T)", got, got)
+	}
+}
+
+func TestResolveScalar_InvalidFloatFallsThrough(t *testing.T) {
+	node := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!float", Value: "not_a_float"}
+	got := resolveScalar(node)
+	// With negated mutant: ParseFloat fails, err!=nil is true,
+	// so it returns f=0.0. We verify it does NOT return 0.0.
+	if got == float64(0) {
+		t.Errorf("invalid !!float should not return 0.0, got %v (%T)", got, got)
 	}
 }

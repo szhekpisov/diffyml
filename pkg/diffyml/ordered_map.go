@@ -143,21 +143,7 @@ func resolveScalar(node *yaml.Node) any {
 		if i, err := strconv.Atoi(value); err == nil {
 			return i
 		}
-		// Large integers that don't fit in int
-		if i, err := strconv.ParseInt(value, 10, 64); err == nil {
-			// yaml.v3 returns int for values that fit
-			if i >= -1<<31 && i < 1<<31 {
-				return int(i)
-			}
-			return int(i)
-		}
-		if u, err := strconv.ParseUint(value, 10, 64); err == nil {
-			return u
-		}
 	case "!!float":
-		if strings.EqualFold(value, ".inf") || strings.EqualFold(value, "+.inf") {
-			return float64(0) // let decoder handle special floats
-		}
 		if f, err := strconv.ParseFloat(value, 64); err == nil {
 			return f
 		}
@@ -168,10 +154,8 @@ func resolveScalar(node *yaml.Node) any {
 		case "false":
 			return false
 		}
-	case "!!null", "":
-		if value == "" || value == "null" || value == "~" || value == "Null" || value == "NULL" {
-			return nil
-		}
+	case "!!null":
+		return nil
 	}
 
 	// Fallback to yaml.v3 decoder for uncommon types (timestamps, binary, etc.)

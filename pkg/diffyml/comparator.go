@@ -162,14 +162,9 @@ func sameScalarType(a, b any) bool {
 	case bool:
 		_, ok := b.(bool)
 		return ok
-	case int64:
-		_, ok := b.(int64)
-		return ok
-	case uint64:
-		_, ok := b.(uint64)
-		return ok
 	default:
-		// Fallback: compare via fmt for rare types
+		// Fallback for rare types (int64, uint64, time.Time, etc.
+		// produced by the yaml.v3 decoder for values outside common ranges).
 		return fmt.Sprintf("%T", a) == fmt.Sprintf("%T", b)
 	}
 }

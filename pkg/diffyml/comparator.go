@@ -718,7 +718,14 @@ func deepEqual(from, to any, opts *Options) bool {
 }
 
 // joinPath joins path segments with a dot.
+// Keys containing dots are bracket-quoted to avoid ambiguity with the path separator.
 func joinPath(base, key string) string {
+	if strings.Contains(key, ".") {
+		if base == "" {
+			return "[" + key + "]"
+		}
+		return base + "[" + key + "]"
+	}
 	if base == "" {
 		return key
 	}

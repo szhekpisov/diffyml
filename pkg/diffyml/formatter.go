@@ -240,17 +240,25 @@ func formatValue(val any) string {
 }
 
 // convertToGoPatchPath converts dot-notation path to Go-Patch style (/a/b/c).
+// Dots inside bracket-quoted keys are preserved (e.g., labels[helm.sh/chart] → /labels/helm.sh/chart).
 func convertToGoPatchPath(path string) string {
-	// Replace dots with slashes
-	result := strings.ReplaceAll(path, ".", "/")
-	// Convert array notation [n] to /n
-	result = strings.ReplaceAll(result, "[", "/")
-	result = strings.ReplaceAll(result, "]", "")
-	// Ensure leading slash
-	if !strings.HasPrefix(result, "/") {
-		result = "/" + result
+	var sb strings.Builder
+	sb.WriteByte('/')
+	inBracket := false
+	for _, r := range path {
+		switch {
+		case r == '[':
+			inBracket = true
+			sb.WriteByte('/')
+		case r == ']':
+			inBracket = false
+		case r == '.' && !inBracket:
+			sb.WriteByte('/')
+		default:
+			sb.WriteRune(r)
+		}
 	}
-	return result
+	return sb.String()
 }
 
 // BriefFormatter renders a concise summary of changes.

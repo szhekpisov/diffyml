@@ -20,10 +20,7 @@ func (f *DetailedFormatter) renderEntryValue(sb *strings.Builder, val any, symbo
 
 	// Map entries: extract key from path and render as key: value
 	if !isList {
-		key := path
-		if idx := strings.LastIndex(path, "."); idx >= 0 {
-			key = path[idx+1:]
-		}
+		key := extractLastKey(path)
 		f.renderKeyValueYAML(sb, key, val, indent, code, opts)
 		return
 	}

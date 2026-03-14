@@ -1,6 +1,6 @@
 Found one difference
 
-data.tls.crt
+data[tls.crt]
   ± value change in multiline text (six inserts, six deletions)
       -----BEGIN CERTIFICATE-----
     - MIIBIjCByqADAgECAgQaKzxNMAoGCCqGSM49BAMCMBoxGDAWBgNVBAMTD2FwcC5l

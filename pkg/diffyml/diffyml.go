@@ -140,10 +140,7 @@ func extractPathsFromValue(prefix string, val any, opts *Options, pathOrder map[
 	case *OrderedMap:
 		registerPath(pathOrder, index, prefix)
 		for _, key := range v.Keys {
-			childPath := key
-			if prefix != "" {
-				childPath = prefix + "." + key
-			}
+			childPath := joinPath(prefix, key)
 			extractPathsFromValue(childPath, v.Values[key], opts, pathOrder, index)
 		}
 	case map[string]any:
@@ -154,10 +151,7 @@ func extractPathsFromValue(prefix string, val any, opts *Options, pathOrder map[
 		}
 		sort.Strings(keys)
 		for _, key := range keys {
-			childPath := key
-			if prefix != "" {
-				childPath = prefix + "." + key
-			}
+			childPath := joinPath(prefix, key)
 			extractPathsFromValue(childPath, v[key], opts, pathOrder, index)
 		}
 	case []any:
@@ -193,9 +187,67 @@ func extractPathOrder(fromDocs, toDocs []any, opts *Options) map[string]int {
 	return pathOrder
 }
 
+// lastDotOutsideBrackets returns the index of the last dot that is not inside bracket notation.
+// Returns -1 if no such dot exists.
+func lastDotOutsideBrackets(path string) int {
+	lastDot := -1
+	inBracket := false
+	for i, r := range path {
+		switch r {
+		case '[':
+			inBracket = true
+		case ']':
+			inBracket = false
+		case '.':
+			if !inBracket {
+				lastDot = i
+			}
+		}
+	}
+	return lastDot
+}
+
+// firstDotOutsideBrackets returns the index of the first dot that is not inside bracket notation.
+// Returns -1 if no such dot exists.
+func firstDotOutsideBrackets(path string) int {
+	inBracket := false
+	for i, r := range path {
+		switch r {
+		case '[':
+			inBracket = true
+		case ']':
+			inBracket = false
+		case '.':
+			if !inBracket {
+				return i
+			}
+		}
+	}
+	return -1
+}
+
+// pathDepth counts the number of dots outside bracket notation (path depth).
+func pathDepth(path string) int {
+	count := 0
+	inBracket := false
+	for _, r := range path {
+		switch r {
+		case '[':
+			inBracket = true
+		case ']':
+			inBracket = false
+		case '.':
+			if !inBracket {
+				count++
+			}
+		}
+	}
+	return count
+}
+
 // hasNumericPathSuffix checks if a path ends with a numeric suffix after a dot (e.g., ".0", ".1").
 func hasNumericPathSuffix(path string) bool {
-	lastDot := strings.LastIndex(path, ".")
+	lastDot := lastDotOutsideBrackets(path)
 	if lastDot < 0 || lastDot >= len(path)-1 {
 		return false
 	}
@@ -235,8 +287,14 @@ func isListEntryDiff(diff Difference) bool {
 	path := diff.Path
 
 	// Check for bracket notation [0], [1], etc.
+	// Bracket-quoted map keys like [helm.sh/chart] are not list entries.
 	if len(path) > 0 && path[len(path)-1] == ']' {
-		return true
+		if bracketStart := strings.LastIndex(path, "["); bracketStart >= 0 {
+			inner := path[bracketStart+1 : len(path)-1]
+			if _, err := strconv.Atoi(inner); err == nil {
+				return true
+			}
+		}
 	}
 
 	if hasNumericPathSuffix(path) {
@@ -258,10 +316,10 @@ func isListEntryDiff(diff Difference) bool {
 func compareByRootOrder(pathI, pathJ string, pathOrder map[string]int) (int, bool) {
 	rootI := pathI
 	rootJ := pathJ
-	if dotIdx := strings.Index(pathI, "."); dotIdx != -1 {
+	if dotIdx := firstDotOutsideBrackets(pathI); dotIdx != -1 {
 		rootI = pathI[:dotIdx]
 	}
-	if dotIdx := strings.Index(pathJ, "."); dotIdx != -1 {
+	if dotIdx := firstDotOutsideBrackets(pathJ); dotIdx != -1 {
 		rootJ = pathJ[:dotIdx]
 	}
 
@@ -301,7 +359,7 @@ func compareByExactOrParentOrder(pathI, pathJ string, pathOrder map[string]int, 
 	}
 
 	// Within same parent, sort by depth first
-	if c := cmp.Compare(strings.Count(pathI, "."), strings.Count(pathJ, ".")); c != 0 {
+	if c := cmp.Compare(pathDepth(pathI), pathDepth(pathJ)); c != 0 {
 		return c
 	}
 
@@ -314,7 +372,7 @@ func sortDiffsWithOrder(diffs []Difference, pathOrder map[string]int) {
 			if order, ok := pathOrder[path]; ok {
 				return order, true
 			}
-			lastDot := strings.LastIndex(path, ".")
+			lastDot := lastDotOutsideBrackets(path)
 			if lastDot == -1 {
 				break
 			}

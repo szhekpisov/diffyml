@@ -1,6 +1,11 @@
 --- a/configmap.yaml
 +++ b/configmap.yaml
-data.app.properties
+data.verbose
+  ± type change from string to bool
+    - false
+    + false
+
+data[app.properties]
   ± value change in multiline text (two inserts, two deletions)
     - environment=production
     - log_level=info
@@ -9,15 +14,10 @@ data.app.properties
       max_connections=100
       
 
-data.debug.mode
+data[debug.mode]
   ± whitespace only change
     - true·
     + true
-
-data.verbose
-  ± type change from string to bool
-    - false
-    + false
 
 --- a/deployment.yaml
 +++ b/deployment.yaml

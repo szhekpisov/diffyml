@@ -99,17 +99,17 @@ func TestSortDiffsWithOrder_RootOrdering(t *testing.T) {
 	}
 
 	diffs := []Difference{
-		{Path: "beta.key", Type: DiffModified, From: "a", To: "b"},
-		{Path: "alpha.key", Type: DiffModified, From: "c", To: "d"},
+		{Path: DiffPath{"beta", "key"}, Type: DiffModified, From: "a", To: "b"},
+		{Path: DiffPath{"alpha", "key"}, Type: DiffModified, From: "c", To: "d"},
 	}
 
 	sortDiffsWithOrder(diffs, pathOrder)
 
-	if diffs[0].Path != "alpha.key" {
-		t.Errorf("expected alpha.key first, got %s", diffs[0].Path)
+	if diffs[0].Path.String() != "alpha.key" {
+		t.Errorf("expected alpha.key first, got %s", diffs[0].Path.String())
 	}
-	if diffs[1].Path != "beta.key" {
-		t.Errorf("expected beta.key second, got %s", diffs[1].Path)
+	if diffs[1].Path.String() != "beta.key" {
+		t.Errorf("expected beta.key second, got %s", diffs[1].Path.String())
 	}
 }
 
@@ -119,14 +119,14 @@ func TestSortDiffsWithOrder_SameRootAlphaFallback(t *testing.T) {
 	pathOrder := map[string]int{}
 
 	diffs := []Difference{
-		{Path: "zebra.key", Type: DiffModified, From: "a", To: "b"},
-		{Path: "apple.key", Type: DiffModified, From: "c", To: "d"},
+		{Path: DiffPath{"zebra", "key"}, Type: DiffModified, From: "a", To: "b"},
+		{Path: DiffPath{"apple", "key"}, Type: DiffModified, From: "c", To: "d"},
 	}
 
 	sortDiffsWithOrder(diffs, pathOrder)
 
-	if diffs[0].Path != "apple.key" {
-		t.Errorf("expected apple.key first (alphabetical fallback), got %s", diffs[0].Path)
+	if diffs[0].Path.String() != "apple.key" {
+		t.Errorf("expected apple.key first (alphabetical fallback), got %s", diffs[0].Path.String())
 	}
 }
 
@@ -144,19 +144,19 @@ func TestSortDiffsWithOrder_ParentOrderTieBreak(t *testing.T) {
 	}
 
 	diffs := []Difference{
-		{Path: "root.apple.child.deep", Type: DiffModified, From: "a", To: "b"},
-		{Path: "root.zebra.child.deep", Type: DiffModified, From: "c", To: "d"},
+		{Path: DiffPath{"root", "apple", "child", "deep"}, Type: DiffModified, From: "a", To: "b"},
+		{Path: DiffPath{"root", "zebra", "child", "deep"}, Type: DiffModified, From: "c", To: "d"},
 	}
 
 	sortDiffsWithOrder(diffs, pathOrder)
 
 	// root.zebra has lower order (1) than root.apple (2), so zebra's child should come first.
 	// If mutation breaks parent traversal, alphabetical order puts apple first (wrong).
-	if diffs[0].Path != "root.zebra.child.deep" {
-		t.Errorf("expected root.zebra.child.deep first (parent order), got %s", diffs[0].Path)
+	if diffs[0].Path.String() != "root.zebra.child.deep" {
+		t.Errorf("expected root.zebra.child.deep first (parent order), got %s", diffs[0].Path.String())
 	}
-	if diffs[1].Path != "root.apple.child.deep" {
-		t.Errorf("expected root.apple.child.deep second, got %s", diffs[1].Path)
+	if diffs[1].Path.String() != "root.apple.child.deep" {
+		t.Errorf("expected root.apple.child.deep second, got %s", diffs[1].Path.String())
 	}
 }
 
@@ -168,18 +168,18 @@ func TestSortDiffsWithOrder_DepthDifference(t *testing.T) {
 	}
 
 	diffs := []Difference{
-		{Path: "root.a.b.c", Type: DiffModified, From: "a", To: "b"}, // depth 3
-		{Path: "root.x", Type: DiffModified, From: "c", To: "d"},     // depth 1
+		{Path: DiffPath{"root", "a", "b", "c"}, Type: DiffModified, From: "a", To: "b"}, // depth 3
+		{Path: DiffPath{"root", "x"}, Type: DiffModified, From: "c", To: "d"},         // depth 1
 	}
 
 	sortDiffsWithOrder(diffs, pathOrder)
 
 	// Shallower path (depth 1) should come first
-	if diffs[0].Path != "root.x" {
-		t.Errorf("expected root.x first (shallower depth), got %s", diffs[0].Path)
+	if diffs[0].Path.String() != "root.x" {
+		t.Errorf("expected root.x first (shallower depth), got %s", diffs[0].Path.String())
 	}
-	if diffs[1].Path != "root.a.b.c" {
-		t.Errorf("expected root.a.b.c second (deeper), got %s", diffs[1].Path)
+	if diffs[1].Path.String() != "root.a.b.c" {
+		t.Errorf("expected root.a.b.c second (deeper), got %s", diffs[1].Path.String())
 	}
 }
 
@@ -191,17 +191,17 @@ func TestSortDiffsWithOrder_AlphabeticalFallback(t *testing.T) {
 
 	// Same root, same depth, different alphabetical paths
 	diffs := []Difference{
-		{Path: "root.zebra", Type: DiffModified, From: "a", To: "b"},
-		{Path: "root.apple", Type: DiffModified, From: "c", To: "d"},
+		{Path: DiffPath{"root", "zebra"}, Type: DiffModified, From: "a", To: "b"},
+		{Path: DiffPath{"root", "apple"}, Type: DiffModified, From: "c", To: "d"},
 	}
 
 	sortDiffsWithOrder(diffs, pathOrder)
 
-	if diffs[0].Path != "root.apple" {
-		t.Errorf("expected root.apple first (alphabetical), got %s", diffs[0].Path)
+	if diffs[0].Path.String() != "root.apple" {
+		t.Errorf("expected root.apple first (alphabetical), got %s", diffs[0].Path.String())
 	}
-	if diffs[1].Path != "root.zebra" {
-		t.Errorf("expected root.zebra second (alphabetical), got %s", diffs[1].Path)
+	if diffs[1].Path.String() != "root.zebra" {
+		t.Errorf("expected root.zebra second (alphabetical), got %s", diffs[1].Path.String())
 	}
 }
 
@@ -249,7 +249,7 @@ func TestExtractPathOrder_OrderedMapNestedIndexIncrement(t *testing.T) {
 func TestIsListEntryDiff_EmptyPath(t *testing.T) {
 	// Kills CONDITIONALS_BOUNDARY at diffyml.go:219 (len(path) > 0 → >= 0)
 	// With >= 0, empty path would proceed to path[len(path)-1] = path[-1] → panic.
-	diff := Difference{Path: "", Type: DiffModified, From: "a", To: "b"}
+	diff := Difference{Path: nil, Type: DiffModified, From: "a", To: "b"}
 	result := isListEntryDiff(diff)
 	if result {
 		t.Error("empty path should not be detected as list entry")
@@ -265,7 +265,7 @@ func TestIsListEntryDiff_ToNilUsesFrom(t *testing.T) {
 	om.Values["name"] = "my-item"
 	om.Values["value"] = "data"
 
-	diff := Difference{Path: "items", Type: DiffRemoved, From: om, To: nil}
+	diff := Difference{Path: DiffPath{"items"}, Type: DiffRemoved, From: om, To: nil}
 	if !isListEntryDiff(diff) {
 		t.Error("expected true when To is nil but From has identifier field 'name'")
 	}
@@ -278,33 +278,30 @@ func TestIsListEntryDiff_ToHasIdentifier(t *testing.T) {
 	om.Values["name"] = "my-item"
 	om.Values["value"] = "data"
 
-	diff := Difference{Path: "items", Type: DiffAdded, From: nil, To: om}
+	diff := Difference{Path: DiffPath{"items"}, Type: DiffAdded, From: nil, To: om}
 	if !isListEntryDiff(diff) {
 		t.Error("expected true when From is nil but To has identifier field 'name'")
 	}
 }
 
 func TestIsListEntryDiff_SingleCharPath(t *testing.T) {
-	// diffyml.go:222 — `len(path) > 1` ensures we don't check single-char paths
-	// diffyml.go:224 — `lastDot >= 0` boundary at position 0
-	// diffyml.go:224 — `lastDot < len(path)-1` boundary when dot is last char
-
-	// Path ".0" — dot at position 0, suffix is "0" (a digit)
-	diff := Difference{Path: ".0", Type: DiffAdded, To: "value"}
+	// Test numeric last segment detection
+	// DiffPath{"0"} has HasNumericLast() = true
+	diff := Difference{Path: DiffPath{"0"}, Type: DiffAdded, To: "value"}
 	if !isListEntryDiff(diff) {
-		t.Error("path '.0' should be detected as list entry")
+		t.Error("path with numeric last segment should be detected as list entry")
 	}
 
-	// Path "x." — dot is last char, lastDot == len(path)-1
-	diff2 := Difference{Path: "x.", Type: DiffAdded, To: "value"}
+	// DiffPath{"x", ""} — last segment is empty, not numeric
+	diff2 := Difference{Path: DiffPath{"x", ""}, Type: DiffAdded, To: "value"}
 	if isListEntryDiff(diff2) {
-		t.Error("path 'x.' should NOT be detected as list entry (dot at end)")
+		t.Error("path with empty last segment should NOT be detected as list entry")
 	}
 
-	// Path ending with ']'
-	diff3 := Difference{Path: "items[0]", Type: DiffAdded, To: "value"}
+	// DiffPath{"items", "0"} — last segment is "0" (numeric)
+	diff3 := Difference{Path: DiffPath{"items", "0"}, Type: DiffAdded, To: "value"}
 	if !isListEntryDiff(diff3) {
-		t.Error("path 'items[0]' should be detected as list entry")
+		t.Error("path with numeric index segment should be detected as list entry")
 	}
 }
 
@@ -335,11 +332,11 @@ alpha:
 	}
 
 	// "beta" appears first in the source YAML, so beta.key should come before alpha.key
-	if diffs[0].Path != "beta.key" {
-		t.Errorf("expected beta.key first (document order), got %s", diffs[0].Path)
+	if diffs[0].Path.String() != "beta.key" {
+		t.Errorf("expected beta.key first (document order), got %s", diffs[0].Path.String())
 	}
-	if diffs[1].Path != "alpha.key" {
-		t.Errorf("expected alpha.key second (document order), got %s", diffs[1].Path)
+	if diffs[1].Path.String() != "alpha.key" {
+		t.Errorf("expected alpha.key second (document order), got %s", diffs[1].Path.String())
 	}
 }
 
@@ -354,18 +351,18 @@ func TestSortDiffsWithOrder_OneHasOrderOtherNot(t *testing.T) {
 	}
 
 	diffs := []Difference{
-		{Path: "root.apple", Type: DiffModified, From: "a", To: "b"},
-		{Path: "root.zebra", Type: DiffModified, From: "c", To: "d"},
+		{Path: DiffPath{"root", "apple"}, Type: DiffModified, From: "a", To: "b"},
+		{Path: DiffPath{"root", "zebra"}, Type: DiffModified, From: "c", To: "d"},
 	}
 
 	sortDiffsWithOrder(diffs, pathOrder)
 
 	// root.zebra has pathOrder entry → should come first
-	if diffs[0].Path != "root.zebra" {
-		t.Errorf("expected root.zebra first (has order), got %s", diffs[0].Path)
+	if diffs[0].Path.String() != "root.zebra" {
+		t.Errorf("expected root.zebra first (has order), got %s", diffs[0].Path.String())
 	}
-	if diffs[1].Path != "root.apple" {
-		t.Errorf("expected root.apple second (no order), got %s", diffs[1].Path)
+	if diffs[1].Path.String() != "root.apple" {
+		t.Errorf("expected root.apple second (no order), got %s", diffs[1].Path.String())
 	}
 }
 
@@ -401,8 +398,8 @@ bravo:
 	// Should preserve YAML document order: charlie, alpha, bravo
 	expected := []string{"charlie.v", "alpha.v", "bravo.v"}
 	for i, exp := range expected {
-		if diffs[i].Path != exp {
-			t.Errorf("diff[%d].Path = %q, want %q", i, diffs[i].Path, exp)
+		if diffs[i].Path.String() != exp {
+			t.Errorf("diff[%d].Path = %q, want %q", i, diffs[i].Path.String(), exp)
 		}
 	}
 }

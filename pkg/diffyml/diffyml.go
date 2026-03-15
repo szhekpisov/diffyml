@@ -6,7 +6,6 @@ import (
 	"slices"
 	"sort"
 	"strconv"
-	"strings"
 )
 
 // DiffType represents the kind of difference detected between YAML documents.
@@ -25,8 +24,8 @@ const (
 
 // Difference represents a single change between two YAML documents.
 type Difference struct {
-	// Path is the dot-notation path to the changed value (e.g., "some.yaml.structure.name").
-	Path string
+	// Path is the structured path to the changed value (e.g., DiffPath{"some", "yaml", "structure", "name"}).
+	Path DiffPath
 	// Type indicates the kind of change (added, removed, modified, order changed).
 	Type DiffType
 	// From is the original value (nil for additions).
@@ -124,26 +123,24 @@ func Compare(from, to []byte, opts *Options) ([]Difference, error) {
 }
 
 // registerPath registers a path in the pathOrder map if not already present.
-func registerPath(pathOrder map[string]int, index *int, prefix string) {
-	if prefix == "" {
+func registerPath(pathOrder map[string]int, index *int, prefix DiffPath) {
+	if prefix.IsEmpty() {
 		return
 	}
-	if _, exists := pathOrder[prefix]; !exists {
-		pathOrder[prefix] = *index
+	key := prefix.String()
+	if _, exists := pathOrder[key]; !exists {
+		pathOrder[key] = *index
 		*index++
 	}
 }
 
 // extractPathsFromValue recursively extracts path ordering from a parsed YAML value.
-func extractPathsFromValue(prefix string, val any, opts *Options, pathOrder map[string]int, index *int) {
+func extractPathsFromValue(prefix DiffPath, val any, opts *Options, pathOrder map[string]int, index *int) {
 	switch v := val.(type) {
 	case *OrderedMap:
 		registerPath(pathOrder, index, prefix)
 		for _, key := range v.Keys {
-			childPath := key
-			if prefix != "" {
-				childPath = prefix + "." + key
-			}
+			childPath := prefix.Append(key)
 			extractPathsFromValue(childPath, v.Values[key], opts, pathOrder, index)
 		}
 	case map[string]any:
@@ -154,20 +151,17 @@ func extractPathsFromValue(prefix string, val any, opts *Options, pathOrder map[
 		}
 		sort.Strings(keys)
 		for _, key := range keys {
-			childPath := key
-			if prefix != "" {
-				childPath = prefix + "." + key
-			}
+			childPath := prefix.Append(key)
 			extractPathsFromValue(childPath, v[key], opts, pathOrder, index)
 		}
 	case []any:
 		registerPath(pathOrder, index, prefix)
 		for i, item := range v {
-			var childPath string
+			var childPath DiffPath
 			if id := getIdentifier(item, opts); isComparableIdentifier(id) {
-				childPath = prefix + "." + fmt.Sprint(id)
+				childPath = prefix.Append(fmt.Sprint(id))
 			} else {
-				childPath = prefix + "." + strconv.Itoa(i)
+				childPath = prefix.Append(strconv.Itoa(i))
 			}
 			extractPathsFromValue(childPath, item, opts, pathOrder, index)
 		}
@@ -184,28 +178,13 @@ func extractPathOrder(fromDocs, toDocs []any, opts *Options) map[string]int {
 	index := 0
 
 	for _, doc := range fromDocs {
-		extractPathsFromValue("", doc, opts, pathOrder, &index)
+		extractPathsFromValue(nil, doc, opts, pathOrder, &index)
 	}
 	for _, doc := range toDocs {
-		extractPathsFromValue("", doc, opts, pathOrder, &index)
+		extractPathsFromValue(nil, doc, opts, pathOrder, &index)
 	}
 
 	return pathOrder
-}
-
-// hasNumericPathSuffix checks if a path ends with a numeric suffix after a dot (e.g., ".0", ".1").
-func hasNumericPathSuffix(path string) bool {
-	lastDot := strings.LastIndex(path, ".")
-	if lastDot < 0 || lastDot >= len(path)-1 {
-		return false
-	}
-	suffix := path[lastDot+1:]
-	for _, c := range suffix {
-		if c < '0' || c > '9' {
-			return false
-		}
-	}
-	return true
 }
 
 // hasIdentifierField checks if a value is a map containing "name" or "id" fields.
@@ -229,20 +208,16 @@ func hasIdentifierField(val any) bool {
 	return false
 }
 
-// isListEntry checks if a difference represents a list entry
-// This matches the logic in formatter.go
+// isListEntryDiff checks if a difference represents a list entry.
 func isListEntryDiff(diff Difference) bool {
-	path := diff.Path
-
-	// Check for bracket notation [0], [1], etc.
-	if len(path) > 0 && path[len(path)-1] == ']' {
+	// Check if last segment is numeric (list index)
+	if diff.Path.HasNumericLast() {
 		return true
 	}
-
-	if hasNumericPathSuffix(path) {
+	// Check for bracket notation [0], [1], etc. (bare doc index)
+	if diff.Path.IsBareDocIndex() {
 		return true
 	}
-
 	// Check if the value is a map with identifier fields
 	var val any
 	if diff.To != nil {
@@ -255,15 +230,9 @@ func isListEntryDiff(diff Difference) bool {
 
 // compareByRootOrder compares two diff paths by their root component's document order.
 // Returns (comparison result, true) if roots differ and can be compared, (0, false) otherwise.
-func compareByRootOrder(pathI, pathJ string, pathOrder map[string]int) (int, bool) {
-	rootI := pathI
-	rootJ := pathJ
-	if dotIdx := strings.Index(pathI, "."); dotIdx != -1 {
-		rootI = pathI[:dotIdx]
-	}
-	if dotIdx := strings.Index(pathJ, "."); dotIdx != -1 {
-		rootJ = pathJ[:dotIdx]
-	}
+func compareByRootOrder(pathI, pathJ DiffPath, pathOrder map[string]int) (int, bool) {
+	rootI := pathI.Root()
+	rootJ := pathJ.Root()
 
 	if rootI == rootJ {
 		return 0, false
@@ -278,10 +247,10 @@ func compareByRootOrder(pathI, pathJ string, pathOrder map[string]int) (int, boo
 }
 
 // compareByExactOrParentOrder compares two paths within the same root using exact or parent order.
-func compareByExactOrParentOrder(pathI, pathJ string, pathOrder map[string]int, findParentOrder func(string) (int, bool)) int {
+func compareByExactOrParentOrder(pathI, pathJ DiffPath, pathOrder map[string]int, findParentOrder func(DiffPath) (int, bool)) int {
 	// First try exact path match
-	orderI, okI := pathOrder[pathI]
-	orderJ, okJ := pathOrder[pathJ]
+	orderI, okI := pathOrder[pathI.String()]
+	orderJ, okJ := pathOrder[pathJ.String()]
 	if okI && okJ {
 		return cmp.Compare(orderI, orderJ)
 	}
@@ -301,24 +270,20 @@ func compareByExactOrParentOrder(pathI, pathJ string, pathOrder map[string]int, 
 	}
 
 	// Within same parent, sort by depth first
-	if c := cmp.Compare(strings.Count(pathI, "."), strings.Count(pathJ, ".")); c != 0 {
+	if c := cmp.Compare(pathI.Depth(), pathJ.Depth()); c != 0 {
 		return c
 	}
 
-	return cmp.Compare(pathI, pathJ)
+	return cmp.Compare(pathI.String(), pathJ.String())
 }
 
 func sortDiffsWithOrder(diffs []Difference, pathOrder map[string]int) {
-	findParentOrder := func(path string) (int, bool) {
-		for {
-			if order, ok := pathOrder[path]; ok {
+	findParentOrder := func(path DiffPath) (int, bool) {
+		for !path.IsEmpty() {
+			if order, ok := pathOrder[path.String()]; ok {
 				return order, true
 			}
-			lastDot := strings.LastIndex(path, ".")
-			if lastDot == -1 {
-				break
-			}
-			path = path[:lastDot]
+			path = path.Parent()
 		}
 		return 0, false
 	}

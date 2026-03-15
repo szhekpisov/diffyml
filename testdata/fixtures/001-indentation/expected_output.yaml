@@ -11,7 +11,7 @@ configmaps
               type: prometheus
               url: http://prometheus:9090
 
-configmaps.app-config.data.app.properties
+configmaps.app-config.data[app.properties]
   ± value change in multiline text (three inserts, one deletion)
     - server.port=8080
     + server.port=9090
@@ -21,7 +21,7 @@ configmaps.app-config.data.app.properties
     + metrics.enabled=true
       
 
-configmaps.app-config.data.logging.yaml
+configmaps.app-config.data[logging.yaml]
   ± value change in multiline text (three inserts, two deletions)
     - level: info
     - format: json
@@ -30,7 +30,7 @@ configmaps.app-config.data.logging.yaml
     + output: file
       
 
-configmaps.nginx-config.data.nginx.conf
+configmaps.nginx-config.data[nginx.conf]
   ± value change in multiline text (five inserts, two deletions)
     - worker_processes auto;
     + worker_processes 4;
@@ -43,7 +43,7 @@ configmaps.nginx-config.data.nginx.conf
     + }
       
 
-configmaps.prometheus-config.data.prometheus.yml
+configmaps.prometheus-config.data[prometheus.yml]
   ± value change in multiline text (six inserts, two deletions)
       global:
     -   scrape_interval: 15s
@@ -59,8 +59,8 @@ configmaps.prometheus-config.data.prometheus.yml
     +       - targets: ['localhost:8081']
       
 
-configmaps.app-config.data.newconfig.json
+configmaps.app-config.data[newconfig.json]
   + one map entry added:
-    json: |
+    newconfig.json: |
       {"key": "value"}
 

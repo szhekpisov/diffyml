@@ -1,6 +1,6 @@
 Found one difference
 
-data.tls.crt
+data[tls.crt]
   ± value change in multiline text (ten inserts, one deletion)
     - some-base64-encoded-data
     + -----BEGIN CERTIFICATE-----

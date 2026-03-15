@@ -152,9 +152,11 @@ func (f *CompactFormatter) formatHeader(sb *strings.Builder, diffs []Difference,
 }
 
 func (f *CompactFormatter) formatDiff(sb *strings.Builder, diff Difference, opts *FormatOptions) {
-	path := diff.Path
+	var path string
 	if opts.UseGoPatchStyle {
-		path = convertToGoPatchPath(path)
+		path = diff.Path.GoPatchString()
+	} else {
+		path = diff.Path.String()
 	}
 
 	var indicator string
@@ -237,20 +239,6 @@ func formatValue(val any) string {
 	}
 
 	return fmt.Sprintf("%v", val)
-}
-
-// convertToGoPatchPath converts dot-notation path to Go-Patch style (/a/b/c).
-func convertToGoPatchPath(path string) string {
-	// Replace dots with slashes
-	result := strings.ReplaceAll(path, ".", "/")
-	// Convert array notation [n] to /n
-	result = strings.ReplaceAll(result, "[", "/")
-	result = strings.ReplaceAll(result, "]", "")
-	// Ensure leading slash
-	if !strings.HasPrefix(result, "/") {
-		result = "/" + result
-	}
-	return result
 }
 
 // BriefFormatter renders a concise summary of changes.
@@ -492,7 +480,7 @@ func (f *GitLabFormatter) Format(diffs []Difference, opts *FormatOptions) string
 		desc := diffDescription(diff)
 		locationPath := opts.FilePath
 		if locationPath == "" {
-			locationPath = diff.Path
+			locationPath = diff.Path.String()
 		}
 		fmt.Fprintf(&sb,
 			`  {"description": %q, "check_name": %q, "fingerprint": %q, "severity": %q, "location": {"path": %q, "lines": {"begin": 1}}}`,

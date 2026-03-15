@@ -130,7 +130,7 @@ func TestFormatOptions_Defaults(t *testing.T) {
 
 func TestDiffGroup_Construction(t *testing.T) {
 	diffs := []Difference{
-		{Path: "config.host", Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"config", "host"}, Type: DiffModified, From: "old", To: "new"},
 	}
 	group := DiffGroup{
 		FilePath: "deploy.yaml",
@@ -158,7 +158,7 @@ func TestFormatter_Interface(t *testing.T) {
 	formatters := []string{"compact", "brief", "github", "gitlab", "gitea", "detailed"}
 
 	diffs := []Difference{
-		{Path: "test.path", Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"test", "path"}, Type: DiffModified, From: "old", To: "new"},
 	}
 	opts := DefaultFormatOptions()
 
@@ -201,7 +201,7 @@ func TestFormatter_NilOptions(t *testing.T) {
 	f, _ := FormatterByName("compact")
 
 	diffs := []Difference{
-		{Path: "test", Type: DiffAdded, From: nil, To: "value"},
+		{Path: DiffPath{"test"}, Type: DiffAdded, From: nil, To: "value"},
 	}
 
 	// Should handle nil options gracefully (no panic)
@@ -211,23 +211,24 @@ func TestFormatter_NilOptions(t *testing.T) {
 	}
 }
 
-func TestConvertToGoPatchPath(t *testing.T) {
+func TestDiffPath_GoPatchString(t *testing.T) {
 	tests := []struct {
-		input    string
+		path     DiffPath
 		expected string
 	}{
-		{"config.name", "/config/name"},
-		{"items[0].value", "/items/0/value"},
-		{"root", "/root"},
-		{"a.b.c.d", "/a/b/c/d"},
-		{"list[0][1].nested", "/list/0/1/nested"},
+		{DiffPath{"config", "name"}, "/config/name"},
+		{DiffPath{"items", "[0]", "value"}, "/items/0/value"},
+		{DiffPath{"root"}, "/root"},
+		{DiffPath{"a", "b", "c", "d"}, "/a/b/c/d"},
+		{DiffPath{"labels", "helm.sh/chart"}, "/labels/helm.sh/chart"},
+		{nil, "/"},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			result := convertToGoPatchPath(tt.input)
+		t.Run(tt.expected, func(t *testing.T) {
+			result := tt.path.GoPatchString()
 			if result != tt.expected {
-				t.Errorf("convertToGoPatchPath(%q) = %q, want %q", tt.input, result, tt.expected)
+				t.Errorf("DiffPath%v.GoPatchString() = %q, want %q", []string(tt.path), result, tt.expected)
 			}
 		})
 	}
@@ -381,31 +382,31 @@ func TestBriefFormatter_SummaryGeneration(t *testing.T) {
 		{
 			name: "single added",
 			diffs: []Difference{
-				{Path: "key", Type: DiffAdded, To: "value"},
+				{Path: DiffPath{"key"}, Type: DiffAdded, To: "value"},
 			},
 			expected: []string{"1 added"},
 		},
 		{
 			name: "single removed",
 			diffs: []Difference{
-				{Path: "key", Type: DiffRemoved, From: "value"},
+				{Path: DiffPath{"key"}, Type: DiffRemoved, From: "value"},
 			},
 			expected: []string{"1 removed"},
 		},
 		{
 			name: "single modified",
 			diffs: []Difference{
-				{Path: "key", Type: DiffModified, From: "old", To: "new"},
+				{Path: DiffPath{"key"}, Type: DiffModified, From: "old", To: "new"},
 			},
 			expected: []string{"1 modified"},
 		},
 		{
 			name: "mixed changes",
 			diffs: []Difference{
-				{Path: "a", Type: DiffAdded, To: "new"},
-				{Path: "b", Type: DiffAdded, To: "new2"},
-				{Path: "c", Type: DiffRemoved, From: "old"},
-				{Path: "d", Type: DiffModified, From: "old", To: "new"},
+				{Path: DiffPath{"a"}, Type: DiffAdded, To: "new"},
+				{Path: DiffPath{"b"}, Type: DiffAdded, To: "new2"},
+				{Path: DiffPath{"c"}, Type: DiffRemoved, From: "old"},
+				{Path: DiffPath{"d"}, Type: DiffModified, From: "old", To: "new"},
 			},
 			expected: []string{"2 added", "1 removed", "1 modified"},
 		},
@@ -438,7 +439,7 @@ func TestGitHubFormatter_WorkflowCommandFormat(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
-		{Path: "config.timeout", Type: DiffModified, From: "30", To: "60"},
+		{Path: DiffPath{"config", "timeout"}, Type: DiffModified, From: "30", To: "60"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -463,22 +464,22 @@ func TestGitHubFormatter_AllDiffTypes(t *testing.T) {
 	}{
 		{
 			name:     "added",
-			diff:     Difference{Path: "key", Type: DiffAdded, To: "value"},
+			diff:     Difference{Path: DiffPath{"key"}, Type: DiffAdded, To: "value"},
 			expected: "Added:",
 		},
 		{
 			name:     "removed",
-			diff:     Difference{Path: "key", Type: DiffRemoved, From: "value"},
+			diff:     Difference{Path: DiffPath{"key"}, Type: DiffRemoved, From: "value"},
 			expected: "Removed:",
 		},
 		{
 			name:     "modified",
-			diff:     Difference{Path: "key", Type: DiffModified, From: "old", To: "new"},
+			diff:     Difference{Path: DiffPath{"key"}, Type: DiffModified, From: "old", To: "new"},
 			expected: "Modified:",
 		},
 		{
 			name:     "order changed",
-			diff:     Difference{Path: "list", Type: DiffOrderChanged},
+			diff:     Difference{Path: DiffPath{"list"}, Type: DiffOrderChanged},
 			expected: "Order changed:",
 		},
 	}
@@ -509,7 +510,7 @@ func TestGitLabFormatter_CodeQualityJSON(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
-		{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"},
+		{Path: DiffPath{"config", "host"}, Type: DiffModified, From: "localhost", To: "production"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -557,8 +558,8 @@ func TestGitLabFormatter_MultipleDiffs(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
-		{Path: "a", Type: DiffAdded, To: "new"},
-		{Path: "b", Type: DiffRemoved, From: "old"},
+		{Path: DiffPath{"a"}, Type: DiffAdded, To: "new"},
+		{Path: DiffPath{"b"}, Type: DiffRemoved, From: "old"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -574,7 +575,7 @@ func TestGiteaFormatter_GitHubCompatible(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
-		{Path: "config.value", Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"config", "value"}, Type: DiffModified, From: "old", To: "new"},
 	}
 
 	giteaOutput := giteaF.Format(diffs, opts)
@@ -593,7 +594,7 @@ func TestCompactFormatter_SingleLineFormat(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
-		{Path: "config.timeout", Type: DiffModified, From: "30", To: "60"},
+		{Path: DiffPath{"config", "timeout"}, Type: DiffModified, From: "30", To: "60"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -630,7 +631,7 @@ func TestCompactFormatter_ChangeTypeIndicators(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			diffs := []Difference{
-				{Path: "test.path", Type: tt.diffType, From: "old", To: "new"},
+				{Path: DiffPath{"test", "path"}, Type: tt.diffType, From: "old", To: "new"},
 			}
 			output := f.Format(diffs, opts)
 			if !containsSubstr(output, tt.indicator) {
@@ -677,7 +678,7 @@ func TestStyleConstants_CombiningWithColor(t *testing.T) {
 func TestCompactFormatter_ColorCodes(t *testing.T) {
 	f, _ := FormatterByName("compact")
 	diffs := []Difference{
-		{Path: "test", Type: DiffAdded, From: nil, To: "new"},
+		{Path: DiffPath{"test"}, Type: DiffAdded, From: nil, To: "new"},
 	}
 	opts := DefaultFormatOptions()
 	opts.Color = true
@@ -701,25 +702,25 @@ func TestGitHubFormatter_DifferentiatedCommands(t *testing.T) {
 	}{
 		{
 			name:            "added uses notice",
-			diff:            Difference{Path: "key", Type: DiffAdded, To: "value"},
+			diff:            Difference{Path: DiffPath{"key"}, Type: DiffAdded, To: "value"},
 			expectedCommand: "::notice",
 			expectedTitle:   "title=YAML Added",
 		},
 		{
 			name:            "removed uses error",
-			diff:            Difference{Path: "key", Type: DiffRemoved, From: "value"},
+			diff:            Difference{Path: DiffPath{"key"}, Type: DiffRemoved, From: "value"},
 			expectedCommand: "::error",
 			expectedTitle:   "title=YAML Removed",
 		},
 		{
 			name:            "modified uses warning",
-			diff:            Difference{Path: "key", Type: DiffModified, From: "old", To: "new"},
+			diff:            Difference{Path: DiffPath{"key"}, Type: DiffModified, From: "old", To: "new"},
 			expectedCommand: "::warning",
 			expectedTitle:   "title=YAML Modified",
 		},
 		{
 			name:            "order changed uses notice",
-			diff:            Difference{Path: "list", Type: DiffOrderChanged},
+			diff:            Difference{Path: DiffPath{"list"}, Type: DiffOrderChanged},
 			expectedCommand: "::notice",
 			expectedTitle:   "title=YAML Order Changed",
 		},
@@ -744,7 +745,7 @@ func TestGitHubFormatter_FileParameter(t *testing.T) {
 	opts.FilePath = "deploy.yaml"
 
 	diffs := []Difference{
-		{Path: "config.timeout", Type: DiffModified, From: "30", To: "60"},
+		{Path: DiffPath{"config", "timeout"}, Type: DiffModified, From: "30", To: "60"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -766,7 +767,7 @@ func TestGitHubFormatter_NoFileParameter(t *testing.T) {
 	// FilePath is empty — backward compatible
 
 	diffs := []Difference{
-		{Path: "config.timeout", Type: DiffModified, From: "30", To: "60"},
+		{Path: DiffPath{"config", "timeout"}, Type: DiffModified, From: "30", To: "60"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -794,22 +795,22 @@ func TestGitHubFormatter_FileParameterAllDiffTypes(t *testing.T) {
 	}{
 		{
 			name:     "added with file",
-			diff:     Difference{Path: "key", Type: DiffAdded, To: "value"},
+			diff:     Difference{Path: DiffPath{"key"}, Type: DiffAdded, To: "value"},
 			expected: "::notice file=service.yaml,title=YAML Added::Added: key = value\n",
 		},
 		{
 			name:     "removed with file",
-			diff:     Difference{Path: "key", Type: DiffRemoved, From: "value"},
+			diff:     Difference{Path: DiffPath{"key"}, Type: DiffRemoved, From: "value"},
 			expected: "::error file=service.yaml,title=YAML Removed::Removed: key = value\n",
 		},
 		{
 			name:     "modified with file",
-			diff:     Difference{Path: "key", Type: DiffModified, From: "old", To: "new"},
+			diff:     Difference{Path: DiffPath{"key"}, Type: DiffModified, From: "old", To: "new"},
 			expected: "::warning file=service.yaml,title=YAML Modified::Modified: key changed from old to new\n",
 		},
 		{
 			name:     "order changed with file",
-			diff:     Difference{Path: "list", Type: DiffOrderChanged},
+			diff:     Difference{Path: DiffPath{"list"}, Type: DiffOrderChanged},
 			expected: "::notice file=service.yaml,title=YAML Order Changed::Order changed: list\n",
 		},
 	}
@@ -832,7 +833,7 @@ func TestGitHubFormatter_AnnotationLimitTruncation(t *testing.T) {
 	var diffs []Difference
 	for i := 0; i < 13; i++ {
 		diffs = append(diffs, Difference{
-			Path: fmt.Sprintf("key%d", i),
+			Path: DiffPath{fmt.Sprintf("key%d", i)},
 			Type: DiffModified,
 			From: "old",
 			To:   "new",
@@ -869,7 +870,7 @@ func TestGitHubFormatter_AnnotationLimitNotTriggered(t *testing.T) {
 	var diffs []Difference
 	for i := 0; i < 10; i++ {
 		diffs = append(diffs, Difference{
-			Path: fmt.Sprintf("key%d", i),
+			Path: DiffPath{fmt.Sprintf("key%d", i)},
 			Type: DiffModified,
 			From: "old",
 			To:   "new",
@@ -897,14 +898,14 @@ func TestGitHubFormatter_AnnotationLimitMixedNotice(t *testing.T) {
 	var diffs []Difference
 	for i := 0; i < 7; i++ {
 		diffs = append(diffs, Difference{
-			Path: fmt.Sprintf("added%d", i),
+			Path: DiffPath{fmt.Sprintf("added%d", i)},
 			Type: DiffAdded,
 			To:   "val",
 		})
 	}
 	for i := 0; i < 5; i++ {
 		diffs = append(diffs, Difference{
-			Path: fmt.Sprintf("order%d", i),
+			Path: DiffPath{fmt.Sprintf("order%d", i)},
 			Type: DiffOrderChanged,
 		})
 	}
@@ -942,13 +943,13 @@ func TestGitHubFormatter_AnnotationLimitMultipleTypes(t *testing.T) {
 	// 12 notices (DiffAdded) + 11 warnings (DiffModified) + 3 errors (DiffRemoved)
 	var diffs []Difference
 	for i := 0; i < 12; i++ {
-		diffs = append(diffs, Difference{Path: fmt.Sprintf("a%d", i), Type: DiffAdded, To: "v"})
+		diffs = append(diffs, Difference{Path: DiffPath{fmt.Sprintf("a%d", i)}, Type: DiffAdded, To: "v"})
 	}
 	for i := 0; i < 11; i++ {
-		diffs = append(diffs, Difference{Path: fmt.Sprintf("m%d", i), Type: DiffModified, From: "o", To: "n"})
+		diffs = append(diffs, Difference{Path: DiffPath{fmt.Sprintf("m%d", i)}, Type: DiffModified, From: "o", To: "n"})
 	}
 	for i := 0; i < 3; i++ {
-		diffs = append(diffs, Difference{Path: fmt.Sprintf("r%d", i), Type: DiffRemoved, From: "v"})
+		diffs = append(diffs, Difference{Path: DiffPath{fmt.Sprintf("r%d", i)}, Type: DiffRemoved, From: "v"})
 	}
 
 	output := f.Format(diffs, opts)
@@ -978,7 +979,7 @@ func TestGitLabFormatter_RequiredFields(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
-		{Path: "config.key", Type: DiffAdded, To: "value"},
+		{Path: DiffPath{"config", "key"}, Type: DiffAdded, To: "value"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -1002,22 +1003,22 @@ func TestGitLabFormatter_SeverityMapping(t *testing.T) {
 	}{
 		{
 			name:             "added is info",
-			diff:             Difference{Path: "key", Type: DiffAdded, To: "val"},
+			diff:             Difference{Path: DiffPath{"key"}, Type: DiffAdded, To: "val"},
 			expectedSeverity: `"severity": "info"`,
 		},
 		{
 			name:             "removed is major",
-			diff:             Difference{Path: "key", Type: DiffRemoved, From: "val"},
+			diff:             Difference{Path: DiffPath{"key"}, Type: DiffRemoved, From: "val"},
 			expectedSeverity: `"severity": "major"`,
 		},
 		{
 			name:             "modified is major",
-			diff:             Difference{Path: "key", Type: DiffModified, From: "old", To: "new"},
+			diff:             Difference{Path: DiffPath{"key"}, Type: DiffModified, From: "old", To: "new"},
 			expectedSeverity: `"severity": "major"`,
 		},
 		{
 			name:             "order changed is minor",
-			diff:             Difference{Path: "list", Type: DiffOrderChanged},
+			diff:             Difference{Path: DiffPath{"list"}, Type: DiffOrderChanged},
 			expectedSeverity: `"severity": "minor"`,
 		},
 	}
@@ -1043,22 +1044,22 @@ func TestGitLabFormatter_CheckNameMapping(t *testing.T) {
 	}{
 		{
 			name:              "added check name",
-			diff:              Difference{Path: "key", Type: DiffAdded, To: "val"},
+			diff:              Difference{Path: DiffPath{"key"}, Type: DiffAdded, To: "val"},
 			expectedCheckName: "diffyml/added",
 		},
 		{
 			name:              "removed check name",
-			diff:              Difference{Path: "key", Type: DiffRemoved, From: "val"},
+			diff:              Difference{Path: DiffPath{"key"}, Type: DiffRemoved, From: "val"},
 			expectedCheckName: "diffyml/removed",
 		},
 		{
 			name:              "modified check name",
-			diff:              Difference{Path: "key", Type: DiffModified, From: "old", To: "new"},
+			diff:              Difference{Path: DiffPath{"key"}, Type: DiffModified, From: "old", To: "new"},
 			expectedCheckName: "diffyml/modified",
 		},
 		{
 			name:              "order changed check name",
-			diff:              Difference{Path: "list", Type: DiffOrderChanged},
+			diff:              Difference{Path: DiffPath{"list"}, Type: DiffOrderChanged},
 			expectedCheckName: "diffyml/order-changed",
 		},
 	}
@@ -1078,8 +1079,8 @@ func TestGitLabFormatter_UniqueFingerprints(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
-		{Path: "config.key", Type: DiffAdded, To: "value1"},
-		{Path: "config.key", Type: DiffRemoved, From: "value2"},
+		{Path: DiffPath{"config", "key"}, Type: DiffAdded, To: "value1"},
+		{Path: DiffPath{"config", "key"}, Type: DiffRemoved, From: "value2"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -1108,7 +1109,7 @@ func TestGitLabFormatter_FingerprintDeterministic(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
-		{Path: "config.key", Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"config", "key"}, Type: DiffModified, From: "old", To: "new"},
 	}
 
 	output1 := f.Format(diffs, opts)
@@ -1127,7 +1128,7 @@ func TestGitLabFormatter_LocationPathUsesFilePath(t *testing.T) {
 	opts.FilePath = "deploy.yaml"
 
 	diffs := []Difference{
-		{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"},
+		{Path: DiffPath{"config", "host"}, Type: DiffModified, From: "localhost", To: "production"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -1148,7 +1149,7 @@ func TestGitLabFormatter_LocationPathFallback(t *testing.T) {
 	// FilePath is empty — should fall back to diff.Path
 
 	diffs := []Difference{
-		{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"},
+		{Path: DiffPath{"config", "host"}, Type: DiffModified, From: "localhost", To: "production"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -1163,7 +1164,7 @@ func TestGitLabFormatter_FingerprintIncludesFilePath(t *testing.T) {
 	f := &GitLabFormatter{}
 
 	diffs := []Difference{
-		{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"},
+		{Path: DiffPath{"config", "host"}, Type: DiffModified, From: "localhost", To: "production"},
 	}
 
 	opts1 := DefaultFormatOptions()
@@ -1190,7 +1191,7 @@ func TestGitLabFormatter_FingerprintUnchangedWhenNoFilePath(t *testing.T) {
 	// FilePath is empty
 
 	diffs := []Difference{
-		{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"},
+		{Path: DiffPath{"config", "host"}, Type: DiffModified, From: "localhost", To: "production"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -1210,18 +1211,18 @@ func TestGitLabFormatter_DescriptionContainsYAMLPath(t *testing.T) {
 	opts.FilePath = "deploy.yaml"
 
 	diffs := []Difference{
-		{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"},
-		{Path: "config.port", Type: DiffAdded, To: 8080},
-		{Path: "config.old", Type: DiffRemoved, From: "value"},
-		{Path: "items", Type: DiffOrderChanged},
+		{Path: DiffPath{"config", "host"}, Type: DiffModified, From: "localhost", To: "production"},
+		{Path: DiffPath{"config", "port"}, Type: DiffAdded, To: 8080},
+		{Path: DiffPath{"config", "old"}, Type: DiffRemoved, From: "value"},
+		{Path: DiffPath{"items"}, Type: DiffOrderChanged},
 	}
 
 	output := f.Format(diffs, opts)
 
 	// All YAML paths should appear in descriptions
 	for _, d := range diffs {
-		if !strings.Contains(output, d.Path) {
-			t.Errorf("expected YAML path %q in description, got: %s", d.Path, output)
+		if !strings.Contains(output, d.Path.String()) {
+			t.Errorf("expected YAML path %q in description, got: %s", d.Path.String(), output)
 		}
 	}
 }
@@ -1232,8 +1233,8 @@ func TestGitLabFormatter_ValidJSON_WithFilePath(t *testing.T) {
 	opts.FilePath = "deploy.yaml"
 
 	diffs := []Difference{
-		{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"},
-		{Path: "config.port", Type: DiffAdded, To: 8080},
+		{Path: DiffPath{"config", "host"}, Type: DiffModified, From: "localhost", To: "production"},
+		{Path: DiffPath{"config", "port"}, Type: DiffAdded, To: 8080},
 	}
 
 	output := f.Format(diffs, opts)
@@ -1253,7 +1254,7 @@ func TestGitLabFormatter_NoBOM(t *testing.T) {
 	opts.FilePath = "deploy.yaml"
 
 	diffs := []Difference{
-		{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"},
+		{Path: DiffPath{"config", "host"}, Type: DiffModified, From: "localhost", To: "production"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -1274,13 +1275,13 @@ func TestGitLabFormatter_FormatAll_SingleArray(t *testing.T) {
 		{
 			FilePath: "deploy.yaml",
 			Diffs: []Difference{
-				{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"},
+				{Path: DiffPath{"config", "host"}, Type: DiffModified, From: "localhost", To: "production"},
 			},
 		},
 		{
 			FilePath: "service.yaml",
 			Diffs: []Difference{
-				{Path: "service.port", Type: DiffAdded, To: 8080},
+				{Path: DiffPath{"service", "port"}, Type: DiffAdded, To: 8080},
 			},
 		},
 	}
@@ -1315,7 +1316,7 @@ func TestGitLabFormatter_FormatAll_DescriptionIncludesFilename(t *testing.T) {
 		{
 			FilePath: "deploy.yaml",
 			Diffs: []Difference{
-				{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"},
+				{Path: DiffPath{"config", "host"}, Type: DiffModified, From: "localhost", To: "production"},
 			},
 		},
 	}
@@ -1340,7 +1341,7 @@ func TestGitLabFormatter_FormatAll_LocationPath(t *testing.T) {
 		{
 			FilePath: "deploy.yaml",
 			Diffs: []Difference{
-				{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"},
+				{Path: DiffPath{"config", "host"}, Type: DiffModified, From: "localhost", To: "production"},
 			},
 		},
 	}
@@ -1362,13 +1363,13 @@ func TestGitLabFormatter_FormatAll_UniqueFingerprintsAcrossFiles(t *testing.T) {
 		{
 			FilePath: "file1.yaml",
 			Diffs: []Difference{
-				{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"},
+				{Path: DiffPath{"config", "host"}, Type: DiffModified, From: "localhost", To: "production"},
 			},
 		},
 		{
 			FilePath: "file2.yaml",
 			Diffs: []Difference{
-				{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"},
+				{Path: DiffPath{"config", "host"}, Type: DiffModified, From: "localhost", To: "production"},
 			},
 		},
 	}
@@ -1396,14 +1397,14 @@ func TestGitLabFormatter_FormatAll_ValidJSON(t *testing.T) {
 		{
 			FilePath: "deploy.yaml",
 			Diffs: []Difference{
-				{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"},
-				{Path: "config.port", Type: DiffAdded, To: 8080},
+				{Path: DiffPath{"config", "host"}, Type: DiffModified, From: "localhost", To: "production"},
+				{Path: DiffPath{"config", "port"}, Type: DiffAdded, To: 8080},
 			},
 		},
 		{
 			FilePath: "service.yaml",
 			Diffs: []Difference{
-				{Path: "service.name", Type: DiffRemoved, From: "old-svc"},
+				{Path: DiffPath{"service", "name"}, Type: DiffRemoved, From: "old-svc"},
 			},
 		},
 	}
@@ -1444,10 +1445,10 @@ func TestGitLabFormatter_BackwardCompat_EmptyFilePath(t *testing.T) {
 	// FilePath is empty (zero value)
 
 	diffs := []Difference{
-		{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"},
-		{Path: "config.port", Type: DiffAdded, To: 8080},
-		{Path: "config.old", Type: DiffRemoved, From: "value"},
-		{Path: "items", Type: DiffOrderChanged},
+		{Path: DiffPath{"config", "host"}, Type: DiffModified, From: "localhost", To: "production"},
+		{Path: DiffPath{"config", "port"}, Type: DiffAdded, To: 8080},
+		{Path: DiffPath{"config", "old"}, Type: DiffRemoved, From: "value"},
+		{Path: DiffPath{"items"}, Type: DiffOrderChanged},
 	}
 
 	output := f.Format(diffs, opts)
@@ -1465,8 +1466,8 @@ func TestGitLabFormatter_BackwardCompat_EmptyFilePath(t *testing.T) {
 	for i, entry := range result {
 		location := entry["location"].(map[string]any)
 		path := location["path"].(string)
-		if path != diffs[i].Path {
-			t.Errorf("entry %d: expected location.path=%q (fallback to diff.Path), got %q", i, diffs[i].Path, path)
+		if path != diffs[i].Path.String() {
+			t.Errorf("entry %d: expected location.path=%q (fallback to diff.Path), got %q", i, diffs[i].Path.String(), path)
 		}
 	}
 
@@ -1485,7 +1486,7 @@ func TestGitLabFormatter_BackwardCompat_FingerprintStability(t *testing.T) {
 	// Fingerprints with empty FilePath must be deterministic and match
 	// the exact pre-change formula: sha256(description).
 	// This guards against accidental changes to the hash input format.
-	diff := Difference{Path: "config.host", Type: DiffModified, From: "localhost", To: "production"}
+	diff := Difference{Path: DiffPath{"config", "host"}, Type: DiffModified, From: "localhost", To: "production"}
 	desc := diffDescription(diff)
 
 	// Compute expected fingerprint manually
@@ -1516,10 +1517,10 @@ func TestGitLabFormatter_BackwardCompat_AllDiffTypes_ValidJSON(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	allDiffs := []Difference{
-		{Path: "added.key", Type: DiffAdded, To: "value"},
-		{Path: "removed.key", Type: DiffRemoved, From: "value"},
-		{Path: "modified.key", Type: DiffModified, From: "old", To: "new"},
-		{Path: "order.key", Type: DiffOrderChanged},
+		{Path: DiffPath{"added", "key"}, Type: DiffAdded, To: "value"},
+		{Path: DiffPath{"removed", "key"}, Type: DiffRemoved, From: "value"},
+		{Path: DiffPath{"modified", "key"}, Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"order", "key"}, Type: DiffOrderChanged},
 	}
 
 	output := f.Format(allDiffs, opts)
@@ -1555,7 +1556,7 @@ func TestGitLabFormatter_BackwardCompat_NilOptions(t *testing.T) {
 	f := &GitLabFormatter{}
 
 	diffs := []Difference{
-		{Path: "key", Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"key"}, Type: DiffModified, From: "old", To: "new"},
 	}
 
 	output := f.Format(diffs, nil)
@@ -1591,8 +1592,8 @@ func TestGitLabFormatter_BackwardCompat_SpecialCharsInValues(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
-		{Path: "config.msg", Type: DiffModified, From: `line1\nline2`, To: `"quoted value"`},
-		{Path: "config.tab", Type: DiffModified, From: "no\ttab", To: "has\ttab"},
+		{Path: DiffPath{"config", "msg"}, Type: DiffModified, From: `line1\nline2`, To: `"quoted value"`},
+		{Path: DiffPath{"config", "tab"}, Type: DiffModified, From: "no\ttab", To: "has\ttab"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -1610,10 +1611,10 @@ func TestGitLabFormatter_BackwardCompat_SpecialCharsInValues(t *testing.T) {
 
 func TestFormatSingle_AllFormatters(t *testing.T) {
 	diffs := []Difference{
-		{Path: "key.added", Type: DiffAdded, To: "value"},
-		{Path: "key.removed", Type: DiffRemoved, From: "value"},
-		{Path: "key.modified", Type: DiffModified, From: "old", To: "new"},
-		{Path: "key.order", Type: DiffOrderChanged},
+		{Path: DiffPath{"key", "added"}, Type: DiffAdded, To: "value"},
+		{Path: DiffPath{"key", "removed"}, Type: DiffRemoved, From: "value"},
+		{Path: DiffPath{"key", "modified"}, Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"key", "order"}, Type: DiffOrderChanged},
 	}
 	opts := DefaultFormatOptions()
 
@@ -1631,10 +1632,10 @@ func TestFormatSingle_AllFormatters(t *testing.T) {
 
 	for name, f := range formatters {
 		for _, diff := range diffs {
-			t.Run(name+"/"+diff.Path, func(t *testing.T) {
+			t.Run(name+"/"+diff.Path.String(), func(t *testing.T) {
 				output := f.FormatSingle(diff, opts)
 				if output == "" {
-					t.Errorf("%s.FormatSingle returned empty for %s", name, diff.Path)
+					t.Errorf("%s.FormatSingle returned empty for %s", name, diff.Path.String())
 				}
 			})
 		}
@@ -1643,7 +1644,7 @@ func TestFormatSingle_AllFormatters(t *testing.T) {
 
 func TestCompactFormatter_FormatSingle_NilOpts(t *testing.T) {
 	f := &CompactFormatter{}
-	diff := Difference{Path: "key", Type: DiffAdded, To: "value"}
+	diff := Difference{Path: DiffPath{"key"}, Type: DiffAdded, To: "value"}
 
 	output := f.FormatSingle(diff, nil)
 	if output == "" {
@@ -1659,10 +1660,10 @@ func TestCompactFormatter_InlineColor(t *testing.T) {
 	opts.Color = true
 
 	diffs := []Difference{
-		{Path: "key.a", Type: DiffAdded, To: "new"},
-		{Path: "key.r", Type: DiffRemoved, From: "old"},
-		{Path: "key.m", Type: DiffModified, From: "old", To: "new"},
-		{Path: "key.o", Type: DiffOrderChanged},
+		{Path: DiffPath{"key", "a"}, Type: DiffAdded, To: "new"},
+		{Path: DiffPath{"key", "r"}, Type: DiffRemoved, From: "old"},
+		{Path: DiffPath{"key", "m"}, Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"key", "o"}, Type: DiffOrderChanged},
 	}
 
 	output := f.Format(diffs, opts)
@@ -1684,7 +1685,7 @@ func TestCompactFormatter_OrderChangedIndicator(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
-		{Path: "list.items", Type: DiffOrderChanged},
+		{Path: DiffPath{"list", "items"}, Type: DiffOrderChanged},
 	}
 	output := f.Format(diffs, opts)
 	if !strings.Contains(output, "⇆") {
@@ -1700,7 +1701,7 @@ func TestCompactFormatter_GoPatchStylePath(t *testing.T) {
 	opts := DefaultFormatOptions()
 	opts.UseGoPatchStyle = true
 
-	diff := Difference{Path: "config.items[0].name", Type: DiffModified, From: "old", To: "new"}
+	diff := Difference{Path: DiffPath{"config", "items", "0", "name"}, Type: DiffModified, From: "old", To: "new"}
 	output := f.FormatSingle(diff, opts)
 	if !strings.Contains(output, "/config/items/0/name") {
 		t.Errorf("expected Go-Patch style path, got: %s", output)
@@ -1712,7 +1713,7 @@ func TestFormatValue_Nil(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	// Modified diff with nil From value exercises formatValue(nil)
-	diff := Difference{Path: "key", Type: DiffModified, From: nil, To: "new"}
+	diff := Difference{Path: DiffPath{"key"}, Type: DiffModified, From: nil, To: "new"}
 	output := f.FormatSingle(diff, opts)
 	if !strings.Contains(output, "<nil>") {
 		t.Errorf("expected <nil> for nil value, got: %s", output)
@@ -1743,13 +1744,13 @@ func TestGitHubFormatter_FormatAll(t *testing.T) {
 		{
 			FilePath: "deploy.yaml",
 			Diffs: []Difference{
-				{Path: "key", Type: DiffModified, From: "old", To: "new"},
+				{Path: DiffPath{"key"}, Type: DiffModified, From: "old", To: "new"},
 			},
 		},
 		{
 			FilePath: "service.yaml",
 			Diffs: []Difference{
-				{Path: "port", Type: DiffAdded, To: 8080},
+				{Path: DiffPath{"port"}, Type: DiffAdded, To: 8080},
 			},
 		},
 	}
@@ -1831,13 +1832,13 @@ func TestGiteaFormatter_FormatAll(t *testing.T) {
 		{
 			FilePath: "deploy.yaml",
 			Diffs: []Difference{
-				{Path: "key", Type: DiffModified, From: "old", To: "new"},
+				{Path: DiffPath{"key"}, Type: DiffModified, From: "old", To: "new"},
 			},
 		},
 		{
 			FilePath: "service.yaml",
 			Diffs: []Difference{
-				{Path: "port", Type: DiffAdded, To: 8080},
+				{Path: DiffPath{"port"}, Type: DiffAdded, To: 8080},
 			},
 		},
 	}
@@ -1863,7 +1864,7 @@ func makeDiffs(dt DiffType, n int) []Difference {
 	diffs := make([]Difference, n)
 	for i := range diffs {
 		diffs[i] = Difference{
-			Path: fmt.Sprintf("key%d", i),
+			Path: DiffPath{fmt.Sprintf("key%d", i)},
 			Type: dt,
 			From: "old",
 			To:   "new",
@@ -1890,10 +1891,10 @@ func extractFingerprint(t *testing.T, output string) string {
 
 func TestCompactFormatter_HeaderCounts(t *testing.T) {
 	diffs := []Difference{
-		{Path: "a", Type: DiffAdded, To: "x"},
-		{Path: "b", Type: DiffAdded, To: "y"},
-		{Path: "c", Type: DiffRemoved, From: "z"},
-		{Path: "d", Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"a"}, Type: DiffAdded, To: "x"},
+		{Path: DiffPath{"b"}, Type: DiffAdded, To: "y"},
+		{Path: DiffPath{"c"}, Type: DiffRemoved, From: "z"},
+		{Path: DiffPath{"d"}, Type: DiffModified, From: "old", To: "new"},
 	}
 
 	f := &CompactFormatter{}
@@ -1917,8 +1918,8 @@ func TestCompactFormatter_HeaderCounts(t *testing.T) {
 func TestBriefFormatter_ZeroCategories(t *testing.T) {
 	// Only-added diffs → output should have no "removed" or "modified"
 	diffs := []Difference{
-		{Path: "a", Type: DiffAdded, To: "x"},
-		{Path: "b", Type: DiffAdded, To: "y"},
+		{Path: DiffPath{"a"}, Type: DiffAdded, To: "x"},
+		{Path: DiffPath{"b"}, Type: DiffAdded, To: "y"},
 	}
 
 	f := &BriefFormatter{}
@@ -1939,7 +1940,7 @@ func TestBriefFormatter_ZeroCategories(t *testing.T) {
 func TestBriefFormatter_OnlyModified(t *testing.T) {
 	// Only-modified diffs → output should have no "added" or "removed"
 	diffs := []Difference{
-		{Path: "a", Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"a"}, Type: DiffModified, From: "old", To: "new"},
 	}
 
 	f := &BriefFormatter{}

@@ -1,0 +1,10 @@
+Found two differences
+
+metadata.labels[helm.sh/chart]
+  - one map entry removed:
+    helm.sh/chart: my-chart-1.0.0
+
+metadata.labels[app.kubernetes.io/managed-by]
+  - one map entry removed:
+    app.kubernetes.io/managed-by: Helm
+

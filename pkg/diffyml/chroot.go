@@ -130,12 +130,14 @@ func parsePath(path string) ([]pathSegment, error) {
 				segments = append(segments, pathSegment{key: key})
 			}
 
-			// Then add the index segment
+			// Then add the index segment (numeric) or quoted map key (non-numeric)
 			index, err := strconv.Atoi(indexStr)
 			if err != nil {
-				return nil, fmt.Errorf("invalid list index %q", indexStr)
+				// Non-numeric bracket content is a quoted map key (e.g., [helm.sh/chart])
+				segments = append(segments, pathSegment{key: indexStr})
+			} else {
+				segments = append(segments, pathSegment{index: index, isIndex: true})
 			}
-			segments = append(segments, pathSegment{index: index, isIndex: true})
 		} else {
 			// Simple key
 			segments = append(segments, pathSegment{key: part})

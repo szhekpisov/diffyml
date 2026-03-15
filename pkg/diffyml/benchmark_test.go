@@ -445,7 +445,7 @@ func BenchmarkCompareOrderedMaps(b *testing.B) {
 			b.ReportAllocs()
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				compareOrderedMaps("root", from, to, nil)
+				compareOrderedMaps(DiffPath{"root"}, from, to, nil)
 			}
 		})
 	}
@@ -465,7 +465,7 @@ func BenchmarkCompareLists_ByIdentifier(b *testing.B) {
 			b.ReportAllocs()
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				compareListsByIdentifier("services", from, to, nil)
+				compareListsByIdentifier(DiffPath{"services"}, from, to, nil)
 			}
 		})
 	}
@@ -481,7 +481,7 @@ func BenchmarkCompareLists_Unordered(b *testing.B) {
 			b.ReportAllocs()
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				compareListsUnordered("items", from, to, nil)
+				compareListsUnordered(DiffPath{"items"}, from, to, nil)
 			}
 		})
 	}
@@ -581,14 +581,14 @@ func BenchmarkSortDiffsWithOrder(b *testing.B) {
 		diffs := make([]Difference, n)
 		pathOrder := make(map[string]int)
 		for i := 0; i < n; i++ {
-			path := fmt.Sprintf("root.section-%03d.key-%03d", i%10, i)
+			pathStr := fmt.Sprintf("root.section-%03d.key-%03d", i%10, i)
 			diffs[i] = Difference{
-				Path: path,
+				Path: DiffPath{"root", fmt.Sprintf("section-%03d", i%10), fmt.Sprintf("key-%03d", i)},
 				Type: DiffModified,
 				From: "old",
 				To:   "new",
 			}
-			pathOrder[path] = i
+			pathOrder[pathStr] = i
 		}
 		return diffs, pathOrder
 	}

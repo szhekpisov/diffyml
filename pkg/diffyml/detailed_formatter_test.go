@@ -1,6 +1,7 @@
 package diffyml
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -42,7 +43,7 @@ func TestDetailedFormatter_NilOptions(t *testing.T) {
 	f, _ := FormatterByName("detailed")
 
 	diffs := []Difference{
-		{Path: "test.key", Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"test", "key"}, Type: DiffModified, From: "old", To: "new"},
 	}
 
 	// Should not panic with nil options
@@ -56,7 +57,7 @@ func TestDetailedFormatter_ImplementsInterface(t *testing.T) {
 	f, _ := FormatterByName("detailed")
 
 	diffs := []Difference{
-		{Path: "test.path", Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"test", "path"}, Type: DiffModified, From: "old", To: "new"},
 	}
 	opts := DefaultFormatOptions()
 
@@ -84,7 +85,7 @@ func TestDetailedFormatter_PathHeading(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
-		{Path: "config.timeout", Type: DiffModified, From: "30", To: "60"},
+		{Path: DiffPath{"config", "timeout"}, Type: DiffModified, From: "30", To: "60"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -99,9 +100,9 @@ func TestDetailedFormatter_PathGrouping(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
-		{Path: "config.timeout", Type: DiffModified, From: "30", To: "60"},
-		{Path: "config.timeout", Type: DiffModified, From: "ms", To: "s"},
-		{Path: "config.host", Type: DiffModified, From: "localhost", To: "prod"},
+		{Path: DiffPath{"config", "timeout"}, Type: DiffModified, From: "30", To: "60"},
+		{Path: DiffPath{"config", "timeout"}, Type: DiffModified, From: "ms", To: "s"},
+		{Path: DiffPath{"config", "host"}, Type: DiffModified, From: "localhost", To: "prod"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -121,9 +122,9 @@ func TestDetailedFormatter_PathGroupPreservesOrder(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
-		{Path: "alpha", Type: DiffAdded, To: "a"},
-		{Path: "beta", Type: DiffAdded, To: "b"},
-		{Path: "alpha", Type: DiffAdded, To: "a2"},
+		{Path: DiffPath{"alpha"}, Type: DiffAdded, To: "a"},
+		{Path: DiffPath{"beta"}, Type: DiffAdded, To: "b"},
+		{Path: DiffPath{"alpha"}, Type: DiffAdded, To: "a2"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -144,7 +145,7 @@ func TestDetailedFormatter_GoPatchPath(t *testing.T) {
 	opts.UseGoPatchStyle = true
 
 	diffs := []Difference{
-		{Path: "config.timeout", Type: DiffModified, From: "30", To: "60"},
+		{Path: DiffPath{"config", "timeout"}, Type: DiffModified, From: "30", To: "60"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -158,7 +159,7 @@ func TestDetailedFormatter_RootLevelPath(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
-		{Path: "", Type: DiffModified, From: "old", To: "new"},
+		{Path: nil, Type: DiffModified, From: "old", To: "new"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -173,7 +174,7 @@ func TestDetailedFormatter_RootLevelGoPatch(t *testing.T) {
 	opts.UseGoPatchStyle = true
 
 	diffs := []Difference{
-		{Path: "", Type: DiffModified, From: "old", To: "new"},
+		{Path: nil, Type: DiffModified, From: "old", To: "new"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -195,8 +196,8 @@ func TestDetailedFormatter_BlankLineBetweenPathBlocks(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
-		{Path: "alpha", Type: DiffAdded, To: "a"},
-		{Path: "beta", Type: DiffAdded, To: "b"},
+		{Path: DiffPath{"alpha"}, Type: DiffAdded, To: "a"},
+		{Path: DiffPath{"beta"}, Type: DiffAdded, To: "b"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -213,7 +214,7 @@ func TestDetailedFormatter_ValueChange(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
-		{Path: "config.timeout", Type: DiffModified, From: "30", To: "60"},
+		{Path: DiffPath{"config", "timeout"}, Type: DiffModified, From: "30", To: "60"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -234,7 +235,7 @@ func TestDetailedFormatter_TypeChange(t *testing.T) {
 
 	// int to string type change
 	diffs := []Difference{
-		{Path: "config.port", Type: DiffModified, From: 8080, To: "8080"},
+		{Path: DiffPath{"config", "port"}, Type: DiffModified, From: 8080, To: "8080"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -254,7 +255,7 @@ func TestDetailedFormatter_TypeChangeBoolToString(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
-		{Path: "config.enabled", Type: DiffModified, From: true, To: "true"},
+		{Path: DiffPath{"config", "enabled"}, Type: DiffModified, From: true, To: "true"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -268,7 +269,7 @@ func TestDetailedFormatter_OrderChanged(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
-		{Path: "items", Type: DiffOrderChanged, From: []any{"a", "b"}, To: []any{"b", "a"}},
+		{Path: DiffPath{"items"}, Type: DiffOrderChanged, From: []any{"a", "b"}, To: []any{"b", "a"}},
 	}
 
 	output := f.Format(diffs, opts)
@@ -284,7 +285,7 @@ func TestDetailedFormatter_ListEntryAdded(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
-		{Path: "items.0", Type: DiffAdded, To: "newItem"},
+		{Path: DiffPath{"items", "0"}, Type: DiffAdded, To: "newItem"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -299,8 +300,8 @@ func TestDetailedFormatter_MultipleListEntriesRemoved(t *testing.T) {
 
 	// Two removals at the same list path — should be grouped
 	diffs := []Difference{
-		{Path: "items", Type: DiffRemoved, From: "item1"},
-		{Path: "items", Type: DiffRemoved, From: "item2"},
+		{Path: DiffPath{"items"}, Type: DiffRemoved, From: "item1"},
+		{Path: DiffPath{"items"}, Type: DiffRemoved, From: "item2"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -319,7 +320,7 @@ func TestDetailedFormatter_ListEntryRemovedBracket(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
-		{Path: "items[0]", Type: DiffRemoved, From: "gone"},
+		{Path: DiffPath{"items", "0"}, Type: DiffRemoved, From: "gone"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -333,7 +334,7 @@ func TestDetailedFormatter_MapEntryAdded(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
-		{Path: "config.newKey", Type: DiffAdded, To: "value"},
+		{Path: DiffPath{"config", "newKey"}, Type: DiffAdded, To: "value"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -347,7 +348,7 @@ func TestDetailedFormatter_MapEntryRemoved(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
-		{Path: "config.oldKey", Type: DiffRemoved, From: "value"},
+		{Path: DiffPath{"config", "oldKey"}, Type: DiffRemoved, From: "value"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -439,7 +440,7 @@ func TestDetailedFormatter_StructuredMapAdded(t *testing.T) {
 	om.Values["port"] = 80
 
 	diffs := []Difference{
-		{Path: "services.0", Type: DiffAdded, To: om},
+		{Path: DiffPath{"services", "0"}, Type: DiffAdded, To: om},
 	}
 
 	output := f.Format(diffs, opts)
@@ -467,7 +468,7 @@ func TestDetailedFormatter_StructuredMapWithYAMLIndentation(t *testing.T) {
 	outer.Values["config"] = inner
 
 	diffs := []Difference{
-		{Path: "apps.0", Type: DiffAdded, To: outer},
+		{Path: DiffPath{"apps", "0"}, Type: DiffAdded, To: outer},
 	}
 
 	output := f.Format(diffs, opts)
@@ -491,7 +492,7 @@ func TestDetailedFormatter_StructuredListValue(t *testing.T) {
 	listVal := []any{"alpha", "beta", "gamma"}
 
 	diffs := []Difference{
-		{Path: "items.0", Type: DiffAdded, To: listVal},
+		{Path: DiffPath{"items", "0"}, Type: DiffAdded, To: listVal},
 	}
 
 	output := f.Format(diffs, opts)
@@ -518,7 +519,7 @@ func TestDetailedFormatter_StructuredMapRemoved(t *testing.T) {
 	om.Values["value"] = 42
 
 	diffs := []Difference{
-		{Path: "entries.0", Type: DiffRemoved, From: om},
+		{Path: DiffPath{"entries", "0"}, Type: DiffRemoved, From: om},
 	}
 
 	output := f.Format(diffs, opts)
@@ -540,7 +541,7 @@ func TestDetailedFormatter_NestedListInMap(t *testing.T) {
 	om.Values["ports"] = []any{80, 443}
 
 	diffs := []Difference{
-		{Path: "services.0", Type: DiffAdded, To: om},
+		{Path: DiffPath{"services", "0"}, Type: DiffAdded, To: om},
 	}
 
 	output := f.Format(diffs, opts)
@@ -563,7 +564,7 @@ func TestDetailedFormatter_RegularMapValue(t *testing.T) {
 	}
 
 	diffs := []Difference{
-		{Path: "config.newKey", Type: DiffAdded, To: m},
+		{Path: DiffPath{"config", "newKey"}, Type: DiffAdded, To: m},
 	}
 
 	output := f.Format(diffs, opts)
@@ -577,7 +578,7 @@ func TestDetailedFormatter_NilValueDisplay(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
-		{Path: "key", Type: DiffModified, From: nil, To: "new"},
+		{Path: DiffPath{"key"}, Type: DiffModified, From: nil, To: "new"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -592,7 +593,7 @@ func TestDetailedFormatter_ScalarFallback(t *testing.T) {
 
 	// Unknown type should fall back to fmt.Sprintf
 	diffs := []Difference{
-		{Path: "key", Type: DiffModified, From: "old", To: 42},
+		{Path: DiffPath{"key"}, Type: DiffModified, From: "old", To: 42},
 	}
 
 	output := f.Format(diffs, opts)
@@ -608,8 +609,8 @@ func TestDetailedFormatter_Header(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
-		{Path: "config.timeout", Type: DiffModified, From: "30", To: "60"},
-		{Path: "config.host", Type: DiffAdded, To: "prod"},
+		{Path: DiffPath{"config", "timeout"}, Type: DiffModified, From: "30", To: "60"},
+		{Path: DiffPath{"config", "host"}, Type: DiffAdded, To: "prod"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -625,7 +626,7 @@ func TestDetailedFormatter_HeaderOmitted(t *testing.T) {
 	opts.OmitHeader = true
 
 	diffs := []Difference{
-		{Path: "config.timeout", Type: DiffModified, From: "30", To: "60"},
+		{Path: DiffPath{"config", "timeout"}, Type: DiffModified, From: "30", To: "60"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -644,7 +645,7 @@ func TestDetailedFormatter_HeaderSingleDiff(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
-		{Path: "config.timeout", Type: DiffModified, From: "30", To: "60"},
+		{Path: DiffPath{"config", "timeout"}, Type: DiffModified, From: "30", To: "60"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -659,7 +660,7 @@ func TestDetailedFormatter_HeaderColorEnabled(t *testing.T) {
 	opts.Color = true
 
 	diffs := []Difference{
-		{Path: "config.timeout", Type: DiffModified, From: "30", To: "60"},
+		{Path: DiffPath{"config", "timeout"}, Type: DiffModified, From: "30", To: "60"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -676,7 +677,7 @@ func TestDetailedFormatter_FlagCombination_OmitHeaderGoPatch(t *testing.T) {
 	opts.UseGoPatchStyle = true
 
 	diffs := []Difference{
-		{Path: "config.timeout", Type: DiffModified, From: "30", To: "60"},
+		{Path: DiffPath{"config", "timeout"}, Type: DiffModified, From: "30", To: "60"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -697,7 +698,7 @@ func TestDetailedFormatter_FlagCombination_ColorGoPatch(t *testing.T) {
 	opts.UseGoPatchStyle = true
 
 	diffs := []Difference{
-		{Path: "config.timeout", Type: DiffModified, From: "30", To: "60"},
+		{Path: DiffPath{"config", "timeout"}, Type: DiffModified, From: "30", To: "60"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -775,9 +776,9 @@ func TestDetailedFormatter_MultipleMapEntriesAdded(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
-		{Path: "config", Type: DiffAdded, To: "val1"},
-		{Path: "config", Type: DiffAdded, To: "val2"},
-		{Path: "config", Type: DiffAdded, To: "val3"},
+		{Path: DiffPath{"config"}, Type: DiffAdded, To: "val1"},
+		{Path: DiffPath{"config"}, Type: DiffAdded, To: "val2"},
+		{Path: DiffPath{"config"}, Type: DiffAdded, To: "val3"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -791,8 +792,8 @@ func TestDetailedFormatter_AddedAndRemovedInSameGroup(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
-		{Path: "items.0", Type: DiffAdded, To: "new"},
-		{Path: "items.0", Type: DiffRemoved, From: "old"},
+		{Path: DiffPath{"items", "0"}, Type: DiffAdded, To: "new"},
+		{Path: DiffPath{"items", "0"}, Type: DiffRemoved, From: "old"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -809,7 +810,7 @@ func TestDetailedFormatter_ModifiedNilToValue(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
-		{Path: "key", Type: DiffModified, From: nil, To: "new-value"},
+		{Path: DiffPath{"key"}, Type: DiffModified, From: nil, To: "new-value"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -823,7 +824,7 @@ func TestDetailedFormatter_ModifiedValueToNil(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
-		{Path: "key", Type: DiffModified, From: "old-value", To: nil},
+		{Path: DiffPath{"key"}, Type: DiffModified, From: "old-value", To: nil},
 	}
 
 	output := f.Format(diffs, opts)
@@ -838,7 +839,7 @@ func TestDetailedFormatter_OrderChangedWithValues(t *testing.T) {
 
 	diffs := []Difference{
 		{
-			Path: "items", Type: DiffOrderChanged,
+			Path: DiffPath{"items"}, Type: DiffOrderChanged,
 			From: []any{"x", "y", "z"},
 			To:   []any{"z", "y", "x"},
 		},
@@ -874,7 +875,7 @@ func TestDetailedFormatter_DeeplyNestedStructure(t *testing.T) {
 	outer.Values["level1"] = middle
 
 	diffs := []Difference{
-		{Path: "root.0", Type: DiffAdded, To: outer},
+		{Path: DiffPath{"root", "0"}, Type: DiffAdded, To: outer},
 	}
 
 	output := f.Format(diffs, opts)
@@ -893,7 +894,7 @@ func TestDetailedFormatter_MapEntryScalar_RendersKeyValue(t *testing.T) {
 	opts.OmitHeader = true
 
 	diffs := []Difference{
-		{Path: "config.verbose", Type: DiffAdded, To: true},
+		{Path: DiffPath{"config", "verbose"}, Type: DiffAdded, To: true},
 	}
 
 	output := f.Format(diffs, opts)
@@ -914,7 +915,7 @@ func TestDetailedFormatter_MapEntryStructured_RendersKeyWrapper(t *testing.T) {
 	inner.Values["port"] = 8080
 
 	diffs := []Difference{
-		{Path: "config.newKey", Type: DiffAdded, To: inner},
+		{Path: DiffPath{"config", "newKey"}, Type: DiffAdded, To: inner},
 	}
 
 	output := f.Format(diffs, opts)
@@ -930,7 +931,7 @@ func TestDetailedFormatter_ListEntry_StillUsesDashPrefix(t *testing.T) {
 	opts.OmitHeader = true
 
 	diffs := []Difference{
-		{Path: "items.0", Type: DiffAdded, To: "hello"},
+		{Path: DiffPath{"items", "0"}, Type: DiffAdded, To: "hello"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -946,7 +947,7 @@ func TestDetailedFormatter_NoLeadingBlankLine_OmitHeader(t *testing.T) {
 	opts.OmitHeader = true
 
 	diffs := []Difference{
-		{Path: "key", Type: DiffModified, From: "a", To: "b"},
+		{Path: DiffPath{"key"}, Type: DiffModified, From: "a", To: "b"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -960,7 +961,7 @@ func TestDetailedFormatter_LeadingBlankLine_WithHeader(t *testing.T) {
 	opts := DefaultFormatOptions()
 
 	diffs := []Difference{
-		{Path: "key", Type: DiffModified, From: "a", To: "b"},
+		{Path: DiffPath{"key"}, Type: DiffModified, From: "a", To: "b"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -976,7 +977,7 @@ func TestDetailedFormatter_TrailingSeparator_ValueChange(t *testing.T) {
 	opts.OmitHeader = true
 
 	diffs := []Difference{
-		{Path: "key", Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"key"}, Type: DiffModified, From: "old", To: "new"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -992,7 +993,7 @@ func TestDetailedFormatter_TrailingSeparator_EntryBatch(t *testing.T) {
 	opts.OmitHeader = true
 
 	diffs := []Difference{
-		{Path: "items.0", Type: DiffAdded, To: "val"},
+		{Path: DiffPath{"items", "0"}, Type: DiffAdded, To: "val"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -1009,7 +1010,7 @@ func TestDetailedFormatter_TrailingSeparator_OrderChange(t *testing.T) {
 
 	diffs := []Difference{
 		{
-			Path: "items", Type: DiffOrderChanged,
+			Path: DiffPath{"items"}, Type: DiffOrderChanged,
 			From: []any{"a", "b"},
 			To:   []any{"b", "a"},
 		},
@@ -1028,7 +1029,7 @@ func TestDetailedFormatter_TrailingSeparator_TypeChange(t *testing.T) {
 	opts.OmitHeader = true
 
 	diffs := []Difference{
-		{Path: "port", Type: DiffModified, From: 8080, To: "8080"},
+		{Path: DiffPath{"port"}, Type: DiffModified, From: 8080, To: "8080"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -1044,7 +1045,7 @@ func TestDetailedFormatter_HeaderFormat_SpelledOutCount(t *testing.T) {
 
 	// Single diff: "Found one difference"
 	diffs1 := []Difference{
-		{Path: "key", Type: DiffModified, From: "a", To: "b"},
+		{Path: DiffPath{"key"}, Type: DiffModified, From: "a", To: "b"},
 	}
 	output1 := f.Format(diffs1, opts)
 	if !strings.Contains(output1, "Found one difference\n") {
@@ -1053,9 +1054,9 @@ func TestDetailedFormatter_HeaderFormat_SpelledOutCount(t *testing.T) {
 
 	// Three diffs: "Found three differences"
 	diffs3 := []Difference{
-		{Path: "a", Type: DiffModified, From: "1", To: "2"},
-		{Path: "b", Type: DiffModified, From: "3", To: "4"},
-		{Path: "c", Type: DiffModified, From: "5", To: "6"},
+		{Path: DiffPath{"a"}, Type: DiffModified, From: "1", To: "2"},
+		{Path: DiffPath{"b"}, Type: DiffModified, From: "3", To: "4"},
+		{Path: DiffPath{"c"}, Type: DiffModified, From: "5", To: "6"},
 	}
 	output3 := f.Format(diffs3, opts)
 	if !strings.Contains(output3, "Found three differences\n") {
@@ -1072,7 +1073,7 @@ func TestDetailedFormatter_OrderChange_CommaSeparated(t *testing.T) {
 
 	diffs := []Difference{
 		{
-			Path: "items", Type: DiffOrderChanged,
+			Path: DiffPath{"items"}, Type: DiffOrderChanged,
 			From: []any{"a", "b", "c"},
 			To:   []any{"c", "a", "b"},
 		},
@@ -1094,7 +1095,7 @@ func TestDetailedFormatter_OrderChange_SingleItem(t *testing.T) {
 
 	diffs := []Difference{
 		{
-			Path: "items", Type: DiffOrderChanged,
+			Path: DiffPath{"items"}, Type: DiffOrderChanged,
 			From: []any{"a"},
 			To:   []any{"a"},
 		},
@@ -1116,7 +1117,7 @@ func TestDetailedFormatter_OrderChange_NonStringItems(t *testing.T) {
 
 	diffs := []Difference{
 		{
-			Path: "nums", Type: DiffOrderChanged,
+			Path: DiffPath{"nums"}, Type: DiffOrderChanged,
 			From: []any{1, 2, 3},
 			To:   []any{3, 1, 2},
 		},
@@ -1138,7 +1139,7 @@ func TestDetailedFormatter_OrderChange_Snapshot(t *testing.T) {
 
 	diffs := []Difference{
 		{
-			Path: "items", Type: DiffOrderChanged,
+			Path: DiffPath{"items"}, Type: DiffOrderChanged,
 			From: []any{"a", "b"},
 			To:   []any{"b", "a"},
 		},
@@ -1164,7 +1165,7 @@ func TestDetailedFormatter_ListEntry_DashPrefix(t *testing.T) {
 	om.Values["port"] = 80
 
 	diffs := []Difference{
-		{Path: "services.0", Type: DiffAdded, To: om},
+		{Path: DiffPath{"services", "0"}, Type: DiffAdded, To: om},
 	}
 
 	output := f.Format(diffs, opts)
@@ -1194,8 +1195,8 @@ func TestDetailedFormatter_ListEntry_MultipleMaps(t *testing.T) {
 
 	// Same path groups entries into a single batch
 	diffs := []Difference{
-		{Path: "items.1", Type: DiffAdded, To: om1},
-		{Path: "items.1", Type: DiffAdded, To: om2},
+		{Path: DiffPath{"items", "1"}, Type: DiffAdded, To: om1},
+		{Path: DiffPath{"items", "1"}, Type: DiffAdded, To: om2},
 	}
 
 	output := f.Format(diffs, opts)
@@ -1221,7 +1222,7 @@ func TestDetailedFormatter_ListEntry_NestedMap(t *testing.T) {
 	outer.Values["config"] = inner
 
 	diffs := []Difference{
-		{Path: "services.0", Type: DiffAdded, To: outer},
+		{Path: DiffPath{"services", "0"}, Type: DiffAdded, To: outer},
 	}
 
 	output := f.Format(diffs, opts)
@@ -1237,7 +1238,7 @@ func TestDetailedFormatter_ListEntry_ScalarUnchanged(t *testing.T) {
 	opts.OmitHeader = true
 
 	diffs := []Difference{
-		{Path: "items.0", Type: DiffAdded, To: "hello"},
+		{Path: DiffPath{"items", "0"}, Type: DiffAdded, To: "hello"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -1258,7 +1259,7 @@ func TestDetailedFormatter_ListEntry_Snapshot(t *testing.T) {
 	om.Values["port"] = 80
 
 	diffs := []Difference{
-		{Path: "services.0", Type: DiffAdded, To: om},
+		{Path: DiffPath{"services", "0"}, Type: DiffAdded, To: om},
 	}
 
 	output := f.Format(diffs, opts)
@@ -1277,7 +1278,7 @@ func TestDetailedFormatter_DocumentHeading(t *testing.T) {
 
 	t.Run("single doc replaces [0] with (document)", func(t *testing.T) {
 		diffs := []Difference{
-			{Path: "[0]", Type: DiffRemoved, From: "value", DocumentIndex: 0},
+			{Path: DiffPath{"[0]"}, Type: DiffRemoved, From: "value", DocumentIndex: 0},
 		}
 		output := f.Format(diffs, opts)
 		if !strings.Contains(output, "(document)") {
@@ -1290,8 +1291,8 @@ func TestDetailedFormatter_DocumentHeading(t *testing.T) {
 
 	t.Run("multi doc replaces [0] with (document 1)", func(t *testing.T) {
 		diffs := []Difference{
-			{Path: "[0]", Type: DiffRemoved, From: "value1", DocumentIndex: 0},
-			{Path: "[1]", Type: DiffAdded, To: "value2", DocumentIndex: 1},
+			{Path: DiffPath{"[0]"}, Type: DiffRemoved, From: "value1", DocumentIndex: 0},
+			{Path: DiffPath{"[1]"}, Type: DiffAdded, To: "value2", DocumentIndex: 1},
 		}
 		output := f.Format(diffs, opts)
 		if !strings.Contains(output, "(root level) (document 0)") {
@@ -1304,35 +1305,34 @@ func TestDetailedFormatter_DocumentHeading(t *testing.T) {
 
 	t.Run("non-bare index paths are not transformed", func(t *testing.T) {
 		diffs := []Difference{
-			{Path: "items[0]", Type: DiffModified, From: "old", To: "new"},
+			{Path: DiffPath{"items", "0"}, Type: DiffModified, From: "old", To: "new"},
 		}
 		output := f.Format(diffs, opts)
-		if !strings.Contains(output, "items[0]") {
-			t.Errorf("expected 'items[0]' preserved in output, got: %q", output)
+		if !strings.Contains(output, "items.0") {
+			t.Errorf("expected 'items.0' in output, got: %q", output)
 		}
 	})
 }
 
-func TestParseBareDocIndex(t *testing.T) {
+func TestDiffPath_IsBareDocIndex(t *testing.T) {
 	tests := []struct {
-		path    string
-		wantIdx int
-		wantOk  bool
+		path   DiffPath
+		wantOk bool
 	}{
-		{"[0]", 0, true},
-		{"[1]", 1, true},
-		{"[12]", 12, true},
-		{"items[0]", 0, false},
-		{"[0].spec", 0, false},
-		{"name", 0, false},
-		{"", 0, false},
-		{"[]", 0, false},
-		{"[abc]", 0, false},
+		{DiffPath{"[0]"}, true},
+		{DiffPath{"[1]"}, true},
+		{DiffPath{"[12]"}, true},
+		{DiffPath{"items", "[0]"}, false},     // multi-segment
+		{DiffPath{"[0]", "spec"}, false},      // multi-segment
+		{DiffPath{"name"}, false},             // not a bracket
+		{nil, false},                          // empty
+		{DiffPath{"[]"}, false},               // empty brackets
+		{DiffPath{"[abc]"}, false},            // non-numeric
 	}
 	for _, tt := range tests {
-		idx, ok := parseBareDocIndex(tt.path)
-		if ok != tt.wantOk || idx != tt.wantIdx {
-			t.Errorf("parseBareDocIndex(%q) = (%d, %v), want (%d, %v)", tt.path, idx, ok, tt.wantIdx, tt.wantOk)
+		ok := tt.path.IsBareDocIndex()
+		if ok != tt.wantOk {
+			t.Errorf("DiffPath%v.IsBareDocIndex() = %v, want %v", []string(tt.path), ok, tt.wantOk)
 		}
 	}
 }
@@ -1345,7 +1345,7 @@ func TestDetailedFormatter_NestedMapIndentation(t *testing.T) {
 	outerMap := map[string]any{"outer": innerMap}
 
 	diffs := []Difference{
-		{Path: "config", Type: DiffAdded, To: outerMap},
+		{Path: DiffPath{"config"}, Type: DiffAdded, To: outerMap},
 	}
 
 	f := &DetailedFormatter{}
@@ -1383,7 +1383,7 @@ func TestDetailedFormatter_ListEntryAtIndex9(t *testing.T) {
 	opts.OmitHeader = true
 
 	diffs := []Difference{
-		{Path: "items.9", Type: DiffAdded, To: "newval"},
+		{Path: DiffPath{"items", "9"}, Type: DiffAdded, To: "newval"},
 	}
 
 	output := f.Format(diffs, opts)
@@ -1405,7 +1405,7 @@ func TestRenderEntryValue_KeyExtractDotAtStart(t *testing.T) {
 	// DiffAdded with scalar value — goes through formatEntryBatch → renderEntryValue
 	diffs := []Difference{
 		{
-			Path: ".keyname",
+			Path: DiffPath{"keyname"},
 			Type: DiffAdded,
 			To:   "added_value",
 		},
@@ -1423,28 +1423,27 @@ func TestRenderEntryValue_KeyExtractDotAtStart(t *testing.T) {
 
 // Document index prefix and colon notation
 
-func TestParseDocIndexPrefix(t *testing.T) {
+func TestDiffPath_DocIndexPrefix(t *testing.T) {
 	tests := []struct {
-		path     string
+		path     DiffPath
 		wantIdx  int
-		wantRest string
+		wantRest DiffPath
 		wantOk   bool
 	}{
-		{"[0].spec.field", 0, "spec.field", true},
-		{"[2].metadata.name", 2, "metadata.name", true},
-		{"[12].x", 12, "x", true},
-		{"[0]", 0, "[0]", false},               // bare index — handled by parseBareDocIndex
-		{"items[0]", 0, "items[0]", false},     // not a leading index
-		{"name", 0, "name", false},             // no bracket
-		{"", 0, "", false},                     // empty
-		{"[abc].spec", 0, "[abc].spec", false}, // non-numeric
-		{"[].", 0, "[].", false},               // empty brackets
+		{DiffPath{"[0]", "spec", "field"}, 0, DiffPath{"spec", "field"}, true},
+		{DiffPath{"[2]", "metadata", "name"}, 2, DiffPath{"metadata", "name"}, true},
+		{DiffPath{"[12]", "x"}, 12, DiffPath{"x"}, true},
+		{DiffPath{"[0]"}, 0, DiffPath{"[0]"}, false},          // bare index — single segment
+		{DiffPath{"items", "[0]"}, 0, DiffPath{"items", "[0]"}, false}, // not a leading index
+		{DiffPath{"name"}, 0, DiffPath{"name"}, false},         // no bracket
+		{nil, 0, nil, false},                                   // empty
+		{DiffPath{"[abc]", "spec"}, 0, DiffPath{"[abc]", "spec"}, false}, // non-numeric
 	}
 	for _, tt := range tests {
-		idx, rest, ok := parseDocIndexPrefix(tt.path)
-		if ok != tt.wantOk || idx != tt.wantIdx || rest != tt.wantRest {
-			t.Errorf("parseDocIndexPrefix(%q) = (%d, %q, %v), want (%d, %q, %v)",
-				tt.path, idx, rest, ok, tt.wantIdx, tt.wantRest, tt.wantOk)
+		idx, rest, ok := tt.path.DocIndexPrefix()
+		if ok != tt.wantOk || idx != tt.wantIdx || fmt.Sprint(rest) != fmt.Sprint(tt.wantRest) {
+			t.Errorf("DiffPath%v.DocIndexPrefix() = (%d, %v, %v), want (%d, %v, %v)",
+				[]string(tt.path), idx, rest, ok, tt.wantIdx, tt.wantRest, tt.wantOk)
 		}
 	}
 }
@@ -1456,7 +1455,7 @@ func TestDetailedFormatter_ColonNotation(t *testing.T) {
 
 	t.Run("doc index prefix uses colon notation", func(t *testing.T) {
 		diffs := []Difference{
-			{Path: "[0].spec.field", Type: DiffModified, From: "old", To: "new"},
+			{Path: DiffPath{"[0]", "spec", "field"}, Type: DiffModified, From: "old", To: "new"},
 		}
 		output := f.Format(diffs, opts)
 		if !strings.Contains(output, "spec.field (document 0)") {
@@ -1469,7 +1468,7 @@ func TestDetailedFormatter_ColonNotation(t *testing.T) {
 
 	t.Run("higher doc index uses colon notation", func(t *testing.T) {
 		diffs := []Difference{
-			{Path: "[2].metadata.name", Type: DiffModified, From: "old", To: "new"},
+			{Path: DiffPath{"[2]", "metadata", "name"}, Type: DiffModified, From: "old", To: "new"},
 		}
 		output := f.Format(diffs, opts)
 		if !strings.Contains(output, "metadata.name (document 2)") {
@@ -1482,7 +1481,7 @@ func TestDetailedFormatter_ColonNotation(t *testing.T) {
 		gpOpts.OmitHeader = true
 		gpOpts.UseGoPatchStyle = true
 		diffs := []Difference{
-			{Path: "[0].spec.field", Type: DiffModified, From: "old", To: "new"},
+			{Path: DiffPath{"[0]", "spec", "field"}, Type: DiffModified, From: "old", To: "new"},
 		}
 		output := f.Format(diffs, gpOpts)
 		if !strings.Contains(output, "/spec/field (document 0)") {
@@ -1492,11 +1491,11 @@ func TestDetailedFormatter_ColonNotation(t *testing.T) {
 
 	t.Run("non-leading index still preserved", func(t *testing.T) {
 		diffs := []Difference{
-			{Path: "items[0]", Type: DiffModified, From: "old", To: "new"},
+			{Path: DiffPath{"items", "0"}, Type: DiffModified, From: "old", To: "new"},
 		}
 		output := f.Format(diffs, opts)
-		if !strings.Contains(output, "items[0]") {
-			t.Errorf("expected 'items[0]' preserved in output, got: %q", output)
+		if !strings.Contains(output, "items.0") {
+			t.Errorf("expected 'items.0' in output, got: %q", output)
 		}
 	})
 }
@@ -1514,7 +1513,7 @@ func TestDetailedFormatter_RenderDocumentValue_OrderedMap(t *testing.T) {
 	om.Values["kind"] = "Service"
 
 	diffs := []Difference{
-		{Path: "[0]", Type: DiffAdded, To: om},
+		{Path: DiffPath{"[0]"}, Type: DiffAdded, To: om},
 	}
 	output := f.Format(diffs, opts)
 	if !strings.Contains(output, "    ---\n    apiVersion: v1") {
@@ -1535,7 +1534,7 @@ func TestDetailedFormatter_RenderDocumentValue_MapStringAny(t *testing.T) {
 	opts.OmitHeader = true
 
 	diffs := []Difference{
-		{Path: "[0]", Type: DiffAdded, To: map[string]any{"name": "test", "value": "123"}},
+		{Path: DiffPath{"[0]"}, Type: DiffAdded, To: map[string]any{"name": "test", "value": "123"}},
 	}
 	output := f.Format(diffs, opts)
 	if !strings.Contains(output, "    ---\n    name: test") {
@@ -1561,7 +1560,7 @@ func TestDetailedFormatter_RenderDocumentValue_Removed(t *testing.T) {
 	om.Values["kind"] = "Service"
 
 	diffs := []Difference{
-		{Path: "[0]", Type: DiffRemoved, From: om},
+		{Path: DiffPath{"[0]"}, Type: DiffRemoved, From: om},
 	}
 	output := f.Format(diffs, opts)
 	if !strings.Contains(output, "---") {
@@ -1578,7 +1577,7 @@ func TestDetailedFormatter_RenderDocumentValue_Scalar(t *testing.T) {
 	opts.OmitHeader = true
 
 	diffs := []Difference{
-		{Path: "[0]", Type: DiffAdded, To: "just-a-string"},
+		{Path: DiffPath{"[0]"}, Type: DiffAdded, To: "just-a-string"},
 	}
 	output := f.Format(diffs, opts)
 	if !strings.Contains(output, "---") {
@@ -1600,7 +1599,7 @@ func TestDetailedFormatter_RenderDocumentValue_TrueColor(t *testing.T) {
 	om.Values["apiVersion"] = "v1"
 
 	diffs := []Difference{
-		{Path: "[0]", Type: DiffAdded, To: om},
+		{Path: DiffPath{"[0]"}, Type: DiffAdded, To: om},
 	}
 	output := f.Format(diffs, opts)
 	if !strings.Contains(output, "---") {
@@ -1620,7 +1619,7 @@ func TestDetailedFormatter_RenderEntryValue_ListScalar(t *testing.T) {
 
 	// Scalar list entry (default branch of renderEntryValue for isList=true)
 	diffs := []Difference{
-		{Path: "tags.0", Type: DiffAdded, To: "production"},
+		{Path: DiffPath{"tags", "0"}, Type: DiffAdded, To: "production"},
 	}
 	output := f.Format(diffs, opts)
 	if !strings.Contains(output, "- production") {
@@ -1635,7 +1634,7 @@ func TestDetailedFormatter_RenderEntryValue_ListOfLists(t *testing.T) {
 
 	// []any branch of renderEntryValue for isList=true
 	diffs := []Difference{
-		{Path: "matrix.0", Type: DiffAdded, To: []any{"a", "b", "c"}},
+		{Path: DiffPath{"matrix", "0"}, Type: DiffAdded, To: []any{"a", "b", "c"}},
 	}
 	output := f.Format(diffs, opts)
 	if !strings.Contains(output, "- a") {
@@ -1651,7 +1650,7 @@ func TestDetailedFormatter_RenderEntryValue_MapEntry(t *testing.T) {
 	// map[string]any branch of renderListItems: first key must have "- " bullet,
 	// second key must NOT have bullet. Keys are sorted: "name" < "value".
 	diffs := []Difference{
-		{Path: "items.0", Type: DiffAdded, To: map[string]any{"name": "test", "value": "123"}},
+		{Path: DiffPath{"items", "0"}, Type: DiffAdded, To: map[string]any{"name": "test", "value": "123"}},
 	}
 	output := f.Format(diffs, opts)
 	if !strings.Contains(output, "- name:") {
@@ -1675,7 +1674,7 @@ func TestDetailedFormatter_RenderFirstKeyValueYAML_MapValue(t *testing.T) {
 	om.Keys = append(om.Keys, "config")
 	om.Values["config"] = map[string]any{"host": "localhost", "port": 8080}
 	diffs := []Difference{
-		{Path: "services.0", Type: DiffAdded, To: om},
+		{Path: DiffPath{"services", "0"}, Type: DiffAdded, To: om},
 	}
 	output := f.Format(diffs, opts)
 	if !strings.Contains(output, "- config:") {
@@ -1693,7 +1692,7 @@ func TestDetailedFormatter_RenderFirstKeyValueYAML_ListValue(t *testing.T) {
 	om.Keys = append(om.Keys, "ports")
 	om.Values["ports"] = []any{80, 443}
 	diffs := []Difference{
-		{Path: "services.0", Type: DiffAdded, To: om},
+		{Path: DiffPath{"services", "0"}, Type: DiffAdded, To: om},
 	}
 	output := f.Format(diffs, opts)
 	if !strings.Contains(output, "- ports:") {
@@ -1714,7 +1713,7 @@ func TestDetailedFormatter_RenderFirstKeyValueYAML_MultilineString(t *testing.T)
 	om.Keys = append(om.Keys, "script")
 	om.Values["script"] = "line1\nline2\nline3"
 	diffs := []Difference{
-		{Path: "steps.0", Type: DiffAdded, To: om},
+		{Path: DiffPath{"steps", "0"}, Type: DiffAdded, To: om},
 	}
 	output := f.Format(diffs, opts)
 	if !strings.Contains(output, "- script:") {
@@ -1743,11 +1742,12 @@ func TestFormatCommaSeparated_NonSlice(t *testing.T) {
 	}
 }
 
-func TestParseDocIndexPrefix_NoBracketClose(t *testing.T) {
-	// path with [ but no ]
-	idx, rest, ok := parseDocIndexPrefix("[0.spec")
+func TestDiffPath_DocIndexPrefix_NoBracketClose(t *testing.T) {
+	// segment "[0.spec" does not match [N] format
+	path := DiffPath{"[0.spec"}
+	_, _, ok := path.DocIndexPrefix()
 	if ok {
-		t.Errorf("expected false for missing close bracket, got (%d, %q, %v)", idx, rest, ok)
+		t.Error("expected false for malformed bracket segment")
 	}
 }
 
@@ -1856,7 +1856,7 @@ func TestDetailedFormatter_TypeChange_Structured(t *testing.T) {
 			Values: map[string]any{"a": 1, "b": 2},
 		}
 		diffs := []Difference{
-			{Path: "foo", Type: DiffModified, From: om, To: []any{1, 2}},
+			{Path: DiffPath{"foo"}, Type: DiffModified, From: om, To: []any{1, 2}},
 		}
 		output := f.Format(diffs, opts)
 		if !strings.Contains(output, "type change from map to list") {
@@ -1873,7 +1873,7 @@ func TestDetailedFormatter_TypeChange_Structured(t *testing.T) {
 	t.Run("timestamp to string", func(t *testing.T) {
 		ts := time.Date(2010, 9, 9, 0, 0, 0, 0, time.UTC)
 		diffs := []Difference{
-			{Path: "ver", Type: DiffModified, From: ts, To: "2010-09-09"},
+			{Path: DiffPath{"ver"}, Type: DiffModified, From: ts, To: "2010-09-09"},
 		}
 		output := f.Format(diffs, opts)
 		if !strings.Contains(output, "type change from timestamp to string") {
@@ -1927,7 +1927,7 @@ func TestDetailedFormatter_RenderListItems_OrderedMapInList(t *testing.T) {
 	container.Values["volumeMounts"] = []any{mount1, mount2}
 
 	diffs := []Difference{
-		{Path: "containers.0", Type: DiffAdded, To: container},
+		{Path: DiffPath{"containers", "0"}, Type: DiffAdded, To: container},
 	}
 	output := f.Format(diffs, opts)
 
@@ -1975,7 +1975,7 @@ func TestDetailedFormatter_RenderListItems_NestedOrderedMapInList(t *testing.T) 
 	container.Values["env"] = []any{envVar}
 
 	diffs := []Difference{
-		{Path: "containers.0", Type: DiffAdded, To: container},
+		{Path: DiffPath{"containers", "0"}, Type: DiffAdded, To: container},
 	}
 	output := f.Format(diffs, opts)
 
@@ -2005,7 +2005,7 @@ func TestDetailedFormatter_RenderKeyValueYAML_ListWithStructuredItems(t *testing
 	item.Values["port"] = 8080
 
 	diffs := []Difference{
-		{Path: "spec.ports", Type: DiffAdded, To: []any{item}},
+		{Path: DiffPath{"spec", "ports"}, Type: DiffAdded, To: []any{item}},
 	}
 	output := f.Format(diffs, opts)
 
@@ -2039,7 +2039,7 @@ func TestDetailedFormatter_RenderFirstKeyValueYAML_ListWithStructuredItems(t *te
 	container.Values["envFrom"] = []any{envFromItem}
 
 	diffs := []Difference{
-		{Path: "containers.0", Type: DiffAdded, To: container},
+		{Path: DiffPath{"containers", "0"}, Type: DiffAdded, To: container},
 	}
 	output := f.Format(diffs, opts)
 
@@ -2069,7 +2069,7 @@ func TestDetailedFormatter_RenderEntryValue_ListWithMixedItems(t *testing.T) {
 	item.Values["value"] = "bar"
 
 	diffs := []Difference{
-		{Path: "items.0", Type: DiffAdded, To: []any{"scalar-val", item}},
+		{Path: DiffPath{"items", "0"}, Type: DiffAdded, To: []any{"scalar-val", item}},
 	}
 	output := f.Format(diffs, opts)
 

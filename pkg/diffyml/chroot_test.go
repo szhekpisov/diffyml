@@ -385,10 +385,10 @@ root:
 	hasNameDiff := false
 	hasValueDiff := false
 	for _, d := range diffs {
-		if d.Path == "name" {
+		if d.Path.String() == "name" {
 			hasNameDiff = true
 		}
-		if d.Path == "value" {
+		if d.Path.String() == "value" {
 			hasValueDiff = true
 		}
 	}

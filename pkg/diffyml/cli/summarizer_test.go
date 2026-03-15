@@ -15,7 +15,7 @@ func TestBuildPrompt_SingleFileAdded(t *testing.T) {
 		{
 			FilePath: "deploy.yaml",
 			Diffs: []diffyml.Difference{
-				{Path: "spec.replicas", Type: diffyml.DiffAdded, From: nil, To: 3},
+				{Path: diffyml.DiffPath{"spec", "replicas"}, Type: diffyml.DiffAdded, From: nil, To: 3},
 			},
 		},
 	}
@@ -41,10 +41,10 @@ func TestBuildPrompt_AllDiffTypes(t *testing.T) {
 		{
 			FilePath: "test.yaml",
 			Diffs: []diffyml.Difference{
-				{Path: "a", Type: diffyml.DiffAdded, From: nil, To: "new"},
-				{Path: "b", Type: diffyml.DiffRemoved, From: "old", To: nil},
-				{Path: "c", Type: diffyml.DiffModified, From: "v1", To: "v2"},
-				{Path: "d", Type: diffyml.DiffOrderChanged, From: nil, To: nil},
+				{Path: diffyml.DiffPath{"a"}, Type: diffyml.DiffAdded, From: nil, To: "new"},
+				{Path: diffyml.DiffPath{"b"}, Type: diffyml.DiffRemoved, From: "old", To: nil},
+				{Path: diffyml.DiffPath{"c"}, Type: diffyml.DiffModified, From: "v1", To: "v2"},
+				{Path: diffyml.DiffPath{"d"}, Type: diffyml.DiffOrderChanged, From: nil, To: nil},
 			},
 		},
 	}
@@ -61,11 +61,11 @@ func TestBuildPrompt_MultipleFiles(t *testing.T) {
 	groups := []diffyml.DiffGroup{
 		{
 			FilePath: "file1.yaml",
-			Diffs:    []diffyml.Difference{{Path: "a", Type: diffyml.DiffAdded, To: "x"}},
+			Diffs:    []diffyml.Difference{{Path: diffyml.DiffPath{"a"}, Type: diffyml.DiffAdded, To: "x"}},
 		},
 		{
 			FilePath: "file2.yaml",
-			Diffs:    []diffyml.Difference{{Path: "b", Type: diffyml.DiffRemoved, From: "y"}},
+			Diffs:    []diffyml.Difference{{Path: diffyml.DiffPath{"b"}, Type: diffyml.DiffRemoved, From: "y"}},
 		},
 	}
 
@@ -80,7 +80,7 @@ func TestBuildPrompt_Truncation(t *testing.T) {
 	var diffs []diffyml.Difference
 	for i := 0; i < 500; i++ {
 		diffs = append(diffs, diffyml.Difference{
-			Path: strings.Repeat("very.long.path.segment.", 5) + "key",
+			Path: diffyml.DiffPath(strings.Split(strings.Repeat("very.long.path.segment.", 5)+"key", ".")),
 			Type: diffyml.DiffModified,
 			From: strings.Repeat("old-value-", 10),
 			To:   strings.Repeat("new-value-", 10),
@@ -139,7 +139,7 @@ func TestSummarize_Success(t *testing.T) {
 		{
 			FilePath: "deploy.yaml",
 			Diffs: []diffyml.Difference{
-				{Path: "spec.replicas", Type: diffyml.DiffModified, From: 3, To: 5},
+				{Path: diffyml.DiffPath{"spec", "replicas"}, Type: diffyml.DiffModified, From: 3, To: 5},
 			},
 		},
 	}
@@ -171,7 +171,7 @@ func TestSummarize_NetworkError(t *testing.T) {
 	s := NewSummarizerWithClient("test-model", "test-key", mock)
 
 	groups := []diffyml.DiffGroup{
-		{FilePath: "f.yaml", Diffs: []diffyml.Difference{{Path: "a", Type: diffyml.DiffAdded, To: "v"}}},
+		{FilePath: "f.yaml", Diffs: []diffyml.Difference{{Path: diffyml.DiffPath{"a"}, Type: diffyml.DiffAdded, To: "v"}}},
 	}
 
 	_, err := s.Summarize(context.Background(), groups)
@@ -188,7 +188,7 @@ func TestSummarize_Auth401(t *testing.T) {
 	s := NewSummarizerWithClient("test-model", "test-key", mock)
 
 	groups := []diffyml.DiffGroup{
-		{FilePath: "f.yaml", Diffs: []diffyml.Difference{{Path: "a", Type: diffyml.DiffAdded, To: "v"}}},
+		{FilePath: "f.yaml", Diffs: []diffyml.Difference{{Path: diffyml.DiffPath{"a"}, Type: diffyml.DiffAdded, To: "v"}}},
 	}
 
 	_, err := s.Summarize(context.Background(), groups)
@@ -208,7 +208,7 @@ func TestSummarize_RateLimit429(t *testing.T) {
 	s := NewSummarizerWithClient("test-model", "test-key", mock)
 
 	groups := []diffyml.DiffGroup{
-		{FilePath: "f.yaml", Diffs: []diffyml.Difference{{Path: "a", Type: diffyml.DiffAdded, To: "v"}}},
+		{FilePath: "f.yaml", Diffs: []diffyml.Difference{{Path: diffyml.DiffPath{"a"}, Type: diffyml.DiffAdded, To: "v"}}},
 	}
 
 	_, err := s.Summarize(context.Background(), groups)
@@ -228,7 +228,7 @@ func TestSummarize_ServerError500(t *testing.T) {
 	s := NewSummarizerWithClient("test-model", "test-key", mock)
 
 	groups := []diffyml.DiffGroup{
-		{FilePath: "f.yaml", Diffs: []diffyml.Difference{{Path: "a", Type: diffyml.DiffAdded, To: "v"}}},
+		{FilePath: "f.yaml", Diffs: []diffyml.Difference{{Path: diffyml.DiffPath{"a"}, Type: diffyml.DiffAdded, To: "v"}}},
 	}
 
 	_, err := s.Summarize(context.Background(), groups)
@@ -248,7 +248,7 @@ func TestSummarize_MalformedResponse(t *testing.T) {
 	s := NewSummarizerWithClient("test-model", "test-key", mock)
 
 	groups := []diffyml.DiffGroup{
-		{FilePath: "f.yaml", Diffs: []diffyml.Difference{{Path: "a", Type: diffyml.DiffAdded, To: "v"}}},
+		{FilePath: "f.yaml", Diffs: []diffyml.Difference{{Path: diffyml.DiffPath{"a"}, Type: diffyml.DiffAdded, To: "v"}}},
 	}
 
 	_, err := s.Summarize(context.Background(), groups)
@@ -268,7 +268,7 @@ func TestSummarize_EmptyTextBlock(t *testing.T) {
 	s := NewSummarizerWithClient("test-model", "test-key", mock)
 
 	groups := []diffyml.DiffGroup{
-		{FilePath: "f.yaml", Diffs: []diffyml.Difference{{Path: "a", Type: diffyml.DiffAdded, To: "v"}}},
+		{FilePath: "f.yaml", Diffs: []diffyml.Difference{{Path: diffyml.DiffPath{"a"}, Type: diffyml.DiffAdded, To: "v"}}},
 	}
 
 	_, err := s.Summarize(context.Background(), groups)
@@ -288,7 +288,7 @@ func TestSummarize_Timeout(t *testing.T) {
 	s := NewSummarizerWithClient("test-model", "test-key", mock)
 
 	groups := []diffyml.DiffGroup{
-		{FilePath: "f.yaml", Diffs: []diffyml.Difference{{Path: "a", Type: diffyml.DiffAdded, To: "v"}}},
+		{FilePath: "f.yaml", Diffs: []diffyml.Difference{{Path: diffyml.DiffPath{"a"}, Type: diffyml.DiffAdded, To: "v"}}},
 	}
 
 	_, err := s.Summarize(ctx, groups)
@@ -305,7 +305,7 @@ func TestSummarize_APIErrorInBody(t *testing.T) {
 	s := NewSummarizerWithClient("test-model", "test-key", mock)
 
 	groups := []diffyml.DiffGroup{
-		{FilePath: "f.yaml", Diffs: []diffyml.Difference{{Path: "a", Type: diffyml.DiffAdded, To: "v"}}},
+		{FilePath: "f.yaml", Diffs: []diffyml.Difference{{Path: diffyml.DiffPath{"a"}, Type: diffyml.DiffAdded, To: "v"}}},
 	}
 
 	_, err := s.Summarize(context.Background(), groups)
@@ -325,7 +325,7 @@ func TestSummarize_NoTextContentBlock(t *testing.T) {
 	s := NewSummarizerWithClient("test-model", "test-key", mock)
 
 	groups := []diffyml.DiffGroup{
-		{FilePath: "f.yaml", Diffs: []diffyml.Difference{{Path: "a", Type: diffyml.DiffAdded, To: "v"}}},
+		{FilePath: "f.yaml", Diffs: []diffyml.Difference{{Path: diffyml.DiffPath{"a"}, Type: diffyml.DiffAdded, To: "v"}}},
 	}
 
 	_, err := s.Summarize(context.Background(), groups)
@@ -363,7 +363,7 @@ func TestSummarize_ServerError500_IncludesMessage(t *testing.T) {
 	s := NewSummarizerWithClient("test-model", "test-key", mock)
 
 	groups := []diffyml.DiffGroup{
-		{FilePath: "f.yaml", Diffs: []diffyml.Difference{{Path: "a", Type: diffyml.DiffAdded, To: "v"}}},
+		{FilePath: "f.yaml", Diffs: []diffyml.Difference{{Path: diffyml.DiffPath{"a"}, Type: diffyml.DiffAdded, To: "v"}}},
 	}
 
 	_, err := s.Summarize(context.Background(), groups)
@@ -382,7 +382,7 @@ func TestBuildPrompt_SingleOversizedGroup(t *testing.T) {
 	var diffs []diffyml.Difference
 	for i := 0; i < 500; i++ {
 		diffs = append(diffs, diffyml.Difference{
-			Path: strings.Repeat("very.long.path.", 10) + "key",
+			Path: diffyml.DiffPath(strings.Split(strings.Repeat("very.long.path.", 10)+"key", ".")),
 			Type: diffyml.DiffModified,
 			From: strings.Repeat("old-value-", 20),
 			To:   strings.Repeat("new-value-", 20),
@@ -410,7 +410,7 @@ func TestBuildPrompt_TruncationRemainingCount(t *testing.T) {
 	var bigDiffs []diffyml.Difference
 	for i := 0; i < 200; i++ {
 		bigDiffs = append(bigDiffs, diffyml.Difference{
-			Path: strings.Repeat("path.", 10) + "key",
+			Path: diffyml.DiffPath(strings.Split(strings.Repeat("path.", 10)+"key", ".")),
 			Type: diffyml.DiffModified,
 			From: strings.Repeat("a", 50),
 			To:   strings.Repeat("b", 50),
@@ -419,9 +419,9 @@ func TestBuildPrompt_TruncationRemainingCount(t *testing.T) {
 
 	groups := []diffyml.DiffGroup{
 		{FilePath: "file1.yaml", Diffs: bigDiffs},
-		{FilePath: "file2.yaml", Diffs: []diffyml.Difference{{Path: "x", Type: diffyml.DiffAdded, To: "v"}}},
-		{FilePath: "file3.yaml", Diffs: []diffyml.Difference{{Path: "y", Type: diffyml.DiffAdded, To: "w"}}},
-		{FilePath: "file4.yaml", Diffs: []diffyml.Difference{{Path: "z", Type: diffyml.DiffAdded, To: "u"}}},
+		{FilePath: "file2.yaml", Diffs: []diffyml.Difference{{Path: diffyml.DiffPath{"x"}, Type: diffyml.DiffAdded, To: "v"}}},
+		{FilePath: "file3.yaml", Diffs: []diffyml.Difference{{Path: diffyml.DiffPath{"y"}, Type: diffyml.DiffAdded, To: "w"}}},
+		{FilePath: "file4.yaml", Diffs: []diffyml.Difference{{Path: diffyml.DiffPath{"z"}, Type: diffyml.DiffAdded, To: "u"}}},
 	}
 
 	got := buildPrompt(groups)
@@ -450,7 +450,7 @@ func TestBuildPrompt_ExactBoundary(t *testing.T) {
 
 	// First, build a single group and measure its serialized length
 	singleDiff := diffyml.Difference{
-		Path: "test.path",
+		Path: diffyml.DiffPath{"test", "path"},
 		Type: diffyml.DiffModified,
 		From: "oldval",
 		To:   "newval",
@@ -487,7 +487,7 @@ func TestBuildPrompt_ExactBoundary(t *testing.T) {
 	group2 := diffyml.DiffGroup{
 		FilePath: "pad.yaml",
 		Diffs: []diffyml.Difference{
-			{Path: padPath, Type: diffyml.DiffModified, From: "a", To: "b"},
+			{Path: diffyml.DiffPath{padPath}, Type: diffyml.DiffModified, From: "a", To: "b"},
 		},
 	}
 
@@ -509,7 +509,7 @@ func TestBuildPrompt_ExactBoundary(t *testing.T) {
 func TestBuildPrompt_OneByteOverBoundary(t *testing.T) {
 	// Companion test: verify that one byte over the boundary DOES truncate.
 	singleDiff := diffyml.Difference{
-		Path: "test.path",
+		Path: diffyml.DiffPath{"test", "path"},
 		Type: diffyml.DiffModified,
 		From: "oldval",
 		To:   "newval",
@@ -536,7 +536,7 @@ func TestBuildPrompt_OneByteOverBoundary(t *testing.T) {
 	group2 := diffyml.DiffGroup{
 		FilePath: "pad.yaml",
 		Diffs: []diffyml.Difference{
-			{Path: padPath, Type: diffyml.DiffModified, From: "a", To: "b"},
+			{Path: diffyml.DiffPath{padPath}, Type: diffyml.DiffModified, From: "a", To: "b"},
 		},
 	}
 
@@ -563,7 +563,7 @@ func TestSummarize_APIKeyNotInError(t *testing.T) {
 	s := NewSummarizerWithClient("test-model", "secret-api-key-12345", mock)
 
 	groups := []diffyml.DiffGroup{
-		{FilePath: "f.yaml", Diffs: []diffyml.Difference{{Path: "a", Type: diffyml.DiffAdded, To: "v"}}},
+		{FilePath: "f.yaml", Diffs: []diffyml.Difference{{Path: diffyml.DiffPath{"a"}, Type: diffyml.DiffAdded, To: "v"}}},
 	}
 
 	_, err := s.Summarize(context.Background(), groups)

@@ -887,14 +887,14 @@ func TestCompareK8sDocs_RenameDetection_SingleDoc(t *testing.T) {
 		if d.Type == DiffModified && d.From == "app-config-abc123" && d.To == "app-config-def456" {
 			hasNameChange = true
 			// Path should not have document index prefix for single-doc
-			if strings.HasPrefix(d.Path, "[") {
-				t.Errorf("single-doc rename should not have document index prefix, got path %q", d.Path)
+			if strings.HasPrefix(d.Path.String(), "[") {
+				t.Errorf("single-doc rename should not have document index prefix, got path %q", d.Path.String())
 			}
 		}
-		if d.Type == DiffAdded && d.Path == "[0]" {
+		if d.Type == DiffAdded && d.Path.String() == "[0]" {
 			hasBulkAdd = true
 		}
-		if d.Type == DiffRemoved && d.Path == "[0]" {
+		if d.Type == DiffRemoved && d.Path.String() == "[0]" {
 			hasBulkRemove = true
 		}
 	}
@@ -938,8 +938,8 @@ func TestCompareK8sDocs_RenameDetection_MultiDoc(t *testing.T) {
 	for _, d := range diffs {
 		if d.Type == DiffModified && d.From == "app-config-abc123" && d.To == "app-config-def456" {
 			hasNameChange = true
-			if !strings.HasPrefix(d.Path, "[1]") {
-				t.Errorf("multi-doc rename should have [1] prefix, got path %q", d.Path)
+			if !strings.HasPrefix(d.Path.String(), "[1]") {
+				t.Errorf("multi-doc rename should have [1] prefix, got path %q", d.Path.String())
 			}
 		}
 	}

@@ -2435,6 +2435,41 @@ func TestJSONFormatter_InfNaNValues(t *testing.T) {
 	}
 }
 
+func TestJSONFormatter_FormatSingle(t *testing.T) {
+	f := &JSONFormatter{}
+	diff := Difference{
+		Path: DiffPath{"spec", "replicas"},
+		Type: DiffModified,
+		From: 3,
+		To:   5,
+	}
+
+	output := f.FormatSingle(diff, DefaultFormatOptions())
+
+	var result map[string]any
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("FormatSingle output is not valid JSON: %v\noutput: %s", err, output)
+	}
+	if result["path"] != "spec.replicas" {
+		t.Errorf("expected path 'spec.replicas', got %v", result["path"])
+	}
+	if result["type"] != "modified" {
+		t.Errorf("expected type 'modified', got %v", result["type"])
+	}
+}
+
+func TestJSONFormatter_FormatSingle_NilOpts(t *testing.T) {
+	f := &JSONFormatter{}
+	diff := Difference{Path: DiffPath{"key"}, Type: DiffAdded, To: "val"}
+
+	output := f.FormatSingle(diff, nil)
+
+	var result map[string]any
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("FormatSingle with nil opts is not valid JSON: %v", err)
+	}
+}
+
 func TestJSONFormatter_NestedListValues(t *testing.T) {
 	f := &JSONFormatter{}
 	diffs := []Difference{

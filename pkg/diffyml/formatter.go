@@ -656,6 +656,28 @@ func buildJSONDiff(diff Difference, opts *FormatOptions) jsonDiff {
 	}
 }
 
+// FormatSingle renders a single difference as a JSON object (without array wrapper).
+func (f *JSONFormatter) FormatSingle(diff Difference, opts *FormatOptions) string {
+	if opts == nil {
+		opts = DefaultFormatOptions()
+	}
+	d := buildJSONDiff(diff, opts)
+	out, err := json.Marshal(d)
+	if err != nil {
+		return "{}\n"
+	}
+	return string(out) + "\n"
+}
+
+// jsonMarshalIndent marshals v as indented JSON, returning "[]" on error.
+func jsonMarshalIndent(v any) string {
+	out, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return "[]\n"
+	}
+	return string(out) + "\n"
+}
+
 // Format renders differences as a JSON array.
 func (f *JSONFormatter) Format(diffs []Difference, opts *FormatOptions) string {
 	if opts == nil {
@@ -667,8 +689,7 @@ func (f *JSONFormatter) Format(diffs []Difference, opts *FormatOptions) string {
 		items[i] = buildJSONDiff(diff, opts)
 	}
 
-	out, _ := json.MarshalIndent(items, "", "  ")
-	return string(out) + "\n"
+	return jsonMarshalIndent(items)
 }
 
 // FormatAll renders all diff groups as a single JSON array for directory mode.
@@ -698,6 +719,5 @@ func (f *JSONFormatter) FormatAll(groups []DiffGroup, opts *FormatOptions) strin
 		}
 	}
 
-	out, _ := json.MarshalIndent(items, "", "  ")
-	return string(out) + "\n"
+	return jsonMarshalIndent(items)
 }

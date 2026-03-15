@@ -2491,3 +2491,27 @@ func TestJSONFormatter_NestedListValues(t *testing.T) {
 		t.Errorf("expected 3 items, got %d", len(toVal))
 	}
 }
+
+func TestJSONFormatter_FormatSingle_MarshalError(t *testing.T) {
+	f := &JSONFormatter{}
+	// A func value passes through jsonPrepareValue's default case
+	// but causes json.Marshal to fail.
+	diff := Difference{Path: DiffPath{"key"}, Type: DiffAdded, To: func() {}}
+
+	output := f.FormatSingle(diff, DefaultFormatOptions())
+	if output != "{}\n" {
+		t.Errorf("expected fallback {}, got %q", output)
+	}
+}
+
+func TestJSONFormatter_Format_MarshalError(t *testing.T) {
+	f := &JSONFormatter{}
+	diffs := []Difference{
+		{Path: DiffPath{"key"}, Type: DiffAdded, To: func() {}},
+	}
+
+	output := f.Format(diffs, DefaultFormatOptions())
+	if output != "[]\n" {
+		t.Errorf("expected fallback [], got %q", output)
+	}
+}

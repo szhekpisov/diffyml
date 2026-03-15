@@ -1322,12 +1322,12 @@ func TestDiffPath_IsBareDocIndex(t *testing.T) {
 		{DiffPath{"[0]"}, true},
 		{DiffPath{"[1]"}, true},
 		{DiffPath{"[12]"}, true},
-		{DiffPath{"items", "[0]"}, false},     // multi-segment
-		{DiffPath{"[0]", "spec"}, false},      // multi-segment
-		{DiffPath{"name"}, false},             // not a bracket
-		{nil, false},                          // empty
-		{DiffPath{"[]"}, false},               // empty brackets
-		{DiffPath{"[abc]"}, false},            // non-numeric
+		{DiffPath{"items", "[0]"}, false}, // multi-segment
+		{DiffPath{"[0]", "spec"}, false},  // multi-segment
+		{DiffPath{"name"}, false},         // not a bracket
+		{nil, false},                      // empty
+		{DiffPath{"[]"}, false},           // empty brackets
+		{DiffPath{"[abc]"}, false},        // non-numeric
 	}
 	for _, tt := range tests {
 		ok := tt.path.IsBareDocIndex()
@@ -1433,10 +1433,10 @@ func TestDiffPath_DocIndexPrefix(t *testing.T) {
 		{DiffPath{"[0]", "spec", "field"}, 0, DiffPath{"spec", "field"}, true},
 		{DiffPath{"[2]", "metadata", "name"}, 2, DiffPath{"metadata", "name"}, true},
 		{DiffPath{"[12]", "x"}, 12, DiffPath{"x"}, true},
-		{DiffPath{"[0]"}, 0, DiffPath{"[0]"}, false},          // bare index — single segment
+		{DiffPath{"[0]"}, 0, DiffPath{"[0]"}, false},                   // bare index — single segment
 		{DiffPath{"items", "[0]"}, 0, DiffPath{"items", "[0]"}, false}, // not a leading index
-		{DiffPath{"name"}, 0, DiffPath{"name"}, false},         // no bracket
-		{nil, 0, nil, false},                                   // empty
+		{DiffPath{"name"}, 0, DiffPath{"name"}, false},                 // no bracket
+		{nil, 0, nil, false}, // empty
 		{DiffPath{"[abc]", "spec"}, 0, DiffPath{"[abc]", "spec"}, false}, // non-numeric
 	}
 	for _, tt := range tests {

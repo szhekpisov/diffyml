@@ -15,14 +15,15 @@ type DiffPath []string
 func (p DiffPath) String() string {
 	var sb strings.Builder
 	for _, seg := range p {
-		if strings.Contains(seg, ".") {
+		switch {
+		case strings.Contains(seg, "."):
 			sb.WriteByte('[')
 			sb.WriteString(seg)
 			sb.WriteByte(']')
-		} else if sb.Len() > 0 && !strings.HasPrefix(seg, "[") {
+		case sb.Len() > 0 && !strings.HasPrefix(seg, "["):
 			sb.WriteByte('.')
 			sb.WriteString(seg)
-		} else {
+		default:
 			sb.WriteString(seg)
 		}
 	}

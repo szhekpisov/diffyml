@@ -715,6 +715,5 @@ func deepEqual(from, to any, opts *Options) bool {
 	}
 }
 
-
 // countToIDs counts the total number of items with comparable identifiers in a list.
 // Used to detect duplicate identifiers (if count != len(toIndex), there are duplicates).

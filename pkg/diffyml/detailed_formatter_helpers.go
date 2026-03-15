@@ -115,4 +115,3 @@ func pluralize(n int, singular, plural string) string {
 	}
 	return plural
 }
-

@@ -10,6 +10,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 )
@@ -601,6 +602,7 @@ func jsonDiffTypeName(dt DiffType) string {
 
 // jsonPrepareValue converts a Difference value to a JSON-serializable form.
 // *OrderedMap is converted to map[string]any since JSON has no ordered-map concept.
+// float64 Inf/NaN values are converted to strings since encoding/json cannot marshal them.
 func jsonPrepareValue(val any) any {
 	if val == nil {
 		return nil
@@ -608,6 +610,11 @@ func jsonPrepareValue(val any) any {
 	switch v := val.(type) {
 	case *OrderedMap:
 		return orderedMapToPlain(v)
+	case float64:
+		if math.IsInf(v, 0) || math.IsNaN(v) {
+			return fmt.Sprintf("%v", v)
+		}
+		return v
 	case []any:
 		out := make([]any, len(v))
 		for i, item := range v {
@@ -634,6 +641,21 @@ func orderedMapToPlain(om *OrderedMap) map[string]any {
 	return out
 }
 
+// buildJSONDiff converts a single Difference into a jsonDiff struct.
+func buildJSONDiff(diff Difference, opts *FormatOptions) jsonDiff {
+	path := diff.Path.String()
+	if opts.UseGoPatchStyle {
+		path = diff.Path.GoPatchString()
+	}
+	return jsonDiff{
+		Path:          path,
+		Type:          jsonDiffTypeName(diff.Type),
+		From:          jsonPrepareValue(diff.From),
+		To:            jsonPrepareValue(diff.To),
+		DocumentIndex: diff.DocumentIndex,
+	}
+}
+
 // Format renders differences as a JSON array.
 func (f *JSONFormatter) Format(diffs []Difference, opts *FormatOptions) string {
 	if opts == nil {
@@ -642,17 +664,7 @@ func (f *JSONFormatter) Format(diffs []Difference, opts *FormatOptions) string {
 
 	items := make([]jsonDiff, len(diffs))
 	for i, diff := range diffs {
-		path := diff.Path.String()
-		if opts.UseGoPatchStyle {
-			path = diff.Path.GoPatchString()
-		}
-		items[i] = jsonDiff{
-			Path:          path,
-			Type:          jsonDiffTypeName(diff.Type),
-			From:          jsonPrepareValue(diff.From),
-			To:            jsonPrepareValue(diff.To),
-			DocumentIndex: diff.DocumentIndex,
-		}
+		items[i] = buildJSONDiff(diff, opts)
 	}
 
 	out, _ := json.MarshalIndent(items, "", "  ")
@@ -666,26 +678,24 @@ func (f *JSONFormatter) FormatAll(groups []DiffGroup, opts *FormatOptions) strin
 		opts = DefaultFormatOptions()
 	}
 
-	var items []jsonDirDiff
-	for _, group := range groups {
-		for _, diff := range group.Diffs {
-			path := diff.Path.String()
-			if opts.UseGoPatchStyle {
-				path = diff.Path.GoPatchString()
-			}
-			items = append(items, jsonDirDiff{
-				File:          group.FilePath,
-				Path:          path,
-				Type:          jsonDiffTypeName(diff.Type),
-				From:          jsonPrepareValue(diff.From),
-				To:            jsonPrepareValue(diff.To),
-				DocumentIndex: diff.DocumentIndex,
-			})
-		}
+	total := 0
+	for _, g := range groups {
+		total += len(g.Diffs)
 	}
 
-	if items == nil {
-		items = []jsonDirDiff{}
+	items := make([]jsonDirDiff, 0, total)
+	for _, group := range groups {
+		for _, diff := range group.Diffs {
+			d := buildJSONDiff(diff, opts)
+			items = append(items, jsonDirDiff{
+				File:          group.FilePath,
+				Path:          d.Path,
+				Type:          d.Type,
+				From:          d.From,
+				To:            d.To,
+				DocumentIndex: d.DocumentIndex,
+			})
+		}
 	}
 
 	out, _ := json.MarshalIndent(items, "", "  ")

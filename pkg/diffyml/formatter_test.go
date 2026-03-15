@@ -3,6 +3,7 @@ package diffyml
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"strings"
 	"testing"
 	"time"
@@ -2405,6 +2406,32 @@ func TestJSONFormatter_FormatAll_GoPatchStyle(t *testing.T) {
 	}
 	if result[0]["file"] != "deploy.yaml" {
 		t.Errorf("expected file 'deploy.yaml', got %v", result[0]["file"])
+	}
+}
+
+func TestJSONFormatter_InfNaNValues(t *testing.T) {
+	f := &JSONFormatter{}
+	diffs := []Difference{
+		{Path: DiffPath{"inf_val"}, Type: DiffModified, From: math.Inf(1), To: math.Inf(-1)},
+		{Path: DiffPath{"nan_val"}, Type: DiffModified, From: math.NaN(), To: 0.0},
+	}
+
+	output := f.Format(diffs, DefaultFormatOptions())
+
+	var result []map[string]any
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output with Inf/NaN is not valid JSON: %v\noutput: %s", err, output)
+	}
+
+	// Inf/NaN should be serialized as strings
+	if result[0]["from"] != "+Inf" {
+		t.Errorf("expected +Inf string, got %v (%T)", result[0]["from"], result[0]["from"])
+	}
+	if result[0]["to"] != "-Inf" {
+		t.Errorf("expected -Inf string, got %v (%T)", result[0]["to"], result[0]["to"])
+	}
+	if result[1]["from"] != "NaN" {
+		t.Errorf("expected NaN string, got %v (%T)", result[1]["from"], result[1]["from"])
 	}
 }
 

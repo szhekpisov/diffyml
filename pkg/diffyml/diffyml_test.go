@@ -169,7 +169,7 @@ func TestSortDiffsWithOrder_DepthDifference(t *testing.T) {
 
 	diffs := []Difference{
 		{Path: DiffPath{"root", "a", "b", "c"}, Type: DiffModified, From: "a", To: "b"}, // depth 3
-		{Path: DiffPath{"root", "x"}, Type: DiffModified, From: "c", To: "d"},         // depth 1
+		{Path: DiffPath{"root", "x"}, Type: DiffModified, From: "c", To: "d"},           // depth 1
 	}
 
 	sortDiffsWithOrder(diffs, pathOrder)

@@ -10,7 +10,7 @@ import (
 // Tests for input validation (Task 5.2)
 
 func TestCLIConfig_Validate_ValidOutput(t *testing.T) {
-	validFormats := []string{"compact", "brief", "github", "gitlab", "gitea", "detailed"}
+	validFormats := []string{"compact", "brief", "github", "gitlab", "gitea", "json", "detailed"}
 	for _, format := range validFormats {
 		cfg := NewCLIConfig()
 		cfg.Output = format
@@ -154,7 +154,7 @@ func TestValidateFileExists_Directory(t *testing.T) {
 }
 
 func TestValidateOutputFormat_Valid(t *testing.T) {
-	validFormats := []string{"compact", "brief", "github", "gitlab", "gitea", "detailed", "COMPACT", "Compact", "BRIEF", "Brief", "DETAILED", "Detailed"}
+	validFormats := []string{"compact", "brief", "github", "gitlab", "gitea", "json", "detailed", "COMPACT", "Compact", "BRIEF", "Brief", "JSON", "Json", "DETAILED", "Detailed"}
 	for _, format := range validFormats {
 		err := ValidateOutputFormat(format)
 		if err != nil {

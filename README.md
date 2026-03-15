@@ -126,7 +126,7 @@ export KUBECTL_EXTERNAL_DIFF="diffyml --omit-header --set-exit-code"
 
 ## Features
 
-- **6 output formats** — detailed, compact, brief, GitHub, GitLab, Gitea
+- **7 output formats** — detailed, compact, brief, GitHub, GitLab, Gitea, JSON
 - **Path filtering** — include/exclude paths with exact match or regex
 - **Remote files** — compare directly from HTTP/HTTPS URLs
 - **Certificate inspection** — inspects and compares embedded x509 certificates
@@ -149,6 +149,7 @@ diffyml [flags] <from> <to>
 | github | `-o github` | GitHub Actions annotations |
 | gitlab | `-o gitlab` | GitLab CI annotations |
 | gitea | `-o gitea` | Gitea CI annotations |
+| json | `-o json` | Machine-readable — piping, scripting, CI |
 
 ### Kubernetes Support
 
@@ -237,7 +238,7 @@ The summary is appended after the standard diff output. If the API call fails, a
 
 | Flag | Description |
 |------|-------------|
-| `-o, --output <style>` | Output style: `detailed`, `compact`, `brief`, `github`, `gitlab`, `gitea` (default `detailed`) |
+| `-o, --output <style>` | Output style: `detailed`, `compact`, `brief`, `github`, `gitlab`, `gitea`, `json` (default `detailed`) |
 | `-c, --color <mode>` | Color usage: `always`, `never`, `auto` (default `auto`) |
 | `-t, --truecolor <mode>` | True color (24-bit): `always`, `never`, `auto` (default `auto`) |
 **Comparison**

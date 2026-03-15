@@ -11,6 +11,11 @@ configmaps
               type: prometheus
               url: http://prometheus:9090
 
+configmaps.app-config.data
+  + one map entry added:
+    newconfig.json: |
+      {"key": "value"}
+
 configmaps.app-config.data[app.properties]
   ± value change in multiline text (three inserts, one deletion)
     - server.port=8080
@@ -58,9 +63,4 @@ configmaps.prometheus-config.data[prometheus.yml]
     +     static_configs:
     +       - targets: ['localhost:8081']
       
-
-configmaps.app-config.data[newconfig.json]
-  + one map entry added:
-    newconfig.json: |
-      {"key": "value"}
 

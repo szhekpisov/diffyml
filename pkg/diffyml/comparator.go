@@ -175,20 +175,20 @@ func compareOrderedMaps(path DiffPath, from, to *OrderedMap, opts *Options) []Di
 
 	// First iterate over 'from' keys in their original order
 	for _, key := range from.Keys {
-		childPath := path.Append(key)
 		fromVal := from.Values[key]
 		toVal, toOk := to.Values[key]
 
 		if !toOk {
-			// Key was removed
+			// Key was removed — report at parent path with key-value wrapped in OrderedMap
 			diffs = append(diffs, Difference{
-				Path: childPath,
+				Path: path,
 				Type: DiffRemoved,
-				From: fromVal,
+				From: &OrderedMap{Keys: []string{key}, Values: map[string]any{key: fromVal}},
 				To:   nil,
 			})
 		} else {
 			// Key exists in both - recurse
+			childPath := path.Append(key)
 			diffs = append(diffs, compareNodes(childPath, fromVal, toVal, opts)...)
 		}
 	}
@@ -197,12 +197,12 @@ func compareOrderedMaps(path DiffPath, from, to *OrderedMap, opts *Options) []Di
 	// Use from.Values for lookup instead of a separate tracking map
 	for _, key := range to.Keys {
 		if _, inFrom := from.Values[key]; !inFrom {
-			childPath := path.Append(key)
+			// Key was added — report at parent path with key-value wrapped in OrderedMap
 			diffs = append(diffs, Difference{
-				Path: childPath,
+				Path: path,
 				Type: DiffAdded,
 				From: nil,
-				To:   to.Values[key],
+				To:   &OrderedMap{Keys: []string{key}, Values: map[string]any{key: to.Values[key]}},
 			})
 		}
 	}
@@ -232,29 +232,29 @@ func compareMaps(path DiffPath, from, to map[string]any, opts *Options) []Differ
 
 	// Iterate over sorted keys
 	for _, key := range sortedKeys {
-		childPath := path.Append(key)
 		fromVal, fromOk := from[key]
 		toVal, toOk := to[key]
 
 		switch {
 		case !fromOk:
-			// Key was added
+			// Key was added — report at parent path
 			diffs = append(diffs, Difference{
-				Path: childPath,
+				Path: path,
 				Type: DiffAdded,
 				From: nil,
-				To:   toVal,
+				To:   &OrderedMap{Keys: []string{key}, Values: map[string]any{key: toVal}},
 			})
 		case !toOk:
-			// Key was removed
+			// Key was removed — report at parent path
 			diffs = append(diffs, Difference{
-				Path: childPath,
+				Path: path,
 				Type: DiffRemoved,
-				From: fromVal,
+				From: &OrderedMap{Keys: []string{key}, Values: map[string]any{key: fromVal}},
 				To:   nil,
 			})
 		default:
 			// Key exists in both - recurse
+			childPath := path.Append(key)
 			diffs = append(diffs, compareNodes(childPath, fromVal, toVal, opts)...)
 		}
 	}

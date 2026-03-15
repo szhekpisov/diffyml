@@ -18,8 +18,15 @@ func (f *DetailedFormatter) renderEntryValue(sb *strings.Builder, val any, symbo
 		code = f.colorAdded(opts)
 	}
 
-	// Map entries: extract key from path and render as key: value
+	// Map entries: render as key: value pairs
 	if !isList {
+		// When value is an OrderedMap (parent-level diff), render each key-value directly
+		if om, ok := val.(*OrderedMap); ok {
+			for _, k := range om.Keys {
+				f.renderKeyValueYAML(sb, k, om.Values[k], indent, code, opts)
+			}
+			return
+		}
 		key := path.Last()
 		f.renderKeyValueYAML(sb, key, val, indent, code, opts)
 		return

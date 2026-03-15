@@ -1,6 +1,315 @@
 Found 313 differences
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.operation.properties.retry.properties.refresh (document 0)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.operation.properties.retry.properties (document 0)
+  + one map entry added:
+    refresh:
+      description: Refresh indicates if the latest revision should be used on retry instead of the initial one (default: false)
+      type: boolean
+
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 0)
+  + four map entries added:
+    directory:
+      description: Directory specifies path/directory specific options
+      properties:
+        exclude:
+          description: Exclude contains a glob pattern to match paths against that should be explicitly excluded from being used during manifest generation
+          type: string
+        include:
+          description: Include contains a glob pattern to match paths against that should be explicitly included during manifest generation
+          type: string
+        jsonnet:
+          description: Jsonnet holds options specific to Jsonnet
+          properties:
+            extVars:
+              description: ExtVars is a list of Jsonnet External Variables
+              items:
+                description: JsonnetVar represents a variable to be passed to jsonnet during manifest generation
+                properties:
+                  code:
+                    type: boolean
+                  name:
+                    type: string
+                  value:
+                    type: string
+                required:
+                  - name
+                  - value
+                type: object
+              type: array
+            libs:
+              description: Additional library search dirs
+              items:
+                type: string
+              type: array
+            tlas:
+              description: TLAS is a list of Jsonnet Top-level Arguments
+              items:
+                description: JsonnetVar represents a variable to be passed to jsonnet during manifest generation
+                properties:
+                  code:
+                    type: boolean
+                  name:
+                    type: string
+                  value:
+                    type: string
+                required:
+                  - name
+                  - value
+                type: object
+              type: array
+          type: object
+        recurse:
+          description: Recurse specifies whether to scan a directory recursively for manifests
+          type: boolean
+      type: object
+    helm:
+      description: Helm specifies helm specific options
+      properties:
+        apiVersions:
+          description: |
+            APIVersions specifies the Kubernetes resource API versions to pass to Helm when templating manifests. By default,
+            Argo CD uses the API versions of the target cluster. The format is [group/]version/kind.
+          items:
+            type: string
+          type: array
+        fileParameters:
+          description: FileParameters are file parameters to the helm template
+          items:
+            description: HelmFileParameter is a file parameter that's passed to helm template during manifest generation
+            properties:
+              name:
+                description: Name is the name of the Helm parameter
+                type: string
+              path:
+                description: Path is the path to the file containing the values for the Helm parameter
+                type: string
+            type: object
+          type: array
+        ignoreMissingValueFiles:
+          description: IgnoreMissingValueFiles prevents helm template from failing when valueFiles do not exist locally by not appending them to helm template --values
+          type: boolean
+        kubeVersion:
+          description: |
+            KubeVersion specifies the Kubernetes API version to pass to Helm when templating manifests. By default, Argo CD
+            uses the Kubernetes version of the target cluster.
+          type: string
+        namespace:
+          description: Namespace is an optional namespace to template with. If left empty, defaults to the app's destination namespace.
+          type: string
+        parameters:
+          description: Parameters is a list of Helm parameters which are passed to the helm template command upon manifest generation
+          items:
+            description: HelmParameter is a parameter that's passed to helm template during manifest generation
+            properties:
+              forceString:
+                description: ForceString determines whether to tell Helm to interpret booleans and numbers as strings
+                type: boolean
+              name:
+                description: Name is the name of the Helm parameter
+                type: string
+              value:
+                description: Value is the value for the Helm parameter
+                type: string
+            type: object
+          type: array
+        passCredentials:
+          description: PassCredentials pass credentials to all domains (Helm's --pass-credentials)
+          type: boolean
+        releaseName:
+          description: ReleaseName is the Helm release name to use. If omitted it will use the application name
+          type: string
+        skipCrds:
+          description: SkipCrds skips custom resource definition installation step (Helm's --skip-crds)
+          type: boolean
+        skipSchemaValidation:
+          description: SkipSchemaValidation skips JSON schema validation (Helm's --skip-schema-validation)
+          type: boolean
+        skipTests:
+          description: SkipTests skips test manifest installation step (Helm's --skip-tests).
+          type: boolean
+        valueFiles:
+          description: ValuesFiles is a list of Helm value files to use when generating a template
+          items:
+            type: string
+          type: array
+        values:
+          description: Values specifies Helm values to be passed to helm template, typically defined as a block. ValuesObject takes precedence over Values, so use one or the other.
+          type: string
+        valuesObject:
+          description: ValuesObject specifies Helm values to be passed to helm template, defined as a map. This takes precedence over Values.
+          type: object
+          x-kubernetes-preserve-unknown-fields: true
+        version:
+          description: Version is the Helm version to use for templating ("3")
+          type: string
+      type: object
+    kustomize:
+      description: Kustomize specifies kustomize specific options
+      properties:
+        apiVersions:
+          description: |
+            APIVersions specifies the Kubernetes resource API versions to pass to Helm when templating manifests. By default,
+            Argo CD uses the API versions of the target cluster. The format is [group/]version/kind.
+          items:
+            type: string
+          type: array
+        commonAnnotations:
+          additionalProperties:
+            type: string
+          description: CommonAnnotations is a list of additional annotations to add to rendered manifests
+          type: object
+        commonAnnotationsEnvsubst:
+          description: CommonAnnotationsEnvsubst specifies whether to apply env variables substitution for annotation values
+          type: boolean
+        commonLabels:
+          additionalProperties:
+            type: string
+          description: CommonLabels is a list of additional labels to add to rendered manifests
+          type: object
+        components:
+          description: Components specifies a list of kustomize components to add to the kustomization before building
+          items:
+            type: string
+          type: array
+        forceCommonAnnotations:
+          description: ForceCommonAnnotations specifies whether to force applying common annotations to resources for Kustomize apps
+          type: boolean
+        forceCommonLabels:
+          description: ForceCommonLabels specifies whether to force applying common labels to resources for Kustomize apps
+          type: boolean
+        ignoreMissingComponents:
+          description: IgnoreMissingComponents prevents kustomize from failing when components do not exist locally by not appending them to kustomization file
+          type: boolean
+        images:
+          description: Images is a list of Kustomize image override specifications
+          items:
+            description: KustomizeImage represents a Kustomize image definition in the format [old_image_name=]<image_name>:<image_tag>
+            type: string
+          type: array
+        kubeVersion:
+          description: |
+            KubeVersion specifies the Kubernetes API version to pass to Helm when templating manifests. By default, Argo CD
+            uses the Kubernetes version of the target cluster.
+          type: string
+        labelIncludeTemplates:
+          description: LabelIncludeTemplates specifies whether to apply common labels to resource templates or not
+          type: boolean
+        labelWithoutSelector:
+          description: LabelWithoutSelector specifies whether to apply common labels to resource selectors or not
+          type: boolean
+        namePrefix:
+          description: NamePrefix is a prefix appended to resources for Kustomize apps
+          type: string
+        nameSuffix:
+          description: NameSuffix is a suffix appended to resources for Kustomize apps
+          type: string
+        namespace:
+          description: Namespace sets the namespace that Kustomize adds to all resources
+          type: string
+        patches:
+          description: Patches is a list of Kustomize patches
+          items:
+            properties:
+              options:
+                additionalProperties:
+                  type: boolean
+                type: object
+              patch:
+                type: string
+              path:
+                type: string
+              target:
+                properties:
+                  annotationSelector:
+                    type: string
+                  group:
+                    type: string
+                  kind:
+                    type: string
+                  labelSelector:
+                    type: string
+                  name:
+                    type: string
+                  namespace:
+                    type: string
+                  version:
+                    type: string
+                type: object
+            type: object
+          type: array
+        replicas:
+          description: Replicas is a list of Kustomize Replicas override specifications
+          items:
+            properties:
+              count:
+                anyOf:
+                  - type: integer
+                  - type: string
+                description: Number of replicas
+                x-kubernetes-int-or-string: true
+              name:
+                description: Name of Deployment or StatefulSet
+                type: string
+            required:
+              - count
+              - name
+            type: object
+          type: array
+        version:
+          description: Version controls which version of Kustomize to use for rendering manifests
+          type: string
+      type: object
+    plugin:
+      description: Plugin specifies config management plugin specific options
+      properties:
+        env:
+          description: Env is a list of environment variable entries
+          items:
+            description: EnvEntry represents an entry in the application's environment
+            properties:
+              name:
+                description: Name is the name of the variable, usually expressed in uppercase
+                type: string
+              value:
+                description: Value is the value of the variable
+                type: string
+            required:
+              - name
+              - value
+            type: object
+          type: array
+        name:
+          type: string
+        parameters:
+          items:
+            properties:
+              array:
+                description: Array is the value of an array type parameter.
+                items:
+                  type: string
+                type: array
+              map:
+                additionalProperties:
+                  type: string
+                description: Map is the value of a map type parameter.
+                type: object
+              name:
+                description: Name is the name identifying a parameter.
+                type: string
+              string:
+                description: String_ is the value of a string type parameter.
+                type: string
+            type: object
+          type: array
+      type: object
+
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.syncPolicy.properties.automated.properties (document 0)
+  + one map entry added:
+    enabled:
+      description: Enable allows apps to explicitly control automated sync
+      type: boolean
+
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.syncPolicy.properties.retry.properties (document 0)
   + one map entry added:
     refresh:
       description: Refresh indicates if the latest revision should be used on retry instead of the initial one (default: false)
@@ -17,323 +326,10 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.healt
     - Status holds the status code of the application or resource
     + Status holds the status code of the application
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory (document 0)
-  + one map entry added:
-    directory:
-      description: Directory specifies path/directory specific options
-      properties:
-        exclude:
-          description: Exclude contains a glob pattern to match paths against that should be explicitly excluded from being used during manifest generation
-          type: string
-        include:
-          description: Include contains a glob pattern to match paths against that should be explicitly included during manifest generation
-          type: string
-        jsonnet:
-          description: Jsonnet holds options specific to Jsonnet
-          properties:
-            extVars:
-              description: ExtVars is a list of Jsonnet External Variables
-              items:
-                description: JsonnetVar represents a variable to be passed to jsonnet during manifest generation
-                properties:
-                  code:
-                    type: boolean
-                  name:
-                    type: string
-                  value:
-                    type: string
-                required:
-                  - name
-                  - value
-                type: object
-              type: array
-            libs:
-              description: Additional library search dirs
-              items:
-                type: string
-              type: array
-            tlas:
-              description: TLAS is a list of Jsonnet Top-level Arguments
-              items:
-                description: JsonnetVar represents a variable to be passed to jsonnet during manifest generation
-                properties:
-                  code:
-                    type: boolean
-                  name:
-                    type: string
-                  value:
-                    type: string
-                required:
-                  - name
-                  - value
-                type: object
-              type: array
-          type: object
-        recurse:
-          description: Recurse specifies whether to scan a directory recursively for manifests
-          type: boolean
-      type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm (document 0)
-  + one map entry added:
-    helm:
-      description: Helm specifies helm specific options
-      properties:
-        apiVersions:
-          description: |
-            APIVersions specifies the Kubernetes resource API versions to pass to Helm when templating manifests. By default,
-            Argo CD uses the API versions of the target cluster. The format is [group/]version/kind.
-          items:
-            type: string
-          type: array
-        fileParameters:
-          description: FileParameters are file parameters to the helm template
-          items:
-            description: HelmFileParameter is a file parameter that's passed to helm template during manifest generation
-            properties:
-              name:
-                description: Name is the name of the Helm parameter
-                type: string
-              path:
-                description: Path is the path to the file containing the values for the Helm parameter
-                type: string
-            type: object
-          type: array
-        ignoreMissingValueFiles:
-          description: IgnoreMissingValueFiles prevents helm template from failing when valueFiles do not exist locally by not appending them to helm template --values
-          type: boolean
-        kubeVersion:
-          description: |
-            KubeVersion specifies the Kubernetes API version to pass to Helm when templating manifests. By default, Argo CD
-            uses the Kubernetes version of the target cluster.
-          type: string
-        namespace:
-          description: Namespace is an optional namespace to template with. If left empty, defaults to the app's destination namespace.
-          type: string
-        parameters:
-          description: Parameters is a list of Helm parameters which are passed to the helm template command upon manifest generation
-          items:
-            description: HelmParameter is a parameter that's passed to helm template during manifest generation
-            properties:
-              forceString:
-                description: ForceString determines whether to tell Helm to interpret booleans and numbers as strings
-                type: boolean
-              name:
-                description: Name is the name of the Helm parameter
-                type: string
-              value:
-                description: Value is the value for the Helm parameter
-                type: string
-            type: object
-          type: array
-        passCredentials:
-          description: PassCredentials pass credentials to all domains (Helm's --pass-credentials)
-          type: boolean
-        releaseName:
-          description: ReleaseName is the Helm release name to use. If omitted it will use the application name
-          type: string
-        skipCrds:
-          description: SkipCrds skips custom resource definition installation step (Helm's --skip-crds)
-          type: boolean
-        skipSchemaValidation:
-          description: SkipSchemaValidation skips JSON schema validation (Helm's --skip-schema-validation)
-          type: boolean
-        skipTests:
-          description: SkipTests skips test manifest installation step (Helm's --skip-tests).
-          type: boolean
-        valueFiles:
-          description: ValuesFiles is a list of Helm value files to use when generating a template
-          items:
-            type: string
-          type: array
-        values:
-          description: Values specifies Helm values to be passed to helm template, typically defined as a block. ValuesObject takes precedence over Values, so use one or the other.
-          type: string
-        valuesObject:
-          description: ValuesObject specifies Helm values to be passed to helm template, defined as a map. This takes precedence over Values.
-          type: object
-          x-kubernetes-preserve-unknown-fields: true
-        version:
-          description: Version is the Helm version to use for templating ("3")
-          type: string
-      type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize (document 0)
-  + one map entry added:
-    kustomize:
-      description: Kustomize specifies kustomize specific options
-      properties:
-        apiVersions:
-          description: |
-            APIVersions specifies the Kubernetes resource API versions to pass to Helm when templating manifests. By default,
-            Argo CD uses the API versions of the target cluster. The format is [group/]version/kind.
-          items:
-            type: string
-          type: array
-        commonAnnotations:
-          additionalProperties:
-            type: string
-          description: CommonAnnotations is a list of additional annotations to add to rendered manifests
-          type: object
-        commonAnnotationsEnvsubst:
-          description: CommonAnnotationsEnvsubst specifies whether to apply env variables substitution for annotation values
-          type: boolean
-        commonLabels:
-          additionalProperties:
-            type: string
-          description: CommonLabels is a list of additional labels to add to rendered manifests
-          type: object
-        components:
-          description: Components specifies a list of kustomize components to add to the kustomization before building
-          items:
-            type: string
-          type: array
-        forceCommonAnnotations:
-          description: ForceCommonAnnotations specifies whether to force applying common annotations to resources for Kustomize apps
-          type: boolean
-        forceCommonLabels:
-          description: ForceCommonLabels specifies whether to force applying common labels to resources for Kustomize apps
-          type: boolean
-        ignoreMissingComponents:
-          description: IgnoreMissingComponents prevents kustomize from failing when components do not exist locally by not appending them to kustomization file
-          type: boolean
-        images:
-          description: Images is a list of Kustomize image override specifications
-          items:
-            description: KustomizeImage represents a Kustomize image definition in the format [old_image_name=]<image_name>:<image_tag>
-            type: string
-          type: array
-        kubeVersion:
-          description: |
-            KubeVersion specifies the Kubernetes API version to pass to Helm when templating manifests. By default, Argo CD
-            uses the Kubernetes version of the target cluster.
-          type: string
-        labelIncludeTemplates:
-          description: LabelIncludeTemplates specifies whether to apply common labels to resource templates or not
-          type: boolean
-        labelWithoutSelector:
-          description: LabelWithoutSelector specifies whether to apply common labels to resource selectors or not
-          type: boolean
-        namePrefix:
-          description: NamePrefix is a prefix appended to resources for Kustomize apps
-          type: string
-        nameSuffix:
-          description: NameSuffix is a suffix appended to resources for Kustomize apps
-          type: string
-        namespace:
-          description: Namespace sets the namespace that Kustomize adds to all resources
-          type: string
-        patches:
-          description: Patches is a list of Kustomize patches
-          items:
-            properties:
-              options:
-                additionalProperties:
-                  type: boolean
-                type: object
-              patch:
-                type: string
-              path:
-                type: string
-              target:
-                properties:
-                  annotationSelector:
-                    type: string
-                  group:
-                    type: string
-                  kind:
-                    type: string
-                  labelSelector:
-                    type: string
-                  name:
-                    type: string
-                  namespace:
-                    type: string
-                  version:
-                    type: string
-                type: object
-            type: object
-          type: array
-        replicas:
-          description: Replicas is a list of Kustomize Replicas override specifications
-          items:
-            properties:
-              count:
-                anyOf:
-                  - type: integer
-                  - type: string
-                description: Number of replicas
-                x-kubernetes-int-or-string: true
-              name:
-                description: Name of Deployment or StatefulSet
-                type: string
-            required:
-              - count
-              - name
-            type: object
-          type: array
-        version:
-          description: Version controls which version of Kustomize to use for rendering manifests
-          type: string
-      type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin (document 0)
-  + one map entry added:
-    plugin:
-      description: Plugin specifies config management plugin specific options
-      properties:
-        env:
-          description: Env is a list of environment variable entries
-          items:
-            description: EnvEntry represents an entry in the application's environment
-            properties:
-              name:
-                description: Name is the name of the variable, usually expressed in uppercase
-                type: string
-              value:
-                description: Value is the value of the variable
-                type: string
-            required:
-              - name
-              - value
-            type: object
-          type: array
-        name:
-          type: string
-        parameters:
-          items:
-            properties:
-              array:
-                description: Array is the value of an array type parameter.
-                items:
-                  type: string
-                type: array
-              map:
-                additionalProperties:
-                  type: string
-                description: Map is the value of a map type parameter.
-                type: object
-              name:
-                description: Name is the name identifying a parameter.
-                type: string
-              string:
-                description: String_ is the value of a string type parameter.
-                type: string
-            type: object
-          type: array
-      type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.syncPolicy.properties.automated.properties.enabled (document 0)
-  + one map entry added:
-    enabled:
-      description: Enable allows apps to explicitly control automated sync
-      type: boolean
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.syncPolicy.properties.retry.properties.refresh (document 0)
-  + one map entry added:
-    refresh:
-      description: Refresh indicates if the latest revision should be used on retry instead of the initial one (default: false)
-      type: boolean
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 0)
+  + two map entries added:
+    minLength: 1
+    pattern: ^.{2,}|[^./]$
 
 spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.description (document 0)
   ± value change in multiline text (two inserts, one deletion)
@@ -342,25 +338,25 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.sourceH
     + from. The Path should never point to the root of the repo. If hydrateTo is set, this is just the path from which
     + hydrated manifests will be synced.
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength (document 0)
-  + one map entry added:
-    minLength: 1
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern (document 0)
-  + one map entry added:
-    pattern: ^.{2,}|[^./]$
-
 spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.sourceHydrator.properties.syncSource.properties.targetBranch.description (document 0)
   ± value change in multiline text (two inserts, one deletion)
     - TargetBranch is the branch to which hydrated manifests should be committed
     + TargetBranch is the branch from which hydrated manifests will be synced.
     + If HydrateTo is not set, this is also the branch to which hydrated manifests are committed.
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.operationState.properties.operation.properties.retry.properties.refresh (document 0)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.operationState.properties.operation.properties.retry.properties (document 0)
   + one map entry added:
     refresh:
       description: Refresh indicates if the latest revision should be used on retry instead of the initial one (default: false)
       type: boolean
+
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.operationState.properties.syncResult.properties.resources.items.properties (document 0)
+  + one map entry added:
+    images:
+      description: Images contains the images related to the ResourceResult
+      items:
+        type: string
+      type: array
 
 spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.resources.items.properties.health.properties.lastTransitionTime.description (document 0)
   ± value change in multiline text (two inserts, zero deletions)
@@ -373,16 +369,8 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.resou
     - Status holds the status code of the application or resource
     + Status holds the status code of the resource
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.operationState.properties.syncResult.properties.resources.items.properties.images (document 0)
-  + one map entry added:
-    images:
-      description: Images contains the images related to the ResourceResult
-      items:
-        type: string
-      type: array
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.currentOperation.properties.sourceHydrator.properties.drySource.properties.directory (document 0)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.currentOperation.properties.sourceHydrator.properties.drySource.properties (document 0)
+  + four map entries added:
     directory:
       description: Directory specifies path/directory specific options
       properties:
@@ -437,9 +425,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourc
           description: Recurse specifies whether to scan a directory recursively for manifests
           type: boolean
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.currentOperation.properties.sourceHydrator.properties.drySource.properties.helm (document 0)
-  + one map entry added:
     helm:
       description: Helm specifies helm specific options
       properties:
@@ -521,9 +506,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourc
           description: Version is the Helm version to use for templating ("3")
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.currentOperation.properties.sourceHydrator.properties.drySource.properties.kustomize (document 0)
-  + one map entry added:
     kustomize:
       description: Kustomize specifies kustomize specific options
       properties:
@@ -640,9 +622,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourc
           description: Version controls which version of Kustomize to use for rendering manifests
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.currentOperation.properties.sourceHydrator.properties.drySource.properties.plugin (document 0)
-  + one map entry added:
     plugin:
       description: Plugin specifies config management plugin specific options
       properties:
@@ -687,8 +666,8 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourc
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.lastSuccessfulOperation.properties.sourceHydrator.properties.drySource.properties.directory (document 0)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.lastSuccessfulOperation.properties.sourceHydrator.properties.drySource.properties (document 0)
+  + four map entries added:
     directory:
       description: Directory specifies path/directory specific options
       properties:
@@ -743,9 +722,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourc
           description: Recurse specifies whether to scan a directory recursively for manifests
           type: boolean
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.lastSuccessfulOperation.properties.sourceHydrator.properties.drySource.properties.helm (document 0)
-  + one map entry added:
     helm:
       description: Helm specifies helm specific options
       properties:
@@ -827,9 +803,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourc
           description: Version is the Helm version to use for templating ("3")
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.lastSuccessfulOperation.properties.sourceHydrator.properties.drySource.properties.kustomize (document 0)
-  + one map entry added:
     kustomize:
       description: Kustomize specifies kustomize specific options
       properties:
@@ -946,9 +919,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourc
           description: Version controls which version of Kustomize to use for rendering manifests
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.lastSuccessfulOperation.properties.sourceHydrator.properties.drySource.properties.plugin (document 0)
-  + one map entry added:
     plugin:
       description: Plugin specifies config management plugin specific options
       properties:
@@ -992,6 +962,16 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourc
             type: object
           type: array
       type: object
+
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.currentOperation.properties.sourceHydrator.properties.syncSource.properties.path (document 0)
+  + two map entries added:
+    minLength: 1
+    pattern: ^.{2,}|[^./]$
+
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.lastSuccessfulOperation.properties.sourceHydrator.properties.syncSource.properties.path (document 0)
+  + two map entries added:
+    minLength: 1
+    pattern: ^.{2,}|[^./]$
 
 spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.currentOperation.properties.sourceHydrator.properties.syncSource.properties.path.description (document 0)
   ± value change in multiline text (two inserts, one deletion)
@@ -999,14 +979,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourc
     - from. If hydrateTo is set, this is just the path from which hydrated manifests will be synced.
     + from. The Path should never point to the root of the repo. If hydrateTo is set, this is just the path from which
     + hydrated manifests will be synced.
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.currentOperation.properties.sourceHydrator.properties.syncSource.properties.path.minLength (document 0)
-  + one map entry added:
-    minLength: 1
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.currentOperation.properties.sourceHydrator.properties.syncSource.properties.path.pattern (document 0)
-  + one map entry added:
-    pattern: ^.{2,}|[^./]$
 
 spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.currentOperation.properties.sourceHydrator.properties.syncSource.properties.targetBranch.description (document 0)
   ± value change in multiline text (two inserts, one deletion)
@@ -1020,14 +992,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourc
     - from. If hydrateTo is set, this is just the path from which hydrated manifests will be synced.
     + from. The Path should never point to the root of the repo. If hydrateTo is set, this is just the path from which
     + hydrated manifests will be synced.
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.lastSuccessfulOperation.properties.sourceHydrator.properties.syncSource.properties.path.minLength (document 0)
-  + one map entry added:
-    minLength: 1
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.lastSuccessfulOperation.properties.sourceHydrator.properties.syncSource.properties.path.pattern (document 0)
-  + one map entry added:
-    pattern: ^.{2,}|[^./]$
 
 spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.lastSuccessfulOperation.properties.sourceHydrator.properties.syncSource.properties.targetBranch.description (document 0)
   ± value change in multiline text (two inserts, one deletion)
@@ -1075,6 +1039,11 @@ rules.5.verbs.2 (document 11)
   - one list entry removed:
     - watch
 
+rules.6 (document 17)
+  + one list entry added:
+    - resourceNames:
+        - 58ac56fa.applicationsets.argoproj.io
+
 rules.7 (document 17)
   - one list entry removed:
     - apiGroups:
@@ -1089,11 +1058,6 @@ rules.7 (document 17)
         - patch
         - update
         - watch
-
-rules.6.resourceNames (document 17)
-  + one map entry added:
-    resourceNames:
-      - 58ac56fa.applicationsets.argoproj.io
 
 rules.1.resources.0 (document 17)
   ± value change
@@ -1212,41 +1176,41 @@ rules.6.verbs.2 (document 17)
     - watch
     + create
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.resourcesCount (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties (document 1)
   + one map entry added:
     resourcesCount:
       format: int64
       type: integer
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.strategy.properties.deletionOrder (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.strategy.properties (document 1)
   + one map entry added:
     deletionOrder:
       type: string
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.continueOnRepoNotFoundError (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties (document 1)
   + one map entry added:
     continueOnRepoNotFoundError:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.gitea.properties.labels (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.gitea.properties (document 1)
   + one map entry added:
     labels:
       items:
         type: string
       type: array
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.files.items.properties.exclude (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.files.items.properties (document 1)
   + one map entry added:
     exclude:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.filters.items.properties.titleMatch (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.filters.items.properties (document 1)
   + one map entry added:
     titleMatch:
       type: string
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+  + four map entries added:
     directory:
       properties:
         exclude:
@@ -1291,9 +1255,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.templat
         recurse:
           type: boolean
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm (document 1)
-  + one map entry added:
     helm:
       properties:
         apiVersions:
@@ -1348,9 +1309,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.templat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize (document 1)
-  + one map entry added:
     kustomize:
       properties:
         apiVersions:
@@ -1441,9 +1399,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.templat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin (document 1)
-  + one map entry added:
     plugin:
       properties:
         env:
@@ -1479,50 +1434,47 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.templat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+  + two map entries added:
     minLength: 1
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern (document 1)
-  + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.continueOnRepoNotFoundError (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties (document 1)
   + one map entry added:
     continueOnRepoNotFoundError:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.continueOnRepoNotFoundError (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties (document 1)
   + one map entry added:
     continueOnRepoNotFoundError:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.gitea.properties.labels (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.gitea.properties (document 1)
   + one map entry added:
     labels:
       items:
         type: string
       type: array
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.gitea.properties.labels (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.gitea.properties (document 1)
   + one map entry added:
     labels:
       items:
         type: string
       type: array
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+  + four map entries added:
     directory:
       properties:
         exclude:
@@ -1567,9 +1519,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         recurse:
           type: boolean
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm (document 1)
-  + one map entry added:
     helm:
       properties:
         apiVersions:
@@ -1624,9 +1573,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize (document 1)
-  + one map entry added:
     kustomize:
       properties:
         apiVersions:
@@ -1717,9 +1663,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin (document 1)
-  + one map entry added:
     plugin:
       properties:
         env:
@@ -1755,18 +1698,18 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+  + four map entries added:
     directory:
       properties:
         exclude:
@@ -1811,9 +1754,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         recurse:
           type: boolean
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm (document 1)
-  + one map entry added:
     helm:
       properties:
         apiVersions:
@@ -1868,9 +1808,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize (document 1)
-  + one map entry added:
     kustomize:
       properties:
         apiVersions:
@@ -1961,9 +1898,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin (document 1)
-  + one map entry added:
     plugin:
       properties:
         env:
@@ -1999,18 +1933,18 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+  + four map entries added:
     directory:
       properties:
         exclude:
@@ -2055,9 +1989,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         recurse:
           type: boolean
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm (document 1)
-  + one map entry added:
     helm:
       properties:
         apiVersions:
@@ -2112,9 +2043,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize (document 1)
-  + one map entry added:
     kustomize:
       properties:
         apiVersions:
@@ -2205,9 +2133,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin (document 1)
-  + one map entry added:
     plugin:
       properties:
         env:
@@ -2243,18 +2168,18 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+  + four map entries added:
     directory:
       properties:
         exclude:
@@ -2299,9 +2224,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         recurse:
           type: boolean
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm (document 1)
-  + one map entry added:
     helm:
       properties:
         apiVersions:
@@ -2356,9 +2278,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize (document 1)
-  + one map entry added:
     kustomize:
       properties:
         apiVersions:
@@ -2449,9 +2368,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin (document 1)
-  + one map entry added:
     plugin:
       properties:
         env:
@@ -2487,28 +2403,28 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.list.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.list.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.list.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.list.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.files.items.properties.exclude (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.files.items.properties (document 1)
   + one map entry added:
     exclude:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.filters.items.properties.titleMatch (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.filters.items.properties (document 1)
   + one map entry added:
     titleMatch:
       type: string
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+  + four map entries added:
     directory:
       properties:
         exclude:
@@ -2553,9 +2469,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         recurse:
           type: boolean
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm (document 1)
-  + one map entry added:
     helm:
       properties:
         apiVersions:
@@ -2610,9 +2523,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize (document 1)
-  + one map entry added:
     kustomize:
       properties:
         apiVersions:
@@ -2703,9 +2613,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin (document 1)
-  + one map entry added:
     plugin:
       properties:
         env:
@@ -2741,28 +2648,28 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.files.items.properties.exclude (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.files.items.properties (document 1)
   + one map entry added:
     exclude:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.filters.items.properties.titleMatch (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.filters.items.properties (document 1)
   + one map entry added:
     titleMatch:
       type: string
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+  + four map entries added:
     directory:
       properties:
         exclude:
@@ -2807,9 +2714,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         recurse:
           type: boolean
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm (document 1)
-  + one map entry added:
     helm:
       properties:
         apiVersions:
@@ -2864,9 +2768,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize (document 1)
-  + one map entry added:
     kustomize:
       properties:
         apiVersions:
@@ -2957,9 +2858,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin (document 1)
-  + one map entry added:
     plugin:
       properties:
         env:
@@ -2995,18 +2893,18 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+  + four map entries added:
     directory:
       properties:
         exclude:
@@ -3051,9 +2949,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         recurse:
           type: boolean
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm (document 1)
-  + one map entry added:
     helm:
       properties:
         apiVersions:
@@ -3108,9 +3003,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize (document 1)
-  + one map entry added:
     kustomize:
       properties:
         apiVersions:
@@ -3201,9 +3093,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin (document 1)
-  + one map entry added:
     plugin:
       properties:
         env:
@@ -3239,18 +3128,18 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+  + four map entries added:
     directory:
       properties:
         exclude:
@@ -3295,9 +3184,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         recurse:
           type: boolean
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm (document 1)
-  + one map entry added:
     helm:
       properties:
         apiVersions:
@@ -3352,9 +3238,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize (document 1)
-  + one map entry added:
     kustomize:
       properties:
         apiVersions:
@@ -3445,9 +3328,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin (document 1)
-  + one map entry added:
     plugin:
       properties:
         env:
@@ -3483,18 +3363,18 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+  + four map entries added:
     directory:
       properties:
         exclude:
@@ -3539,9 +3419,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         recurse:
           type: boolean
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm (document 1)
-  + one map entry added:
     helm:
       properties:
         apiVersions:
@@ -3596,9 +3473,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize (document 1)
-  + one map entry added:
     kustomize:
       properties:
         apiVersions:
@@ -3689,9 +3563,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin (document 1)
-  + one map entry added:
     plugin:
       properties:
         env:
@@ -3727,90 +3598,63 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+  + two map entries added:
     minLength: 1
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern (document 1)
-  + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+  + two map entries added:
     minLength: 1
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern (document 1)
-  + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+  + two map entries added:
     minLength: 1
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern (document 1)
-  + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+  + two map entries added:
     minLength: 1
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern (document 1)
-  + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+  + two map entries added:
     minLength: 1
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern (document 1)
-  + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+  + two map entries added:
     minLength: 1
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern (document 1)
-  + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+  + two map entries added:
     minLength: 1
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern (document 1)
-  + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+  + two map entries added:
     minLength: 1
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern (document 1)
-  + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+  + two map entries added:
     minLength: 1
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern (document 1)
-  + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+  + four map entries added:
     directory:
       properties:
         exclude:
@@ -3855,9 +3699,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         recurse:
           type: boolean
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm (document 1)
-  + one map entry added:
     helm:
       properties:
         apiVersions:
@@ -3912,9 +3753,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize (document 1)
-  + one map entry added:
     kustomize:
       properties:
         apiVersions:
@@ -4005,9 +3843,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin (document 1)
-  + one map entry added:
     plugin:
       properties:
         env:
@@ -4043,18 +3878,18 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+  + four map entries added:
     directory:
       properties:
         exclude:
@@ -4099,9 +3934,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         recurse:
           type: boolean
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm (document 1)
-  + one map entry added:
     helm:
       properties:
         apiVersions:
@@ -4156,9 +3988,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize (document 1)
-  + one map entry added:
     kustomize:
       properties:
         apiVersions:
@@ -4249,9 +4078,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin (document 1)
-  + one map entry added:
     plugin:
       properties:
         env:
@@ -4287,18 +4113,18 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+  + four map entries added:
     directory:
       properties:
         exclude:
@@ -4343,9 +4169,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         recurse:
           type: boolean
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm (document 1)
-  + one map entry added:
     helm:
       properties:
         apiVersions:
@@ -4400,9 +4223,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize (document 1)
-  + one map entry added:
     kustomize:
       properties:
         apiVersions:
@@ -4493,9 +4313,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin (document 1)
-  + one map entry added:
     plugin:
       properties:
         env:
@@ -4531,18 +4348,18 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+  + four map entries added:
     directory:
       properties:
         exclude:
@@ -4587,9 +4404,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         recurse:
           type: boolean
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm (document 1)
-  + one map entry added:
     helm:
       properties:
         apiVersions:
@@ -4644,9 +4458,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize (document 1)
-  + one map entry added:
     kustomize:
       properties:
         apiVersions:
@@ -4737,9 +4548,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin (document 1)
-  + one map entry added:
     plugin:
       properties:
         env:
@@ -4775,18 +4583,18 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.list.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.list.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.list.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.list.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+  + four map entries added:
     directory:
       properties:
         exclude:
@@ -4831,9 +4639,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         recurse:
           type: boolean
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm (document 1)
-  + one map entry added:
     helm:
       properties:
         apiVersions:
@@ -4888,9 +4693,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize (document 1)
-  + one map entry added:
     kustomize:
       properties:
         apiVersions:
@@ -4981,9 +4783,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin (document 1)
-  + one map entry added:
     plugin:
       properties:
         env:
@@ -5019,18 +4818,18 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+  + four map entries added:
     directory:
       properties:
         exclude:
@@ -5075,9 +4874,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         recurse:
           type: boolean
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm (document 1)
-  + one map entry added:
     helm:
       properties:
         apiVersions:
@@ -5132,9 +4928,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize (document 1)
-  + one map entry added:
     kustomize:
       properties:
         apiVersions:
@@ -5225,9 +5018,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin (document 1)
-  + one map entry added:
     plugin:
       properties:
         env:
@@ -5263,18 +5053,18 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+  + four map entries added:
     directory:
       properties:
         exclude:
@@ -5319,9 +5109,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         recurse:
           type: boolean
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm (document 1)
-  + one map entry added:
     helm:
       properties:
         apiVersions:
@@ -5376,9 +5163,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize (document 1)
-  + one map entry added:
     kustomize:
       properties:
         apiVersions:
@@ -5469,9 +5253,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin (document 1)
-  + one map entry added:
     plugin:
       properties:
         env:
@@ -5507,18 +5288,18 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+  + four map entries added:
     directory:
       properties:
         exclude:
@@ -5563,9 +5344,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         recurse:
           type: boolean
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm (document 1)
-  + one map entry added:
     helm:
       properties:
         apiVersions:
@@ -5620,9 +5398,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize (document 1)
-  + one map entry added:
     kustomize:
       properties:
         apiVersions:
@@ -5713,9 +5488,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin (document 1)
-  + one map entry added:
     plugin:
       properties:
         env:
@@ -5751,18 +5523,18 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+  + four map entries added:
     directory:
       properties:
         exclude:
@@ -5807,9 +5579,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         recurse:
           type: boolean
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm (document 1)
-  + one map entry added:
     helm:
       properties:
         apiVersions:
@@ -5864,9 +5633,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize (document 1)
-  + one map entry added:
     kustomize:
       properties:
         apiVersions:
@@ -5957,9 +5723,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin (document 1)
-  + one map entry added:
     plugin:
       properties:
         env:
@@ -5995,18 +5758,18 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+  + four map entries added:
     directory:
       properties:
         exclude:
@@ -6051,9 +5814,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         recurse:
           type: boolean
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm (document 1)
-  + one map entry added:
     helm:
       properties:
         apiVersions:
@@ -6108,9 +5868,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize (document 1)
-  + one map entry added:
     kustomize:
       properties:
         apiVersions:
@@ -6201,9 +5958,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin (document 1)
-  + one map entry added:
     plugin:
       properties:
         env:
@@ -6239,18 +5993,18 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+  + four map entries added:
     directory:
       properties:
         exclude:
@@ -6295,9 +6049,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         recurse:
           type: boolean
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm (document 1)
-  + one map entry added:
     helm:
       properties:
         apiVersions:
@@ -6352,9 +6103,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize (document 1)
-  + one map entry added:
     kustomize:
       properties:
         apiVersions:
@@ -6445,9 +6193,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin (document 1)
-  + one map entry added:
     plugin:
       properties:
         env:
@@ -6483,18 +6228,18 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.list.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.list.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.list.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.list.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+  + four map entries added:
     directory:
       properties:
         exclude:
@@ -6539,9 +6284,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         recurse:
           type: boolean
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm (document 1)
-  + one map entry added:
     helm:
       properties:
         apiVersions:
@@ -6596,9 +6338,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize (document 1)
-  + one map entry added:
     kustomize:
       properties:
         apiVersions:
@@ -6689,9 +6428,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin (document 1)
-  + one map entry added:
     plugin:
       properties:
         env:
@@ -6727,18 +6463,18 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+  + four map entries added:
     directory:
       properties:
         exclude:
@@ -6783,9 +6519,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         recurse:
           type: boolean
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm (document 1)
-  + one map entry added:
     helm:
       properties:
         apiVersions:
@@ -6840,9 +6573,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize (document 1)
-  + one map entry added:
     kustomize:
       properties:
         apiVersions:
@@ -6933,9 +6663,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin (document 1)
-  + one map entry added:
     plugin:
       properties:
         env:
@@ -6971,18 +6698,18 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.directory (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+  + four map entries added:
     directory:
       properties:
         exclude:
@@ -7027,9 +6754,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         recurse:
           type: boolean
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.helm (document 1)
-  + one map entry added:
     helm:
       properties:
         apiVersions:
@@ -7084,9 +6808,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.kustomize (document 1)
-  + one map entry added:
     kustomize:
       properties:
         apiVersions:
@@ -7177,9 +6898,6 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
         version:
           type: string
       type: object
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties.plugin (document 1)
-  + one map entry added:
     plugin:
       properties:
         env:
@@ -7215,129 +6933,87 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties.enabled (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties.refresh (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+  + two map entries added:
     minLength: 1
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern (document 1)
-  + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+  + two map entries added:
     minLength: 1
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern (document 1)
-  + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+  + two map entries added:
     minLength: 1
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern (document 1)
-  + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+  + two map entries added:
     minLength: 1
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern (document 1)
-  + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+  + two map entries added:
     minLength: 1
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern (document 1)
-  + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+  + two map entries added:
     minLength: 1
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern (document 1)
-  + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+  + two map entries added:
     minLength: 1
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern (document 1)
-  + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+  + two map entries added:
     minLength: 1
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern (document 1)
-  + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+  + two map entries added:
     minLength: 1
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern (document 1)
-  + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+  + two map entries added:
     minLength: 1
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern (document 1)
-  + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+  + two map entries added:
     minLength: 1
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern (document 1)
-  + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+  + two map entries added:
     minLength: 1
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern (document 1)
-  + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+  + two map entries added:
     minLength: 1
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern (document 1)
-  + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.minLength (document 1)
-  + one map entry added:
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+  + two map entries added:
     minLength: 1
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.pattern (document 1)
-  + one map entry added:
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.description.maxLength (document 2)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.description (document 2)
   + one map entry added:
     maxLength: 255
 
@@ -7347,29 +7023,29 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.cluster
     - concepts during lookup stages without having partially valid types
     + ClusterResourceRestrictionItem is a cluster resource that is restricted by the project's whitelist or blacklist
 
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.clusterResourceBlacklist.items.properties (document 2)
+  + one list entry added:
+    - name:
+        description: |
+          Name is the name of the restricted resource. Glob patterns using Go's filepath.Match syntax are supported.
+          Unlike the group and kind fields, if no name is specified, all resources of the specified group/kind are matched.
+        type: string
+
 spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.clusterResourceWhitelist.items.description (document 2)
   ± value change in multiline text (one insert, two deletions)
     - GroupKind specifies a Group and a Kind, but does not force a version.  This is useful for identifying
     - concepts during lookup stages without having partially valid types
     + ClusterResourceRestrictionItem is a cluster resource that is restricted by the project's whitelist or blacklist
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.clusterResourceBlacklist.items.properties.name (document 2)
-  + one map entry added:
-    name:
-      description: |
-        Name is the name of the restricted resource. Glob patterns using Go's filepath.Match syntax are supported.
-        Unlike the group and kind fields, if no name is specified, all resources of the specified group/kind are matched.
-      type: string
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.clusterResourceWhitelist.items.properties (document 2)
+  + one list entry added:
+    - name:
+        description: |
+          Name is the name of the restricted resource. Glob patterns using Go's filepath.Match syntax are supported.
+          Unlike the group and kind fields, if no name is specified, all resources of the specified group/kind are matched.
+        type: string
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.clusterResourceWhitelist.items.properties.name (document 2)
-  + one map entry added:
-    name:
-      description: |
-        Name is the name of the restricted resource. Glob patterns using Go's filepath.Match syntax are supported.
-        Unlike the group and kind fields, if no name is specified, all resources of the specified group/kind are matched.
-      type: string
-
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.syncWindows.items.properties.description (document 2)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.syncWindows.items.properties (document 2)
   + one map entry added:
     description:
       description: Description of the sync that will be applied to the schedule, can be used to add any information such as a ticket number for example
@@ -7435,6 +7111,11 @@ spec.template.spec.initContainers.secret-init.image (document 48)
     - quay.io/argoproj/argocd:v3.0.0
     + quay.io/argoproj/argocd:v3.3.2
 
+spec.template.spec.initContainers.copyutil (document 49)
+  + one map entry added:
+    args:
+      - /bin/cp --update=none /usr/local/bin/argocd /var/run/argocd/argocd && /bin/ln -s /var/run/argocd/argocd /var/run/argocd/argocd-cmp-server
+
 spec.template.spec.containers.argocd-repo-server.env (document 49)
   + four list entries added:
     - name: ARGOCD_REPO_SERVER_OCI_MANIFEST_MAX_EXTRACTED_SIZE
@@ -7466,11 +7147,6 @@ spec.template.spec.containers.argocd-repo-server.image (document 49)
   ± value change
     - quay.io/argoproj/argocd:v3.0.0
     + quay.io/argoproj/argocd:v3.3.2
-
-spec.template.spec.initContainers.copyutil.args (document 49)
-  + one map entry added:
-    args:
-      - /bin/cp --update=none /usr/local/bin/argocd /var/run/argocd/argocd && /bin/ln -s /var/run/argocd/argocd /var/run/argocd/argocd-cmp-server
 
 spec.template.spec.initContainers.copyutil.image (document 49)
   ± value change
@@ -7543,42 +7219,42 @@ spec.template.spec.containers.argocd-application-controller.image (document 51)
     - quay.io/argoproj/argocd:v3.0.0
     + quay.io/argoproj/argocd:v3.3.2
 
-metadata.labels (document 52)
+metadata (document 52)
   + one map entry added:
     labels:
       app.kubernetes.io/component: application-controller
       app.kubernetes.io/name: argocd-application-controller
       app.kubernetes.io/part-of: argocd
 
-metadata.labels (document 53)
+metadata (document 53)
   + one map entry added:
     labels:
       app.kubernetes.io/component: applicationset-controller
       app.kubernetes.io/name: argocd-applicationset-controller
       app.kubernetes.io/part-of: argocd
 
-metadata.labels (document 54)
+metadata (document 54)
   + one map entry added:
     labels:
       app.kubernetes.io/component: dex-server
       app.kubernetes.io/name: argocd-dex-server
       app.kubernetes.io/part-of: argocd
 
-metadata.labels (document 56)
+metadata (document 56)
   + one map entry added:
     labels:
       app.kubernetes.io/component: redis
       app.kubernetes.io/name: argocd-redis
       app.kubernetes.io/part-of: argocd
 
-metadata.labels (document 57)
+metadata (document 57)
   + one map entry added:
     labels:
       app.kubernetes.io/component: repo-server
       app.kubernetes.io/name: argocd-repo-server
       app.kubernetes.io/part-of: argocd
 
-metadata.labels (document 58)
+metadata (document 58)
   + one map entry added:
     labels:
       app.kubernetes.io/component: server

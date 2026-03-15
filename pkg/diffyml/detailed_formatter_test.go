@@ -914,12 +914,16 @@ func TestDetailedFormatter_MapEntryStructured_RendersKeyWrapper(t *testing.T) {
 	inner.Values["host"] = "localhost"
 	inner.Values["port"] = 8080
 
+	wrapper := NewOrderedMap()
+	wrapper.Keys = append(wrapper.Keys, "newKey")
+	wrapper.Values["newKey"] = inner
+
 	diffs := []Difference{
-		{Path: DiffPath{"config", "newKey"}, Type: DiffAdded, To: inner},
+		{Path: DiffPath{"config"}, Type: DiffAdded, To: wrapper},
 	}
 
 	output := f.Format(diffs, opts)
-	expected := "config.newKey\n  + one map entry added:\n    newKey:\n      host: localhost\n      port: 8080\n\n"
+	expected := "config\n  + one map entry added:\n    newKey:\n      host: localhost\n      port: 8080\n\n"
 	if output != expected {
 		t.Errorf("map entry structured should render key as YAML wrapper.\nExpected:\n%s\nGot:\n%s", expected, output)
 	}

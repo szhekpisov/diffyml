@@ -21,18 +21,15 @@ data.verbose
 
 --- a/deployment.yaml
 +++ b/deployment.yaml
+metadata.labels
+  + two map entries added:
+    environment: production
+    team: backend
+
 metadata.labels.version
   ± type change from int to string
     - 2
     + 2.0
-
-metadata.labels.environment
-  + one map entry added:
-    environment: production
-
-metadata.labels.team
-  + one map entry added:
-    team: backend
 
 spec.replicas
   ± value change
@@ -82,12 +79,9 @@ spec.containers.app.image
 
 --- a/service.yaml
 +++ b/service.yaml
-metadata.labels.tier
-  - one map entry removed:
+metadata.labels
+  - two map entries removed:
     tier: frontend
-
-metadata.labels.version
-  - one map entry removed:
     version: 1
 
 spec.port

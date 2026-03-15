@@ -1,15 +1,14 @@
 Found three differences
 
+app
+  - one map entry removed:
+    replicas: 3
+
+  + one map entry added:
+    debug: true
+
 app.version
   ± value change
     - 2.0
     + 1.0
-
-app.replicas
-  - one map entry removed:
-    replicas: 3
-
-app.debug
-  + one map entry added:
-    debug: true
 

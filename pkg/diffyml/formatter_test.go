@@ -211,23 +211,24 @@ func TestFormatter_NilOptions(t *testing.T) {
 	}
 }
 
-func TestConvertToGoPatchPath(t *testing.T) {
+func TestDiffPath_GoPatchString(t *testing.T) {
 	tests := []struct {
-		input    string
+		path     DiffPath
 		expected string
 	}{
-		{"config.name", "/config/name"},
-		{"items[0].value", "/items/0/value"},
-		{"root", "/root"},
-		{"a.b.c.d", "/a/b/c/d"},
-		{"list[0][1].nested", "/list/0/1/nested"},
+		{DiffPath{"config", "name"}, "/config/name"},
+		{DiffPath{"items", "[0]", "value"}, "/items/0/value"},
+		{DiffPath{"root"}, "/root"},
+		{DiffPath{"a", "b", "c", "d"}, "/a/b/c/d"},
+		{DiffPath{"labels", "helm.sh/chart"}, "/labels/helm.sh/chart"},
+		{nil, "/"},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			result := convertToGoPatchPath(tt.input)
+		t.Run(tt.expected, func(t *testing.T) {
+			result := tt.path.GoPatchString()
 			if result != tt.expected {
-				t.Errorf("convertToGoPatchPath(%q) = %q, want %q", tt.input, result, tt.expected)
+				t.Errorf("DiffPath%v.GoPatchString() = %q, want %q", []string(tt.path), result, tt.expected)
 			}
 		})
 	}

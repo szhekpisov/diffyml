@@ -1,6 +1,7 @@
 package diffyml
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -1313,26 +1314,25 @@ func TestDetailedFormatter_DocumentHeading(t *testing.T) {
 	})
 }
 
-func TestParseBareDocIndex(t *testing.T) {
+func TestDiffPath_IsBareDocIndex(t *testing.T) {
 	tests := []struct {
-		path    string
-		wantIdx int
-		wantOk  bool
+		path   DiffPath
+		wantOk bool
 	}{
-		{"[0]", 0, true},
-		{"[1]", 1, true},
-		{"[12]", 12, true},
-		{"items[0]", 0, false},
-		{"[0].spec", 0, false},
-		{"name", 0, false},
-		{"", 0, false},
-		{"[]", 0, false},
-		{"[abc]", 0, false},
+		{DiffPath{"[0]"}, true},
+		{DiffPath{"[1]"}, true},
+		{DiffPath{"[12]"}, true},
+		{DiffPath{"items", "[0]"}, false},     // multi-segment
+		{DiffPath{"[0]", "spec"}, false},      // multi-segment
+		{DiffPath{"name"}, false},             // not a bracket
+		{nil, false},                          // empty
+		{DiffPath{"[]"}, false},               // empty brackets
+		{DiffPath{"[abc]"}, false},            // non-numeric
 	}
 	for _, tt := range tests {
-		idx, ok := parseBareDocIndex(tt.path)
-		if ok != tt.wantOk || idx != tt.wantIdx {
-			t.Errorf("parseBareDocIndex(%q) = (%d, %v), want (%d, %v)", tt.path, idx, ok, tt.wantIdx, tt.wantOk)
+		ok := tt.path.IsBareDocIndex()
+		if ok != tt.wantOk {
+			t.Errorf("DiffPath%v.IsBareDocIndex() = %v, want %v", []string(tt.path), ok, tt.wantOk)
 		}
 	}
 }
@@ -1423,28 +1423,27 @@ func TestRenderEntryValue_KeyExtractDotAtStart(t *testing.T) {
 
 // Document index prefix and colon notation
 
-func TestParseDocIndexPrefix(t *testing.T) {
+func TestDiffPath_DocIndexPrefix(t *testing.T) {
 	tests := []struct {
-		path     string
+		path     DiffPath
 		wantIdx  int
-		wantRest string
+		wantRest DiffPath
 		wantOk   bool
 	}{
-		{"[0].spec.field", 0, "spec.field", true},
-		{"[2].metadata.name", 2, "metadata.name", true},
-		{"[12].x", 12, "x", true},
-		{"[0]", 0, "[0]", false},               // bare index — handled by parseBareDocIndex
-		{"items[0]", 0, "items[0]", false},     // not a leading index
-		{"name", 0, "name", false},             // no bracket
-		{"", 0, "", false},                     // empty
-		{"[abc].spec", 0, "[abc].spec", false}, // non-numeric
-		{"[].", 0, "[].", false},               // empty brackets
+		{DiffPath{"[0]", "spec", "field"}, 0, DiffPath{"spec", "field"}, true},
+		{DiffPath{"[2]", "metadata", "name"}, 2, DiffPath{"metadata", "name"}, true},
+		{DiffPath{"[12]", "x"}, 12, DiffPath{"x"}, true},
+		{DiffPath{"[0]"}, 0, DiffPath{"[0]"}, false},          // bare index — single segment
+		{DiffPath{"items", "[0]"}, 0, DiffPath{"items", "[0]"}, false}, // not a leading index
+		{DiffPath{"name"}, 0, DiffPath{"name"}, false},         // no bracket
+		{nil, 0, nil, false},                                   // empty
+		{DiffPath{"[abc]", "spec"}, 0, DiffPath{"[abc]", "spec"}, false}, // non-numeric
 	}
 	for _, tt := range tests {
-		idx, rest, ok := parseDocIndexPrefix(tt.path)
-		if ok != tt.wantOk || idx != tt.wantIdx || rest != tt.wantRest {
-			t.Errorf("parseDocIndexPrefix(%q) = (%d, %q, %v), want (%d, %q, %v)",
-				tt.path, idx, rest, ok, tt.wantIdx, tt.wantRest, tt.wantOk)
+		idx, rest, ok := tt.path.DocIndexPrefix()
+		if ok != tt.wantOk || idx != tt.wantIdx || fmt.Sprint(rest) != fmt.Sprint(tt.wantRest) {
+			t.Errorf("DiffPath%v.DocIndexPrefix() = (%d, %v, %v), want (%d, %v, %v)",
+				[]string(tt.path), idx, rest, ok, tt.wantIdx, tt.wantRest, tt.wantOk)
 		}
 	}
 }
@@ -1743,11 +1742,12 @@ func TestFormatCommaSeparated_NonSlice(t *testing.T) {
 	}
 }
 
-func TestParseDocIndexPrefix_NoBracketClose(t *testing.T) {
-	// path with [ but no ]
-	idx, rest, ok := parseDocIndexPrefix("[0.spec")
+func TestDiffPath_DocIndexPrefix_NoBracketClose(t *testing.T) {
+	// segment "[0.spec" does not match [N] format
+	path := DiffPath{"[0.spec"}
+	_, _, ok := path.DocIndexPrefix()
 	if ok {
-		t.Errorf("expected false for missing close bracket, got (%d, %q, %v)", idx, rest, ok)
+		t.Error("expected false for malformed bracket segment")
 	}
 }
 

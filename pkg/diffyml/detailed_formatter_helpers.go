@@ -6,7 +6,6 @@ package diffyml
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -117,41 +116,3 @@ func pluralize(n int, singular, plural string) string {
 	return plural
 }
 
-// parseBareDocIndex extracts the index from a bare document index path like "[0]", "[1]".
-// Returns the index and true if the path is a bare document index, false otherwise.
-// Does NOT match paths like "items[0]" or "[0].spec".
-// Deprecated: prefer DiffPath.IsBareDocIndex() and DiffPath.DocIndex() for structured paths.
-func parseBareDocIndex(path string) (int, bool) {
-	if !strings.HasPrefix(path, "[") || !strings.HasSuffix(path, "]") {
-		return 0, false
-	}
-	inner := path[1 : len(path)-1]
-	idx, err := strconv.Atoi(inner)
-	if err != nil {
-		return 0, false
-	}
-	return idx, true
-}
-
-// parseDocIndexPrefix extracts a leading [N] document index from a path like "[0].spec.field".
-// Returns (index, remainingPath, true) if found, (0, originalPath, false) otherwise.
-// Only matches paths starting with "[N]." — bare "[N]" is handled by parseBareDocIndex.
-func parseDocIndexPrefix(path string) (int, string, bool) {
-	if !strings.HasPrefix(path, "[") {
-		return 0, path, false
-	}
-	inner, afterBracket, found := strings.Cut(path[1:], "]")
-	if !found {
-		return 0, path, false
-	}
-	// Must have a dot after the closing bracket
-	if !strings.HasPrefix(afterBracket, ".") {
-		return 0, path, false
-	}
-	idx, err := strconv.Atoi(inner)
-	if err != nil {
-		return 0, path, false
-	}
-	rest := afterBracket[1:] // skip "."
-	return idx, rest, true
-}

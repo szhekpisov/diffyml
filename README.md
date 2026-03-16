@@ -193,12 +193,14 @@ diffyml can be used as a git external diff program. Git passes 7-9 positional ar
 # One-off: diff YAML changes in the working tree
 GIT_EXTERNAL_DIFF=diffyml git diff
 
-# With flags
-GIT_EXTERNAL_DIFF='diffyml --set-exit-code' git diff
+# With flags (e.g. compact output)
+GIT_EXTERNAL_DIFF='diffyml -o compact' git diff
 
 # Permanent: set as your default external diff
 git config diff.external diffyml
 ```
+
+Color and truecolor are auto-forced (git's pager makes stdout a pipe). Use `--color never` to disable. `--set-exit-code` is silently ignored — git aborts external diff programs that exit non-zero.
 
 ### Filtering
 

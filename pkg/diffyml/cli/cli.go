@@ -360,11 +360,12 @@ func (c *CLIConfig) Usage() string {
 	sb.WriteString("Git integration:\n")
 	sb.WriteString("  diffyml can be used as a git external diff program. Non-YAML files are\n")
 	sb.WriteString("  silently skipped. Git passes 7-9 positional arguments which diffyml\n")
-	sb.WriteString("  auto-detects.\n")
+	sb.WriteString("  auto-detects. Color and truecolor are auto-forced (use --color never to\n")
+	sb.WriteString("  disable). --set-exit-code is ignored (git aborts on non-zero exit).\n")
 	sb.WriteString("\n")
 	sb.WriteString("  Examples:\n")
 	sb.WriteString("    GIT_EXTERNAL_DIFF=diffyml git diff\n")
-	sb.WriteString("    GIT_EXTERNAL_DIFF='diffyml --set-exit-code' git diff\n")
+	sb.WriteString("    GIT_EXTERNAL_DIFF='diffyml -o compact' git diff\n")
 	sb.WriteString("    git config diff.external diffyml\n")
 
 	return sb.String()
@@ -676,11 +677,19 @@ func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
 		return NewExitResult(ExitCodeError, err)
 	}
 
-	// In git external diff mode, force color on unless explicitly disabled.
-	// Git pipes external diff output through its pager, so stdout is not a TTY
-	// and color=auto would disable color. Forcing it matches git's own behavior.
-	if cfg.GitExternalDiff && cfg.Color != "never" {
-		formatOpts.Color = true
+	// In git external diff mode:
+	// - Force color/truecolor on unless explicitly disabled, because git pipes
+	//   external diff output through its pager (stdout is not a TTY).
+	// - Suppress --set-exit-code: git aborts with "external diff died" on
+	//   non-zero exit, so exit 1 would stop at the first changed file.
+	if cfg.GitExternalDiff {
+		if cfg.Color != "never" {
+			formatOpts.Color = true
+		}
+		if cfg.TrueColor != "never" {
+			formatOpts.TrueColor = true
+		}
+		cfg.SetExitCode = false
 	}
 
 	// Set file path for formatters that use it (e.g., GitLab)

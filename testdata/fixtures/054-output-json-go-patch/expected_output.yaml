@@ -1,0 +1,26 @@
+[
+  {
+    "path": "/spec/containers/app/image",
+    "type": "modified",
+    "from": "myapp:1.0",
+    "to": "myapp:2.0",
+    "document_index": 0
+  },
+  {
+    "path": "/spec/containers/app/env",
+    "type": "added",
+    "from": null,
+    "to": {
+      "name": "DB_PORT",
+      "value": "5432"
+    },
+    "document_index": 0
+  },
+  {
+    "path": "/spec/containers/app/env/DB_HOST/value",
+    "type": "modified",
+    "from": "localhost",
+    "to": "db.prod.local",
+    "document_index": 0
+  }
+]

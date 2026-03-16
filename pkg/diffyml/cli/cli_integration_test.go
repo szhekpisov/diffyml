@@ -40,7 +40,7 @@ func TestCLI_EndToEnd_AllFormatters(t *testing.T) {
 	yaml1 := "key: value1\n"
 	yaml2 := "key: value2\n"
 
-	formats := []string{"compact", "brief", "github", "gitlab", "gitea", "detailed"}
+	formats := []string{"compact", "brief", "github", "gitlab", "gitea", "json", "detailed"}
 
 	for _, format := range formats {
 		t.Run(format, func(t *testing.T) {

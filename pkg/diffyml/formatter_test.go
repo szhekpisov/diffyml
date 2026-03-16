@@ -3,6 +3,7 @@ package diffyml
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"strings"
 	"testing"
 	"time"
@@ -58,6 +59,16 @@ func TestFormatterByName_Gitea(t *testing.T) {
 	}
 }
 
+func TestFormatterByName_JSON(t *testing.T) {
+	f, err := FormatterByName("json")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if f == nil {
+		t.Fatal("expected formatter, got nil")
+	}
+}
+
 func TestFormatterByName_Invalid(t *testing.T) {
 	_, err := FormatterByName("invalid")
 	if err == nil {
@@ -90,7 +101,7 @@ func TestFormatterByName_ListsValidFormats(t *testing.T) {
 	}
 	// Error message should list valid formats
 	errStr := err.Error()
-	expectedFormats := []string{"compact", "brief", "github", "gitlab", "gitea", "detailed"}
+	expectedFormats := []string{"compact", "brief", "github", "gitlab", "gitea", "json", "detailed"}
 	for _, format := range expectedFormats {
 		if !contains(errStr, format) {
 			t.Errorf("error message should list valid format '%s', got: %s", format, errStr)
@@ -155,7 +166,7 @@ func TestStructuredFormatter_InterfaceCompile(t *testing.T) {
 
 func TestFormatter_Interface(t *testing.T) {
 	// Verify all formatters implement the Formatter interface correctly
-	formatters := []string{"compact", "brief", "github", "gitlab", "gitea", "detailed"}
+	formatters := []string{"compact", "brief", "github", "gitlab", "gitea", "json", "detailed"}
 
 	diffs := []Difference{
 		{Path: DiffPath{"test", "path"}, Type: DiffModified, From: "old", To: "new"},
@@ -179,7 +190,7 @@ func TestFormatter_Interface(t *testing.T) {
 }
 
 func TestFormatter_EmptyDiffs(t *testing.T) {
-	formatters := []string{"compact", "brief", "github", "gitlab", "gitea", "detailed"}
+	formatters := []string{"compact", "brief", "github", "gitlab", "gitea", "json", "detailed"}
 
 	diffs := []Difference{}
 	opts := DefaultFormatOptions()
@@ -2038,4 +2049,469 @@ func TestFormatValue_Timestamp(t *testing.T) {
 			t.Errorf("expected 2023-06-15T14:30:00Z, got %s", got)
 		}
 	})
+}
+
+// --- JSON Formatter Tests ---
+
+func TestJSONFormatter_Format(t *testing.T) {
+	f := &JSONFormatter{}
+	diffs := []Difference{
+		{Path: DiffPath{"spec", "replicas"}, Type: DiffModified, From: 3, To: 5, DocumentIndex: 0},
+		{Path: DiffPath{"metadata", "labels", "app"}, Type: DiffAdded, From: nil, To: "web", DocumentIndex: 0},
+		{Path: DiffPath{"spec", "image"}, Type: DiffRemoved, From: "nginx:1.20", To: nil, DocumentIndex: 0},
+		{Path: DiffPath{"spec", "ports"}, Type: DiffOrderChanged, From: nil, To: nil, DocumentIndex: 1},
+	}
+
+	output := f.Format(diffs, DefaultFormatOptions())
+
+	var result []map[string]any
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output is not valid JSON: %v\noutput: %s", err, output)
+	}
+
+	if len(result) != 4 {
+		t.Fatalf("expected 4 entries, got %d", len(result))
+	}
+
+	// Verify first entry
+	if result[0]["path"] != "spec.replicas" {
+		t.Errorf("expected path 'spec.replicas', got %v", result[0]["path"])
+	}
+	if result[0]["type"] != "modified" {
+		t.Errorf("expected type 'modified', got %v", result[0]["type"])
+	}
+	// JSON numbers are float64
+	if result[0]["from"] != float64(3) {
+		t.Errorf("expected from 3, got %v (%T)", result[0]["from"], result[0]["from"])
+	}
+	if result[0]["to"] != float64(5) {
+		t.Errorf("expected to 5, got %v (%T)", result[0]["to"], result[0]["to"])
+	}
+
+	// Verify added entry
+	if result[1]["type"] != "added" {
+		t.Errorf("expected type 'added', got %v", result[1]["type"])
+	}
+	if result[1]["from"] != nil {
+		t.Errorf("expected from nil, got %v", result[1]["from"])
+	}
+	if result[1]["to"] != "web" {
+		t.Errorf("expected to 'web', got %v", result[1]["to"])
+	}
+
+	// Verify removed entry
+	if result[2]["type"] != "removed" {
+		t.Errorf("expected type 'removed', got %v", result[2]["type"])
+	}
+
+	// Verify order_changed entry
+	if result[3]["type"] != "order_changed" {
+		t.Errorf("expected type 'order_changed', got %v", result[3]["type"])
+	}
+	if result[3]["document_index"] != float64(1) {
+		t.Errorf("expected document_index 1, got %v", result[3]["document_index"])
+	}
+}
+
+func TestJSONFormatter_Format_Empty(t *testing.T) {
+	f := &JSONFormatter{}
+	output := f.Format([]Difference{}, DefaultFormatOptions())
+
+	var result []any
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output is not valid JSON: %v\noutput: %s", err, output)
+	}
+	if len(result) != 0 {
+		t.Errorf("expected empty array, got %d items", len(result))
+	}
+}
+
+func TestJSONFormatter_Format_NilOpts(t *testing.T) {
+	f := &JSONFormatter{}
+	diffs := []Difference{
+		{Path: DiffPath{"key"}, Type: DiffAdded, To: "value"},
+	}
+
+	output := f.Format(diffs, nil)
+
+	var result []map[string]any
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output is not valid JSON with nil opts: %v\noutput: %s", err, output)
+	}
+	if len(result) != 1 {
+		t.Fatalf("expected 1 entry, got %d", len(result))
+	}
+}
+
+func TestJSONFormatter_TypePreservation(t *testing.T) {
+	f := &JSONFormatter{}
+	diffs := []Difference{
+		{Path: DiffPath{"int_val"}, Type: DiffModified, From: 42, To: 99},
+		{Path: DiffPath{"bool_val"}, Type: DiffModified, From: true, To: false},
+		{Path: DiffPath{"float_val"}, Type: DiffModified, From: 3.14, To: 2.72},
+		{Path: DiffPath{"str_val"}, Type: DiffModified, From: "old", To: "new"},
+		{Path: DiffPath{"null_val"}, Type: DiffAdded, From: nil, To: "something"},
+	}
+
+	output := f.Format(diffs, DefaultFormatOptions())
+
+	var result []map[string]any
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output is not valid JSON: %v\noutput: %s", err, output)
+	}
+
+	// int → float64 in JSON
+	if result[0]["from"] != float64(42) {
+		t.Errorf("int not preserved: got %v (%T)", result[0]["from"], result[0]["from"])
+	}
+
+	// bool preserved
+	if result[1]["from"] != true {
+		t.Errorf("bool not preserved: got %v (%T)", result[1]["from"], result[1]["from"])
+	}
+
+	// float preserved
+	if result[2]["from"] != 3.14 {
+		t.Errorf("float not preserved: got %v (%T)", result[2]["from"], result[2]["from"])
+	}
+
+	// string preserved
+	if result[3]["from"] != "old" {
+		t.Errorf("string not preserved: got %v (%T)", result[3]["from"], result[3]["from"])
+	}
+
+	// nil preserved as null
+	if result[4]["from"] != nil {
+		t.Errorf("nil not preserved: got %v (%T)", result[4]["from"], result[4]["from"])
+	}
+}
+
+func TestJSONFormatter_GoPatchStyle(t *testing.T) {
+	f := &JSONFormatter{}
+	diffs := []Difference{
+		{Path: DiffPath{"spec", "containers", "[0]", "image"}, Type: DiffModified, From: "old", To: "new"},
+	}
+	opts := DefaultFormatOptions()
+	opts.UseGoPatchStyle = true
+
+	output := f.Format(diffs, opts)
+
+	var result []map[string]any
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output is not valid JSON: %v", err)
+	}
+
+	expected := "/spec/containers/0/image"
+	if result[0]["path"] != expected {
+		t.Errorf("expected Go-Patch path %q, got %v", expected, result[0]["path"])
+	}
+}
+
+func TestJSONFormatter_OrderedMapValues(t *testing.T) {
+	om := NewOrderedMap()
+	om.Keys = append(om.Keys, "name", "port")
+	om.Values["name"] = "nginx"
+	om.Values["port"] = 80
+
+	f := &JSONFormatter{}
+	diffs := []Difference{
+		{Path: DiffPath{"spec"}, Type: DiffAdded, To: om},
+	}
+
+	output := f.Format(diffs, DefaultFormatOptions())
+
+	var result []map[string]any
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output is not valid JSON: %v\noutput: %s", err, output)
+	}
+
+	toVal, ok := result[0]["to"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected 'to' to be a map, got %T", result[0]["to"])
+	}
+	if toVal["name"] != "nginx" {
+		t.Errorf("expected name 'nginx', got %v", toVal["name"])
+	}
+	if toVal["port"] != float64(80) {
+		t.Errorf("expected port 80, got %v", toVal["port"])
+	}
+}
+
+func TestJSONFormatter_StructuredFormatter(t *testing.T) {
+	var f Formatter = &JSONFormatter{}
+	_, ok := f.(StructuredFormatter)
+	if !ok {
+		t.Fatal("JSONFormatter should implement StructuredFormatter")
+	}
+}
+
+func TestJSONFormatter_FormatAll(t *testing.T) {
+	f := &JSONFormatter{}
+	groups := []DiffGroup{
+		{
+			FilePath: "deploy.yaml",
+			Diffs: []Difference{
+				{Path: DiffPath{"spec", "replicas"}, Type: DiffModified, From: 3, To: 5},
+			},
+		},
+		{
+			FilePath: "service.yaml",
+			Diffs: []Difference{
+				{Path: DiffPath{"spec", "type"}, Type: DiffModified, From: "ClusterIP", To: "NodePort"},
+			},
+		},
+	}
+
+	output := f.FormatAll(groups, DefaultFormatOptions())
+
+	var result []map[string]any
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("FormatAll output is not valid JSON: %v\noutput: %s", err, output)
+	}
+
+	if len(result) != 2 {
+		t.Fatalf("expected 2 entries, got %d", len(result))
+	}
+
+	// Verify file field is present in directory mode
+	if result[0]["file"] != "deploy.yaml" {
+		t.Errorf("expected file 'deploy.yaml', got %v", result[0]["file"])
+	}
+	if result[1]["file"] != "service.yaml" {
+		t.Errorf("expected file 'service.yaml', got %v", result[1]["file"])
+	}
+}
+
+func TestJSONFormatter_FormatAll_Empty(t *testing.T) {
+	f := &JSONFormatter{}
+	output := f.FormatAll([]DiffGroup{}, DefaultFormatOptions())
+
+	var result []any
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output is not valid JSON: %v\noutput: %s", err, output)
+	}
+	if len(result) != 0 {
+		t.Errorf("expected empty array, got %d items", len(result))
+	}
+}
+
+func TestJSONFormatter_FormatAll_NilOpts(t *testing.T) {
+	f := &JSONFormatter{}
+	groups := []DiffGroup{
+		{
+			FilePath: "test.yaml",
+			Diffs:    []Difference{{Path: DiffPath{"key"}, Type: DiffAdded, To: "val"}},
+		},
+	}
+
+	output := f.FormatAll(groups, nil)
+
+	var result []map[string]any
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output is not valid JSON with nil opts: %v", err)
+	}
+	if len(result) != 1 {
+		t.Fatalf("expected 1 entry, got %d", len(result))
+	}
+}
+
+func TestJSONFormatter_SpecialChars(t *testing.T) {
+	f := &JSONFormatter{}
+	diffs := []Difference{
+		{Path: DiffPath{"msg"}, Type: DiffModified, From: "hello \"world\"", To: "line1\nline2"},
+	}
+
+	output := f.Format(diffs, DefaultFormatOptions())
+
+	var result []map[string]any
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output with special chars is not valid JSON: %v\noutput: %s", err, output)
+	}
+	if result[0]["from"] != "hello \"world\"" {
+		t.Errorf("expected special chars preserved, got %v", result[0]["from"])
+	}
+}
+
+func TestJSONFormatter_DottedKeyPath(t *testing.T) {
+	f := &JSONFormatter{}
+	diffs := []Difference{
+		{Path: DiffPath{"metadata", "labels", "helm.sh/chart"}, Type: DiffAdded, To: "myapp-1.0"},
+	}
+
+	output := f.Format(diffs, DefaultFormatOptions())
+
+	var result []map[string]any
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output is not valid JSON: %v", err)
+	}
+
+	// Dotted keys should be bracket-quoted
+	expected := "metadata.labels[helm.sh/chart]"
+	if result[0]["path"] != expected {
+		t.Errorf("expected path %q, got %v", expected, result[0]["path"])
+	}
+}
+
+func TestJSONFormatter_MapValues(t *testing.T) {
+	f := &JSONFormatter{}
+	diffs := []Difference{
+		{Path: DiffPath{"config"}, Type: DiffAdded, To: map[string]any{
+			"host": "localhost",
+			"port": 8080,
+		}},
+	}
+
+	output := f.Format(diffs, DefaultFormatOptions())
+
+	var result []map[string]any
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output is not valid JSON: %v\noutput: %s", err, output)
+	}
+
+	toVal, ok := result[0]["to"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected 'to' to be a map, got %T", result[0]["to"])
+	}
+	if toVal["host"] != "localhost" {
+		t.Errorf("expected host 'localhost', got %v", toVal["host"])
+	}
+	if toVal["port"] != float64(8080) {
+		t.Errorf("expected port 8080, got %v", toVal["port"])
+	}
+}
+
+func TestJSONFormatter_FormatAll_GoPatchStyle(t *testing.T) {
+	f := &JSONFormatter{}
+	groups := []DiffGroup{
+		{
+			FilePath: "deploy.yaml",
+			Diffs: []Difference{
+				{Path: DiffPath{"spec", "containers", "[0]", "image"}, Type: DiffModified, From: "old", To: "new"},
+			},
+		},
+	}
+	opts := DefaultFormatOptions()
+	opts.UseGoPatchStyle = true
+
+	output := f.FormatAll(groups, opts)
+
+	var result []map[string]any
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output is not valid JSON: %v", err)
+	}
+
+	expected := "/spec/containers/0/image"
+	if result[0]["path"] != expected {
+		t.Errorf("expected Go-Patch path %q, got %v", expected, result[0]["path"])
+	}
+	if result[0]["file"] != "deploy.yaml" {
+		t.Errorf("expected file 'deploy.yaml', got %v", result[0]["file"])
+	}
+}
+
+func TestJSONFormatter_InfNaNValues(t *testing.T) {
+	f := &JSONFormatter{}
+	diffs := []Difference{
+		{Path: DiffPath{"inf_val"}, Type: DiffModified, From: math.Inf(1), To: math.Inf(-1)},
+		{Path: DiffPath{"nan_val"}, Type: DiffModified, From: math.NaN(), To: 0.0},
+	}
+
+	output := f.Format(diffs, DefaultFormatOptions())
+
+	var result []map[string]any
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output with Inf/NaN is not valid JSON: %v\noutput: %s", err, output)
+	}
+
+	// Inf/NaN should be serialized as strings
+	if result[0]["from"] != "+Inf" {
+		t.Errorf("expected +Inf string, got %v (%T)", result[0]["from"], result[0]["from"])
+	}
+	if result[0]["to"] != "-Inf" {
+		t.Errorf("expected -Inf string, got %v (%T)", result[0]["to"], result[0]["to"])
+	}
+	if result[1]["from"] != "NaN" {
+		t.Errorf("expected NaN string, got %v (%T)", result[1]["from"], result[1]["from"])
+	}
+}
+
+func TestJSONFormatter_FormatSingle(t *testing.T) {
+	f := &JSONFormatter{}
+	diff := Difference{
+		Path: DiffPath{"spec", "replicas"},
+		Type: DiffModified,
+		From: 3,
+		To:   5,
+	}
+
+	output := f.FormatSingle(diff, DefaultFormatOptions())
+
+	var result map[string]any
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("FormatSingle output is not valid JSON: %v\noutput: %s", err, output)
+	}
+	if result["path"] != "spec.replicas" {
+		t.Errorf("expected path 'spec.replicas', got %v", result["path"])
+	}
+	if result["type"] != "modified" {
+		t.Errorf("expected type 'modified', got %v", result["type"])
+	}
+}
+
+func TestJSONFormatter_FormatSingle_NilOpts(t *testing.T) {
+	f := &JSONFormatter{}
+	diff := Difference{Path: DiffPath{"key"}, Type: DiffAdded, To: "val"}
+
+	output := f.FormatSingle(diff, nil)
+
+	var result map[string]any
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("FormatSingle with nil opts is not valid JSON: %v", err)
+	}
+}
+
+func TestJSONFormatter_NestedListValues(t *testing.T) {
+	f := &JSONFormatter{}
+	diffs := []Difference{
+		{Path: DiffPath{"items"}, Type: DiffAdded, To: []any{"a", "b", "c"}},
+	}
+
+	output := f.Format(diffs, DefaultFormatOptions())
+
+	var result []map[string]any
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output is not valid JSON: %v\noutput: %s", err, output)
+	}
+
+	toVal, ok := result[0]["to"].([]any)
+	if !ok {
+		t.Fatalf("expected 'to' to be a list, got %T", result[0]["to"])
+	}
+	if len(toVal) != 3 {
+		t.Errorf("expected 3 items, got %d", len(toVal))
+	}
+}
+
+func TestJSONFormatter_FormatSingle_MarshalError(t *testing.T) {
+	f := &JSONFormatter{}
+	// A func value passes through jsonPrepareValue's default case
+	// but causes json.Marshal to fail.
+	diff := Difference{Path: DiffPath{"key"}, Type: DiffAdded, To: func() {}}
+
+	output := f.FormatSingle(diff, DefaultFormatOptions())
+	if output != "{}\n" {
+		t.Errorf("expected fallback {}, got %q", output)
+	}
+}
+
+func TestJSONFormatter_Format_MarshalError(t *testing.T) {
+	f := &JSONFormatter{}
+	diffs := []Difference{
+		{Path: DiffPath{"key"}, Type: DiffAdded, To: func() {}},
+	}
+
+	output := f.Format(diffs, DefaultFormatOptions())
+	if output != "[]\n" {
+		t.Errorf("expected fallback [], got %q", output)
+	}
 }

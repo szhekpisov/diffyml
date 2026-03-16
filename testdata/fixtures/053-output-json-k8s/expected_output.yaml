@@ -1,0 +1,58 @@
+[
+  {
+    "path": "(document)",
+    "type": "order_changed",
+    "from": [
+      "apps/v1:Deployment:web",
+      "v1:Service:web-svc"
+    ],
+    "to": [
+      "v1:Service:web-svc",
+      "apps/v1:Deployment:web"
+    ],
+    "document_index": 0
+  },
+  {
+    "path": "[0].spec.replicas",
+    "type": "modified",
+    "from": 2,
+    "to": 3,
+    "document_index": 0
+  },
+  {
+    "path": "[0].spec.template.spec.containers.nginx",
+    "type": "added",
+    "from": null,
+    "to": {
+      "resources": {
+        "limits": {
+          "memory": "256Mi"
+        }
+      }
+    },
+    "document_index": 0
+  },
+  {
+    "path": "[0].spec.template.spec.containers.nginx.image",
+    "type": "modified",
+    "from": "nginx:1.20",
+    "to": "nginx:1.25",
+    "document_index": 0
+  },
+  {
+    "path": "[1].spec.type",
+    "type": "modified",
+    "from": "ClusterIP",
+    "to": "NodePort",
+    "document_index": 1
+  },
+  {
+    "path": "[1].spec.ports.1",
+    "type": "added",
+    "from": null,
+    "to": {
+      "port": 443
+    },
+    "document_index": 1
+  }
+]

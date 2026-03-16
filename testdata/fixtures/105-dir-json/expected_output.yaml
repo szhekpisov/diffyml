@@ -1,0 +1,18 @@
+[
+  {
+    "file": "deploy.yaml",
+    "path": "spec.replicas",
+    "type": "modified",
+    "from": 2,
+    "to": 5,
+    "document_index": 0
+  },
+  {
+    "file": "service.yaml",
+    "path": "spec.type",
+    "type": "modified",
+    "from": "ClusterIP",
+    "to": "NodePort",
+    "document_index": 0
+  }
+]

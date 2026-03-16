@@ -75,12 +75,12 @@ func TestCLIConfig_UsageAlignment(t *testing.T) {
 	}
 }
 
-func TestCLI_Usage_ListsAllFiveFormats(t *testing.T) {
+func TestCLI_Usage_ListsAllFormats(t *testing.T) {
 	cfg := NewCLIConfig()
 	usage := cfg.Usage()
 
-	// All five formats should be listed in the usage text
-	formats := []string{"compact", "brief", "github", "gitlab", "gitea"}
+	// All formats should be listed in the usage text
+	formats := []string{"compact", "brief", "github", "gitlab", "gitea", "json"}
 	for _, format := range formats {
 		if !containsSubstr(usage, format) {
 			t.Errorf("Usage() should list format %q", format)

@@ -32,7 +32,7 @@
 //
 // # Formatting output
 //
-// Six built-in formatters render differences for different audiences:
+// Seven built-in formatters render differences for different audiences:
 //
 //   - [DetailedFormatter] — full human-readable output with inline diffs
 //   - [CompactFormatter] — one line per change
@@ -40,6 +40,7 @@
 //   - [GitHubFormatter] — GitHub Actions workflow annotations
 //   - [GitLabFormatter] — GitLab CI Code Quality JSON
 //   - [GiteaFormatter] — Gitea CI (GitHub-compatible annotations)
+//   - [JSONFormatter] — machine-readable JSON with typed values
 //
 // All formatters implement the [Formatter] interface.  Use [FormatterByName]
 // to obtain a formatter by string name, and [DefaultFormatOptions] for

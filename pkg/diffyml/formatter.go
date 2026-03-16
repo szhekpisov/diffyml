@@ -1,6 +1,6 @@
 // formatter.go - Output formatting for differences.
 //
-// Implements 6 output styles: compact, brief, github, gitlab, gitea, detailed.
+// Implements 7 output styles: compact, brief, github, gitlab, gitea, json, detailed.
 // Key types: Formatter interface, FormatOptions.
 // Each formatter implements Format(diffs, opts) string.
 package diffyml
@@ -8,7 +8,9 @@ package diffyml
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 )
@@ -65,10 +67,10 @@ func DefaultFormatOptions() *FormatOptions {
 }
 
 // validFormatterNames lists all supported formatter names.
-var validFormatterNames = []string{"compact", "brief", "github", "gitlab", "gitea", "detailed"}
+var validFormatterNames = []string{"compact", "brief", "github", "gitlab", "gitea", "json", "detailed"}
 
 // FormatterByName returns a formatter by name.
-// Supported names: compact, brief, github, gitlab, gitea, detailed.
+// Supported names: compact, brief, github, gitlab, gitea, json, detailed.
 // Returns error for invalid formatter names with list of valid options.
 func FormatterByName(name string) (Formatter, error) {
 	// Normalize to lowercase for case-insensitive matching
@@ -85,6 +87,8 @@ func FormatterByName(name string) (Formatter, error) {
 		return &GitLabFormatter{}, nil
 	case "gitea":
 		return &GiteaFormatter{}, nil
+	case "json":
+		return &JSONFormatter{}, nil
 	case "detailed":
 		return &DetailedFormatter{}, nil
 	default:
@@ -557,4 +561,163 @@ func (f *GiteaFormatter) Format(diffs []Difference, opts *FormatOptions) string 
 func (f *GiteaFormatter) FormatAll(groups []DiffGroup, opts *FormatOptions) string {
 	gh := &GitHubFormatter{}
 	return gh.FormatAll(groups, opts)
+}
+
+// JSONFormatter renders differences as machine-readable JSON.
+// Output is a JSON array of objects, one per difference, with typed values.
+type JSONFormatter struct{}
+
+// jsonDiff is the JSON representation of a single difference.
+type jsonDiff struct {
+	Path          string `json:"path"`
+	Type          string `json:"type"`
+	From          any    `json:"from"`
+	To            any    `json:"to"`
+	DocumentIndex int    `json:"document_index"`
+}
+
+// jsonDirDiff extends jsonDiff with a file path for directory mode.
+type jsonDirDiff struct {
+	File          string `json:"file"`
+	Path          string `json:"path"`
+	Type          string `json:"type"`
+	From          any    `json:"from"`
+	To            any    `json:"to"`
+	DocumentIndex int    `json:"document_index"`
+}
+
+// jsonDiffTypeName returns the string name for a DiffType.
+func jsonDiffTypeName(dt DiffType) string {
+	switch dt {
+	case DiffAdded:
+		return "added"
+	case DiffRemoved:
+		return "removed"
+	case DiffModified:
+		return "modified"
+	default: // DiffOrderChanged
+		return "order_changed"
+	}
+}
+
+// jsonPrepareValue converts a Difference value to a JSON-serializable form.
+// *OrderedMap is converted to map[string]any since JSON has no ordered-map concept.
+// float64 Inf/NaN values are converted to strings since encoding/json cannot marshal them.
+func jsonPrepareValue(val any) any {
+	if val == nil {
+		return nil
+	}
+	switch v := val.(type) {
+	case *OrderedMap:
+		return orderedMapToPlain(v)
+	case float64:
+		if math.IsInf(v, 0) || math.IsNaN(v) {
+			return fmt.Sprintf("%v", v)
+		}
+		return v
+	case []any:
+		out := make([]any, len(v))
+		for i, item := range v {
+			out[i] = jsonPrepareValue(item)
+		}
+		return out
+	case map[string]any:
+		out := make(map[string]any, len(v))
+		for k, item := range v {
+			out[k] = jsonPrepareValue(item)
+		}
+		return out
+	default:
+		return val
+	}
+}
+
+// orderedMapToPlain recursively converts an OrderedMap to a plain map[string]any.
+func orderedMapToPlain(om *OrderedMap) map[string]any {
+	out := make(map[string]any, len(om.Keys))
+	for _, key := range om.Keys {
+		out[key] = jsonPrepareValue(om.Values[key])
+	}
+	return out
+}
+
+// buildJSONDiff converts a single Difference into a jsonDiff struct.
+func buildJSONDiff(diff Difference, opts *FormatOptions) jsonDiff {
+	path := diff.Path.String()
+	if opts.UseGoPatchStyle {
+		path = diff.Path.GoPatchString()
+	}
+	return jsonDiff{
+		Path:          path,
+		Type:          jsonDiffTypeName(diff.Type),
+		From:          jsonPrepareValue(diff.From),
+		To:            jsonPrepareValue(diff.To),
+		DocumentIndex: diff.DocumentIndex,
+	}
+}
+
+// FormatSingle renders a single difference as a JSON object (without array wrapper).
+func (f *JSONFormatter) FormatSingle(diff Difference, opts *FormatOptions) string {
+	if opts == nil {
+		opts = DefaultFormatOptions()
+	}
+	d := buildJSONDiff(diff, opts)
+	out, err := json.Marshal(d)
+	if err != nil {
+		return "{}\n"
+	}
+	return string(out) + "\n"
+}
+
+// jsonMarshalIndent marshals v as indented JSON, returning "[]" on error.
+func jsonMarshalIndent(v any) string {
+	out, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return "[]\n"
+	}
+	return string(out) + "\n"
+}
+
+// Format renders differences as a JSON array.
+func (f *JSONFormatter) Format(diffs []Difference, opts *FormatOptions) string {
+	if opts == nil {
+		opts = DefaultFormatOptions()
+	}
+
+	items := make([]jsonDiff, len(diffs))
+	for i, diff := range diffs {
+		items[i] = buildJSONDiff(diff, opts)
+	}
+
+	return jsonMarshalIndent(items)
+}
+
+// FormatAll renders all diff groups as a single JSON array for directory mode.
+// Implements StructuredFormatter interface.
+func (f *JSONFormatter) FormatAll(groups []DiffGroup, opts *FormatOptions) string {
+	if opts == nil {
+		opts = DefaultFormatOptions()
+	}
+
+	total := 0
+	for _, g := range groups {
+		total += len(g.Diffs)
+	}
+
+	items := make([]jsonDirDiff, 0, total)
+	for _, group := range groups {
+		for _, diff := range group.Diffs {
+			d := buildJSONDiff(diff, opts)
+			items = append(items, jsonDirDiff{
+				File:          group.FilePath,
+				Path:          d.Path,
+				Type:          d.Type,
+				From:          d.From,
+				To:            d.To,
+				DocumentIndex: d.DocumentIndex,
+			})
+		}
+	}
+
+	return jsonMarshalIndent(items)
 }

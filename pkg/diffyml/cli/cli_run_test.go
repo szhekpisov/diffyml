@@ -598,6 +598,92 @@ func TestRun_GitExternalDiff_YAMLWithDiffs_UsesDisplayPath(t *testing.T) {
 	}
 }
 
+func TestRun_GitExternalDiff_FileHeader(t *testing.T) {
+	yaml1 := "key: value1\n"
+	yaml2 := "key: value2\n"
+
+	cfg := NewCLIConfig()
+	cfg.GitExternalDiff = true
+	cfg.GitDisplayPath = "charts/deploy.yaml"
+	cfg.Color = "never"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FromContent = []byte(yaml1)
+	rc.ToContent = []byte(yaml2)
+
+	result := Run(cfg, rc)
+	if result.Code == ExitCodeError {
+		t.Fatalf("unexpected error: %v; stderr: %s", result.Err, stderr.String())
+	}
+
+	output := stdout.String()
+	if !strings.Contains(output, "--- a/charts/deploy.yaml") {
+		t.Errorf("expected '--- a/' header, got: %s", output)
+	}
+	if !strings.Contains(output, "+++ b/charts/deploy.yaml") {
+		t.Errorf("expected '+++ b/' header, got: %s", output)
+	}
+}
+
+func TestRun_GitExternalDiff_FileHeader_NewFile(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.GitExternalDiff = true
+	cfg.GitDisplayPath = "deploy.yaml"
+	cfg.FromFile = "/dev/null"
+	cfg.Color = "never"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FromContent = []byte{}
+	rc.ToContent = []byte("key: value\n")
+
+	result := Run(cfg, rc)
+	if result.Code == ExitCodeError {
+		t.Fatalf("unexpected error: %v; stderr: %s", result.Err, stderr.String())
+	}
+
+	output := stdout.String()
+	if !strings.Contains(output, "--- /dev/null") {
+		t.Errorf("expected '--- /dev/null' for new file, got: %s", output)
+	}
+	if !strings.Contains(output, "+++ b/deploy.yaml") {
+		t.Errorf("expected '+++ b/' header for new file, got: %s", output)
+	}
+}
+
+func TestRun_GitExternalDiff_FileHeader_DeletedFile(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.GitExternalDiff = true
+	cfg.GitDisplayPath = "deploy.yaml"
+	cfg.ToFile = "/dev/null"
+	cfg.Color = "never"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FromContent = []byte("key: value\n")
+	rc.ToContent = []byte{}
+
+	result := Run(cfg, rc)
+	if result.Code == ExitCodeError {
+		t.Fatalf("unexpected error: %v; stderr: %s", result.Err, stderr.String())
+	}
+
+	output := stdout.String()
+	if !strings.Contains(output, "--- a/deploy.yaml") {
+		t.Errorf("expected '--- a/' header for deleted file, got: %s", output)
+	}
+	if !strings.Contains(output, "+++ /dev/null") {
+		t.Errorf("expected '+++ /dev/null' for deleted file, got: %s", output)
+	}
+}
+
 func TestRun_GitExternalDiff_NonYAML_SilentlySkipped(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.GitExternalDiff = true

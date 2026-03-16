@@ -710,6 +710,18 @@ func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
 		return gitExternalDiffGuard(cfg, rc, NewExitResult(ExitCodeError, err))
 	}
 
+	// In git external diff mode, print a file header so multi-file output
+	// is identifiable (git concatenates external diff output with no separator).
+	if cfg.GitExternalDiff {
+		pairType := diffyml.FilePairBothExist
+		if cfg.FromFile == "/dev/null" {
+			pairType = diffyml.FilePairOnlyTo
+		} else if cfg.ToFile == "/dev/null" {
+			pairType = diffyml.FilePairOnlyFrom
+		}
+		fmt.Fprint(rc.Stdout, diffyml.FormatFileHeader(cfg.GitDisplayPath, pairType, formatOpts))
+	}
+
 	result := runComparison(cfg, rc, fromContent, toContent, formatter, formatOpts)
 	return gitExternalDiffGuard(cfg, rc, result)
 }

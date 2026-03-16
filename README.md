@@ -34,6 +34,7 @@ diffyml compares YAML files and shows meaningful, structured differences — not
 | CI annotation formats | 3 (GitHub, GitLab, Gitea) | 0 | 0 |
 | Runtime dependencies | 1 (yaml.v3) | 14 | 0 |
 | Directory comparison | Yes | No | Yes |
+| Git external diff (`GIT_EXTERNAL_DIFF`) | Yes (auto-detect) | No | N/A |
 | Performance (78 KB) | 19 ms | 142 ms (7.6x slower) | 7 ms |
 | Performance (780 KB) | 129 ms | 1,369 ms (10.6x slower) | 46 ms |
 
@@ -131,6 +132,7 @@ export KUBECTL_EXTERNAL_DIFF="diffyml --omit-header --set-exit-code"
 - **Remote files** — compare directly from HTTP/HTTPS URLs
 - **Certificate inspection** — inspects and compares embedded x509 certificates
 - **Chroot navigation** — focus comparison on a specific YAML subtree
+- **Git integration** — use as `GIT_EXTERNAL_DIFF` or `diff.external`; non-YAML files silently skipped
 - ⭐ **AI-powered summaries** ⭐ — natural language summaries of changes via Anthropic API
 
 ## Usage
@@ -181,6 +183,21 @@ This makes diffyml a drop-in `KUBECTL_EXTERNAL_DIFF` provider — kubectl passes
 ```bash
 export KUBECTL_EXTERNAL_DIFF="diffyml --omit-header --set-exit-code"
 kubectl diff -f manifests/
+```
+
+### Git Integration
+
+diffyml can be used as a git external diff program. Git passes 7-9 positional arguments which diffyml auto-detects — non-YAML files are silently skipped.
+
+```bash
+# One-off: diff YAML changes in the working tree
+GIT_EXTERNAL_DIFF=diffyml git diff
+
+# With flags
+GIT_EXTERNAL_DIFF='diffyml --set-exit-code' git diff
+
+# Permanent: set as your default external diff
+git config diff.external diffyml
 ```
 
 ### Filtering

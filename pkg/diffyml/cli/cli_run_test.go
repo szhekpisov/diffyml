@@ -814,6 +814,50 @@ func TestRun_GitExternalDiff_NoWarningForNormalInvocation(t *testing.T) {
 	}
 }
 
+func TestRun_GitExternalDiff_FullPipeline_ParseArgsThenRun(t *testing.T) {
+	yaml1 := "key: value1\n"
+	yaml2 := "key: value2\n"
+
+	cfg := NewCLIConfig()
+	err := cfg.ParseArgs([]string{
+		"--set-exit-code",
+		"--output", "gitlab",
+		"charts/deploy.yaml",       // name
+		"/tmp/old-content",         // old-file
+		"abc1234abc1234abc1234",    // old-hex
+		"100644",                   // old-mode
+		"/work/charts/deploy.yaml", // new-file
+		"def5678def5678def5678",    // new-hex
+		"100644",                   // new-mode
+	})
+	if err != nil {
+		t.Fatalf("ParseArgs failed: %v", err)
+	}
+
+	if !cfg.GitExternalDiff {
+		t.Fatal("expected GitExternalDiff=true after ParseArgs")
+	}
+	if !cfg.SetExitCode {
+		t.Fatal("expected SetExitCode=true after ParseArgs")
+	}
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FromContent = []byte(yaml1)
+	rc.ToContent = []byte(yaml2)
+
+	result := Run(cfg, rc)
+	if result.Code != ExitCodeDifferences {
+		t.Errorf("expected exit 1 (differences), got %d; stderr: %s", result.Code, stderr.String())
+	}
+	output := stdout.String()
+	if !strings.Contains(output, "charts/deploy.yaml") {
+		t.Errorf("expected display path in output, got: %s", output)
+	}
+}
+
 func TestRun_TrueColorAlways(t *testing.T) {
 	yaml1 := "key: value1\n"
 	yaml2 := "key: value2\n"

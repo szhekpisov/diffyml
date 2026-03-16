@@ -735,6 +735,56 @@ func TestRun_GitExternalDiff_NoDiffs_Exit0(t *testing.T) {
 	}
 }
 
+func TestRun_GitExternalDiff_AutoForcesColor(t *testing.T) {
+	yaml1 := "key: value1\n"
+	yaml2 := "key: value2\n"
+
+	cfg := NewCLIConfig()
+	cfg.GitExternalDiff = true
+	cfg.GitDisplayPath = "deploy.yaml"
+	cfg.Color = "auto" // default
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FromContent = []byte(yaml1)
+	rc.ToContent = []byte(yaml2)
+
+	result := Run(cfg, rc)
+	if result.Code == ExitCodeError {
+		t.Fatalf("unexpected error: %v; stderr: %s", result.Err, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "\033[") {
+		t.Error("expected ANSI color codes in git external diff mode with color=auto")
+	}
+}
+
+func TestRun_GitExternalDiff_ColorNeverRespected(t *testing.T) {
+	yaml1 := "key: value1\n"
+	yaml2 := "key: value2\n"
+
+	cfg := NewCLIConfig()
+	cfg.GitExternalDiff = true
+	cfg.GitDisplayPath = "deploy.yaml"
+	cfg.Color = "never"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FromContent = []byte(yaml1)
+	rc.ToContent = []byte(yaml2)
+
+	result := Run(cfg, rc)
+	if result.Code == ExitCodeError {
+		t.Fatalf("unexpected error: %v; stderr: %s", result.Err, stderr.String())
+	}
+	if strings.Contains(stdout.String(), "\033[") {
+		t.Error("expected no ANSI color codes with --color never")
+	}
+}
+
 func TestRun_GitExternalDiff_FullPipeline_ParseArgsThenRun(t *testing.T) {
 	yaml1 := "key: value1\n"
 	yaml2 := "key: value2\n"

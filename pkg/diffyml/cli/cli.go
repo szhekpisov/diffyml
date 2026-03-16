@@ -676,6 +676,13 @@ func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
 		return NewExitResult(ExitCodeError, err)
 	}
 
+	// In git external diff mode, force color on unless explicitly disabled.
+	// Git pipes external diff output through its pager, so stdout is not a TTY
+	// and color=auto would disable color. Forcing it matches git's own behavior.
+	if cfg.GitExternalDiff && cfg.Color != "never" {
+		formatOpts.Color = true
+	}
+
 	// Set file path for formatters that use it (e.g., GitLab)
 	if cfg.GitExternalDiff {
 		formatOpts.FilePath = cfg.GitDisplayPath

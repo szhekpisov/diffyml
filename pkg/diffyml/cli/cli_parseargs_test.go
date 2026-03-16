@@ -685,6 +685,29 @@ func TestParseArgs_GitExternalDiff_NotDetected_InvalidOctalPos6(t *testing.T) {
 	}
 }
 
+func TestParseArgs_GitExternalDiff_EnvVarAloneNotSufficient(t *testing.T) {
+	t.Setenv("GIT_EXTERNAL_DIFF", "diffyml")
+
+	cfg := NewCLIConfig()
+	args := []string{
+		"deploy.yaml",
+		"/tmp/old-content",
+		"abc1234abc1234abc1234",
+		"NOTOCL", // invalid octal at position 3
+		"/work/deploy.yaml",
+		"def5678def5678def5678",
+		"100644",
+	}
+
+	err := cfg.ParseArgs(args)
+	if cfg.GitExternalDiff {
+		t.Error("expected GitExternalDiff=false: env var alone should not trigger detection without valid octals")
+	}
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 // --- isOctalMode tests ---
 
 func TestIsOctalMode(t *testing.T) {

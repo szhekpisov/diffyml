@@ -735,6 +735,58 @@ func TestRun_GitExternalDiff_NoDiffs_Exit0(t *testing.T) {
 	}
 }
 
+func TestRun_GitExternalDiff_EnvVarWarning(t *testing.T) {
+	t.Setenv("GIT_EXTERNAL_DIFF", "diffyml")
+
+	yaml1 := "key: value1\n"
+	yaml2 := "key: value2\n"
+
+	cfg := NewCLIConfig()
+	// GitExternalDiff is NOT set — simulates detection not firing
+	cfg.GitExternalDiff = false
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FromContent = []byte(yaml1)
+	rc.ToContent = []byte(yaml2)
+
+	result := Run(cfg, rc)
+	if result.Code == ExitCodeError {
+		t.Fatalf("unexpected error: %v", result.Err)
+	}
+	if !strings.Contains(stderr.String(), "GIT_EXTERNAL_DIFF is set but") {
+		t.Errorf("expected env var warning on stderr, got: %q", stderr.String())
+	}
+}
+
+func TestRun_GitExternalDiff_NoWarningWhenDetected(t *testing.T) {
+	t.Setenv("GIT_EXTERNAL_DIFF", "diffyml")
+
+	yaml1 := "key: value1\n"
+	yaml2 := "key: value2\n"
+
+	cfg := NewCLIConfig()
+	cfg.GitExternalDiff = true
+	cfg.GitDisplayPath = "deploy.yaml"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FromContent = []byte(yaml1)
+	rc.ToContent = []byte(yaml2)
+
+	result := Run(cfg, rc)
+	if result.Code == ExitCodeError {
+		t.Fatalf("unexpected error: %v", result.Err)
+	}
+	if strings.Contains(stderr.String(), "GIT_EXTERNAL_DIFF") {
+		t.Errorf("expected no warning when detection succeeded, got: %q", stderr.String())
+	}
+}
+
 func TestRun_TrueColorAlways(t *testing.T) {
 	yaml1 := "key: value1\n"
 	yaml2 := "key: value2\n"

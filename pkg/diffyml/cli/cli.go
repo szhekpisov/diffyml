@@ -181,13 +181,10 @@ func (c *CLIConfig) ParseArgs(args []string) error {
 	//   8 args: ... rename-to
 	//   9 args: ... rename-to xfrm_msg
 	//
-	// Detection: 7-9 positional args with valid octal modes at positions 3 and 6,
-	// or 7-9 args when GIT_EXTERNAL_DIFF env var is set (covers diff.external too
-	// when the octal heuristic alone would suffice, but the env var provides a
-	// definitive signal for GIT_EXTERNAL_DIFF users).
+	// Detection: 7-9 positional args with valid octal modes at positions 3 and 6.
+	// This heuristic is unambiguous — no normal 2-file invocation produces these.
 	if len(remaining) >= 7 && len(remaining) <= 9 &&
-		(isOctalMode(remaining[3]) && isOctalMode(remaining[6]) ||
-			os.Getenv("GIT_EXTERNAL_DIFF") != "") {
+		isOctalMode(remaining[3]) && isOctalMode(remaining[6]) {
 		c.GitExternalDiff = true
 		c.GitDisplayPath = remaining[0]
 		c.FromFile = remaining[1] // old-file
@@ -643,6 +640,12 @@ func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
 	if cfg.ShowHelp {
 		fmt.Fprint(rc.Stdout, cfg.Usage())
 		return NewExitResult(ExitCodeSuccess, nil)
+	}
+
+	// Warn if GIT_EXTERNAL_DIFF is set but we didn't detect the calling convention.
+	// This helps debug misconfigured setups (e.g. a wrapper that strips arguments).
+	if !cfg.GitExternalDiff && os.Getenv("GIT_EXTERNAL_DIFF") != "" {
+		fmt.Fprintln(rc.Stderr, "Warning: GIT_EXTERNAL_DIFF is set but git's calling convention was not detected")
 	}
 
 	// In git external diff mode, silently skip non-YAML files

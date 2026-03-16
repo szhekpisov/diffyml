@@ -132,6 +132,17 @@ func BuildFilePairPlan(fromDir, toDir string) ([]FilePair, error) {
 	return pairs, nil
 }
 
+// FormatRenameFileHeader returns a file header for renamed files, showing
+// the old name on the "---" line and the new name on the "+++" line.
+func FormatRenameFileHeader(fromName, toName string, opts *FormatOptions) string {
+	if opts == nil {
+		opts = DefaultFormatOptions()
+	}
+	prefix := colorStart(opts, styleBold+colorWhite)
+	suffix := colorEnd(opts)
+	return fmt.Sprintf("%s--- a/%s%s\n%s+++ b/%s%s\n", prefix, fromName, suffix, prefix, toName, suffix)
+}
+
 // FormatFileHeader returns a unified-diff-style file header for directory mode.
 // Uses "--- a/<filename>" / "+++ b/<filename>" for BothExist,
 // "/dev/null" for the absent side on OnlyFrom/OnlyTo.

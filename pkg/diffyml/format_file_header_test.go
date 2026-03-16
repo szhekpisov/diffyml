@@ -100,3 +100,38 @@ func TestFormatFileHeader_NilOpts(t *testing.T) {
 		t.Errorf("expected %q, got %q", expected, header)
 	}
 }
+
+func TestFormatRenameFileHeader_NoColor(t *testing.T) {
+	opts := &FormatOptions{Color: false}
+	header := FormatRenameFileHeader("old.yaml", "new.yaml", opts)
+
+	if !strings.Contains(header, "--- a/old.yaml") {
+		t.Errorf("expected '--- a/old.yaml' in header, got: %q", header)
+	}
+	if !strings.Contains(header, "+++ b/new.yaml") {
+		t.Errorf("expected '+++ b/new.yaml' in header, got: %q", header)
+	}
+}
+
+func TestFormatRenameFileHeader_WithColor(t *testing.T) {
+	opts := &FormatOptions{Color: true}
+	header := FormatRenameFileHeader("old.yaml", "new.yaml", opts)
+
+	if !strings.Contains(header, "--- a/old.yaml") {
+		t.Errorf("expected '--- a/old.yaml' in header, got: %q", header)
+	}
+	if !strings.Contains(header, "+++ b/new.yaml") {
+		t.Errorf("expected '+++ b/new.yaml' in header, got: %q", header)
+	}
+	if !strings.Contains(header, "\033[1m") {
+		t.Errorf("expected bold ANSI code, got: %q", header)
+	}
+}
+
+func TestFormatRenameFileHeader_NilOpts(t *testing.T) {
+	header := FormatRenameFileHeader("old.yaml", "new.yaml", nil)
+	expected := "--- a/old.yaml\n+++ b/new.yaml\n"
+	if header != expected {
+		t.Errorf("expected %q, got %q", expected, header)
+	}
+}

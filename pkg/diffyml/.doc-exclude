@@ -26,6 +26,7 @@ ChrootError
 FilePair
 FilePairType
 FormatFileHeader
+FormatRenameFileHeader
 
 # Formatter supporting types (documented via Formatter / FormatterByName)
 DiffGroup

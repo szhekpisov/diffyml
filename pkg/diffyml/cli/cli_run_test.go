@@ -684,7 +684,7 @@ func TestRun_GitExternalDiff_FileHeader_DeletedFile(t *testing.T) {
 	}
 }
 
-func TestRun_GitExternalDiff_NonYAML_SilentlySkipped(t *testing.T) {
+func TestRun_GitExternalDiff_NonYAML_SkippedWithWarning(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.GitExternalDiff = true
 	cfg.GitDisplayPath = "Makefile"
@@ -701,10 +701,10 @@ func TestRun_GitExternalDiff_NonYAML_SilentlySkipped(t *testing.T) {
 		t.Errorf("expected exit 0 for non-YAML file, got %d", result.Code)
 	}
 	if stdout.String() != "" {
-		t.Errorf("expected no output for non-YAML file, got: %q", stdout.String())
+		t.Errorf("expected no stdout for non-YAML file, got: %q", stdout.String())
 	}
-	if stderr.String() != "" {
-		t.Errorf("expected no stderr for non-YAML file, got: %q", stderr.String())
+	if !strings.Contains(stderr.String(), "Warning: skipping non-YAML file Makefile") {
+		t.Errorf("expected warning on stderr, got: %q", stderr.String())
 	}
 }
 
@@ -1011,6 +1011,58 @@ func TestRun_GitExternalDiff_ReadError_NonFatal(t *testing.T) {
 	}
 	if strings.Contains(stderr.String(), "Error:") {
 		t.Errorf("expected no 'Error:' prefix in git mode, got: %q", stderr.String())
+	}
+}
+
+func TestRun_GitExternalDiff_RenameHeader(t *testing.T) {
+	yaml1 := "key: value1\n"
+	yaml2 := "key: value2\n"
+
+	cfg := NewCLIConfig()
+	cfg.GitExternalDiff = true
+	cfg.GitOriginalPath = "old-name.yaml"
+	cfg.GitDisplayPath = "new-name.yaml"
+	cfg.Color = "never"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FromContent = []byte(yaml1)
+	rc.ToContent = []byte(yaml2)
+
+	result := Run(cfg, rc)
+	if result.Code != ExitCodeSuccess {
+		t.Fatalf("expected exit 0, got %d: %v", result.Code, result.Err)
+	}
+	out := stdout.String()
+	if !strings.Contains(out, "--- a/old-name.yaml") {
+		t.Errorf("expected '--- a/old-name.yaml' in header, got: %q", out)
+	}
+	if !strings.Contains(out, "+++ b/new-name.yaml") {
+		t.Errorf("expected '+++ b/new-name.yaml' in header, got: %q", out)
+	}
+}
+
+func TestRun_GitExternalDiff_NonYAML_Warning(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.GitExternalDiff = true
+	cfg.GitDisplayPath = "config.json"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+
+	result := Run(cfg, rc)
+	if result.Code != ExitCodeSuccess {
+		t.Fatalf("expected exit 0, got %d", result.Code)
+	}
+	if stdout.String() != "" {
+		t.Errorf("expected no stdout, got: %q", stdout.String())
+	}
+	if !strings.Contains(stderr.String(), "Warning: skipping non-YAML file config.json") {
+		t.Errorf("expected warning on stderr, got: %q", stderr.String())
 	}
 }
 

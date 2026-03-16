@@ -504,6 +504,9 @@ func TestParseArgs_GitExternalDiff_8Args_Rename(t *testing.T) {
 	if cfg.GitDisplayPath != "new-name.yaml" {
 		t.Errorf("expected GitDisplayPath='new-name.yaml' (rename-to), got %q", cfg.GitDisplayPath)
 	}
+	if cfg.GitOriginalPath != "old-name.yaml" {
+		t.Errorf("expected GitOriginalPath='old-name.yaml', got %q", cfg.GitOriginalPath)
+	}
 	if cfg.FromFile != "/tmp/old-content" {
 		t.Errorf("expected FromFile='/tmp/old-content', got %q", cfg.FromFile)
 	}

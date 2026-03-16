@@ -62,8 +62,9 @@ type CLIConfig struct {
 	SummaryModel string // --summary-model: Anthropic model override
 
 	// Git external diff mode
-	GitExternalDiff bool   // true when 7-arg GIT_EXTERNAL_DIFF convention detected
-	GitDisplayPath  string // repo-relative path for display headers
+	GitExternalDiff  bool   // true when 7-arg GIT_EXTERNAL_DIFF convention detected
+	GitDisplayPath   string // repo-relative path for display headers (rename-to when renamed)
+	GitOriginalPath  string // original repo-relative path (differs from GitDisplayPath on rename)
 
 	// Exit code behavior
 	SetExitCode bool
@@ -186,6 +187,7 @@ func (c *CLIConfig) ParseArgs(args []string) error {
 	if len(remaining) >= 7 && len(remaining) <= 9 &&
 		isOctalMode(remaining[3]) && isOctalMode(remaining[6]) {
 		c.GitExternalDiff = true
+		c.GitOriginalPath = remaining[0]
 		c.GitDisplayPath = remaining[0]
 		c.FromFile = remaining[1] // old-file
 		c.ToFile = remaining[4]   // new-file
@@ -652,8 +654,9 @@ func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
 		return NewExitResult(ExitCodeSuccess, nil)
 	}
 
-	// In git external diff mode, silently skip non-YAML files
+	// In git external diff mode, skip non-YAML files with a warning
 	if cfg.GitExternalDiff && !isYAMLFile(cfg.GitDisplayPath) {
+		fmt.Fprintf(rc.Stderr, "Warning: skipping non-YAML file %s\n", cfg.GitDisplayPath)
 		return NewExitResult(ExitCodeSuccess, nil)
 	}
 
@@ -719,13 +722,19 @@ func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
 	// In git external diff mode, print a file header so multi-file output
 	// is identifiable (git concatenates external diff output with no separator).
 	if cfg.GitExternalDiff {
-		pairType := diffyml.FilePairBothExist
 		if cfg.FromFile == "/dev/null" {
-			pairType = diffyml.FilePairOnlyTo
+			fmt.Fprint(rc.Stdout, diffyml.FormatFileHeader(cfg.GitDisplayPath, diffyml.FilePairOnlyTo, formatOpts))
 		} else if cfg.ToFile == "/dev/null" {
-			pairType = diffyml.FilePairOnlyFrom
+			name := cfg.GitOriginalPath
+			if name == "" {
+				name = cfg.GitDisplayPath
+			}
+			fmt.Fprint(rc.Stdout, diffyml.FormatFileHeader(name, diffyml.FilePairOnlyFrom, formatOpts))
+		} else if cfg.GitOriginalPath != "" && cfg.GitOriginalPath != cfg.GitDisplayPath {
+			fmt.Fprint(rc.Stdout, diffyml.FormatRenameFileHeader(cfg.GitOriginalPath, cfg.GitDisplayPath, formatOpts))
+		} else {
+			fmt.Fprint(rc.Stdout, diffyml.FormatFileHeader(cfg.GitDisplayPath, diffyml.FilePairBothExist, formatOpts))
 		}
-		fmt.Fprint(rc.Stdout, diffyml.FormatFileHeader(cfg.GitDisplayPath, pairType, formatOpts))
 	}
 
 	result := runComparison(cfg, rc, fromContent, toContent, formatter, formatOpts)

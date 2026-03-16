@@ -787,6 +787,33 @@ func TestRun_GitExternalDiff_NoWarningWhenDetected(t *testing.T) {
 	}
 }
 
+func TestRun_GitExternalDiff_NoWarningForNormalInvocation(t *testing.T) {
+	t.Setenv("GIT_EXTERNAL_DIFF", "diffyml")
+
+	yaml1 := "key: value1\n"
+	yaml2 := "key: value2\n"
+
+	cfg := NewCLIConfig()
+	cfg.GitExternalDiff = false
+	cfg.FromFile = "from.yaml"
+	cfg.ToFile = "to.yaml"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FromContent = []byte(yaml1)
+	rc.ToContent = []byte(yaml2)
+
+	result := Run(cfg, rc)
+	if result.Code == ExitCodeError {
+		t.Fatalf("unexpected error: %v", result.Err)
+	}
+	if strings.Contains(stderr.String(), "GIT_EXTERNAL_DIFF") {
+		t.Errorf("expected no warning for normal 2-file invocation, got: %q", stderr.String())
+	}
+}
+
 func TestRun_TrueColorAlways(t *testing.T) {
 	yaml1 := "key: value1\n"
 	yaml2 := "key: value2\n"

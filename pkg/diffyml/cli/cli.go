@@ -644,7 +644,9 @@ func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
 
 	// Warn if GIT_EXTERNAL_DIFF is set but we didn't detect the calling convention.
 	// This helps debug misconfigured setups (e.g. a wrapper that strips arguments).
-	if !cfg.GitExternalDiff && os.Getenv("GIT_EXTERNAL_DIFF") != "" {
+	// Skip the warning for normal 2-file invocations that happen to have the env var set.
+	if !cfg.GitExternalDiff && os.Getenv("GIT_EXTERNAL_DIFF") != "" &&
+		(cfg.FromFile == "" || cfg.ToFile == "") {
 		fmt.Fprintln(rc.Stderr, "Warning: GIT_EXTERNAL_DIFF is set but git's calling convention was not detected")
 	}
 

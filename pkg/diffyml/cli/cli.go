@@ -361,7 +361,7 @@ func (c *CLIConfig) Usage() string {
 	// Git integration
 	sb.WriteString("Git integration:\n")
 	sb.WriteString("  diffyml can be used as a git external diff program. Non-YAML files are\n")
-	sb.WriteString("  silently skipped. Git passes 7-9 positional arguments which diffyml\n")
+	sb.WriteString("  skipped with a warning. Git passes 7-9 positional arguments which diffyml\n")
 	sb.WriteString("  auto-detects. Color and truecolor are auto-forced (use --color never to\n")
 	sb.WriteString("  disable). --set-exit-code is ignored (git aborts on non-zero exit).\n")
 	sb.WriteString("  Parse errors are non-fatal (warning printed, git continues).\n")

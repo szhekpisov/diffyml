@@ -187,7 +187,7 @@ kubectl diff -f manifests/
 
 ### Git Integration
 
-diffyml can be used as a git external diff program. Git passes 7-9 positional arguments which diffyml auto-detects — non-YAML files are silently skipped.
+diffyml can be used as a git external diff program. Git passes 7-9 positional arguments which diffyml auto-detects — non-YAML files are skipped with a warning.
 
 ```bash
 # One-off: structural diff for YAML changes in the working tree

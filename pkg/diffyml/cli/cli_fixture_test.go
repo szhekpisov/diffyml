@@ -68,7 +68,7 @@ func runFixture(t *testing.T, dir string) {
 	paramsCfg := readOptionalFixtureFile(t, dir, "params.cfg")
 
 	if expectedOutput == "" && expectedExitCodeStr == "" {
-		t.Fatalf("fixture must have at least expected_output.txt or expected_exit_code")
+		t.Fatalf("fixture must have at least expected_output.txt or expected_exit_code.txt")
 	}
 
 	cfg := NewCLIConfig()
@@ -134,7 +134,7 @@ func runDirectoryFixture(t *testing.T, dir string) {
 	paramsCfg := readOptionalFixtureFile(t, dir, "params.cfg")
 
 	if expectedOutput == "" && expectedExitCodeStr == "" {
-		t.Fatalf("fixture must have at least expected_output.txt or expected_exit_code")
+		t.Fatalf("fixture must have at least expected_output.txt or expected_exit_code.txt")
 	}
 
 	cfg := NewCLIConfig()

@@ -200,7 +200,18 @@ GIT_EXTERNAL_DIFF='diffyml -o compact' git diff
 git config diff.external diffyml
 ```
 
-Color and truecolor are auto-forced (git's pager makes stdout a pipe). Use `--color never` to disable. `--set-exit-code` is silently ignored — git aborts external diff programs that exit non-zero.
+For YAML-only scoping, use `.gitattributes` instead — non-YAML files are never sent to diffyml:
+
+```gitattributes
+*.yaml diff=diffyml
+*.yml  diff=diffyml
+```
+
+```bash
+git config diff.diffyml.command diffyml
+```
+
+Color and truecolor are auto-forced (git's pager makes stdout a pipe). Use `--color never` to disable. `--set-exit-code` is silently ignored — git aborts external diff programs that exit non-zero. Parse errors are non-fatal: a warning is printed and git continues to the next file.
 
 ### Filtering
 

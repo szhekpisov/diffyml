@@ -880,6 +880,48 @@ func TestRun_GitExternalDiff_FullPipeline_ParseArgsThenRun(t *testing.T) {
 	}
 }
 
+func TestRun_GitExternalDiff_ParseError_NonFatal(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.GitExternalDiff = true
+	cfg.GitDisplayPath = "broken.yaml"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FromContent = []byte("valid: yaml\n")
+	rc.ToContent = []byte(":\n  bad:\n    - [unmatched")
+
+	result := Run(cfg, rc)
+	if result.Code != ExitCodeSuccess {
+		t.Errorf("expected exit 0 for parse error in git mode, got %d", result.Code)
+	}
+	if !strings.Contains(stderr.String(), "Warning: skipping broken.yaml") {
+		t.Errorf("expected warning on stderr, got: %q", stderr.String())
+	}
+}
+
+func TestRun_GitExternalDiff_ReadError_NonFatal(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.GitExternalDiff = true
+	cfg.GitDisplayPath = "missing.yaml"
+	cfg.FromFile = "/nonexistent/path/old.yaml"
+	cfg.ToFile = "/nonexistent/path/new.yaml"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+
+	result := Run(cfg, rc)
+	if result.Code != ExitCodeSuccess {
+		t.Errorf("expected exit 0 for read error in git mode, got %d", result.Code)
+	}
+	if !strings.Contains(stderr.String(), "Warning: skipping missing.yaml") {
+		t.Errorf("expected warning on stderr, got: %q", stderr.String())
+	}
+}
+
 func TestRun_TrueColorAlways(t *testing.T) {
 	yaml1 := "key: value1\n"
 	yaml2 := "key: value2\n"

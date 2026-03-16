@@ -362,11 +362,16 @@ func (c *CLIConfig) Usage() string {
 	sb.WriteString("  silently skipped. Git passes 7-9 positional arguments which diffyml\n")
 	sb.WriteString("  auto-detects. Color and truecolor are auto-forced (use --color never to\n")
 	sb.WriteString("  disable). --set-exit-code is ignored (git aborts on non-zero exit).\n")
+	sb.WriteString("  Parse errors are non-fatal (warning printed, git continues).\n")
 	sb.WriteString("\n")
 	sb.WriteString("  Examples:\n")
 	sb.WriteString("    GIT_EXTERNAL_DIFF=diffyml git diff\n")
 	sb.WriteString("    GIT_EXTERNAL_DIFF='diffyml -o compact' git diff\n")
 	sb.WriteString("    git config diff.external diffyml\n")
+	sb.WriteString("\n")
+	sb.WriteString("  For YAML-only scoping via .gitattributes:\n")
+	sb.WriteString("    *.yaml diff=diffyml  (in .gitattributes)\n")
+	sb.WriteString("    git config diff.diffyml.command diffyml\n")
 
 	return sb.String()
 }
@@ -702,10 +707,22 @@ func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
 	fromContent, toContent, err := loadContents(cfg, rc)
 	if err != nil {
 		fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
-		return NewExitResult(ExitCodeError, err)
+		return gitExternalDiffGuard(cfg, rc, NewExitResult(ExitCodeError, err))
 	}
 
-	return runComparison(cfg, rc, fromContent, toContent, formatter, formatOpts)
+	result := runComparison(cfg, rc, fromContent, toContent, formatter, formatOpts)
+	return gitExternalDiffGuard(cfg, rc, result)
+}
+
+// gitExternalDiffGuard converts errors to warnings in git external diff mode.
+// Git aborts with "external diff died" on non-zero exit, so errors must be
+// non-fatal to let git continue to the next file.
+func gitExternalDiffGuard(cfg *CLIConfig, rc *RunConfig, result *ExitResult) *ExitResult {
+	if cfg.GitExternalDiff && result.Code == ExitCodeError {
+		fmt.Fprintf(rc.Stderr, "Warning: skipping %s: %v\n", cfg.GitDisplayPath, result.Err)
+		return NewExitResult(ExitCodeSuccess, nil)
+	}
+	return result
 }
 
 // isOctalMode returns true if s is a 6-character octal string (e.g. "100644", "000000").

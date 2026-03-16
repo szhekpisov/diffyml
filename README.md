@@ -132,7 +132,7 @@ export KUBECTL_EXTERNAL_DIFF="diffyml --omit-header --set-exit-code"
 - **Remote files** — compare directly from HTTP/HTTPS URLs
 - **Certificate inspection** — inspects and compares embedded x509 certificates
 - **Chroot navigation** — focus comparison on a specific YAML subtree
-- **Git integration** — use as `GIT_EXTERNAL_DIFF` or `diff.external`; non-YAML files silently skipped
+- **Git integration** — use as `GIT_EXTERNAL_DIFF` or via `.gitattributes` for YAML-only scoping
 - ⭐ **AI-powered summaries** ⭐ — natural language summaries of changes via Anthropic API
 
 ## Usage
@@ -190,17 +190,14 @@ kubectl diff -f manifests/
 diffyml can be used as a git external diff program. Git passes 7-9 positional arguments which diffyml auto-detects — non-YAML files are silently skipped.
 
 ```bash
-# One-off: diff YAML changes in the working tree
+# One-off: structural diff for YAML changes in the working tree
 GIT_EXTERNAL_DIFF=diffyml git diff
 
 # With flags (e.g. compact output)
 GIT_EXTERNAL_DIFF='diffyml -o compact' git diff
-
-# Permanent: set as your default external diff
-git config diff.external diffyml
 ```
 
-For YAML-only scoping, use `.gitattributes` instead — non-YAML files are never sent to diffyml:
+For permanent setup, use `.gitattributes` — git's built-in diff handles all other file types normally:
 
 ```gitattributes
 *.yaml diff=diffyml

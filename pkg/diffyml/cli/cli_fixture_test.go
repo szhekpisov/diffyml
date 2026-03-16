@@ -63,12 +63,12 @@ func runFixture(t *testing.T, dir string) {
 
 	fromContent := readFixtureFile(t, dir, "file1.yaml")
 	toContent := readFixtureFile(t, dir, "file2.yaml")
-	expectedOutput := readOptionalFixtureFile(t, dir, "expected_output.yaml")
-	expectedExitCodeStr := readOptionalFixtureFile(t, dir, "expected_exit_code")
+	expectedOutput := readOptionalFixtureFile(t, dir, "expected_output.txt")
+	expectedExitCodeStr := readOptionalFixtureFile(t, dir, "expected_exit_code.txt")
 	paramsCfg := readOptionalFixtureFile(t, dir, "params.cfg")
 
 	if expectedOutput == "" && expectedExitCodeStr == "" {
-		t.Fatalf("fixture must have at least expected_output.yaml or expected_exit_code")
+		t.Fatalf("fixture must have at least expected_output.txt or expected_exit_code")
 	}
 
 	cfg := NewCLIConfig()
@@ -103,7 +103,7 @@ func runFixture(t *testing.T, dir string) {
 	if expectedOutput != "" {
 		got := stdout.String()
 		if got != expectedOutput {
-			t.Errorf("output does not match expected_output.yaml\n--- got ---\n%s\n--- expected ---\n%s", got, expectedOutput)
+			t.Errorf("output does not match expected_output.txt\n--- got ---\n%s\n--- expected ---\n%s", got, expectedOutput)
 		}
 	}
 
@@ -129,12 +129,12 @@ func runDirectoryFixture(t *testing.T, dir string) {
 
 	dir1 := filepath.Join(dir, "dir1")
 	dir2 := filepath.Join(dir, "dir2")
-	expectedOutput := readOptionalFixtureFile(t, dir, "expected_output.yaml")
-	expectedExitCodeStr := readOptionalFixtureFile(t, dir, "expected_exit_code")
+	expectedOutput := readOptionalFixtureFile(t, dir, "expected_output.txt")
+	expectedExitCodeStr := readOptionalFixtureFile(t, dir, "expected_exit_code.txt")
 	paramsCfg := readOptionalFixtureFile(t, dir, "params.cfg")
 
 	if expectedOutput == "" && expectedExitCodeStr == "" {
-		t.Fatalf("fixture must have at least expected_output.yaml or expected_exit_code")
+		t.Fatalf("fixture must have at least expected_output.txt or expected_exit_code")
 	}
 
 	cfg := NewCLIConfig()
@@ -168,7 +168,7 @@ func runDirectoryFixture(t *testing.T, dir string) {
 	if expectedOutput != "" {
 		got := stdout.String()
 		if got != expectedOutput {
-			t.Errorf("output does not match expected_output.yaml\n--- got ---\n%s\n--- expected ---\n%s", got, expectedOutput)
+			t.Errorf("output does not match expected_output.txt\n--- got ---\n%s\n--- expected ---\n%s", got, expectedOutput)
 		}
 	}
 

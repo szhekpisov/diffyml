@@ -62,9 +62,9 @@ type CLIConfig struct {
 	SummaryModel string // --summary-model: Anthropic model override
 
 	// Git external diff mode
-	GitExternalDiff  bool   // true when 7-arg GIT_EXTERNAL_DIFF convention detected
-	GitDisplayPath   string // repo-relative path for display headers (rename-to when renamed)
-	GitOriginalPath  string // original repo-relative path (differs from GitDisplayPath on rename)
+	GitExternalDiff bool   // true when 7-arg GIT_EXTERNAL_DIFF convention detected
+	GitDisplayPath  string // repo-relative path for display headers (rename-to when renamed)
+	GitOriginalPath string // original repo-relative path (differs from GitDisplayPath on rename)
 
 	// Exit code behavior
 	SetExitCode bool
@@ -722,17 +722,18 @@ func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
 	// In git external diff mode, print a file header so multi-file output
 	// is identifiable (git concatenates external diff output with no separator).
 	if cfg.GitExternalDiff {
-		if cfg.FromFile == "/dev/null" {
+		switch {
+		case cfg.FromFile == "/dev/null":
 			fmt.Fprint(rc.Stdout, diffyml.FormatFileHeader(cfg.GitDisplayPath, diffyml.FilePairOnlyTo, formatOpts))
-		} else if cfg.ToFile == "/dev/null" {
+		case cfg.ToFile == "/dev/null":
 			name := cfg.GitOriginalPath
 			if name == "" {
 				name = cfg.GitDisplayPath
 			}
 			fmt.Fprint(rc.Stdout, diffyml.FormatFileHeader(name, diffyml.FilePairOnlyFrom, formatOpts))
-		} else if cfg.GitOriginalPath != "" && cfg.GitOriginalPath != cfg.GitDisplayPath {
+		case cfg.GitOriginalPath != "" && cfg.GitOriginalPath != cfg.GitDisplayPath:
 			fmt.Fprint(rc.Stdout, diffyml.FormatRenameFileHeader(cfg.GitOriginalPath, cfg.GitDisplayPath, formatOpts))
-		} else {
+		default:
 			fmt.Fprint(rc.Stdout, diffyml.FormatFileHeader(cfg.GitDisplayPath, diffyml.FilePairBothExist, formatOpts))
 		}
 	}

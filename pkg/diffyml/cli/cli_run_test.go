@@ -985,6 +985,9 @@ func TestRun_GitExternalDiff_ParseError_NonFatal(t *testing.T) {
 	if !strings.Contains(stderr.String(), "Warning: skipping broken.yaml") {
 		t.Errorf("expected warning on stderr, got: %q", stderr.String())
 	}
+	if strings.Contains(stderr.String(), "Error:") {
+		t.Errorf("expected no 'Error:' prefix in git mode, got: %q", stderr.String())
+	}
 }
 
 func TestRun_GitExternalDiff_ReadError_NonFatal(t *testing.T) {
@@ -1005,6 +1008,9 @@ func TestRun_GitExternalDiff_ReadError_NonFatal(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "Warning: skipping missing.yaml") {
 		t.Errorf("expected warning on stderr, got: %q", stderr.String())
+	}
+	if strings.Contains(stderr.String(), "Error:") {
+		t.Errorf("expected no 'Error:' prefix in git mode, got: %q", stderr.String())
 	}
 }
 

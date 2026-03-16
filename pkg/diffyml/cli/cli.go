@@ -587,7 +587,9 @@ func runComparison(cfg *CLIConfig, rc *RunConfig, fromContent, toContent []byte,
 	diffs, err := diffyml.Compare(fromContent, toContent, compareOpts)
 	if err != nil {
 		err = fmt.Errorf("failed to compare files: %w", err)
-		fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
+		if !cfg.GitExternalDiff {
+			fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
+		}
 		return NewExitResult(ExitCodeError, err)
 	}
 
@@ -595,7 +597,9 @@ func runComparison(cfg *CLIConfig, rc *RunConfig, fromContent, toContent []byte,
 	diffs, err = diffyml.FilterDiffsWithRegexp(diffs, filterOpts)
 	if err != nil {
 		err = fmt.Errorf("filter error: %w", err)
-		fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
+		if !cfg.GitExternalDiff {
+			fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
+		}
 		return NewExitResult(ExitCodeError, err)
 	}
 
@@ -706,7 +710,9 @@ func Run(cfg *CLIConfig, rc *RunConfig) *ExitResult {
 
 	fromContent, toContent, err := loadContents(cfg, rc)
 	if err != nil {
-		fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
+		if !cfg.GitExternalDiff {
+			fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
+		}
 		return gitExternalDiffGuard(cfg, rc, NewExitResult(ExitCodeError, err))
 	}
 

@@ -1,0 +1,7 @@
+spec:
+  containers:
+    - name: app
+      image: myapp:1.0
+      env:
+        - name: DB_HOST
+          value: localhost

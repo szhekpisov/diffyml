@@ -1,0 +1,15 @@
+app:
+  name: myapp
+  version: "2.0"
+  replicas: 5
+  ratio: 0.85
+  tags:
+    - stable
+    - staging
+  config:
+    timeout: 60
+    retries: 5
+    max_connections: 100
+  labels:
+    helm.sh/chart: myapp-2.0
+  monitoring: true

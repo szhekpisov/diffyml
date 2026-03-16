@@ -1,0 +1,14 @@
+app:
+  name: myapp
+  version: "1.0"
+  debug: true
+  replicas: 3
+  ratio: 0.75
+  tags:
+    - stable
+    - production
+  config:
+    timeout: 30
+    retries: 5
+  labels:
+    helm.sh/chart: myapp-1.0

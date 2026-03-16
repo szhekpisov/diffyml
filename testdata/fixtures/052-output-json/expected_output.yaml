@@ -1,0 +1,71 @@
+[
+  {
+    "path": "app",
+    "type": "removed",
+    "from": {
+      "debug": true
+    },
+    "to": null,
+    "document_index": 0
+  },
+  {
+    "path": "app",
+    "type": "added",
+    "from": null,
+    "to": {
+      "monitoring": true
+    },
+    "document_index": 0
+  },
+  {
+    "path": "app.version",
+    "type": "modified",
+    "from": "1.0",
+    "to": "2.0",
+    "document_index": 0
+  },
+  {
+    "path": "app.replicas",
+    "type": "modified",
+    "from": 3,
+    "to": 5,
+    "document_index": 0
+  },
+  {
+    "path": "app.ratio",
+    "type": "modified",
+    "from": 0.75,
+    "to": 0.85,
+    "document_index": 0
+  },
+  {
+    "path": "app.tags.1",
+    "type": "modified",
+    "from": "production",
+    "to": "staging",
+    "document_index": 0
+  },
+  {
+    "path": "app.config",
+    "type": "added",
+    "from": null,
+    "to": {
+      "max_connections": 100
+    },
+    "document_index": 0
+  },
+  {
+    "path": "app.config.timeout",
+    "type": "modified",
+    "from": 30,
+    "to": 60,
+    "document_index": 0
+  },
+  {
+    "path": "app.labels[helm.sh/chart]",
+    "type": "modified",
+    "from": "myapp-1.0",
+    "to": "myapp-2.0",
+    "document_index": 0
+  }
+]

@@ -1,0 +1,9 @@
+spec:
+  containers:
+    - name: app
+      image: myapp:2.0
+      env:
+        - name: DB_HOST
+          value: db.prod.local
+        - name: DB_PORT
+          value: "5432"

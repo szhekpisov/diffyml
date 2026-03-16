@@ -589,8 +589,6 @@ func runComparison(cfg *CLIConfig, rc *RunConfig, fromContent, toContent []byte,
 		return NewExitResult(ExitCodeError, err)
 	}
 
-
-
 	// For brief + summary: defer output until we know if the API call succeeds
 	isBriefSummary := cfg.Output == "brief" && cfg.Summary
 

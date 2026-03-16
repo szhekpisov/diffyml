@@ -458,7 +458,7 @@ func TestParseArgs_GitExternalDiff_7Args(t *testing.T) {
 		"/tmp/old-content",      // old-file
 		"abc1234abc1234abc1234", // old-hex
 		"100644",                // old-mode
-		"/work/deploy.yaml",    // new-file
+		"/work/deploy.yaml",     // new-file
 		"def5678def5678def5678", // new-hex
 		"100644",                // new-mode
 	}
@@ -488,7 +488,7 @@ func TestParseArgs_GitExternalDiff_8Args_Rename(t *testing.T) {
 		"/tmp/old-content",      // old-file
 		"abc1234abc1234abc1234", // old-hex
 		"100644",                // old-mode
-		"/work/new-name.yaml",  // new-file
+		"/work/new-name.yaml",   // new-file
 		"def5678def5678def5678", // new-hex
 		"100644",                // new-mode
 		"new-name.yaml",         // rename-to
@@ -697,9 +697,9 @@ func TestIsOctalMode(t *testing.T) {
 		{"000000", true},
 		{"120000", true},
 		{"777777", true},
-		{"100648", false}, // 8 is not octal
-		{"100649", false}, // 9 is not octal
-		{"10064", false},  // too short
+		{"100648", false},  // 8 is not octal
+		{"100649", false},  // 9 is not octal
+		{"10064", false},   // too short
 		{"1006440", false}, // too long
 		{"", false},
 		{"abcdef", false},

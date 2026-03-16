@@ -160,7 +160,8 @@ func (c *CLIConfig) initFlags() {
 }
 
 // ParseArgs parses command-line arguments.
-// Expects at least two non-flag arguments: <from> and <to> files.
+// Expects at least two non-flag arguments: <from> and <to> files,
+// or 7-9 positional arguments for GIT_EXTERNAL_DIFF mode.
 //
 // Supports interspersed flags and positional arguments (e.g.
 // "dir1 dir2 --set-exit-code") because kubectl places
@@ -179,8 +180,14 @@ func (c *CLIConfig) ParseArgs(args []string) error {
 	//   7 args: name old-file old-hex old-mode new-file new-hex new-mode
 	//   8 args: ... rename-to
 	//   9 args: ... rename-to xfrm_msg
+	//
+	// Detection: 7-9 positional args with valid octal modes at positions 3 and 6,
+	// or 7-9 args when GIT_EXTERNAL_DIFF env var is set (covers diff.external too
+	// when the octal heuristic alone would suffice, but the env var provides a
+	// definitive signal for GIT_EXTERNAL_DIFF users).
 	if len(remaining) >= 7 && len(remaining) <= 9 &&
-		isOctalMode(remaining[3]) && isOctalMode(remaining[6]) {
+		(isOctalMode(remaining[3]) && isOctalMode(remaining[6]) ||
+			os.Getenv("GIT_EXTERNAL_DIFF") != "") {
 		c.GitExternalDiff = true
 		c.GitDisplayPath = remaining[0]
 		c.FromFile = remaining[1] // old-file
@@ -693,8 +700,8 @@ func isOctalMode(s string) bool {
 	if len(s) != 6 {
 		return false
 	}
-	for _, c := range s {
-		if c < '0' || c > '7' {
+	for i := range len(s) {
+		if s[i] < '0' || s[i] > '7' {
 			return false
 		}
 	}

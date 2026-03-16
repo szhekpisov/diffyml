@@ -448,3 +448,303 @@ func TestReorderArgs_TrailingNonBoolFlag(t *testing.T) {
 		t.Errorf("expected FromFile='from.yaml', got %q", cfg.FromFile)
 	}
 }
+
+// --- GIT_EXTERNAL_DIFF detection ---
+
+func TestParseArgs_GitExternalDiff_7Args(t *testing.T) {
+	cfg := NewCLIConfig()
+	args := []string{
+		"deploy.yaml",           // name
+		"/tmp/old-content",      // old-file
+		"abc1234abc1234abc1234", // old-hex
+		"100644",                // old-mode
+		"/work/deploy.yaml",    // new-file
+		"def5678def5678def5678", // new-hex
+		"100644",                // new-mode
+	}
+
+	err := cfg.ParseArgs(args)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !cfg.GitExternalDiff {
+		t.Error("expected GitExternalDiff=true for 7 args")
+	}
+	if cfg.GitDisplayPath != "deploy.yaml" {
+		t.Errorf("expected GitDisplayPath='deploy.yaml', got %q", cfg.GitDisplayPath)
+	}
+	if cfg.FromFile != "/tmp/old-content" {
+		t.Errorf("expected FromFile='/tmp/old-content', got %q", cfg.FromFile)
+	}
+	if cfg.ToFile != "/work/deploy.yaml" {
+		t.Errorf("expected ToFile='/work/deploy.yaml', got %q", cfg.ToFile)
+	}
+}
+
+func TestParseArgs_GitExternalDiff_8Args_Rename(t *testing.T) {
+	cfg := NewCLIConfig()
+	args := []string{
+		"old-name.yaml",         // name
+		"/tmp/old-content",      // old-file
+		"abc1234abc1234abc1234", // old-hex
+		"100644",                // old-mode
+		"/work/new-name.yaml",  // new-file
+		"def5678def5678def5678", // new-hex
+		"100644",                // new-mode
+		"new-name.yaml",         // rename-to
+	}
+
+	err := cfg.ParseArgs(args)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !cfg.GitExternalDiff {
+		t.Error("expected GitExternalDiff=true for 8 args (rename)")
+	}
+	if cfg.GitDisplayPath != "new-name.yaml" {
+		t.Errorf("expected GitDisplayPath='new-name.yaml' (rename-to), got %q", cfg.GitDisplayPath)
+	}
+	if cfg.FromFile != "/tmp/old-content" {
+		t.Errorf("expected FromFile='/tmp/old-content', got %q", cfg.FromFile)
+	}
+	if cfg.ToFile != "/work/new-name.yaml" {
+		t.Errorf("expected ToFile='/work/new-name.yaml', got %q", cfg.ToFile)
+	}
+}
+
+func TestParseArgs_GitExternalDiff_9Args_RenameWithXfrm(t *testing.T) {
+	cfg := NewCLIConfig()
+	args := []string{
+		"old-name.yaml",
+		"/tmp/old-content",
+		"abc1234abc1234abc1234",
+		"100644",
+		"/work/new-name.yaml",
+		"def5678def5678def5678",
+		"100644",
+		"new-name.yaml",
+		"similarity index 100%\nrename from old-name.yaml\nrename to new-name.yaml",
+	}
+
+	err := cfg.ParseArgs(args)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !cfg.GitExternalDiff {
+		t.Error("expected GitExternalDiff=true for 9 args")
+	}
+	if cfg.GitDisplayPath != "new-name.yaml" {
+		t.Errorf("expected GitDisplayPath='new-name.yaml', got %q", cfg.GitDisplayPath)
+	}
+}
+
+func TestParseArgs_GitExternalDiff_DeletedFile(t *testing.T) {
+	cfg := NewCLIConfig()
+	args := []string{
+		"deploy.yaml",
+		"/tmp/old-content",
+		"abc1234abc1234abc1234",
+		"100644",
+		"/dev/null",
+		"0000000000000000000000",
+		"000000",
+	}
+
+	err := cfg.ParseArgs(args)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !cfg.GitExternalDiff {
+		t.Error("expected GitExternalDiff=true")
+	}
+	if cfg.ToFile != "/dev/null" {
+		t.Errorf("expected ToFile='/dev/null', got %q", cfg.ToFile)
+	}
+}
+
+func TestParseArgs_GitExternalDiff_NewFile(t *testing.T) {
+	cfg := NewCLIConfig()
+	args := []string{
+		"deploy.yaml",
+		"/dev/null",
+		"0000000000000000000000",
+		"000000",
+		"/work/deploy.yaml",
+		"abc1234abc1234abc1234",
+		"100644",
+	}
+
+	err := cfg.ParseArgs(args)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !cfg.GitExternalDiff {
+		t.Error("expected GitExternalDiff=true")
+	}
+	if cfg.FromFile != "/dev/null" {
+		t.Errorf("expected FromFile='/dev/null', got %q", cfg.FromFile)
+	}
+}
+
+func TestParseArgs_GitExternalDiff_WithFlags(t *testing.T) {
+	cfg := NewCLIConfig()
+	args := []string{
+		"--set-exit-code",
+		"deploy.yaml",
+		"/tmp/old-content",
+		"abc1234abc1234abc1234",
+		"100644",
+		"/work/deploy.yaml",
+		"def5678def5678def5678",
+		"100644",
+	}
+
+	err := cfg.ParseArgs(args)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !cfg.GitExternalDiff {
+		t.Error("expected GitExternalDiff=true with flags")
+	}
+	if !cfg.SetExitCode {
+		t.Error("expected SetExitCode=true")
+	}
+}
+
+func TestParseArgs_GitExternalDiff_NotDetected_6Args(t *testing.T) {
+	cfg := NewCLIConfig()
+	args := []string{"a", "b", "c", "100644", "e", "100644"}
+
+	err := cfg.ParseArgs(args)
+	// 6 args with octals at positions 3 and 5 — but not at position 6
+	// so this should NOT be detected as git external diff
+	if cfg.GitExternalDiff {
+		t.Error("expected GitExternalDiff=false for 6 args")
+	}
+	// Should parse as normal 2-file mode (first 2 positional args)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestParseArgs_GitExternalDiff_NotDetected_10Args(t *testing.T) {
+	cfg := NewCLIConfig()
+	args := []string{"a", "b", "c", "100644", "e", "f", "100644", "h", "i", "j"}
+
+	err := cfg.ParseArgs(args)
+	if cfg.GitExternalDiff {
+		t.Error("expected GitExternalDiff=false for 10 args")
+	}
+	// Should parse as normal 2-file mode
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestParseArgs_GitExternalDiff_NotDetected_InvalidOctal(t *testing.T) {
+	cfg := NewCLIConfig()
+	args := []string{
+		"deploy.yaml",
+		"/tmp/old-content",
+		"abc1234abc1234abc1234",
+		"NOTOCL", // invalid: not octal
+		"/work/deploy.yaml",
+		"def5678def5678def5678",
+		"100644",
+	}
+
+	err := cfg.ParseArgs(args)
+	if cfg.GitExternalDiff {
+		t.Error("expected GitExternalDiff=false with invalid octal at position 3")
+	}
+	// Should parse as normal 2-file mode
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestParseArgs_GitExternalDiff_NotDetected_InvalidOctalPos6(t *testing.T) {
+	cfg := NewCLIConfig()
+	args := []string{
+		"deploy.yaml",
+		"/tmp/old-content",
+		"abc1234abc1234abc1234",
+		"100644",
+		"/work/deploy.yaml",
+		"def5678def5678def5678",
+		"NOTOCL", // invalid: not octal at position 6
+	}
+
+	err := cfg.ParseArgs(args)
+	if cfg.GitExternalDiff {
+		t.Error("expected GitExternalDiff=false with invalid octal at position 6")
+	}
+	// Should parse as normal 2-file mode
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+// --- isOctalMode tests ---
+
+func TestIsOctalMode(t *testing.T) {
+	tests := []struct {
+		input string
+		want  bool
+	}{
+		{"100644", true},
+		{"100755", true},
+		{"000000", true},
+		{"120000", true},
+		{"777777", true},
+		{"100648", false}, // 8 is not octal
+		{"100649", false}, // 9 is not octal
+		{"10064", false},  // too short
+		{"1006440", false}, // too long
+		{"", false},
+		{"abcdef", false},
+		{"NOTOCL", false},
+		{"12345a", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got := isOctalMode(tt.input)
+			if got != tt.want {
+				t.Errorf("isOctalMode(%q) = %v, want %v", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+// --- isYAMLFile tests ---
+
+func TestIsYAMLFile(t *testing.T) {
+	tests := []struct {
+		input string
+		want  bool
+	}{
+		{"deploy.yaml", true},
+		{"deploy.yml", true},
+		{"deploy.YAML", true},
+		{"deploy.YML", true},
+		{"deploy.Yaml", true},
+		{"path/to/deploy.yaml", true},
+		{"deploy.json", false},
+		{"deploy.txt", false},
+		{"deploy.yamll", false},
+		{"deploy", false},
+		{"", false},
+		{".yaml", true},
+		{"Makefile", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got := isYAMLFile(tt.input)
+			if got != tt.want {
+				t.Errorf("isYAMLFile(%q) = %v, want %v", tt.input, got, tt.want)
+			}
+		})
+	}
+}

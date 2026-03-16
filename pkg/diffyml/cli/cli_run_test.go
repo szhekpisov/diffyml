@@ -569,6 +569,172 @@ func TestRun_GitLab_FallbackOnParentTraversingPath(t *testing.T) {
 	}
 }
 
+// --- GIT_EXTERNAL_DIFF integration tests ---
+
+func TestRun_GitExternalDiff_YAMLWithDiffs_UsesDisplayPath(t *testing.T) {
+	yaml1 := "key: value1\n"
+	yaml2 := "key: value2\n"
+
+	cfg := NewCLIConfig()
+	cfg.GitExternalDiff = true
+	cfg.GitDisplayPath = "charts/deploy.yaml"
+	cfg.Output = "gitlab"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FromContent = []byte(yaml1)
+	rc.ToContent = []byte(yaml2)
+
+	result := Run(cfg, rc)
+	if result.Code == ExitCodeError {
+		t.Fatalf("unexpected error: %v; stderr: %s", result.Err, stderr.String())
+	}
+
+	output := stdout.String()
+	if !strings.Contains(output, "charts/deploy.yaml") {
+		t.Errorf("expected display path 'charts/deploy.yaml' in output, got: %s", output)
+	}
+}
+
+func TestRun_GitExternalDiff_NonYAML_SilentlySkipped(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.GitExternalDiff = true
+	cfg.GitDisplayPath = "Makefile"
+	cfg.FromFile = "/tmp/old"
+	cfg.ToFile = "/tmp/new"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+
+	result := Run(cfg, rc)
+	if result.Code != ExitCodeSuccess {
+		t.Errorf("expected exit 0 for non-YAML file, got %d", result.Code)
+	}
+	if stdout.String() != "" {
+		t.Errorf("expected no output for non-YAML file, got: %q", stdout.String())
+	}
+	if stderr.String() != "" {
+		t.Errorf("expected no stderr for non-YAML file, got: %q", stderr.String())
+	}
+}
+
+func TestRun_GitExternalDiff_NonYAML_Extensions(t *testing.T) {
+	for _, ext := range []string{".go", ".json", ".txt", ".md", ""} {
+		t.Run("ext="+ext, func(t *testing.T) {
+			cfg := NewCLIConfig()
+			cfg.GitExternalDiff = true
+			cfg.GitDisplayPath = "file" + ext
+
+			rc := NewRunConfig()
+			var stdout, stderr strings.Builder
+			rc.Stdout = &stdout
+			rc.Stderr = &stderr
+
+			result := Run(cfg, rc)
+			if result.Code != ExitCodeSuccess {
+				t.Errorf("expected exit 0 for %q file, got %d", ext, result.Code)
+			}
+		})
+	}
+}
+
+func TestRun_GitExternalDiff_DevNull_NewFile(t *testing.T) {
+	yaml2 := "key: newvalue\n"
+
+	cfg := NewCLIConfig()
+	cfg.GitExternalDiff = true
+	cfg.GitDisplayPath = "deploy.yaml"
+	cfg.FromFile = "/dev/null"
+	cfg.SetExitCode = true
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FromContent = []byte{} // empty = /dev/null
+	rc.ToContent = []byte(yaml2)
+
+	result := Run(cfg, rc)
+	if result.Code != ExitCodeDifferences {
+		t.Errorf("expected exit 1 for new file diff, got %d; stderr: %s", result.Code, stderr.String())
+	}
+	if stdout.String() == "" {
+		t.Error("expected diff output for new file")
+	}
+}
+
+func TestRun_GitExternalDiff_DevNull_DeletedFile(t *testing.T) {
+	yaml1 := "key: oldvalue\n"
+
+	cfg := NewCLIConfig()
+	cfg.GitExternalDiff = true
+	cfg.GitDisplayPath = "deploy.yaml"
+	cfg.ToFile = "/dev/null"
+	cfg.SetExitCode = true
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FromContent = []byte(yaml1)
+	rc.ToContent = []byte{} // empty = /dev/null
+
+	result := Run(cfg, rc)
+	if result.Code != ExitCodeDifferences {
+		t.Errorf("expected exit 1 for deleted file diff, got %d; stderr: %s", result.Code, stderr.String())
+	}
+	if stdout.String() == "" {
+		t.Error("expected diff output for deleted file")
+	}
+}
+
+func TestRun_GitExternalDiff_SetExitCode(t *testing.T) {
+	yaml1 := "key: value1\n"
+	yaml2 := "key: value2\n"
+
+	cfg := NewCLIConfig()
+	cfg.GitExternalDiff = true
+	cfg.GitDisplayPath = "deploy.yaml"
+	cfg.SetExitCode = true
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FromContent = []byte(yaml1)
+	rc.ToContent = []byte(yaml2)
+
+	result := Run(cfg, rc)
+	if result.Code != ExitCodeDifferences {
+		t.Errorf("expected exit 1 with --set-exit-code, got %d", result.Code)
+	}
+}
+
+func TestRun_GitExternalDiff_NoDiffs_Exit0(t *testing.T) {
+	yaml := "key: same\n"
+
+	cfg := NewCLIConfig()
+	cfg.GitExternalDiff = true
+	cfg.GitDisplayPath = "deploy.yaml"
+	cfg.SetExitCode = true
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FromContent = []byte(yaml)
+	rc.ToContent = []byte(yaml)
+
+	result := Run(cfg, rc)
+	if result.Code != ExitCodeSuccess {
+		t.Errorf("expected exit 0 for no diffs, got %d", result.Code)
+	}
+}
+
 func TestRun_TrueColorAlways(t *testing.T) {
 	yaml1 := "key: value1\n"
 	yaml2 := "key: value2\n"

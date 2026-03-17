@@ -137,6 +137,26 @@ func (p DiffPath) DocIndex() (int, bool) {
 	return idx, true
 }
 
+// JSONPointerString returns an RFC 6901 JSON Pointer representation of the path.
+// Each segment is escaped per RFC 6901: ~ → ~0, / → ~1, then prefixed with /.
+// Document index brackets [N] are stripped to bare N (same as GoPatchString).
+// Empty path → "" (RFC 6901: empty string = whole document).
+func (p DiffPath) JSONPointerString() string {
+	var sb strings.Builder
+	for _, seg := range p {
+		sb.WriteByte('/')
+		if strings.HasPrefix(seg, "[") && strings.HasSuffix(seg, "]") {
+			sb.WriteString(seg[1 : len(seg)-1])
+		} else {
+			// RFC 6901 escaping: ~ must be escaped first, then /
+			escaped := strings.ReplaceAll(seg, "~", "~0")
+			escaped = strings.ReplaceAll(escaped, "/", "~1")
+			sb.WriteString(escaped)
+		}
+	}
+	return sb.String()
+}
+
 // DocIndexPrefix returns (index, remaining path, true) if path starts with [N] followed by more segments.
 func (p DiffPath) DocIndexPrefix() (int, DiffPath, bool) {
 	if len(p) < 2 {

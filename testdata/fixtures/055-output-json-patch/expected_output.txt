@@ -1,0 +1,50 @@
+[
+  {
+    "op": "remove",
+    "path": "/app"
+  },
+  {
+    "op": "add",
+    "path": "/app",
+    "value": {
+      "monitoring": true
+    }
+  },
+  {
+    "op": "replace",
+    "path": "/app/version",
+    "value": "2.0"
+  },
+  {
+    "op": "replace",
+    "path": "/app/replicas",
+    "value": 5
+  },
+  {
+    "op": "replace",
+    "path": "/app/ratio",
+    "value": 0.85
+  },
+  {
+    "op": "replace",
+    "path": "/app/tags/1",
+    "value": "staging"
+  },
+  {
+    "op": "add",
+    "path": "/app/config",
+    "value": {
+      "max_connections": 100
+    }
+  },
+  {
+    "op": "replace",
+    "path": "/app/config/timeout",
+    "value": 60
+  },
+  {
+    "op": "replace",
+    "path": "/app/labels/helm.sh~1chart",
+    "value": "myapp-2.0"
+  }
+]

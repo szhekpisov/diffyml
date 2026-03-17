@@ -1,6 +1,6 @@
 // formatter.go - Output formatting for differences.
 //
-// Implements 7 output styles: compact, brief, github, gitlab, gitea, json, detailed.
+// Implements 8 output styles: compact, brief, github, gitlab, gitea, json, json-patch, detailed.
 // Key types: Formatter interface, FormatOptions.
 // Each formatter implements Format(diffs, opts) string.
 package diffyml
@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -67,10 +68,10 @@ func DefaultFormatOptions() *FormatOptions {
 }
 
 // validFormatterNames lists all supported formatter names.
-var validFormatterNames = []string{"compact", "brief", "github", "gitlab", "gitea", "json", "detailed"}
+var validFormatterNames = []string{"compact", "brief", "github", "gitlab", "gitea", "json", "json-patch", "detailed"}
 
 // FormatterByName returns a formatter by name.
-// Supported names: compact, brief, github, gitlab, gitea, json, detailed.
+// Supported names: compact, brief, github, gitlab, gitea, json, json-patch, detailed.
 // Returns error for invalid formatter names with list of valid options.
 func FormatterByName(name string) (Formatter, error) {
 	// Normalize to lowercase for case-insensitive matching
@@ -89,6 +90,8 @@ func FormatterByName(name string) (Formatter, error) {
 		return &GiteaFormatter{}, nil
 	case "json":
 		return &JSONFormatter{}, nil
+	case "json-patch":
+		return &JSONPatchFormatter{}, nil
 	case "detailed":
 		return &DetailedFormatter{}, nil
 	default:
@@ -720,4 +723,108 @@ func (f *JSONFormatter) FormatAll(groups []DiffGroup, opts *FormatOptions) strin
 	}
 
 	return jsonMarshalIndent(items)
+}
+
+// JSONPatchFormatter renders differences as an RFC 6902 JSON Patch array.
+// DiffOrderChanged is skipped (RFC 6902 has no reorder operation).
+type JSONPatchFormatter struct{}
+
+// jsonPatchOp is a single RFC 6902 operation (add/replace).
+// Value is always included — RFC 6902 requires it, even when null.
+type jsonPatchOp struct {
+	Op    string `json:"op"`
+	Path  string `json:"path"`
+	Value any    `json:"value"`
+}
+
+// jsonPatchRemoveOp is an RFC 6902 "remove" operation (no value field).
+type jsonPatchRemoveOp struct {
+	Op   string `json:"op"`
+	Path string `json:"path"`
+}
+
+// jsonPatchDirGroup wraps per-file patches for directory mode.
+type jsonPatchDirGroup struct {
+	File  string `json:"file"`
+	Patch []any  `json:"patch"`
+}
+
+// rfc6902OpName maps DiffType to RFC 6902 operation names.
+// Returns empty string for DiffOrderChanged (should be skipped).
+func rfc6902OpName(dt DiffType) string {
+	switch dt {
+	case DiffAdded:
+		return "add"
+	case DiffRemoved:
+		return "remove"
+	case DiffModified:
+		return "replace"
+	default:
+		return ""
+	}
+}
+
+// buildJSONPatchPath builds an RFC 6901 JSON Pointer path for a difference.
+// Multi-document diffs get the document index prepended as the first segment.
+func buildJSONPatchPath(diff Difference) string {
+	path := diff.Path
+
+	// Prepend document index for multi-document YAML
+	if idx, rest, ok := path.DocIndexPrefix(); ok {
+		return "/" + strconv.Itoa(idx) + rest.JSONPointerString()
+	}
+
+	return path.JSONPointerString()
+}
+
+// buildJSONPatchOp converts a Difference to an RFC 6902 operation struct.
+// Returns nil for DiffOrderChanged.
+func buildJSONPatchOp(diff Difference) any {
+	op := rfc6902OpName(diff.Type)
+	if op == "" {
+		return nil
+	}
+
+	pointer := buildJSONPatchPath(diff)
+
+	if diff.Type == DiffRemoved {
+		return jsonPatchRemoveOp{Op: op, Path: pointer}
+	}
+
+	return jsonPatchOp{
+		Op:    op,
+		Path:  pointer,
+		Value: jsonPrepareValue(diff.To),
+	}
+}
+
+// Format renders differences as an RFC 6902 JSON Patch array.
+func (f *JSONPatchFormatter) Format(diffs []Difference, _ *FormatOptions) string {
+	ops := make([]any, 0, len(diffs))
+	for _, diff := range diffs {
+		if op := buildJSONPatchOp(diff); op != nil {
+			ops = append(ops, op)
+		}
+	}
+	return jsonMarshalIndent(ops)
+}
+
+// FormatAll renders all diff groups as file-grouped JSON Patch arrays for directory mode.
+func (f *JSONPatchFormatter) FormatAll(groups []DiffGroup, _ *FormatOptions) string {
+	result := make([]jsonPatchDirGroup, 0, len(groups))
+	for _, group := range groups {
+		ops := make([]any, 0, len(group.Diffs))
+		for _, diff := range group.Diffs {
+			if op := buildJSONPatchOp(diff); op != nil {
+				ops = append(ops, op)
+			}
+		}
+		if len(ops) > 0 {
+			result = append(result, jsonPatchDirGroup{
+				File:  group.FilePath,
+				Patch: ops,
+			})
+		}
+	}
+	return jsonMarshalIndent(result)
 }

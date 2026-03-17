@@ -2515,3 +2515,366 @@ func TestJSONFormatter_Format_MarshalError(t *testing.T) {
 		t.Errorf("expected fallback [], got %q", output)
 	}
 }
+
+// --- JSONPatchFormatter tests ---
+
+func TestFormatterByName_JSONPatch(t *testing.T) {
+	f, err := FormatterByName("json-patch")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if f == nil {
+		t.Fatal("expected formatter, got nil")
+	}
+	if _, ok := f.(*JSONPatchFormatter); !ok {
+		t.Fatalf("expected *JSONPatchFormatter, got %T", f)
+	}
+}
+
+func TestJSONPatchFormatter_Format(t *testing.T) {
+	f := &JSONPatchFormatter{}
+	diffs := []Difference{
+		{Path: DiffPath{"spec", "replicas"}, Type: DiffModified, From: 3, To: 5},
+		{Path: DiffPath{"metadata", "labels", "app"}, Type: DiffAdded, To: "web"},
+		{Path: DiffPath{"spec", "image"}, Type: DiffRemoved, From: "nginx:1.20"},
+	}
+
+	output := f.Format(diffs, DefaultFormatOptions())
+
+	var result []map[string]any
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output is not valid JSON: %v\noutput: %s", err, output)
+	}
+
+	if len(result) != 3 {
+		t.Fatalf("expected 3 ops, got %d", len(result))
+	}
+
+	// replace
+	if result[0]["op"] != "replace" {
+		t.Errorf("expected op 'replace', got %v", result[0]["op"])
+	}
+	if result[0]["path"] != "/spec/replicas" {
+		t.Errorf("expected path '/spec/replicas', got %v", result[0]["path"])
+	}
+	if result[0]["value"] != float64(5) {
+		t.Errorf("expected value 5, got %v", result[0]["value"])
+	}
+
+	// add
+	if result[1]["op"] != "add" {
+		t.Errorf("expected op 'add', got %v", result[1]["op"])
+	}
+	if result[1]["path"] != "/metadata/labels/app" {
+		t.Errorf("expected path '/metadata/labels/app', got %v", result[1]["path"])
+	}
+	if result[1]["value"] != "web" {
+		t.Errorf("expected value 'web', got %v", result[1]["value"])
+	}
+
+	// remove
+	if result[2]["op"] != "remove" {
+		t.Errorf("expected op 'remove', got %v", result[2]["op"])
+	}
+	if result[2]["path"] != "/spec/image" {
+		t.Errorf("expected path '/spec/image', got %v", result[2]["path"])
+	}
+	if _, hasValue := result[2]["value"]; hasValue {
+		t.Error("remove op should not have value field")
+	}
+}
+
+func TestJSONPatchFormatter_OrderChanged_Skipped(t *testing.T) {
+	f := &JSONPatchFormatter{}
+	diffs := []Difference{
+		{Path: DiffPath{"spec", "replicas"}, Type: DiffModified, From: 3, To: 5},
+		{Path: DiffPath{"spec", "ports"}, Type: DiffOrderChanged, From: []any{"http", "grpc"}, To: []any{"grpc", "http"}},
+		{Path: DiffPath{"spec", "image"}, Type: DiffRemoved, From: "nginx"},
+	}
+
+	output := f.Format(diffs, DefaultFormatOptions())
+
+	var result []map[string]any
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output is not valid JSON: %v\noutput: %s", err, output)
+	}
+
+	if len(result) != 2 {
+		t.Fatalf("expected 2 ops (order_changed skipped), got %d", len(result))
+	}
+
+	if result[0]["op"] != "replace" {
+		t.Errorf("expected op 'replace', got %v", result[0]["op"])
+	}
+	if result[1]["op"] != "remove" {
+		t.Errorf("expected op 'remove', got %v", result[1]["op"])
+	}
+}
+
+func TestJSONPatchFormatter_EmptyDiffs(t *testing.T) {
+	f := &JSONPatchFormatter{}
+	output := f.Format([]Difference{}, DefaultFormatOptions())
+
+	var result []any
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output is not valid JSON: %v\noutput: %s", err, output)
+	}
+	if len(result) != 0 {
+		t.Errorf("expected empty array, got %d items", len(result))
+	}
+}
+
+func TestJSONPatchFormatter_MultiDocument(t *testing.T) {
+	f := &JSONPatchFormatter{}
+	diffs := []Difference{
+		{Path: DiffPath{"[1]", "spec", "replicas"}, Type: DiffModified, From: 3, To: 5},
+	}
+
+	output := f.Format(diffs, DefaultFormatOptions())
+
+	var result []map[string]any
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output is not valid JSON: %v\noutput: %s", err, output)
+	}
+
+	if len(result) != 1 {
+		t.Fatalf("expected 1 op, got %d", len(result))
+	}
+
+	if result[0]["path"] != "/1/spec/replicas" {
+		t.Errorf("expected path '/1/spec/replicas', got %v", result[0]["path"])
+	}
+}
+
+func TestJSONPatchFormatter_RFC6901_Escaping(t *testing.T) {
+	f := &JSONPatchFormatter{}
+	diffs := []Difference{
+		{Path: DiffPath{"labels", "helm.sh/chart"}, Type: DiffModified, From: "v1", To: "v2"},
+		{Path: DiffPath{"annotations", "key~with~tilde"}, Type: DiffAdded, To: "val"},
+		{Path: DiffPath{"mixed", "a/b~c"}, Type: DiffRemoved, From: "old"},
+	}
+
+	output := f.Format(diffs, DefaultFormatOptions())
+
+	var result []map[string]any
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output is not valid JSON: %v\noutput: %s", err, output)
+	}
+
+	if len(result) != 3 {
+		t.Fatalf("expected 3 ops, got %d", len(result))
+	}
+
+	// / in key → ~1
+	if result[0]["path"] != "/labels/helm.sh~1chart" {
+		t.Errorf("expected '/labels/helm.sh~1chart', got %v", result[0]["path"])
+	}
+
+	// ~ in key → ~0
+	if result[1]["path"] != "/annotations/key~0with~0tilde" {
+		t.Errorf("expected '/annotations/key~0with~0tilde', got %v", result[1]["path"])
+	}
+
+	// both / and ~ in key
+	if result[2]["path"] != "/mixed/a~1b~0c" {
+		t.Errorf("expected '/mixed/a~1b~0c', got %v", result[2]["path"])
+	}
+}
+
+func TestJSONPatchFormatter_AddNullValue(t *testing.T) {
+	f := &JSONPatchFormatter{}
+	diffs := []Difference{
+		{Path: DiffPath{"key"}, Type: DiffAdded, To: nil},
+	}
+
+	output := f.Format(diffs, DefaultFormatOptions())
+
+	var result []map[string]any
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output is not valid JSON: %v\noutput: %s", err, output)
+	}
+
+	if len(result) != 1 {
+		t.Fatalf("expected 1 op, got %d", len(result))
+	}
+
+	// RFC 6902 requires "value" field even when null
+	if _, hasValue := result[0]["value"]; !hasValue {
+		t.Error("add op must include 'value' field even when null (RFC 6902)")
+	}
+	if result[0]["value"] != nil {
+		t.Errorf("expected null value, got %v", result[0]["value"])
+	}
+}
+
+func TestJSONPatchFormatter_NilOpts(t *testing.T) {
+	f := &JSONPatchFormatter{}
+	diffs := []Difference{
+		{Path: DiffPath{"key"}, Type: DiffAdded, To: "value"},
+	}
+
+	output := f.Format(diffs, nil)
+
+	var result []map[string]any
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output is not valid JSON with nil opts: %v\noutput: %s", err, output)
+	}
+	if len(result) != 1 {
+		t.Fatalf("expected 1 op, got %d", len(result))
+	}
+}
+
+func TestJSONPatchFormatter_StructuredFormatter(t *testing.T) {
+	f := &JSONPatchFormatter{}
+	var _ StructuredFormatter = f // compile-time check
+}
+
+func TestJSONPatchFormatter_FormatAll(t *testing.T) {
+	f := &JSONPatchFormatter{}
+	groups := []DiffGroup{
+		{
+			FilePath: "deploy.yaml",
+			Diffs: []Difference{
+				{Path: DiffPath{"spec", "replicas"}, Type: DiffModified, From: 3, To: 5},
+			},
+		},
+		{
+			FilePath: "service.yaml",
+			Diffs: []Difference{
+				{Path: DiffPath{"spec", "type"}, Type: DiffAdded, To: "LoadBalancer"},
+			},
+		},
+	}
+
+	output := f.FormatAll(groups, DefaultFormatOptions())
+
+	var result []map[string]any
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output is not valid JSON: %v\noutput: %s", err, output)
+	}
+
+	if len(result) != 2 {
+		t.Fatalf("expected 2 groups, got %d", len(result))
+	}
+
+	if result[0]["file"] != "deploy.yaml" {
+		t.Errorf("expected file 'deploy.yaml', got %v", result[0]["file"])
+	}
+
+	patch0 := result[0]["patch"].([]any)
+	if len(patch0) != 1 {
+		t.Fatalf("expected 1 op in first group, got %d", len(patch0))
+	}
+	op0 := patch0[0].(map[string]any)
+	if op0["op"] != "replace" {
+		t.Errorf("expected op 'replace', got %v", op0["op"])
+	}
+
+	if result[1]["file"] != "service.yaml" {
+		t.Errorf("expected file 'service.yaml', got %v", result[1]["file"])
+	}
+}
+
+func TestJSONPatchFormatter_FormatAll_SkipsEmptyGroups(t *testing.T) {
+	f := &JSONPatchFormatter{}
+	groups := []DiffGroup{
+		{FilePath: "empty.yaml", Diffs: nil},
+		{FilePath: "deploy.yaml", Diffs: []Difference{
+			{Path: DiffPath{"key"}, Type: DiffAdded, To: "val"},
+		}},
+	}
+
+	output := f.FormatAll(groups, DefaultFormatOptions())
+
+	var result []map[string]any
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output is not valid JSON: %v\noutput: %s", err, output)
+	}
+
+	if len(result) != 1 {
+		t.Fatalf("expected 1 group (empty skipped), got %d", len(result))
+	}
+	if result[0]["file"] != "deploy.yaml" {
+		t.Errorf("expected file 'deploy.yaml', got %v", result[0]["file"])
+	}
+}
+
+func TestJSONPatchFormatter_ValueSerialization(t *testing.T) {
+	f := &JSONPatchFormatter{}
+	om := NewOrderedMap()
+	om.Keys = append(om.Keys, "nested")
+	om.Values["nested"] = "value"
+	diffs := []Difference{
+		{Path: DiffPath{"int_val"}, Type: DiffModified, From: 42, To: 99},
+		{Path: DiffPath{"bool_val"}, Type: DiffAdded, To: true},
+		{Path: DiffPath{"map_val"}, Type: DiffAdded, To: om},
+		{Path: DiffPath{"list_val"}, Type: DiffAdded, To: []any{"a", "b"}},
+	}
+
+	output := f.Format(diffs, DefaultFormatOptions())
+
+	var result []map[string]any
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output is not valid JSON: %v\noutput: %s", err, output)
+	}
+
+	if result[0]["value"] != float64(99) {
+		t.Errorf("expected int value 99, got %v", result[0]["value"])
+	}
+	if result[1]["value"] != true {
+		t.Errorf("expected bool value true, got %v", result[1]["value"])
+	}
+	mapVal := result[2]["value"].(map[string]any)
+	if mapVal["nested"] != "value" {
+		t.Errorf("expected nested map value, got %v", mapVal)
+	}
+	listVal := result[3]["value"].([]any)
+	if len(listVal) != 2 {
+		t.Errorf("expected list with 2 items, got %d", len(listVal))
+	}
+}
+
+func TestJSONPatchFormatter_ListIndex(t *testing.T) {
+	f := &JSONPatchFormatter{}
+	diffs := []Difference{
+		{Path: DiffPath{"items", "[0]", "name"}, Type: DiffModified, From: "old", To: "new"},
+	}
+
+	output := f.Format(diffs, DefaultFormatOptions())
+
+	var result []map[string]any
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output is not valid JSON: %v\noutput: %s", err, output)
+	}
+
+	if result[0]["path"] != "/items/0/name" {
+		t.Errorf("expected '/items/0/name', got %v", result[0]["path"])
+	}
+}
+
+// --- DiffPath.JSONPointerString tests ---
+
+func TestDiffPath_JSONPointerString(t *testing.T) {
+	tests := []struct {
+		path     DiffPath
+		expected string
+	}{
+		{DiffPath{"config", "name"}, "/config/name"},
+		{DiffPath{"items", "[0]", "value"}, "/items/0/value"},
+		{DiffPath{"root"}, "/root"},
+		{DiffPath{"a", "b", "c", "d"}, "/a/b/c/d"},
+		{DiffPath{"labels", "helm.sh/chart"}, "/labels/helm.sh~1chart"},
+		{DiffPath{"key~with~tilde"}, "/key~0with~0tilde"},
+		{DiffPath{"mixed/and~key"}, "/mixed~1and~0key"},
+		{nil, ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.expected, func(t *testing.T) {
+			result := tt.path.JSONPointerString()
+			if result != tt.expected {
+				t.Errorf("DiffPath%v.JSONPointerString() = %q, want %q", []string(tt.path), result, tt.expected)
+			}
+		})
+	}
+}

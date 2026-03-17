@@ -25,7 +25,7 @@ type CLIConfig struct {
 	ToFile   string
 
 	// Output options
-	Output    string // compact, brief, github, gitlab, gitea, json, detailed
+	Output    string // compact, brief, github, gitlab, gitea, json, json-patch, detailed
 	Color     string // always, never, auto
 	TrueColor string // always, never, auto
 
@@ -94,7 +94,7 @@ func (c *CLIConfig) initFlags() {
 
 	// Output options
 	c.fs.StringVar(&c.Output, "o", c.Output, "")
-	c.fs.StringVar(&c.Output, "output", c.Output, "specify the output style: compact, brief, github, gitlab, gitea, json, detailed")
+	c.fs.StringVar(&c.Output, "output", c.Output, "specify the output style: compact, brief, github, gitlab, gitea, json, json-patch, detailed")
 	c.fs.StringVar(&c.Color, "c", c.Color, "")
 	c.fs.StringVar(&c.Color, "color", c.Color, "specify color usage: always, never, or auto")
 	c.fs.StringVar(&c.TrueColor, "t", c.TrueColor, "")
@@ -310,7 +310,7 @@ func (c *CLIConfig) Usage() string {
 	sb.WriteString("Flags:\n")
 
 	// Output options
-	sb.WriteString("  -o, --output string                 specify output style: compact, brief, github, gitlab, gitea, json, detailed (default \"detailed\")\n")
+	sb.WriteString("  -o, --output string                 specify output style: compact, brief, github, gitlab, gitea, json, json-patch, detailed (default \"detailed\")\n")
 	sb.WriteString("  -c, --color string                  specify color usage: always, never, or auto (default \"auto\")\n")
 	sb.WriteString("  -t, --truecolor string              specify true color usage: always, never, or auto (default \"auto\")\n")
 	sb.WriteString("\n")
@@ -421,7 +421,7 @@ func (c *CLIConfig) Validate() error {
 }
 
 // validOutputFormats lists all valid output format names.
-var validOutputFormats = []string{"compact", "brief", "github", "gitlab", "gitea", "json", "detailed"}
+var validOutputFormats = []string{"compact", "brief", "github", "gitlab", "gitea", "json", "json-patch", "detailed"}
 
 // ValidateOutputFormat checks if the output format name is valid.
 // Returns an error listing valid options if the format is invalid.

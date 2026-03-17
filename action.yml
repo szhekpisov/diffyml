@@ -30,7 +30,7 @@ inputs:
     required: false
     default: 'true'
   extra-args:
-    description: 'Additional CLI flags passed verbatim to diffyml (e.g. "--ignore-order-changes --filter spec.replicas")'
+    description: 'Additional CLI flags passed verbatim to diffyml (e.g. "--ignore-order-changes --filter spec.replicas"). Split on whitespace; values with spaces are not supported.'
     required: false
     default: ''
 
@@ -42,7 +42,7 @@ outputs:
     description: 'Whether differences were found (true/false)'
     value: ${{ steps.diff.outputs.has-differences }}
   diff:
-    description: 'Raw diff output from diffyml'
+    description: 'Raw diff output from diffyml. May be truncated for very large diffs (GitHub Actions ~1MB output limit).'
     value: ${{ steps.diff.outputs.diff }}
 
 runs:

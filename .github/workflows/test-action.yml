@@ -148,3 +148,11 @@ jobs:
           to: testdata/fixtures/002-self-comparison/file2.yaml
           version: ${{ steps.version.outputs.resolved }}
           cache: 'false'
+
+      - name: "Test: version latest resolution"
+        uses: ./
+        with:
+          from: testdata/fixtures/002-self-comparison/file1.yaml
+          to: testdata/fixtures/002-self-comparison/file2.yaml
+          version: 'latest'
+          cache: 'false'

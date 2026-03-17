@@ -1,0 +1,164 @@
+name: 'diffyml'
+description: 'Structural YAML diff with Kubernetes intelligence'
+author: 'szhekpisov'
+
+branding:
+  icon: 'file-text'
+  color: 'blue'
+
+inputs:
+  from:
+    description: 'Path to the source YAML file or directory'
+    required: true
+  to:
+    description: 'Path to the target YAML file or directory'
+    required: true
+  version:
+    description: 'diffyml version to use (e.g. "1.5.10" or "latest")'
+    required: false
+    default: 'latest'
+  output:
+    description: 'Output format: compact, brief, github, gitlab, gitea, json, detailed'
+    required: false
+    default: 'github'
+  fail-on-diff:
+    description: 'Fail the action step if differences are found'
+    required: false
+    default: 'true'
+  cache:
+    description: 'Cache the downloaded binary across workflow runs'
+    required: false
+    default: 'true'
+  extra-args:
+    description: 'Additional CLI flags passed verbatim to diffyml (e.g. "--ignore-order-changes --filter spec.replicas")'
+    required: false
+    default: ''
+
+outputs:
+  exit-code:
+    description: 'Exit code from diffyml (0=no diff, 1=diff found, 255=error)'
+    value: ${{ steps.diff.outputs.exit-code }}
+  has-differences:
+    description: 'Whether differences were found (true/false)'
+    value: ${{ steps.diff.outputs.has-differences }}
+  diff:
+    description: 'Raw diff output from diffyml'
+    value: ${{ steps.diff.outputs.diff }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Resolve version
+      id: version
+      shell: bash
+      env:
+        INPUT_VERSION: ${{ inputs.version }}
+      run: |
+        VERSION="$INPUT_VERSION"
+        if [ "$VERSION" = "latest" ]; then
+          VERSION=$(gh api repos/szhekpisov/diffyml/releases/latest --jq '.tag_name' | sed 's/^v//')
+        fi
+        echo "resolved=$VERSION" >> "$GITHUB_OUTPUT"
+      # GH_TOKEN is set from github.token so `gh api` avoids anonymous rate limits.
+      # This is safe: github.token is not user-controlled.
+
+    - name: Cache diffyml binary
+      if: inputs.cache == 'true'
+      id: cache
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      with:
+        path: ~/.diffyml/bin
+        key: diffyml-${{ steps.version.outputs.resolved }}-${{ runner.os }}-${{ runner.arch }}
+
+    - name: Install diffyml
+      if: inputs.cache != 'true' || steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        VERSION: ${{ steps.version.outputs.resolved }}
+        RUNNER_OS: ${{ runner.os }}
+        RUNNER_ARCH: ${{ runner.arch }}
+      run: |
+        case "$RUNNER_OS" in
+          Linux)  OS="linux" ;;
+          macOS)  OS="darwin" ;;
+          *)      echo "::error::Unsupported OS: $RUNNER_OS"; exit 1 ;;
+        esac
+        case "$RUNNER_ARCH" in
+          X64)    ARCH="amd64" ;;
+          ARM64)  ARCH="arm64" ;;
+          *)      echo "::error::Unsupported architecture: $RUNNER_ARCH"; exit 1 ;;
+        esac
+
+        ARCHIVE="diffyml_${VERSION}_${OS}_${ARCH}.tar.gz"
+        BASE_URL="https://github.com/szhekpisov/diffyml/releases/download/v${VERSION}"
+
+        mkdir -p ~/.diffyml/bin
+        cd ~/.diffyml
+
+        curl -fsSL -o "$ARCHIVE" "${BASE_URL}/${ARCHIVE}"
+        curl -fsSL -o checksums.txt "${BASE_URL}/checksums.txt"
+
+        if command -v sha256sum &>/dev/null; then
+          grep "$ARCHIVE" checksums.txt | sha256sum --check -
+        else
+          grep "$ARCHIVE" checksums.txt | shasum -a 256 --check -
+        fi
+
+        tar -xzf "$ARCHIVE" -C bin/ diffyml
+        chmod +x bin/diffyml
+
+        rm -f "$ARCHIVE" checksums.txt
+
+    - name: Run diffyml
+      id: diff
+      shell: bash
+      env:
+        INPUT_FROM: ${{ inputs.from }}
+        INPUT_TO: ${{ inputs.to }}
+        INPUT_OUTPUT: ${{ inputs.output }}
+        INPUT_EXTRA_ARGS: ${{ inputs.extra-args }}
+        INPUT_FAIL_ON_DIFF: ${{ inputs.fail-on-diff }}
+      run: |
+        export PATH="$HOME/.diffyml/bin:$PATH"
+
+        ARGS=(--output "$INPUT_OUTPUT" --set-exit-code)
+
+        if [ -n "$INPUT_EXTRA_ARGS" ]; then
+          read -ra EXTRA <<< "$INPUT_EXTRA_ARGS"
+          ARGS+=("${EXTRA[@]}")
+        fi
+
+        ARGS+=("$INPUT_FROM" "$INPUT_TO")
+
+        EXIT_CODE=0
+        diffyml "${ARGS[@]}" \
+          > "$RUNNER_TEMP/diffyml_stdout.txt" \
+          2> "$RUNNER_TEMP/diffyml_stderr.txt" \
+          || EXIT_CODE=$?
+
+        cat "$RUNNER_TEMP/diffyml_stdout.txt"
+        if [ -s "$RUNNER_TEMP/diffyml_stderr.txt" ]; then
+          cat "$RUNNER_TEMP/diffyml_stderr.txt" >&2
+        fi
+
+        echo "exit-code=$EXIT_CODE" >> "$GITHUB_OUTPUT"
+
+        if [ "$EXIT_CODE" -eq 1 ]; then
+          echo "has-differences=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "has-differences=false" >> "$GITHUB_OUTPUT"
+        fi
+
+        DELIM="DIFFYML_EOF_$(head -c 16 /dev/urandom | base64 | tr -dc 'a-zA-Z0-9' | head -c 16)"
+        {
+          echo "diff<<$DELIM"
+          cat "$RUNNER_TEMP/diffyml_stdout.txt"
+          echo "$DELIM"
+        } >> "$GITHUB_OUTPUT"
+
+        if [ "$EXIT_CODE" -eq 255 ]; then
+          exit 1
+        fi
+        if [ "$EXIT_CODE" -eq 1 ] && [ "$INPUT_FAIL_ON_DIFF" = "true" ]; then
+          exit 1
+        fi

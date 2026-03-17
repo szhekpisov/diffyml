@@ -28,7 +28,7 @@ diffyml compares YAML files and shows meaningful, structured differences — not
 | Feature | diffyml | dyff | plain `diff` |
 |---------|---------|------|------------|
 | YAML-aware (structural diff) | Yes | Yes | No (line-based) |
-| Kubernetes resource matching | By apiVersion + kind + name | By apiVersion + kind + name | No |
+| Kubernetes resource matching | By apiVersion + kind + name (or generateName) | By apiVersion + kind + name | No |
 | Rename detection | Yes (content similarity — handles name changes) | Yes (identifier-based — name must stay the same) | No |
 | API version migration | Yes (`--ignore-api-version`) | No | No |
 | CI annotation formats | 3 (GitHub, GitLab, Gitea) | 0 | 0 |
@@ -42,7 +42,7 @@ Comparison based on dyff v1.11.2 and diffyml v1.5.8. See [PERFORMANCE.md](doc/PE
 
 ## Kubernetes Intelligence
 
-diffyml auto-detects Kubernetes resources and matches them by `apiVersion`, `kind`, and `metadata.name` — so diffs stay meaningful even when document order changes.
+diffyml auto-detects Kubernetes resources and matches them by `apiVersion`, `kind`, and `metadata.name` (or `metadata.generateName`) — so diffs stay meaningful even when document order changes.
 
 - **Rename detection** — detects renamed/moved resources by content similarity (e.g., kustomize `configMapGenerator` hash-suffix changes like `app-config-abc123` → `app-config-def456`) and shows field-level diffs instead of bulk add/remove
 - **API migration support** — `--ignore-api-version` drops `apiVersion` from the matching key, so an upgrade from `apps/v1beta1` to `apps/v1` shows field-level diffs instead of a remove + add
@@ -155,7 +155,7 @@ diffyml [flags] <from> <to>
 
 ### Kubernetes Support
 
-Resources are auto-detected and matched by `apiVersion` + `kind` + `metadata.name`, so diffs stay meaningful even when document order changes.
+Resources are auto-detected and matched by `apiVersion` + `kind` + `metadata.name` (or `metadata.generateName`), so diffs stay meaningful even when document order changes.
 
 **Rename detection** — when resources can't be matched by identifier (e.g., kustomize `configMapGenerator` hash-suffix changes like `app-config-abc123` → `app-config-def456`), diffyml pairs unmatched documents by content similarity (60% threshold) and shows field-level diffs instead of bulk add/remove. Disable with `--detect-renames=false`.
 

@@ -42,7 +42,7 @@ outputs:
     description: 'Whether differences were found (true/false, empty on error)'
     value: ${{ steps.diff.outputs.has-differences }}
   diff:
-    description: 'Raw diff output from diffyml. May be truncated for very large diffs (GitHub Actions ~1MB output limit).'
+    description: 'Raw diff output from diffyml (truncated to 1 MB)'
     value: ${{ steps.diff.outputs.diff }}
 
 runs:
@@ -150,10 +150,16 @@ runs:
           echo "has-differences=false" >> "$GITHUB_OUTPUT"
         fi
 
+        MAX_OUTPUT_BYTES=1000000
+        STDOUT_SIZE=$(wc -c < "$RUNNER_TEMP/diffyml_stdout.txt")
+        if [ "$STDOUT_SIZE" -gt "$MAX_OUTPUT_BYTES" ]; then
+          echo "::warning::Diff output truncated from ${STDOUT_SIZE} to ${MAX_OUTPUT_BYTES} bytes"
+        fi
+
         DELIM="DIFFYML_EOF_$(head -c 16 /dev/urandom | base64 | tr -dc 'a-zA-Z0-9' | head -c 16)"
         {
           echo "diff<<$DELIM"
-          cat "$RUNNER_TEMP/diffyml_stdout.txt"
+          head -c "$MAX_OUTPUT_BYTES" "$RUNNER_TEMP/diffyml_stdout.txt"
           echo "$DELIM"
         } >> "$GITHUB_OUTPUT"
 

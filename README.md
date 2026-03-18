@@ -107,6 +107,24 @@ gh attestation verify diffyml_<VERSION>_linux_amd64.tar.gz \
   --repo szhekpisov/diffyml
 ```
 
+## Quick Start
+
+```bash
+# Compare two local files
+diffyml old.yaml new.yaml
+
+# Compare local file against a remote URL
+diffyml local.yaml https://example.com/remote.yaml
+
+# Use in CI — exit code 1 when differences found
+diffyml -s deployment-old.yaml deployment-new.yaml
+
+# Use as kubectl external diff provider:
+export KUBECTL_EXTERNAL_DIFF="diffyml --omit-header --set-exit-code"
+```
+
+<img src="doc/kubectl-demo.png" alt="kubectl diff with diffyml" width="600">
+
 ### GitHub Action
 
 ```yaml
@@ -154,25 +172,7 @@ Pass any CLI flags via `extra-args`:
 |--------|-------------|
 | `exit-code` | `0` (no diff), `1` (diff found), or `255` (error) |
 | `has-differences` | `true`, `false`, or empty on error |
-| `diff` | Raw diff output |
-
-## Quick Start
-
-```bash
-# Compare two local files
-diffyml old.yaml new.yaml
-
-# Compare local file against a remote URL
-diffyml local.yaml https://example.com/remote.yaml
-
-# Use in CI — exit code 1 when differences found
-diffyml -s deployment-old.yaml deployment-new.yaml
-
-# Use as kubectl external diff provider:
-export KUBECTL_EXTERNAL_DIFF="diffyml --omit-header --set-exit-code"
-```
-
-<img src="doc/kubectl-demo.png" alt="kubectl diff with diffyml" width="600">
+| `diff` | Raw diff output (truncated to 1 MB) |
 
 ## Features
 

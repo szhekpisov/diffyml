@@ -39,7 +39,7 @@ outputs:
     description: 'Exit code from diffyml (0=no diff, 1=diff found, 255=error)'
     value: ${{ steps.diff.outputs.exit-code }}
   has-differences:
-    description: 'Whether differences were found (true/false)'
+    description: 'Whether differences were found (true/false, empty on error)'
     value: ${{ steps.diff.outputs.has-differences }}
   diff:
     description: 'Raw diff output from diffyml. May be truncated for very large diffs (GitHub Actions ~1MB output limit).'
@@ -94,8 +94,8 @@ runs:
         mkdir -p ~/.diffyml/bin
         cd ~/.diffyml
 
-        curl -fsSL -o "$ARCHIVE" "${BASE_URL}/${ARCHIVE}"
         curl -fsSL -o checksums.txt "${BASE_URL}/checksums.txt"
+        curl -fsSL -o "$ARCHIVE" "${BASE_URL}/${ARCHIVE}"
 
         if command -v sha256sum &>/dev/null; then
           grep -F "$ARCHIVE" checksums.txt | sha256sum --check -
@@ -142,7 +142,9 @@ runs:
 
         echo "exit-code=$EXIT_CODE" >> "$GITHUB_OUTPUT"
 
-        if [ "$EXIT_CODE" -eq 1 ]; then
+        if [ "$EXIT_CODE" -gt 1 ]; then
+          echo "has-differences=" >> "$GITHUB_OUTPUT"
+        elif [ "$EXIT_CODE" -eq 1 ]; then
           echo "has-differences=true" >> "$GITHUB_OUTPUT"
         else
           echo "has-differences=false" >> "$GITHUB_OUTPUT"

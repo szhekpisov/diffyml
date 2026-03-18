@@ -153,7 +153,7 @@ Pass any CLI flags via `extra-args`:
 | Output | Description |
 |--------|-------------|
 | `exit-code` | `0` (no diff), `1` (diff found), or `255` (error) |
-| `has-differences` | `true` or `false` |
+| `has-differences` | `true`, `false`, or empty on error |
 | `diff` | Raw diff output |
 
 ## Quick Start

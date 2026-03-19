@@ -90,49 +90,44 @@ func documentLabel(idx int, docName string) string {
 	return fmt.Sprintf("document %d", idx)
 }
 
+// pathString returns the display string for a DiffPath, respecting go-patch style.
+func pathString(path DiffPath, goPatch bool) string {
+	if goPatch {
+		return path.GoPatchString()
+	}
+	return path.String()
+}
+
 // formatPathHeading renders the path line for a group of diffs.
 func (f *DetailedFormatter) formatPathHeading(sb *strings.Builder, path DiffPath, docName string, isMultiDoc bool, opts *FormatOptions) {
 	if path.IsEmpty() {
 		if opts.UseGoPatchStyle {
-			sb.WriteString(colorStart(opts, styleBold))
-			sb.WriteString("/")
-			sb.WriteString(colorEnd(opts))
+			f.writeBold(sb, "/", opts)
 		} else {
-			sb.WriteString(colorStart(opts, styleBold))
-			sb.WriteString("(root level)")
-			sb.WriteString(colorEnd(opts))
+			f.writeBold(sb, "(root level)", opts)
 		}
 	} else if path.IsBareDocIndex() {
 		idx, _ := path.DocIndex()
 		if isMultiDoc {
-			sb.WriteString(colorStart(opts, styleBold))
-			sb.WriteString("(root level)")
-			sb.WriteString(colorEnd(opts))
+			f.writeBold(sb, "(root level)", opts)
 			f.writeDocLabel(sb, documentLabel(idx, docName), opts)
 		} else {
-			sb.WriteString(colorStart(opts, styleBold))
-			sb.WriteString(k8sDocumentPath.String())
-			sb.WriteString(colorEnd(opts))
+			f.writeBold(sb, k8sDocumentPath.String(), opts)
 		}
 	} else if idx, rest, ok := path.DocIndexPrefix(); ok {
-		sb.WriteString(colorStart(opts, styleBold))
-		if opts.UseGoPatchStyle {
-			sb.WriteString(rest.GoPatchString())
-		} else {
-			sb.WriteString(rest.String())
-		}
-		sb.WriteString(colorEnd(opts))
+		f.writeBold(sb, pathString(rest, opts.UseGoPatchStyle), opts)
 		f.writeDocLabel(sb, documentLabel(idx, docName), opts)
 	} else {
-		sb.WriteString(colorStart(opts, styleBold))
-		if opts.UseGoPatchStyle {
-			sb.WriteString(path.GoPatchString())
-		} else {
-			sb.WriteString(path.String())
-		}
-		sb.WriteString(colorEnd(opts))
+		f.writeBold(sb, pathString(path, opts.UseGoPatchStyle), opts)
 	}
 	sb.WriteString("\n")
+}
+
+// writeBold writes text in bold style.
+func (f *DetailedFormatter) writeBold(sb *strings.Builder, text string, opts *FormatOptions) {
+	sb.WriteString(colorStart(opts, styleBold))
+	sb.WriteString(text)
+	sb.WriteString(colorEnd(opts))
 }
 
 // writeDocLabel writes a document label suffix in light steel blue.

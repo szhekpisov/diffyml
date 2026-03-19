@@ -1299,11 +1299,11 @@ func TestDetailedFormatter_DocumentHeading(t *testing.T) {
 			{Path: DiffPath{"[1]"}, Type: DiffAdded, To: "value2", DocumentIndex: 1},
 		}
 		output := f.Format(diffs, opts)
-		if !strings.Contains(output, "(root level) (document 0)") {
-			t.Errorf("expected '(root level) (document 0)' in output, got: %q", output)
+		if !strings.Contains(output, "(root level)  (document 0)") {
+			t.Errorf("expected '(root level)  (document 0)' in output, got: %q", output)
 		}
-		if !strings.Contains(output, "(root level) (document 1)") {
-			t.Errorf("expected '(root level) (document 1)' in output, got: %q", output)
+		if !strings.Contains(output, "(root level)  (document 1)") {
+			t.Errorf("expected '(root level)  (document 1)' in output, got: %q", output)
 		}
 	})
 
@@ -1462,8 +1462,8 @@ func TestDetailedFormatter_ColonNotation(t *testing.T) {
 			{Path: DiffPath{"[0]", "spec", "field"}, Type: DiffModified, From: "old", To: "new"},
 		}
 		output := f.Format(diffs, opts)
-		if !strings.Contains(output, "spec.field (document 0)") {
-			t.Errorf("expected 'spec.field (document 0)' in output, got: %q", output)
+		if !strings.Contains(output, "spec.field  (document 0)") {
+			t.Errorf("expected 'spec.field  (document 0)' in output, got: %q", output)
 		}
 		if strings.Contains(output, "[0]") {
 			t.Errorf("should not contain '[0]' in output, got: %q", output)
@@ -1475,8 +1475,8 @@ func TestDetailedFormatter_ColonNotation(t *testing.T) {
 			{Path: DiffPath{"[2]", "metadata", "name"}, Type: DiffModified, From: "old", To: "new"},
 		}
 		output := f.Format(diffs, opts)
-		if !strings.Contains(output, "metadata.name (document 2)") {
-			t.Errorf("expected 'metadata.name (document 2)' in output, got: %q", output)
+		if !strings.Contains(output, "metadata.name  (document 2)") {
+			t.Errorf("expected 'metadata.name  (document 2)' in output, got: %q", output)
 		}
 	})
 
@@ -1488,8 +1488,8 @@ func TestDetailedFormatter_ColonNotation(t *testing.T) {
 			{Path: DiffPath{"[0]", "spec", "field"}, Type: DiffModified, From: "old", To: "new"},
 		}
 		output := f.Format(diffs, gpOpts)
-		if !strings.Contains(output, "/spec/field (document 0)") {
-			t.Errorf("expected '/spec/field (document 0)' in output, got: %q", output)
+		if !strings.Contains(output, "/spec/field  (document 0)") {
+			t.Errorf("expected '/spec/field  (document 0)' in output, got: %q", output)
 		}
 	})
 

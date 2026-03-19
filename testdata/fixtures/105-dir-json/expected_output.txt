@@ -5,7 +5,8 @@
     "type": "modified",
     "from": 2,
     "to": 5,
-    "document_index": 0
+    "document_index": 0,
+    "document_name": "apps/v1/Deployment/web"
   },
   {
     "file": "service.yaml",
@@ -13,6 +14,7 @@
     "type": "modified",
     "from": "ClusterIP",
     "to": "NodePort",
-    "document_index": 0
+    "document_index": 0,
+    "document_name": "v1/Service/web-svc"
   }
 ]

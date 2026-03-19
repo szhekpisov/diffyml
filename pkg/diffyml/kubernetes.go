@@ -109,6 +109,29 @@ func K8sResourceIdentifier(doc any, ignoreApiVersion bool) string {
 	return fmt.Sprintf("%s:%s:%s", apiVersion, kind, name)
 }
 
+// K8sResourceDisplayName returns a slash-separated display name for a Kubernetes resource.
+// Format: "apiVersion/kind/name" or "apiVersion/kind/namespace/name".
+// Returns empty string if the document is not a valid K8s resource.
+func K8sResourceDisplayName(doc any) string {
+	if !IsKubernetesResource(doc) {
+		return ""
+	}
+
+	apiVersion, _ := k8sGetVal(doc, "apiVersion").(string)
+	kind, _ := k8sGetVal(doc, "kind").(string)
+	metadata := k8sGetVal(doc, "metadata")
+	nameVal := k8sGetVal(metadata, "name")
+	if nameVal == nil {
+		nameVal = k8sGetVal(metadata, "generateName")
+	}
+	name := fmt.Sprintf("%v", nameVal)
+
+	if namespace := k8sGetVal(metadata, "namespace"); namespace != nil {
+		return fmt.Sprintf("%s/%s/%v/%s", apiVersion, kind, namespace, name)
+	}
+	return fmt.Sprintf("%s/%s/%s", apiVersion, kind, name)
+}
+
 // IdentifierWithAdditional gets an identifier value from a map,
 // checking default fields (name, id) and any additional specified fields.
 func IdentifierWithAdditional(m map[string]any, additionalIdentifiers []string) any {
@@ -289,8 +312,14 @@ func compareMatchedK8sDocs(matched map[int]int, from, to []any, opts *Options, u
 		if useToIdx {
 			docIdx = toIdx
 		}
+		doc := fromDoc
+		if useToIdx {
+			doc = toDoc
+		}
+		docName := K8sResourceDisplayName(doc)
 		for i := range nodeDiffs {
 			nodeDiffs[i].DocumentIndex = docIdx
+			nodeDiffs[i].DocumentName = docName
 		}
 		diffs = append(diffs, nodeDiffs...)
 	}
@@ -332,6 +361,7 @@ func compareK8sDocs(from, to []any, opts *Options) []Difference {
 			From:          from[fromIdx],
 			To:            nil,
 			DocumentIndex: fromIdx,
+			DocumentName:  K8sResourceDisplayName(from[fromIdx]),
 		})
 	}
 
@@ -347,6 +377,7 @@ func compareK8sDocs(from, to []any, opts *Options) []Difference {
 			From:          nil,
 			To:            to[toIdx],
 			DocumentIndex: toIdx,
+			DocumentName:  K8sResourceDisplayName(to[toIdx]),
 		})
 	}
 

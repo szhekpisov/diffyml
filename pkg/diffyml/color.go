@@ -183,7 +183,7 @@ func DetailedColorCode(diffType DiffType, useTrueColor bool) string {
 }
 
 // DocNameColorCode returns the color code for document identifier labels.
-// Uses light steel blue (matching dyff) when useTrueColor is true,
+// Uses light steel blue when useTrueColor is true,
 // otherwise falls back to cyan ANSI code.
 func DocNameColorCode(useTrueColor bool) string {
 	if useTrueColor {

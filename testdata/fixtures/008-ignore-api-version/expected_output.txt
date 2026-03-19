@@ -5,17 +5,17 @@ Found five differences
     - Deployment:production/web-app, ConfigMap:production/app-config
     + ConfigMap:production/app-config, Deployment:production/web-app
 
-apiVersion  (apps/v1beta1/Deployment/production/web-app)
+apiVersion  (apps/v1/Deployment/production/web-app)
   ± value change
     - apps/v1beta1
     + apps/v1
 
-spec.replicas  (apps/v1beta1/Deployment/production/web-app)
+spec.replicas  (apps/v1/Deployment/production/web-app)
   ± value change
     - 3
     + 5
 
-spec.template.spec.containers.web.image  (apps/v1beta1/Deployment/production/web-app)
+spec.template.spec.containers.web.image  (apps/v1/Deployment/production/web-app)
   ± value change
     - nginx:1.21
     + nginx:1.25

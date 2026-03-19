@@ -100,7 +100,10 @@ func k8sExtractFields(doc any) (k8sResourceFields, bool) {
 	if nameVal == nil {
 		nameVal = k8sGetVal(metadata, "generateName")
 	}
-	ns, _ := k8sGetVal(metadata, "namespace").(string)
+	var ns string
+	if nsVal := k8sGetVal(metadata, "namespace"); nsVal != nil {
+		ns = fmt.Sprintf("%v", nsVal)
+	}
 	return k8sResourceFields{
 		apiVersion: apiVersion,
 		kind:       kind,
@@ -294,6 +297,8 @@ func detectK8sOrderChanges(matched map[int]int, from []any, ignoreApiVersion boo
 		toOrder[i] = K8sResourceIdentifier(from[p.fromIdx], ignoreApiVersion)
 	}
 
+	// DocumentName is intentionally empty: order-change diffs span the entire
+	// document set, so no single resource name applies.
 	return &Difference{
 		Path: k8sDocumentPath,
 		Type: DiffOrderChanged,
@@ -309,9 +314,9 @@ func compareMatchedK8sDocs(matched map[int]int, from, to []any, opts *Options, u
 		fromDoc := from[fromIdx]
 		toDoc := to[toIdx]
 
-		docIdx, doc := fromIdx, fromDoc
+		docIdx := fromIdx
 		if useToIdx {
-			docIdx, doc = toIdx, toDoc
+			docIdx = toIdx
 		}
 
 		var pathPrefix DiffPath
@@ -320,7 +325,7 @@ func compareMatchedK8sDocs(matched map[int]int, from, to []any, opts *Options, u
 		}
 
 		nodeDiffs := compareNodes(pathPrefix, fromDoc, toDoc, opts)
-		docName := K8sResourceDisplayName(doc)
+		docName := K8sResourceDisplayName(toDoc)
 		for i := range nodeDiffs {
 			nodeDiffs[i].DocumentIndex = docIdx
 			nodeDiffs[i].DocumentName = docName

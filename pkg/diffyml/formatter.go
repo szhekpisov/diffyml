@@ -590,13 +590,8 @@ type jsonDiff struct {
 
 // jsonDirDiff extends jsonDiff with a file path for directory mode.
 type jsonDirDiff struct {
-	File          string `json:"file"`
-	Path          string `json:"path"`
-	Type          string `json:"type"`
-	From          any    `json:"from"`
-	To            any    `json:"to"`
-	DocumentIndex int    `json:"document_index"`
-	DocumentName  string `json:"document_name,omitempty"`
+	File string `json:"file"`
+	jsonDiff
 }
 
 // jsonDiffTypeName returns the string name for a DiffType.
@@ -723,13 +718,8 @@ func (f *JSONFormatter) FormatAll(groups []DiffGroup, opts *FormatOptions) strin
 		for _, diff := range group.Diffs {
 			d := buildJSONDiff(diff, opts)
 			items = append(items, jsonDirDiff{
-				File:          group.FilePath,
-				Path:          d.Path,
-				Type:          d.Type,
-				From:          d.From,
-				To:            d.To,
-				DocumentIndex: d.DocumentIndex,
-				DocumentName:  d.DocumentName,
+				File:     group.FilePath,
+				jsonDiff: d,
 			})
 		}
 	}

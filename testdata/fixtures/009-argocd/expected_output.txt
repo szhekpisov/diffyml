@@ -1,12 +1,12 @@
 Found 313 differences
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.operation.properties.retry.properties (document 0)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.operation.properties.retry.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applications.argoproj.io)
   + one map entry added:
     refresh:
       description: Refresh indicates if the latest revision should be used on retry instead of the initial one (default: false)
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 0)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.sourceHydrator.properties.drySource.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applications.argoproj.io)
   + four map entries added:
     directory:
       description: Directory specifies path/directory specific options
@@ -303,54 +303,54 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.sourceH
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.syncPolicy.properties.automated.properties (document 0)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.syncPolicy.properties.automated.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applications.argoproj.io)
   + one map entry added:
     enabled:
       description: Enable allows apps to explicitly control automated sync
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.syncPolicy.properties.retry.properties (document 0)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.syncPolicy.properties.retry.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applications.argoproj.io)
   + one map entry added:
     refresh:
       description: Refresh indicates if the latest revision should be used on retry instead of the initial one (default: false)
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.health.properties.message.description (document 0)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.health.properties.message.description  (apiextensions.k8s.io/v1/CustomResourceDefinition/applications.argoproj.io)
   ± value change in multiline text (two inserts, zero deletions)
       Message is a human-readable informational message describing the health status
     + 
     + Deprecated: this field is not used and will be removed in a future release.
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.health.properties.status.description (document 0)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.health.properties.status.description  (apiextensions.k8s.io/v1/CustomResourceDefinition/applications.argoproj.io)
   ± value change
     - Status holds the status code of the application or resource
     + Status holds the status code of the application
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 0)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path  (apiextensions.k8s.io/v1/CustomResourceDefinition/applications.argoproj.io)
   + two map entries added:
     minLength: 1
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.description (document 0)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path.description  (apiextensions.k8s.io/v1/CustomResourceDefinition/applications.argoproj.io)
   ± value change in multiline text (two inserts, one deletion)
       Path is a directory path within the git repository where hydrated manifests should be committed to and synced
     - from. If hydrateTo is set, this is just the path from which hydrated manifests will be synced.
     + from. The Path should never point to the root of the repo. If hydrateTo is set, this is just the path from which
     + hydrated manifests will be synced.
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.sourceHydrator.properties.syncSource.properties.targetBranch.description (document 0)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.sourceHydrator.properties.syncSource.properties.targetBranch.description  (apiextensions.k8s.io/v1/CustomResourceDefinition/applications.argoproj.io)
   ± value change in multiline text (two inserts, one deletion)
     - TargetBranch is the branch to which hydrated manifests should be committed
     + TargetBranch is the branch from which hydrated manifests will be synced.
     + If HydrateTo is not set, this is also the branch to which hydrated manifests are committed.
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.operationState.properties.operation.properties.retry.properties (document 0)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.operationState.properties.operation.properties.retry.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applications.argoproj.io)
   + one map entry added:
     refresh:
       description: Refresh indicates if the latest revision should be used on retry instead of the initial one (default: false)
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.operationState.properties.syncResult.properties.resources.items.properties (document 0)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.operationState.properties.syncResult.properties.resources.items.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applications.argoproj.io)
   + one map entry added:
     images:
       description: Images contains the images related to the ResourceResult
@@ -358,18 +358,18 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.opera
         type: string
       type: array
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.resources.items.properties.health.properties.lastTransitionTime.description (document 0)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.resources.items.properties.health.properties.lastTransitionTime.description  (apiextensions.k8s.io/v1/CustomResourceDefinition/applications.argoproj.io)
   ± value change in multiline text (two inserts, zero deletions)
       LastTransitionTime is the time the HealthStatus was set or updated
     + 
     + Deprecated: this field is not used and will be removed in a future release.
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.resources.items.properties.health.properties.status.description (document 0)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.resources.items.properties.health.properties.status.description  (apiextensions.k8s.io/v1/CustomResourceDefinition/applications.argoproj.io)
   ± value change
     - Status holds the status code of the application or resource
     + Status holds the status code of the resource
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.currentOperation.properties.sourceHydrator.properties.drySource.properties (document 0)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.currentOperation.properties.sourceHydrator.properties.drySource.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applications.argoproj.io)
   + four map entries added:
     directory:
       description: Directory specifies path/directory specific options
@@ -666,7 +666,7 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourc
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.lastSuccessfulOperation.properties.sourceHydrator.properties.drySource.properties (document 0)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.lastSuccessfulOperation.properties.sourceHydrator.properties.drySource.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applications.argoproj.io)
   + four map entries added:
     directory:
       description: Directory specifies path/directory specific options
@@ -963,43 +963,43 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourc
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.currentOperation.properties.sourceHydrator.properties.syncSource.properties.path (document 0)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.currentOperation.properties.sourceHydrator.properties.syncSource.properties.path  (apiextensions.k8s.io/v1/CustomResourceDefinition/applications.argoproj.io)
   + two map entries added:
     minLength: 1
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.lastSuccessfulOperation.properties.sourceHydrator.properties.syncSource.properties.path (document 0)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.lastSuccessfulOperation.properties.sourceHydrator.properties.syncSource.properties.path  (apiextensions.k8s.io/v1/CustomResourceDefinition/applications.argoproj.io)
   + two map entries added:
     minLength: 1
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.currentOperation.properties.sourceHydrator.properties.syncSource.properties.path.description (document 0)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.currentOperation.properties.sourceHydrator.properties.syncSource.properties.path.description  (apiextensions.k8s.io/v1/CustomResourceDefinition/applications.argoproj.io)
   ± value change in multiline text (two inserts, one deletion)
       Path is a directory path within the git repository where hydrated manifests should be committed to and synced
     - from. If hydrateTo is set, this is just the path from which hydrated manifests will be synced.
     + from. The Path should never point to the root of the repo. If hydrateTo is set, this is just the path from which
     + hydrated manifests will be synced.
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.currentOperation.properties.sourceHydrator.properties.syncSource.properties.targetBranch.description (document 0)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.currentOperation.properties.sourceHydrator.properties.syncSource.properties.targetBranch.description  (apiextensions.k8s.io/v1/CustomResourceDefinition/applications.argoproj.io)
   ± value change in multiline text (two inserts, one deletion)
     - TargetBranch is the branch to which hydrated manifests should be committed
     + TargetBranch is the branch from which hydrated manifests will be synced.
     + If HydrateTo is not set, this is also the branch to which hydrated manifests are committed.
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.lastSuccessfulOperation.properties.sourceHydrator.properties.syncSource.properties.path.description (document 0)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.lastSuccessfulOperation.properties.sourceHydrator.properties.syncSource.properties.path.description  (apiextensions.k8s.io/v1/CustomResourceDefinition/applications.argoproj.io)
   ± value change in multiline text (two inserts, one deletion)
       Path is a directory path within the git repository where hydrated manifests should be committed to and synced
     - from. If hydrateTo is set, this is just the path from which hydrated manifests will be synced.
     + from. The Path should never point to the root of the repo. If hydrateTo is set, this is just the path from which
     + hydrated manifests will be synced.
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.lastSuccessfulOperation.properties.sourceHydrator.properties.syncSource.properties.targetBranch.description (document 0)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties.sourceHydrator.properties.lastSuccessfulOperation.properties.sourceHydrator.properties.syncSource.properties.targetBranch.description  (apiextensions.k8s.io/v1/CustomResourceDefinition/applications.argoproj.io)
   ± value change in multiline text (two inserts, one deletion)
     - TargetBranch is the branch to which hydrated manifests should be committed
     + TargetBranch is the branch from which hydrated manifests will be synced.
     + If HydrateTo is not set, this is also the branch to which hydrated manifests are committed.
 
-rules.6 (document 11)
+rules.6  (rbac.authorization.k8s.io/v1/Role/argocd-applicationset-controller)
   + one list entry added:
     - apiGroups:
         - coordination.k8s.io
@@ -1012,39 +1012,39 @@ rules.6 (document 11)
         - update
         - create
 
-rules.5.apiGroups.0 (document 11)
+rules.5.apiGroups.0  (rbac.authorization.k8s.io/v1/Role/argocd-applicationset-controller)
   ± value change
     - apps
     + coordination.k8s.io
 
-rules.5.apiGroups.1 (document 11)
+rules.5.apiGroups.1  (rbac.authorization.k8s.io/v1/Role/argocd-applicationset-controller)
   - one list entry removed:
     - extensions
 
-rules.5.resources.0 (document 11)
+rules.5.resources.0  (rbac.authorization.k8s.io/v1/Role/argocd-applicationset-controller)
   ± value change
     - deployments
     + leases
 
-rules.5.verbs.0 (document 11)
+rules.5.verbs.0  (rbac.authorization.k8s.io/v1/Role/argocd-applicationset-controller)
   ± value change
     - get
     + create
 
-rules.5.verbs.1 (document 11)
+rules.5.verbs.1  (rbac.authorization.k8s.io/v1/Role/argocd-applicationset-controller)
   - one list entry removed:
     - list
 
-rules.5.verbs.2 (document 11)
+rules.5.verbs.2  (rbac.authorization.k8s.io/v1/Role/argocd-applicationset-controller)
   - one list entry removed:
     - watch
 
-rules.6 (document 17)
+rules.6  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   + one list entry added:
     - resourceNames:
         - 58ac56fa.applicationsets.argoproj.io
 
-rules.7 (document 17)
+rules.7  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   - one list entry removed:
     - apiGroups:
         - coordination.k8s.io
@@ -1059,157 +1059,157 @@ rules.7 (document 17)
         - update
         - watch
 
-rules.1.resources.0 (document 17)
+rules.1.resources.0  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   ± value change
     - applicationsets/status
     + appprojects
 
-rules.1.verbs.1 (document 17)
+rules.1.verbs.1  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   ± value change
     - patch
     + list
 
-rules.1.verbs.2 (document 17)
+rules.1.verbs.2  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   ± value change
     - update
     + watch
 
-rules.2.resources.0 (document 17)
+rules.2.resources.0  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   ± value change
     - appprojects
     + applicationsets/status
 
-rules.2.verbs.1 (document 17)
+rules.2.verbs.1  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   ± value change
     - list
     + patch
 
-rules.2.verbs.2 (document 17)
+rules.2.verbs.2  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   ± value change
     - watch
     + update
 
-rules.4.resources.0 (document 17)
+rules.4.resources.0  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   ± value change
     - configmaps
     + secrets
 
-rules.4.resources.1 (document 17)
+rules.4.resources.1  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   + one list entry added:
     - configmaps
 
-rules.4.verbs.0 (document 17)
+rules.4.verbs.0  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   ± value change
     - create
     + get
 
-rules.4.verbs.1 (document 17)
+rules.4.verbs.1  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   ± value change
     - update
     + list
 
-rules.4.verbs.2 (document 17)
+rules.4.verbs.2  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   ± value change
     - delete
     + watch
 
-rules.4.verbs.3 (document 17)
+rules.4.verbs.3  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   - one list entry removed:
     - get
 
-rules.4.verbs.4 (document 17)
+rules.4.verbs.4  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   - one list entry removed:
     - list
 
-rules.4.verbs.5 (document 17)
+rules.4.verbs.5  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   - one list entry removed:
     - patch
 
-rules.4.verbs.6 (document 17)
+rules.4.verbs.6  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   - one list entry removed:
     - watch
 
-rules.5.apiGroups.0 (document 17)
+rules.5.apiGroups.0  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   ± value change
     - 
     + coordination.k8s.io
 
-rules.5.resources.0 (document 17)
+rules.5.resources.0  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   ± value change
     - secrets
     + leases
 
-rules.5.verbs.0 (document 17)
+rules.5.verbs.0  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   ± value change
     - get
     + create
 
-rules.5.verbs.1 (document 17)
+rules.5.verbs.1  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   - one list entry removed:
     - list
 
-rules.5.verbs.2 (document 17)
+rules.5.verbs.2  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   - one list entry removed:
     - watch
 
-rules.6.apiGroups.0 (document 17)
+rules.6.apiGroups.0  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   ± value change
     - apps
     + coordination.k8s.io
 
-rules.6.apiGroups.1 (document 17)
+rules.6.apiGroups.1  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   - one list entry removed:
     - extensions
 
-rules.6.resources.0 (document 17)
+rules.6.resources.0  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   ± value change
     - deployments
     + leases
 
-rules.6.verbs.1 (document 17)
+rules.6.verbs.1  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   ± value change
     - list
     + update
 
-rules.6.verbs.2 (document 17)
+rules.6.verbs.2  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   ± value change
     - watch
     + create
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     resourcesCount:
       format: int64
       type: integer
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.strategy.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.strategy.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     deletionOrder:
       type: string
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     continueOnRepoNotFoundError:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.gitea.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.gitea.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     labels:
       items:
         type: string
       type: array
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.files.items.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.files.items.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     exclude:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.filters.items.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.filters.items.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     titleMatch:
       type: string
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + four map entries added:
     directory:
       properties:
@@ -1434,46 +1434,46 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.templat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + two map entries added:
     minLength: 1
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     continueOnRepoNotFoundError:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     continueOnRepoNotFoundError:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.gitea.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.gitea.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     labels:
       items:
         type: string
       type: array
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.gitea.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.gitea.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     labels:
       items:
         type: string
       type: array
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + four map entries added:
     directory:
       properties:
@@ -1698,17 +1698,17 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + four map entries added:
     directory:
       properties:
@@ -1933,17 +1933,17 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + four map entries added:
     directory:
       properties:
@@ -2168,17 +2168,17 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + four map entries added:
     directory:
       properties:
@@ -2403,27 +2403,27 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.list.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.list.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.list.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.list.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.files.items.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.files.items.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     exclude:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.filters.items.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.filters.items.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     titleMatch:
       type: string
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + four map entries added:
     directory:
       properties:
@@ -2648,27 +2648,27 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.files.items.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.files.items.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     exclude:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.filters.items.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.filters.items.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     titleMatch:
       type: string
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + four map entries added:
     directory:
       properties:
@@ -2893,17 +2893,17 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + four map entries added:
     directory:
       properties:
@@ -3128,17 +3128,17 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + four map entries added:
     directory:
       properties:
@@ -3363,17 +3363,17 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + four map entries added:
     directory:
       properties:
@@ -3598,62 +3598,62 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + two map entries added:
     minLength: 1
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + two map entries added:
     minLength: 1
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + two map entries added:
     minLength: 1
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + two map entries added:
     minLength: 1
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + two map entries added:
     minLength: 1
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + two map entries added:
     minLength: 1
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + two map entries added:
     minLength: 1
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + two map entries added:
     minLength: 1
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + two map entries added:
     minLength: 1
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + four map entries added:
     directory:
       properties:
@@ -3878,17 +3878,17 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + four map entries added:
     directory:
       properties:
@@ -4113,17 +4113,17 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + four map entries added:
     directory:
       properties:
@@ -4348,17 +4348,17 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + four map entries added:
     directory:
       properties:
@@ -4583,17 +4583,17 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.list.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.list.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.list.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.list.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + four map entries added:
     directory:
       properties:
@@ -4818,17 +4818,17 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + four map entries added:
     directory:
       properties:
@@ -5053,17 +5053,17 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + four map entries added:
     directory:
       properties:
@@ -5288,17 +5288,17 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + four map entries added:
     directory:
       properties:
@@ -5523,17 +5523,17 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + four map entries added:
     directory:
       properties:
@@ -5758,17 +5758,17 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + four map entries added:
     directory:
       properties:
@@ -5993,17 +5993,17 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + four map entries added:
     directory:
       properties:
@@ -6228,17 +6228,17 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.list.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.list.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.list.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.list.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + four map entries added:
     directory:
       properties:
@@ -6463,17 +6463,17 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + four map entries added:
     directory:
       properties:
@@ -6698,17 +6698,17 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.drySource.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + four map entries added:
     directory:
       properties:
@@ -6933,97 +6933,97 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generat
           type: array
       type: object
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.syncPolicy.properties.automated.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     enabled:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.syncPolicy.properties.retry.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:
     refresh:
       type: boolean
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + two map entries added:
     minLength: 1
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + two map entries added:
     minLength: 1
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + two map entries added:
     minLength: 1
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + two map entries added:
     minLength: 1
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + two map entries added:
     minLength: 1
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + two map entries added:
     minLength: 1
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.matrix.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + two map entries added:
     minLength: 1
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusterDecisionResource.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + two map entries added:
     minLength: 1
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.clusters.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + two map entries added:
     minLength: 1
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.git.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + two map entries added:
     minLength: 1
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.list.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + two map entries added:
     minLength: 1
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.plugin.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + two map entries added:
     minLength: 1
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.pullRequest.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + two map entries added:
     minLength: 1
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path (document 1)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.generators.items.properties.merge.properties.generators.items.properties.scmProvider.properties.template.properties.spec.properties.sourceHydrator.properties.syncSource.properties.path  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + two map entries added:
     minLength: 1
     pattern: ^.{2,}|[^./]$
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.description (document 2)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.description  (apiextensions.k8s.io/v1/CustomResourceDefinition/appprojects.argoproj.io)
   + one map entry added:
     maxLength: 255
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.clusterResourceBlacklist.items.description (document 2)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.clusterResourceBlacklist.items.description  (apiextensions.k8s.io/v1/CustomResourceDefinition/appprojects.argoproj.io)
   ± value change in multiline text (one insert, two deletions)
     - GroupKind specifies a Group and a Kind, but does not force a version.  This is useful for identifying
     - concepts during lookup stages without having partially valid types
     + ClusterResourceRestrictionItem is a cluster resource that is restricted by the project's whitelist or blacklist
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.clusterResourceBlacklist.items.properties (document 2)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.clusterResourceBlacklist.items.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/appprojects.argoproj.io)
   + one list entry added:
     - name:
         description: |
@@ -7031,13 +7031,13 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.cluster
           Unlike the group and kind fields, if no name is specified, all resources of the specified group/kind are matched.
         type: string
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.clusterResourceWhitelist.items.description (document 2)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.clusterResourceWhitelist.items.description  (apiextensions.k8s.io/v1/CustomResourceDefinition/appprojects.argoproj.io)
   ± value change in multiline text (one insert, two deletions)
     - GroupKind specifies a Group and a Kind, but does not force a version.  This is useful for identifying
     - concepts during lookup stages without having partially valid types
     + ClusterResourceRestrictionItem is a cluster resource that is restricted by the project's whitelist or blacklist
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.clusterResourceWhitelist.items.properties (document 2)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.clusterResourceWhitelist.items.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/appprojects.argoproj.io)
   + one list entry added:
     - name:
         description: |
@@ -7045,13 +7045,13 @@ spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.cluster
           Unlike the group and kind fields, if no name is specified, all resources of the specified group/kind are matched.
         type: string
 
-spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.syncWindows.items.properties (document 2)
+spec.versions.v1alpha1.schema.openAPIV3Schema.properties.spec.properties.syncWindows.items.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/appprojects.argoproj.io)
   + one map entry added:
     description:
       description: Description of the sync that will be applied to the schedule, can be used to add any information such as a ticket number for example
       type: string
 
-spec.template.spec.volumes (document 45)
+spec.template.spec.volumes  (apps/v1/Deployment/argocd-applicationset-controller)
   + one list entry added:
     - configMap:
         items:
@@ -7061,7 +7061,7 @@ spec.template.spec.volumes (document 45)
         optional: true
       name: argocd-cmd-params-cm
 
-spec.template.spec.containers.argocd-applicationset-controller.env (document 45)
+spec.template.spec.containers.argocd-applicationset-controller.env  (apps/v1/Deployment/argocd-applicationset-controller)
   + two list entries added:
     - name: ARGOCD_APPLICATIONSET_CONTROLLER_ENABLE_GITHUB_API_METRICS
       valueFrom:
@@ -7076,47 +7076,47 @@ spec.template.spec.containers.argocd-applicationset-controller.env (document 45)
           name: argocd-cmd-params-cm
           optional: true
 
-spec.template.spec.containers.argocd-applicationset-controller.image (document 45)
+spec.template.spec.containers.argocd-applicationset-controller.image  (apps/v1/Deployment/argocd-applicationset-controller)
   ± value change
     - quay.io/argoproj/argocd:v3.0.0
     + quay.io/argoproj/argocd:v3.3.2
 
-spec.template.spec.containers.argocd-applicationset-controller.volumeMounts (document 45)
+spec.template.spec.containers.argocd-applicationset-controller.volumeMounts  (apps/v1/Deployment/argocd-applicationset-controller)
   + one list entry added:
     - mountPath: /home/argocd/params
       name: argocd-cmd-params-cm
 
-spec.template.spec.containers.dex.image (document 46)
+spec.template.spec.containers.dex.image  (apps/v1/Deployment/argocd-dex-server)
   ± value change
     - ghcr.io/dexidp/dex:v2.41.1
     + ghcr.io/dexidp/dex:v2.43.0
 
-spec.template.spec.initContainers.copyutil.image (document 46)
+spec.template.spec.initContainers.copyutil.image  (apps/v1/Deployment/argocd-dex-server)
   ± value change
     - quay.io/argoproj/argocd:v3.0.0
     + quay.io/argoproj/argocd:v3.3.2
 
-spec.template.spec.containers.argocd-notifications-controller.image (document 47)
+spec.template.spec.containers.argocd-notifications-controller.image  (apps/v1/Deployment/argocd-notifications-controller)
   ± value change
     - quay.io/argoproj/argocd:v3.0.0
     + quay.io/argoproj/argocd:v3.3.2
 
-spec.template.spec.containers.redis.image (document 48)
+spec.template.spec.containers.redis.image  (apps/v1/Deployment/argocd-redis)
   ± value change
     - redis:7.2.7-alpine
     + public.ecr.aws/docker/library/redis:8.2.3-alpine
 
-spec.template.spec.initContainers.secret-init.image (document 48)
+spec.template.spec.initContainers.secret-init.image  (apps/v1/Deployment/argocd-redis)
   ± value change
     - quay.io/argoproj/argocd:v3.0.0
     + quay.io/argoproj/argocd:v3.3.2
 
-spec.template.spec.initContainers.copyutil (document 49)
+spec.template.spec.initContainers.copyutil  (apps/v1/Deployment/argocd-repo-server)
   + one map entry added:
     args:
       - /bin/cp --update=none /usr/local/bin/argocd /var/run/argocd/argocd && /bin/ln -s /var/run/argocd/argocd /var/run/argocd/argocd-cmp-server
 
-spec.template.spec.containers.argocd-repo-server.env (document 49)
+spec.template.spec.containers.argocd-repo-server.env  (apps/v1/Deployment/argocd-repo-server)
   + four list entries added:
     - name: ARGOCD_REPO_SERVER_OCI_MANIFEST_MAX_EXTRACTED_SIZE
       valueFrom:
@@ -7143,35 +7143,35 @@ spec.template.spec.containers.argocd-repo-server.env (document 49)
           name: argocd-cmd-params-cm
           optional: true
 
-spec.template.spec.containers.argocd-repo-server.image (document 49)
+spec.template.spec.containers.argocd-repo-server.image  (apps/v1/Deployment/argocd-repo-server)
   ± value change
     - quay.io/argoproj/argocd:v3.0.0
     + quay.io/argoproj/argocd:v3.3.2
 
-spec.template.spec.initContainers.copyutil.image (document 49)
+spec.template.spec.initContainers.copyutil.image  (apps/v1/Deployment/argocd-repo-server)
   ± value change
     - quay.io/argoproj/argocd:v3.0.0
     + quay.io/argoproj/argocd:v3.3.2
 
-spec.template.spec.initContainers.copyutil.command.0 (document 49)
+spec.template.spec.initContainers.copyutil.command.0  (apps/v1/Deployment/argocd-repo-server)
   ± value change
     - /bin/cp
     + sh
 
-spec.template.spec.initContainers.copyutil.command.1 (document 49)
+spec.template.spec.initContainers.copyutil.command.1  (apps/v1/Deployment/argocd-repo-server)
   ± value change
     - -n
     + -c
 
-spec.template.spec.initContainers.copyutil.command.2 (document 49)
+spec.template.spec.initContainers.copyutil.command.2  (apps/v1/Deployment/argocd-repo-server)
   - one list entry removed:
     - /usr/local/bin/argocd
 
-spec.template.spec.initContainers.copyutil.command.3 (document 49)
+spec.template.spec.initContainers.copyutil.command.3  (apps/v1/Deployment/argocd-repo-server)
   - one list entry removed:
     - /var/run/argocd/argocd-cmp-server
 
-spec.template.spec.containers.argocd-server.env (document 50)
+spec.template.spec.containers.argocd-server.env  (apps/v1/Deployment/argocd-server)
   - one list entry removed:
     - name: ARGOCD_SERVER_LOGIN_ATTEMPTS_EXPIRATION
       valueFrom:
@@ -7188,12 +7188,12 @@ spec.template.spec.containers.argocd-server.env (document 50)
           name: argocd-cmd-params-cm
           optional: true
 
-spec.template.spec.containers.argocd-server.image (document 50)
+spec.template.spec.containers.argocd-server.image  (apps/v1/Deployment/argocd-server)
   ± value change
     - quay.io/argoproj/argocd:v3.0.0
     + quay.io/argoproj/argocd:v3.3.2
 
-spec.template.spec.containers.argocd-application-controller.env (document 51)
+spec.template.spec.containers.argocd-application-controller.env  (apps/v1/StatefulSet/argocd-application-controller)
   + three list entries added:
     - name: ARGOCD_APPLICATION_CONTROLLER_SELF_HEAL_BACKOFF_COOLDOWN_SECONDS
       valueFrom:
@@ -7214,47 +7214,47 @@ spec.template.spec.containers.argocd-application-controller.env (document 51)
           name: argocd-cmd-params-cm
           optional: true
 
-spec.template.spec.containers.argocd-application-controller.image (document 51)
+spec.template.spec.containers.argocd-application-controller.image  (apps/v1/StatefulSet/argocd-application-controller)
   ± value change
     - quay.io/argoproj/argocd:v3.0.0
     + quay.io/argoproj/argocd:v3.3.2
 
-metadata (document 52)
+metadata  (networking.k8s.io/v1/NetworkPolicy/argocd-application-controller-network-policy)
   + one map entry added:
     labels:
       app.kubernetes.io/component: application-controller
       app.kubernetes.io/name: argocd-application-controller
       app.kubernetes.io/part-of: argocd
 
-metadata (document 53)
+metadata  (networking.k8s.io/v1/NetworkPolicy/argocd-applicationset-controller-network-policy)
   + one map entry added:
     labels:
       app.kubernetes.io/component: applicationset-controller
       app.kubernetes.io/name: argocd-applicationset-controller
       app.kubernetes.io/part-of: argocd
 
-metadata (document 54)
+metadata  (networking.k8s.io/v1/NetworkPolicy/argocd-dex-server-network-policy)
   + one map entry added:
     labels:
       app.kubernetes.io/component: dex-server
       app.kubernetes.io/name: argocd-dex-server
       app.kubernetes.io/part-of: argocd
 
-metadata (document 56)
+metadata  (networking.k8s.io/v1/NetworkPolicy/argocd-redis-network-policy)
   + one map entry added:
     labels:
       app.kubernetes.io/component: redis
       app.kubernetes.io/name: argocd-redis
       app.kubernetes.io/part-of: argocd
 
-metadata (document 57)
+metadata  (networking.k8s.io/v1/NetworkPolicy/argocd-repo-server-network-policy)
   + one map entry added:
     labels:
       app.kubernetes.io/component: repo-server
       app.kubernetes.io/name: argocd-repo-server
       app.kubernetes.io/part-of: argocd
 
-metadata (document 58)
+metadata  (networking.k8s.io/v1/NetworkPolicy/argocd-server-network-policy)
   + one map entry added:
     labels:
       app.kubernetes.io/component: server

@@ -1438,3 +1438,34 @@ func TestCompareK8sDocs_NilDocuments(t *testing.T) {
 		}
 	}
 }
+
+func TestK8sResourceDisplayName_NotK8s(t *testing.T) {
+	doc := map[string]any{"key": "value"}
+	if name := K8sResourceDisplayName(doc); name != "" {
+		t.Errorf("expected empty display name for non-K8s doc, got %q", name)
+	}
+}
+
+func TestK8sResourceDisplayName_WithNamespace(t *testing.T) {
+	doc := map[string]any{
+		"apiVersion": "apps/v1",
+		"kind":       "Deployment",
+		"metadata":   map[string]any{"name": "web", "namespace": "prod"},
+	}
+	want := "apps/v1/Deployment/prod/web"
+	if got := K8sResourceDisplayName(doc); got != want {
+		t.Errorf("K8sResourceDisplayName() = %q, want %q", got, want)
+	}
+}
+
+func TestK8sResourceDisplayName_WithoutNamespace(t *testing.T) {
+	doc := map[string]any{
+		"apiVersion": "v1",
+		"kind":       "Namespace",
+		"metadata":   map[string]any{"name": "prod"},
+	}
+	want := "v1/Namespace/prod"
+	if got := K8sResourceDisplayName(doc); got != want {
+		t.Errorf("K8sResourceDisplayName() = %q, want %q", got, want)
+	}
+}

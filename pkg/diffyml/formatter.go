@@ -190,6 +190,13 @@ func (f *CompactFormatter) formatDiff(sb *strings.Builder, diff Difference, opts
 
 	sb.WriteString(path)
 
+	if diff.DocumentName != "" {
+		sb.WriteString(" ")
+		sb.WriteString(colorStart(opts, DocNameColorCode(opts.TrueColor)))
+		fmt.Fprintf(sb, "(%s)", diff.DocumentName)
+		sb.WriteString(colorEnd(opts))
+	}
+
 	f.formatValuesInline(sb, diff, opts)
 
 	sb.WriteString("\n")
@@ -315,15 +322,19 @@ func gitHubCommand(dt DiffType) (command, title string) {
 // diffDescription returns a human-readable description of a difference.
 // Shared by GitHub, GitLab, and Gitea formatters.
 func diffDescription(diff Difference) string {
+	docSuffix := ""
+	if diff.DocumentName != "" {
+		docSuffix = fmt.Sprintf(" (%s)", diff.DocumentName)
+	}
 	switch diff.Type {
 	case DiffAdded:
-		return fmt.Sprintf("Added: %s = %s", diff.Path, formatValue(diff.To))
+		return fmt.Sprintf("Added: %s%s = %s", diff.Path, docSuffix, formatValue(diff.To))
 	case DiffRemoved:
-		return fmt.Sprintf("Removed: %s = %s", diff.Path, formatValue(diff.From))
+		return fmt.Sprintf("Removed: %s%s = %s", diff.Path, docSuffix, formatValue(diff.From))
 	case DiffModified:
-		return fmt.Sprintf("Modified: %s changed from %s to %s", diff.Path, formatValue(diff.From), formatValue(diff.To))
+		return fmt.Sprintf("Modified: %s%s changed from %s to %s", diff.Path, docSuffix, formatValue(diff.From), formatValue(diff.To))
 	default: // DiffOrderChanged
-		return fmt.Sprintf("Order changed: %s", diff.Path)
+		return fmt.Sprintf("Order changed: %s%s", diff.Path, docSuffix)
 	}
 }
 
@@ -574,16 +585,13 @@ type jsonDiff struct {
 	From          any    `json:"from"`
 	To            any    `json:"to"`
 	DocumentIndex int    `json:"document_index"`
+	DocumentName  string `json:"document_name,omitempty"`
 }
 
 // jsonDirDiff extends jsonDiff with a file path for directory mode.
 type jsonDirDiff struct {
-	File          string `json:"file"`
-	Path          string `json:"path"`
-	Type          string `json:"type"`
-	From          any    `json:"from"`
-	To            any    `json:"to"`
-	DocumentIndex int    `json:"document_index"`
+	File string `json:"file"`
+	jsonDiff
 }
 
 // jsonDiffTypeName returns the string name for a DiffType.
@@ -653,6 +661,7 @@ func buildJSONDiff(diff Difference, opts *FormatOptions) jsonDiff {
 		From:          jsonPrepareValue(diff.From),
 		To:            jsonPrepareValue(diff.To),
 		DocumentIndex: diff.DocumentIndex,
+		DocumentName:  diff.DocumentName,
 	}
 }
 
@@ -709,12 +718,8 @@ func (f *JSONFormatter) FormatAll(groups []DiffGroup, opts *FormatOptions) strin
 		for _, diff := range group.Diffs {
 			d := buildJSONDiff(diff, opts)
 			items = append(items, jsonDirDiff{
-				File:          group.FilePath,
-				Path:          d.Path,
-				Type:          d.Type,
-				From:          d.From,
-				To:            d.To,
-				DocumentIndex: d.DocumentIndex,
+				File:     group.FilePath,
+				jsonDiff: d,
 			})
 		}
 	}

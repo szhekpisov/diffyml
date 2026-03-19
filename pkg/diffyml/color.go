@@ -124,6 +124,8 @@ const (
 	DetailedGreenR, DetailedGreenG, DetailedGreenB = 88, 191, 56
 	// DetailedGrayR, DetailedGrayG, DetailedGrayB - Gray for context lines
 	DetailedGrayR, DetailedGrayG, DetailedGrayB = 105, 105, 105
+	// DetailedDocNameR, DetailedDocNameG, DetailedDocNameB - Light steel blue for document identifiers
+	DetailedDocNameR, DetailedDocNameG, DetailedDocNameB = 176, 196, 222
 )
 
 // ANSI color codes (8-color fallback)
@@ -178,6 +180,16 @@ func DetailedColorCode(diffType DiffType, useTrueColor bool) string {
 		return colorYellow
 	}
 	return ""
+}
+
+// DocNameColorCode returns the color code for document identifier labels.
+// Uses light steel blue when useTrueColor is true,
+// otherwise falls back to cyan ANSI code.
+func DocNameColorCode(useTrueColor bool) string {
+	if useTrueColor {
+		return TrueColorCode(DetailedDocNameR, DetailedDocNameG, DetailedDocNameB)
+	}
+	return colorCyan
 }
 
 // ContextColorCode returns gray color for context lines.

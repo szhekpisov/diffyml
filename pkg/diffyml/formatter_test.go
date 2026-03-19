@@ -2515,3 +2515,32 @@ func TestJSONFormatter_Format_MarshalError(t *testing.T) {
 		t.Errorf("expected fallback [], got %q", output)
 	}
 }
+
+func TestCompactFormatter_DocumentName(t *testing.T) {
+	f := &CompactFormatter{}
+	diff := Difference{
+		Path:         DiffPath{"[0]", "spec", "replicas"},
+		Type:         DiffModified,
+		From:         3,
+		To:           5,
+		DocumentName: "apps/v1/Deployment/web",
+	}
+	output := f.FormatSingle(diff, DefaultFormatOptions())
+	if !strings.Contains(output, "(apps/v1/Deployment/web)") {
+		t.Errorf("expected document name in compact output, got: %q", output)
+	}
+}
+
+func TestDiffDescription_WithDocumentName(t *testing.T) {
+	diff := Difference{
+		Path:         DiffPath{"spec", "replicas"},
+		Type:         DiffModified,
+		From:         3,
+		To:           5,
+		DocumentName: "apps/v1/Deployment/web",
+	}
+	desc := diffDescription(diff)
+	if !strings.Contains(desc, "(apps/v1/Deployment/web)") {
+		t.Errorf("expected document name in description, got: %q", desc)
+	}
+}

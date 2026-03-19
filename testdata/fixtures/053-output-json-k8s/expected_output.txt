@@ -17,7 +17,8 @@
     "type": "modified",
     "from": 2,
     "to": 3,
-    "document_index": 0
+    "document_index": 0,
+    "document_name": "apps/v1/Deployment/web"
   },
   {
     "path": "[0].spec.template.spec.containers.nginx",
@@ -30,21 +31,24 @@
         }
       }
     },
-    "document_index": 0
+    "document_index": 0,
+    "document_name": "apps/v1/Deployment/web"
   },
   {
     "path": "[0].spec.template.spec.containers.nginx.image",
     "type": "modified",
     "from": "nginx:1.20",
     "to": "nginx:1.25",
-    "document_index": 0
+    "document_index": 0,
+    "document_name": "apps/v1/Deployment/web"
   },
   {
     "path": "[1].spec.type",
     "type": "modified",
     "from": "ClusterIP",
     "to": "NodePort",
-    "document_index": 1
+    "document_index": 1,
+    "document_name": "v1/Service/web-svc"
   },
   {
     "path": "[1].spec.ports.1",
@@ -53,6 +57,7 @@
     "to": {
       "port": 443
     },
-    "document_index": 1
+    "document_index": 1,
+    "document_name": "v1/Service/web-svc"
   }
 ]

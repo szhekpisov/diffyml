@@ -98,9 +98,9 @@ runs:
         curl -fsSL -o "$ARCHIVE" "${BASE_URL}/${ARCHIVE}"
 
         if command -v sha256sum &>/dev/null; then
-          grep -F " $ARCHIVE" checksums.txt | sha256sum --check -
+          awk -v f="$ARCHIVE" '$2 == f' checksums.txt | sha256sum --check -
         else
-          grep -F " $ARCHIVE" checksums.txt | shasum -a 256 --check -
+          awk -v f="$ARCHIVE" '$2 == f' checksums.txt | shasum -a 256 --check -
         fi
 
         tar -xzf "$ARCHIVE" -C bin/ diffyml

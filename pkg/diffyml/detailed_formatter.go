@@ -43,7 +43,7 @@ func (f *DetailedFormatter) Format(diffs []Difference, opts *FormatOptions) stri
 	isMultiDoc := f.detectMultiDoc(diffs)
 	groups := f.groupByPath(diffs)
 	for _, group := range groups {
-		f.formatPathHeading(&sb, group.Path, isMultiDoc, opts)
+		f.formatPathHeading(&sb, group.Path, group.Diffs[0].DocumentName, isMultiDoc, opts)
 		f.formatGroupDiffs(&sb, group, opts)
 	}
 
@@ -81,38 +81,61 @@ func (f *DetailedFormatter) groupByPath(diffs []Difference) []pathGroup {
 	return groups
 }
 
+// documentLabel returns the display label for a document.
+// Uses docName when available, otherwise falls back to "document N".
+func documentLabel(idx int, docName string) string {
+	if docName != "" {
+		return docName
+	}
+	return fmt.Sprintf("document %d", idx)
+}
+
+// pathString returns the display string for a DiffPath, respecting go-patch style.
+func pathString(path DiffPath, goPatch bool) string {
+	if goPatch {
+		return path.GoPatchString()
+	}
+	return path.String()
+}
+
 // formatPathHeading renders the path line for a group of diffs.
-func (f *DetailedFormatter) formatPathHeading(sb *strings.Builder, path DiffPath, isMultiDoc bool, opts *FormatOptions) {
-	var heading string
+func (f *DetailedFormatter) formatPathHeading(sb *strings.Builder, path DiffPath, docName string, isMultiDoc bool, opts *FormatOptions) {
 	if path.IsEmpty() {
 		if opts.UseGoPatchStyle {
-			heading = "/"
+			f.writeBold(sb, "/", opts)
 		} else {
-			heading = "(root level)"
+			f.writeBold(sb, "(root level)", opts)
 		}
 	} else if path.IsBareDocIndex() {
 		idx, _ := path.DocIndex()
 		if isMultiDoc {
-			heading = fmt.Sprintf("(root level) (document %d)", idx)
+			f.writeBold(sb, "(root level)", opts)
+			f.writeDocLabel(sb, documentLabel(idx, docName), opts)
 		} else {
-			heading = k8sDocumentPath.String()
+			f.writeBold(sb, k8sDocumentPath.String(), opts)
 		}
 	} else if idx, rest, ok := path.DocIndexPrefix(); ok {
-		if opts.UseGoPatchStyle {
-			heading = fmt.Sprintf("%s (document %d)", rest.GoPatchString(), idx)
-		} else {
-			heading = fmt.Sprintf("%s (document %d)", rest.String(), idx)
-		}
-	} else if opts.UseGoPatchStyle {
-		heading = path.GoPatchString()
+		f.writeBold(sb, pathString(rest, opts.UseGoPatchStyle), opts)
+		f.writeDocLabel(sb, documentLabel(idx, docName), opts)
 	} else {
-		heading = path.String()
+		f.writeBold(sb, pathString(path, opts.UseGoPatchStyle), opts)
 	}
-
-	sb.WriteString(colorStart(opts, styleBold))
-	sb.WriteString(heading)
-	sb.WriteString(colorEnd(opts))
 	sb.WriteString("\n")
+}
+
+// writeBold writes text in bold style.
+func (f *DetailedFormatter) writeBold(sb *strings.Builder, text string, opts *FormatOptions) {
+	sb.WriteString(colorStart(opts, styleBold))
+	sb.WriteString(text)
+	sb.WriteString(colorEnd(opts))
+}
+
+// writeDocLabel writes a document label suffix in light steel blue.
+func (f *DetailedFormatter) writeDocLabel(sb *strings.Builder, label string, opts *FormatOptions) {
+	sb.WriteString("  ")
+	sb.WriteString(colorStart(opts, DocNameColorCode(opts.TrueColor)))
+	fmt.Fprintf(sb, "(%s)", label)
+	sb.WriteString(colorEnd(opts))
 }
 
 // formatGroupDiffs renders all diffs within a path group.

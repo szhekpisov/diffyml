@@ -1,11 +1,11 @@
 Found two differences
 
-version (document 0)
+version  (document 0)
   ± value change
     - 1.0
     + 2.0
 
-version (document 1)
+version  (document 1)
   ± value change
     - 5.7
     + 8.0

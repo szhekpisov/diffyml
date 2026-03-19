@@ -79,34 +79,71 @@ func k8sGetVal(m any, key string) any {
 	}
 }
 
-// K8sResourceIdentifier returns a unique identifier for a Kubernetes resource.
-// When ignoreApiVersion is false: "apiVersion:kind:namespace/name" or "apiVersion:kind:name".
-// When ignoreApiVersion is true: "kind:namespace/name" or "kind:name".
-func K8sResourceIdentifier(doc any, ignoreApiVersion bool) string {
-	if !IsKubernetesResource(doc) {
-		return ""
-	}
+// k8sResourceFields holds the extracted fields from a Kubernetes resource document.
+type k8sResourceFields struct {
+	apiVersion string
+	kind       string
+	name       string
+	namespace  string // empty if cluster-scoped
+}
 
-	apiVersion, _ := k8sGetVal(doc, "apiVersion").(string) // safe: IsKubernetesResource() pre-validates these fields
-	kind, _ := k8sGetVal(doc, "kind").(string)             // safe: IsKubernetesResource() pre-validates these fields
+// k8sExtractFields extracts common fields from a K8s resource document.
+// Returns false if the document is not a valid K8s resource.
+func k8sExtractFields(doc any) (k8sResourceFields, bool) {
+	if !IsKubernetesResource(doc) {
+		return k8sResourceFields{}, false
+	}
+	apiVersion, _ := k8sGetVal(doc, "apiVersion").(string)
+	kind, _ := k8sGetVal(doc, "kind").(string)
 	metadata := k8sGetVal(doc, "metadata")
 	nameVal := k8sGetVal(metadata, "name")
 	if nameVal == nil {
 		nameVal = k8sGetVal(metadata, "generateName")
 	}
-	name := fmt.Sprintf("%v", nameVal)
+	var ns string
+	if nsVal := k8sGetVal(metadata, "namespace"); nsVal != nil {
+		ns = fmt.Sprintf("%v", nsVal)
+	}
+	return k8sResourceFields{
+		apiVersion: apiVersion,
+		kind:       kind,
+		name:       fmt.Sprintf("%v", nameVal),
+		namespace:  ns,
+	}, true
+}
 
+// K8sResourceIdentifier returns a unique identifier for a Kubernetes resource.
+// When ignoreApiVersion is false: "apiVersion:kind:namespace/name" or "apiVersion:kind:name".
+// When ignoreApiVersion is true: "kind:namespace/name" or "kind:name".
+func K8sResourceIdentifier(doc any, ignoreApiVersion bool) string {
+	f, ok := k8sExtractFields(doc)
+	if !ok {
+		return ""
+	}
 	if ignoreApiVersion {
-		if namespace := k8sGetVal(metadata, "namespace"); namespace != nil {
-			return fmt.Sprintf("%s:%v/%s", kind, namespace, name)
+		if f.namespace != "" {
+			return fmt.Sprintf("%s:%s/%s", f.kind, f.namespace, f.name)
 		}
-		return fmt.Sprintf("%s:%s", kind, name)
+		return fmt.Sprintf("%s:%s", f.kind, f.name)
 	}
+	if f.namespace != "" {
+		return fmt.Sprintf("%s:%s:%s/%s", f.apiVersion, f.kind, f.namespace, f.name)
+	}
+	return fmt.Sprintf("%s:%s:%s", f.apiVersion, f.kind, f.name)
+}
 
-	if namespace := k8sGetVal(metadata, "namespace"); namespace != nil {
-		return fmt.Sprintf("%s:%s:%v/%s", apiVersion, kind, namespace, name)
+// K8sResourceDisplayName returns a slash-separated display name for a Kubernetes resource.
+// Format: "apiVersion/kind/name" or "apiVersion/kind/namespace/name".
+// Returns empty string if the document is not a valid K8s resource.
+func K8sResourceDisplayName(doc any) string {
+	f, ok := k8sExtractFields(doc)
+	if !ok {
+		return ""
 	}
-	return fmt.Sprintf("%s:%s:%s", apiVersion, kind, name)
+	if f.namespace != "" {
+		return fmt.Sprintf("%s/%s/%s/%s", f.apiVersion, f.kind, f.namespace, f.name)
+	}
+	return fmt.Sprintf("%s/%s/%s", f.apiVersion, f.kind, f.name)
 }
 
 // IdentifierWithAdditional gets an identifier value from a map,
@@ -260,6 +297,8 @@ func detectK8sOrderChanges(matched map[int]int, from []any, ignoreApiVersion boo
 		toOrder[i] = K8sResourceIdentifier(from[p.fromIdx], ignoreApiVersion)
 	}
 
+	// DocumentName is intentionally empty: order-change diffs span the entire
+	// document set, so no single resource name applies.
 	return &Difference{
 		Path: k8sDocumentPath,
 		Type: DiffOrderChanged,
@@ -275,22 +314,21 @@ func compareMatchedK8sDocs(matched map[int]int, from, to []any, opts *Options, u
 		fromDoc := from[fromIdx]
 		toDoc := to[toIdx]
 
-		var pathPrefix DiffPath
-		if len(from) > 1 || len(to) > 1 {
-			idx := fromIdx
-			if useToIdx {
-				idx = toIdx
-			}
-			pathPrefix = DiffPath{fmt.Sprintf("[%d]", idx)}
-		}
-
-		nodeDiffs := compareNodes(pathPrefix, fromDoc, toDoc, opts)
 		docIdx := fromIdx
 		if useToIdx {
 			docIdx = toIdx
 		}
+
+		var pathPrefix DiffPath
+		if len(from) > 1 || len(to) > 1 {
+			pathPrefix = DiffPath{fmt.Sprintf("[%d]", docIdx)}
+		}
+
+		nodeDiffs := compareNodes(pathPrefix, fromDoc, toDoc, opts)
+		docName := K8sResourceDisplayName(toDoc)
 		for i := range nodeDiffs {
 			nodeDiffs[i].DocumentIndex = docIdx
+			nodeDiffs[i].DocumentName = docName
 		}
 		diffs = append(diffs, nodeDiffs...)
 	}
@@ -332,6 +370,7 @@ func compareK8sDocs(from, to []any, opts *Options) []Difference {
 			From:          from[fromIdx],
 			To:            nil,
 			DocumentIndex: fromIdx,
+			DocumentName:  K8sResourceDisplayName(from[fromIdx]),
 		})
 	}
 
@@ -347,6 +386,7 @@ func compareK8sDocs(from, to []any, opts *Options) []Difference {
 			From:          nil,
 			To:            to[toIdx],
 			DocumentIndex: toIdx,
+			DocumentName:  K8sResourceDisplayName(to[toIdx]),
 		})
 	}
 

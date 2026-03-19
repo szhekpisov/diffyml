@@ -34,6 +34,9 @@ type Difference struct {
 	To any
 	// DocumentIndex indicates which document in a multi-document YAML file (0-based).
 	DocumentIndex int
+	// DocumentName is a human-readable label for the document (e.g., K8s resource display name).
+	// Empty for non-K8s documents or when detection is disabled.
+	DocumentName string
 }
 
 // Options configures the comparison behavior.

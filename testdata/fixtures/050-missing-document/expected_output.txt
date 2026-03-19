@@ -1,11 +1,11 @@
 Found two differences
 
-spec.template.spec.containers.migrate.image (document 0)
+spec.template.spec.containers.migrate.image  (batch/v1/Job/default/data-migration-)
   ± value change
     - myapp:v1.0
     + myapp:v2.0
 
-(root level) (document 1)
+(root level)  (batch/v1/Job/default/cleanup-)
   + one document added:
     ---
     apiVersion: batch/v1

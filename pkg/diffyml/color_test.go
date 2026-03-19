@@ -123,3 +123,14 @@ func TestColorReset(t *testing.T) {
 		t.Errorf("expected ANSI reset code, got %q", ColorReset())
 	}
 }
+
+func TestDocNameColorCode(t *testing.T) {
+	tc := DocNameColorCode(true)
+	if tc != TrueColorCode(DetailedDocNameR, DetailedDocNameG, DetailedDocNameB) {
+		t.Errorf("true color mismatch: got %q", tc)
+	}
+	fc := DocNameColorCode(false)
+	if fc != "\033[36m" {
+		t.Errorf("8-color fallback mismatch: got %q", fc)
+	}
+}

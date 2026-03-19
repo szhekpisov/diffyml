@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.11] - 2026-03-19
+
+### Added
+
+- Show K8s resource identifier in multi-document diff output (#70) ([#70](https://github.com/szhekpisov/diffyml/pull/70))
+
+### Documentation
+
+- Mention generateName support in Kubernetes resource matching (#67) ([#67](https://github.com/szhekpisov/diffyml/pull/67))
+
 ## [1.5.10] - 2026-03-16
 
 ### Added
@@ -140,6 +150,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add GOPATH/bin PATH hint to Go Install section (#3) ([#3](https://github.com/szhekpisov/diffyml/pull/3))
 - Cleanup (#6) ([#6](https://github.com/szhekpisov/diffyml/pull/6))
 
+[1.5.11]: https://github.com/szhekpisov/diffyml/compare/v1.5.10...v1.5.11
 [1.5.10]: https://github.com/szhekpisov/diffyml/compare/v1.5.9...v1.5.10
 [1.5.9]: https://github.com/szhekpisov/diffyml/compare/v1.5.8...v1.5.9
 [1.5.8]: https://github.com/szhekpisov/diffyml/compare/v1.5.7...v1.5.8

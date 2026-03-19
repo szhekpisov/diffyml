@@ -777,6 +777,29 @@ func buildJSONPatchPath(diff Difference) string {
 	return path.JSONPointerString()
 }
 
+// expandMapKeyDiff converts a parent-path map-key diff into a child-path diff.
+// The diff engine reports map key adds/removes at the parent path with a
+// single-key *OrderedMap wrapping the actual key-value pair. This function
+// appends the key to the path and unwraps the value for RFC 6902 compatibility.
+// Multi-key OrderedMaps (e.g. list items matched by identifier) are left as-is.
+func expandMapKeyDiff(diff Difference) Difference {
+	switch diff.Type {
+	case DiffRemoved:
+		if om, ok := diff.From.(*OrderedMap); ok && len(om.Keys) == 1 {
+			key := om.Keys[0]
+			diff.Path = diff.Path.Append(key)
+			diff.From = om.Values[key]
+		}
+	case DiffAdded:
+		if om, ok := diff.To.(*OrderedMap); ok && len(om.Keys) == 1 {
+			key := om.Keys[0]
+			diff.Path = diff.Path.Append(key)
+			diff.To = om.Values[key]
+		}
+	}
+	return diff
+}
+
 // buildJSONPatchOp converts a Difference to an RFC 6902 operation struct.
 // Returns nil for DiffOrderChanged.
 func buildJSONPatchOp(diff Difference) any {
@@ -784,6 +807,9 @@ func buildJSONPatchOp(diff Difference) any {
 	if op == "" {
 		return nil
 	}
+
+	// Expand parent-path map-key diffs to child-path diffs.
+	diff = expandMapKeyDiff(diff)
 
 	pointer := buildJSONPatchPath(diff)
 
@@ -810,6 +836,7 @@ func (f *JSONPatchFormatter) Format(diffs []Difference, _ *FormatOptions) string
 }
 
 // FormatAll renders all diff groups as file-grouped JSON Patch arrays for directory mode.
+// Implements StructuredFormatter interface.
 func (f *JSONPatchFormatter) FormatAll(groups []DiffGroup, _ *FormatOptions) string {
 	result := make([]jsonPatchDirGroup, 0, len(groups))
 	for _, group := range groups {

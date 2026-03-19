@@ -2725,8 +2725,14 @@ func TestJSONPatchFormatter_NilOpts(t *testing.T) {
 }
 
 func TestJSONPatchFormatter_StructuredFormatter(t *testing.T) {
-	f := &JSONPatchFormatter{}
-	var _ StructuredFormatter = f // compile-time check
+	var f Formatter = &JSONPatchFormatter{}
+	sf, ok := f.(StructuredFormatter)
+	if !ok {
+		t.Fatal("JSONPatchFormatter should implement StructuredFormatter")
+	}
+	if sf == nil {
+		t.Fatal("StructuredFormatter should not be nil")
+	}
 }
 
 func TestJSONPatchFormatter_FormatAll(t *testing.T) {
@@ -2801,9 +2807,12 @@ func TestJSONPatchFormatter_FormatAll_SkipsEmptyGroups(t *testing.T) {
 
 func TestJSONPatchFormatter_ValueSerialization(t *testing.T) {
 	f := &JSONPatchFormatter{}
+	// Use a multi-key OrderedMap to test map serialization.
+	// Single-key OrderedMaps are expanded by expandMapKeyDiff.
 	om := NewOrderedMap()
-	om.Keys = append(om.Keys, "nested")
+	om.Keys = append(om.Keys, "nested", "count")
 	om.Values["nested"] = "value"
+	om.Values["count"] = 42
 	diffs := []Difference{
 		{Path: DiffPath{"int_val"}, Type: DiffModified, From: 42, To: 99},
 		{Path: DiffPath{"bool_val"}, Type: DiffAdded, To: true},
@@ -2849,6 +2858,156 @@ func TestJSONPatchFormatter_ListIndex(t *testing.T) {
 
 	if result[0]["path"] != "/items/0/name" {
 		t.Errorf("expected '/items/0/name', got %v", result[0]["path"])
+	}
+}
+
+// --- expandMapKeyDiff tests ---
+
+func TestJSONPatchFormatter_ExpandMapKeyDiff_Add(t *testing.T) {
+	f := &JSONPatchFormatter{}
+	// Simulate how the diff engine reports a map key addition:
+	// parent path with single-key *OrderedMap wrapping the new key-value.
+	om := NewOrderedMap()
+	om.Keys = append(om.Keys, "monitoring")
+	om.Values["monitoring"] = true
+	diffs := []Difference{
+		{Path: DiffPath{"app"}, Type: DiffAdded, To: om},
+	}
+
+	output := f.Format(diffs, DefaultFormatOptions())
+
+	var result []map[string]any
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output is not valid JSON: %v\noutput: %s", err, output)
+	}
+
+	if len(result) != 1 {
+		t.Fatalf("expected 1 op, got %d", len(result))
+	}
+	if result[0]["op"] != "add" {
+		t.Errorf("expected op 'add', got %v", result[0]["op"])
+	}
+	if result[0]["path"] != "/app/monitoring" {
+		t.Errorf("expected path '/app/monitoring', got %v", result[0]["path"])
+	}
+	if result[0]["value"] != true {
+		t.Errorf("expected value true, got %v", result[0]["value"])
+	}
+}
+
+func TestJSONPatchFormatter_ExpandMapKeyDiff_Remove(t *testing.T) {
+	f := &JSONPatchFormatter{}
+	// Simulate how the diff engine reports a map key removal:
+	// parent path with single-key *OrderedMap wrapping the removed key-value.
+	om := NewOrderedMap()
+	om.Keys = append(om.Keys, "debug")
+	om.Values["debug"] = true
+	diffs := []Difference{
+		{Path: DiffPath{"app"}, Type: DiffRemoved, From: om},
+	}
+
+	output := f.Format(diffs, DefaultFormatOptions())
+
+	var result []map[string]any
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output is not valid JSON: %v\noutput: %s", err, output)
+	}
+
+	if len(result) != 1 {
+		t.Fatalf("expected 1 op, got %d", len(result))
+	}
+	if result[0]["op"] != "remove" {
+		t.Errorf("expected op 'remove', got %v", result[0]["op"])
+	}
+	if result[0]["path"] != "/app/debug" {
+		t.Errorf("expected path '/app/debug', got %v", result[0]["path"])
+	}
+	if _, hasValue := result[0]["value"]; hasValue {
+		t.Error("remove op should not have value field")
+	}
+}
+
+func TestJSONPatchFormatter_ExpandMapKeyDiff_RFC6901Escaping(t *testing.T) {
+	f := &JSONPatchFormatter{}
+	// Key with characters that need RFC 6901 escaping.
+	om := NewOrderedMap()
+	om.Keys = append(om.Keys, "helm.sh/chart")
+	om.Values["helm.sh/chart"] = "myapp-1.0"
+	diffs := []Difference{
+		{Path: DiffPath{"metadata", "labels"}, Type: DiffAdded, To: om},
+	}
+
+	output := f.Format(diffs, DefaultFormatOptions())
+
+	var result []map[string]any
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output is not valid JSON: %v\noutput: %s", err, output)
+	}
+
+	if result[0]["path"] != "/metadata/labels/helm.sh~1chart" {
+		t.Errorf("expected '/metadata/labels/helm.sh~1chart', got %v", result[0]["path"])
+	}
+}
+
+func TestJSONPatchFormatter_ExpandMapKeyDiff_MultiKeyNotExpanded(t *testing.T) {
+	f := &JSONPatchFormatter{}
+	// Multi-key OrderedMap (e.g. a list item) should NOT be expanded.
+	om := NewOrderedMap()
+	om.Keys = append(om.Keys, "name", "value")
+	om.Values["name"] = "item1"
+	om.Values["value"] = "data"
+	diffs := []Difference{
+		{Path: DiffPath{"items"}, Type: DiffAdded, To: om},
+	}
+
+	output := f.Format(diffs, DefaultFormatOptions())
+
+	var result []map[string]any
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output is not valid JSON: %v\noutput: %s", err, output)
+	}
+
+	if len(result) != 1 {
+		t.Fatalf("expected 1 op, got %d", len(result))
+	}
+	// Path stays at parent level (no expansion for multi-key)
+	if result[0]["path"] != "/items" {
+		t.Errorf("expected path '/items', got %v", result[0]["path"])
+	}
+	// Value is the full map
+	mapVal := result[0]["value"].(map[string]any)
+	if mapVal["name"] != "item1" {
+		t.Errorf("expected name 'item1', got %v", mapVal["name"])
+	}
+}
+
+func TestJSONPatchFormatter_ExpandMapKeyDiff_NestedMapValue(t *testing.T) {
+	f := &JSONPatchFormatter{}
+	// Adding a key whose value is a nested map.
+	inner := NewOrderedMap()
+	inner.Keys = append(inner.Keys, "timeout", "retries")
+	inner.Values["timeout"] = 30
+	inner.Values["retries"] = 5
+	om := NewOrderedMap()
+	om.Keys = append(om.Keys, "config")
+	om.Values["config"] = inner
+	diffs := []Difference{
+		{Path: DiffPath{"app"}, Type: DiffAdded, To: om},
+	}
+
+	output := f.Format(diffs, DefaultFormatOptions())
+
+	var result []map[string]any
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("output is not valid JSON: %v\noutput: %s", err, output)
+	}
+
+	if result[0]["path"] != "/app/config" {
+		t.Errorf("expected path '/app/config', got %v", result[0]["path"])
+	}
+	mapVal := result[0]["value"].(map[string]any)
+	if mapVal["timeout"] != float64(30) {
+		t.Errorf("expected timeout 30, got %v", mapVal["timeout"])
 	}
 }
 

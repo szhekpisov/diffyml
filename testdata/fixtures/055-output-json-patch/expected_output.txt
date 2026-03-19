@@ -1,14 +1,12 @@
 [
   {
     "op": "remove",
-    "path": "/app"
+    "path": "/app/debug"
   },
   {
     "op": "add",
-    "path": "/app",
-    "value": {
-      "monitoring": true
-    }
+    "path": "/app/monitoring",
+    "value": true
   },
   {
     "op": "replace",
@@ -32,10 +30,8 @@
   },
   {
     "op": "add",
-    "path": "/app/config",
-    "value": {
-      "max_connections": 100
-    }
+    "path": "/app/config/max_connections",
+    "value": 100
   },
   {
     "op": "replace",

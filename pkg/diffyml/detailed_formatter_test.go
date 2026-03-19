@@ -2087,3 +2087,35 @@ func TestDetailedFormatter_RenderEntryValue_ListWithMixedItems(t *testing.T) {
 		t.Errorf("expected '- key: foo', got:\n%s", output)
 	}
 }
+
+func TestDocumentLabel(t *testing.T) {
+	if got := documentLabel(0, ""); got != "document 0" {
+		t.Errorf("expected 'document 0', got %q", got)
+	}
+	if got := documentLabel(0, "apps/v1/Deployment/web"); got != "apps/v1/Deployment/web" {
+		t.Errorf("expected display name, got %q", got)
+	}
+}
+
+func TestDetailedFormatter_DocumentName(t *testing.T) {
+	f := &DetailedFormatter{}
+	opts := DefaultFormatOptions()
+	opts.OmitHeader = true
+	diffs := []Difference{
+		{
+			Path:          DiffPath{"[0]", "spec", "replicas"},
+			Type:          DiffModified,
+			From:          3,
+			To:            5,
+			DocumentIndex: 0,
+			DocumentName:  "apps/v1/Deployment/web",
+		},
+	}
+	output := f.Format(diffs, opts)
+	if !strings.Contains(output, "(apps/v1/Deployment/web)") {
+		t.Errorf("expected document name in output, got: %q", output)
+	}
+	if strings.Contains(output, "document 0") {
+		t.Errorf("should not contain numeric index when name is set, got: %q", output)
+	}
+}

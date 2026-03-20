@@ -37,6 +37,7 @@ type CLIConfig struct {
 	// Comparison options
 	IgnoreOrderChanges      bool
 	IgnoreWhitespaceChanges bool
+	FormatStrings           bool
 	IgnoreValueChanges      bool
 	DetectKubernetes        bool
 	DetectRenames           bool
@@ -111,6 +112,7 @@ func (c *CLIConfig) initFlags() {
 	c.fs.BoolVar(&c.IgnoreOrderChanges, "i", c.IgnoreOrderChanges, "")
 	c.fs.BoolVar(&c.IgnoreOrderChanges, "ignore-order-changes", c.IgnoreOrderChanges, "ignore order changes in lists")
 	c.fs.BoolVar(&c.IgnoreWhitespaceChanges, "ignore-whitespace-changes", c.IgnoreWhitespaceChanges, "ignore leading or trailing whitespace changes")
+	c.fs.BoolVar(&c.FormatStrings, "format-strings", c.FormatStrings, "canonicalize embedded JSON strings before comparison")
 	c.fs.BoolVar(&c.IgnoreValueChanges, "v", c.IgnoreValueChanges, "")
 	c.fs.BoolVar(&c.IgnoreValueChanges, "ignore-value-changes", c.IgnoreValueChanges, "exclude changes in values")
 	c.fs.BoolVar(&c.DetectKubernetes, "detect-kubernetes", c.DetectKubernetes, "detect kubernetes entities")
@@ -266,6 +268,7 @@ func (c *CLIConfig) ToCompareOptions() *diffyml.Options {
 	return &diffyml.Options{
 		IgnoreOrderChanges:      c.IgnoreOrderChanges,
 		IgnoreWhitespaceChanges: c.IgnoreWhitespaceChanges,
+		FormatStrings:           c.FormatStrings,
 		IgnoreValueChanges:      c.IgnoreValueChanges,
 		DetectKubernetes:        c.DetectKubernetes,
 		DetectRenames:           c.DetectRenames,
@@ -318,6 +321,7 @@ func (c *CLIConfig) Usage() string {
 	// Comparison options
 	sb.WriteString("  -i, --ignore-order-changes          ignore order changes in lists\n")
 	sb.WriteString("      --ignore-whitespace-changes     ignore leading or trailing whitespace changes\n")
+	sb.WriteString("      --format-strings                canonicalize embedded JSON strings before comparison\n")
 	sb.WriteString("  -v, --ignore-value-changes          exclude changes in values\n")
 	sb.WriteString("      --detect-kubernetes             detect kubernetes entities (default true)\n")
 	sb.WriteString("      --detect-renames                enable detection for renames (default true)\n")

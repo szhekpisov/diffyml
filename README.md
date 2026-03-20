@@ -274,6 +274,7 @@ The summary is appended after the standard diff output. If the API call fails, a
 |------|-------------|
 | `-i, --ignore-order-changes` | Ignore order changes in lists |
 | `--ignore-whitespace-changes` | Ignore leading/trailing whitespace differences |
+| `--format-strings` | Canonicalize embedded JSON strings before comparison (suppresses formatting-only diffs) |
 | `-v, --ignore-value-changes` | Show only structural changes, exclude value changes |
 | `--detect-kubernetes` | Detect and match Kubernetes resources (default `true`) |
 | `--detect-renames` | Detect renamed/moved Kubernetes resources by content similarity (default `true`) |

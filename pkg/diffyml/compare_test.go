@@ -1400,6 +1400,190 @@ func TestCompare_IgnoreWhitespace(t *testing.T) {
 	}
 }
 
+func TestCompare_FormatStrings(t *testing.T) {
+	tests := []struct {
+		name  string
+		from  string
+		to    string
+		opts  *diffyml.Options
+		check func(t *testing.T, diffs []diffyml.Difference)
+	}{
+		{
+			name: "formatting-only JSON diff suppressed",
+			from: `data: '{"key":"value","nested":{"foo":"bar"}}'`,
+			to:   "data: |\n  {\n    \"key\": \"value\",\n    \"nested\": {\n      \"foo\": \"bar\"\n    }\n  }",
+			opts: &diffyml.Options{FormatStrings: true},
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				if len(diffs) != 0 {
+					t.Errorf("expected 0 diffs, got %d", len(diffs))
+				}
+			},
+		},
+		{
+			name: "semantic JSON diff still detected",
+			from: `data: '{"key":"old"}'`,
+			to:   `data: '{"key":"new"}'`,
+			opts: &diffyml.Options{FormatStrings: true},
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				if len(diffs) != 1 {
+					t.Fatalf("expected 1 diff, got %d", len(diffs))
+				}
+				if diffs[0].Type != diffyml.DiffModified {
+					t.Errorf("expected DiffModified, got %v", diffs[0].Type)
+				}
+			},
+		},
+		{
+			name: "non-JSON strings compared normally",
+			from: `data: "hello world"`,
+			to:   `data: "hello mars"`,
+			opts: &diffyml.Options{FormatStrings: true},
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				if len(diffs) != 1 {
+					t.Fatalf("expected 1 diff, got %d", len(diffs))
+				}
+			},
+		},
+		{
+			name: "one side JSON other not - falls through",
+			from: `data: '{"key":"value"}'`,
+			to:   `data: "not json"`,
+			opts: &diffyml.Options{FormatStrings: true},
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				if len(diffs) != 1 {
+					t.Fatalf("expected 1 diff, got %d", len(diffs))
+				}
+			},
+		},
+		{
+			name: "first string looks like JSON but is invalid - falls through",
+			from: `data: '{invalid json}'`,
+			to:   `data: '{"key":"value"}'`,
+			opts: &diffyml.Options{FormatStrings: true},
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				if len(diffs) != 1 {
+					t.Fatalf("expected 1 diff, got %d", len(diffs))
+				}
+			},
+		},
+		{
+			name: "second string looks like JSON but is invalid - falls through",
+			from: `data: '{"key":"value"}'`,
+			to:   `data: '{not valid}'`,
+			opts: &diffyml.Options{FormatStrings: true},
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				if len(diffs) != 1 {
+					t.Fatalf("expected 1 diff, got %d", len(diffs))
+				}
+			},
+		},
+		{
+			name: "JSON key order differences ignored",
+			from: `data: '{"a":1,"b":2}'`,
+			to:   `data: '{"b":2,"a":1}'`,
+			opts: &diffyml.Options{FormatStrings: true},
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				if len(diffs) != 0 {
+					t.Errorf("expected 0 diffs, got %d", len(diffs))
+				}
+			},
+		},
+		{
+			name: "feature disabled - formatting diff reported",
+			from: `data: '{"key":"value"}'`,
+			to:   "data: |\n  {\n    \"key\": \"value\"\n  }",
+			opts: &diffyml.Options{FormatStrings: false},
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				if len(diffs) != 1 {
+					t.Fatalf("expected 1 diff when format-strings disabled, got %d", len(diffs))
+				}
+			},
+		},
+		{
+			name: "JSON arrays preserve order",
+			from: `data: '[1,2,3]'`,
+			to:   `data: '[3,2,1]'`,
+			opts: &diffyml.Options{FormatStrings: true},
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				if len(diffs) != 1 {
+					t.Fatalf("expected 1 diff for reordered array, got %d", len(diffs))
+				}
+			},
+		},
+		{
+			name: "identical strings - fast path",
+			from: `data: '{"key":"value"}'`,
+			to:   `data: '{"key":"value"}'`,
+			opts: &diffyml.Options{FormatStrings: true},
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				if len(diffs) != 0 {
+					t.Errorf("expected 0 diffs, got %d", len(diffs))
+				}
+			},
+		},
+		{
+			name: "format-strings with ignore-whitespace - JSON formatting ignored",
+			from: `data: '{"key":"value"}'`,
+			to:   "data: |\n  {\n    \"key\": \"value\"\n  }",
+			opts: &diffyml.Options{FormatStrings: true, IgnoreWhitespaceChanges: true},
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				if len(diffs) != 0 {
+					t.Errorf("expected 0 diffs, got %d", len(diffs))
+				}
+			},
+		},
+		{
+			name: "JSON array formatting-only diff suppressed",
+			from: `data: '[1, 2, 3]'`,
+			to:   "data: |\n  [\n    1,\n    2,\n    3\n  ]",
+			opts: &diffyml.Options{FormatStrings: true},
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				if len(diffs) != 0 {
+					t.Errorf("expected 0 diffs, got %d", len(diffs))
+				}
+			},
+		},
+		{
+			name: "empty JSON object with whitespace formatting suppressed",
+			from: `data: '{}'`,
+			to:   "data: '{ }'",
+			opts: &diffyml.Options{FormatStrings: true},
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				if len(diffs) != 0 {
+					t.Errorf("expected 0 diffs, got %d", len(diffs))
+				}
+			},
+		},
+		{
+			name: "format-strings with ignore-whitespace - non-JSON whitespace ignored",
+			from: `data: "hello"`,
+			to:   `data: "  hello  "`,
+			opts: &diffyml.Options{FormatStrings: true, IgnoreWhitespaceChanges: true},
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				if len(diffs) != 0 {
+					t.Errorf("expected 0 diffs, got %d", len(diffs))
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			from := yml(tt.from)
+			to := yml(tt.to)
+
+			diffs, err := compare(from, to, tt.opts)
+			if err != nil {
+				t.Fatalf("compare() error = %v", err)
+			}
+
+			if tt.check != nil {
+				tt.check(t, diffs)
+			}
+		})
+	}
+}
+
 func TestCompare_IgnoreOrder(t *testing.T) {
 	tests := []struct {
 		name    string

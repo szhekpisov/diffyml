@@ -1,7 +1,8 @@
 Found one difference
 
 foo
-  ± whitespace only change
-    - bar↵
-    + bar↵↵
+  ± value change in multiline text (one insert, zero deletions)
+      bar
+      
+    + 
 

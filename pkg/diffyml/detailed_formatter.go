@@ -269,18 +269,20 @@ func (f *DetailedFormatter) formatModified(sb *strings.Builder, diff Difference,
 			toStr = FormatCertificate(toStr)
 		}
 
-		// Whitespace-only change detection
+		// Multiline detection (before whitespace-only check, so multiline
+		// strings get a readable line-by-line diff instead of a single
+		// unreadable line with ↵ markers)
+		if strings.Contains(fromStr, "\n") || strings.Contains(toStr, "\n") {
+			f.formatMultilineDiff(sb, fromStr, toStr, opts)
+			return
+		}
+
+		// Whitespace-only change detection (single-line strings only)
 		if isWhitespaceOnlyChange(fromStr, toStr) {
 			f.writeDescriptorLine(sb, "  ± whitespace only change", f.colorModified, opts)
 			f.writeColoredLine(sb, fmt.Sprintf("    - %s", visualizeWhitespace(fromStr)), f.colorRemoved(opts), opts)
 			f.writeColoredLine(sb, fmt.Sprintf("    + %s", visualizeWhitespace(toStr)), f.colorAdded(opts), opts)
 			sb.WriteString("\n")
-			return
-		}
-
-		// Multiline detection
-		if strings.Contains(fromStr, "\n") || strings.Contains(toStr, "\n") {
-			f.formatMultilineDiff(sb, fromStr, toStr, opts)
 			return
 		}
 

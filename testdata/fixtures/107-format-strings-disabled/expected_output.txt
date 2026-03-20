@@ -1,9 +1,19 @@
 Found three differences
 
 data.policy
-  ± whitespace only change
+  ± value change in multiline text (eleven inserts, one deletion)
     - {"effect":"allow","actions":["read","write"],"resources":["*"]}
-    + {↵··"effect":·"allow",↵··"actions":·[↵····"read",↵····"write"↵··],↵··"resources":·[↵····"*"↵··]↵}↵
+    + {
+    +   "effect": "allow",
+    +   "actions": [
+    +     "read",
+    +     "write"
+    +   ],
+    +   "resources": [
+    +     "*"
+    +   ]
+    + }
+    + 
 
 data.config
   ± value change

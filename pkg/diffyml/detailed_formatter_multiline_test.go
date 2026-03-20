@@ -248,11 +248,30 @@ func TestDetailedFormatter_WhitespaceNewlineVisualization(t *testing.T) {
 	}
 
 	output := f.Format(diffs, opts)
-	if !strings.Contains(output, "± whitespace only change") {
-		t.Errorf("expected whitespace-only descriptor for trailing newline change, got: %q", output)
+	// Multiline strings (containing \n) should use line-by-line diff, not whitespace visualization
+	if !strings.Contains(output, "value change in multiline text") {
+		t.Errorf("expected multiline diff descriptor for trailing newline change, got: %q", output)
 	}
-	if !strings.Contains(output, "↵") {
-		t.Errorf("expected return symbol '↵' for newline visualization, got: %q", output)
+}
+
+func TestDetailedFormatter_MultilineWhitespaceOnlyUsesLineDiff(t *testing.T) {
+	f, _ := FormatterByName("detailed")
+	opts := DefaultFormatOptions()
+
+	// Multiline strings differing only in indentation must use line-by-line diff
+	from := "line1\n    line2\n    line3"
+	to := "line1\n  line2\n  line3"
+
+	diffs := []Difference{
+		{Path: DiffPath{"config"}, Type: DiffModified, From: from, To: to},
+	}
+
+	output := f.Format(diffs, opts)
+	if strings.Contains(output, "± whitespace only change") {
+		t.Errorf("multiline whitespace-only diff should use line-diff path, not whitespace visualization, got: %q", output)
+	}
+	if !strings.Contains(output, "value change in multiline text") {
+		t.Errorf("expected multiline diff descriptor, got: %q", output)
 	}
 }
 

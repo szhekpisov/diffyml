@@ -227,7 +227,7 @@ func colorEnd(opts *FormatOptions) string {
 // Each field is a pre-computed ANSI escape string. In TrueColor mode, fields
 // have distinct shades; in 8-color mode, all fields share the same ANSI code.
 type YAMLColorPalette struct {
-	Key            string // Map keys, key-only lines, and list "- " prefixes
+	Key            string // Map keys, key-only lines, and structured list "- " prefixes
 	Scalar         string // String, bool, int, float values
 	MultilineText  string // Block literal content lines
 	Null           string // nil/null values

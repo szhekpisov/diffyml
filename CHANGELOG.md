@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.12] - 2026-03-20
+
+### Added
+
+- Add JSON Patch output format (--output json-patch) (#68) ([#68](https://github.com/szhekpisov/diffyml/pull/68))
+- Add --format-strings flag to canonicalize embedded JSON before comparison (#71) ([#71](https://github.com/szhekpisov/diffyml/pull/71))
+- Add per-element YAML syntax coloring in TrueColor mode (#72) ([#72](https://github.com/szhekpisov/diffyml/pull/72))
+
 ## [1.5.11] - 2026-03-19
 
 ### Added
@@ -150,6 +158,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add GOPATH/bin PATH hint to Go Install section (#3) ([#3](https://github.com/szhekpisov/diffyml/pull/3))
 - Cleanup (#6) ([#6](https://github.com/szhekpisov/diffyml/pull/6))
 
+[1.5.12]: https://github.com/szhekpisov/diffyml/compare/v1.5.11...v1.5.12
 [1.5.11]: https://github.com/szhekpisov/diffyml/compare/v1.5.10...v1.5.11
 [1.5.10]: https://github.com/szhekpisov/diffyml/compare/v1.5.9...v1.5.10
 [1.5.9]: https://github.com/szhekpisov/diffyml/compare/v1.5.8...v1.5.9

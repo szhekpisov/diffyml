@@ -1511,6 +1511,28 @@ func TestCompare_FormatStrings(t *testing.T) {
 			},
 		},
 		{
+			name: "JSON array formatting-only diff suppressed",
+			from: `data: '[1, 2, 3]'`,
+			to:   "data: |\n  [\n    1,\n    2,\n    3\n  ]",
+			opts: &diffyml.Options{FormatStrings: true},
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				if len(diffs) != 0 {
+					t.Errorf("expected 0 diffs, got %d", len(diffs))
+				}
+			},
+		},
+		{
+			name: "empty JSON object with whitespace formatting suppressed",
+			from: `data: '{}'`,
+			to:   "data: '{ }'",
+			opts: &diffyml.Options{FormatStrings: true},
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				if len(diffs) != 0 {
+					t.Errorf("expected 0 diffs, got %d", len(diffs))
+				}
+			},
+		},
+		{
 			name: "format-strings with ignore-whitespace - non-JSON whitespace ignored",
 			from: `data: "hello"`,
 			to:   `data: "  hello  "`,

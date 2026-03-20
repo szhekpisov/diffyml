@@ -674,14 +674,9 @@ func jsonCanonicalEqual(a, b string) (bool, bool) {
 	if err := json.Unmarshal([]byte(b), &vb); err != nil {
 		return false, false
 	}
-	ca, err := json.Marshal(va)
-	if err != nil {
-		return false, false
-	}
-	cb, err := json.Marshal(vb)
-	if err != nil {
-		return false, false
-	}
+	// json.Marshal cannot fail on values produced by json.Unmarshal.
+	ca, _ := json.Marshal(va)
+	cb, _ := json.Marshal(vb)
 	return bytes.Equal(ca, cb), true
 }
 

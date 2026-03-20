@@ -84,20 +84,21 @@ func FuzzCompare(f *testing.F) {
 // FuzzCompareWithOptions exercises Compare with all Options flag combinations.
 func FuzzCompareWithOptions(f *testing.F) {
 	for _, p := range yamlPairs() {
-		f.Add(p[0], p[1], uint8(0), "")
+		f.Add(p[0], p[1], uint16(0), "")
 	}
-	f.Add([]byte("a: 1\n"), []byte("a: 2\n"), uint8(0xFF), "data")
+	f.Add([]byte("a: 1\n"), []byte("a: 2\n"), uint16(0x1FF), "data")
 
-	f.Fuzz(func(t *testing.T, from, to []byte, flags uint8, chroot string) {
+	f.Fuzz(func(t *testing.T, from, to []byte, flags uint16, chroot string) {
 		opts := &Options{
 			IgnoreOrderChanges:      flags&(1<<0) != 0,
 			IgnoreWhitespaceChanges: flags&(1<<1) != 0,
-			IgnoreValueChanges:      flags&(1<<2) != 0,
-			DetectKubernetes:        flags&(1<<3) != 0,
-			DetectRenames:           flags&(1<<4) != 0,
-			NoCertInspection:        flags&(1<<5) != 0,
-			Swap:                    flags&(1<<6) != 0,
-			ChrootListToDocuments:   flags&(1<<7) != 0,
+			FormatStrings:           flags&(1<<2) != 0,
+			IgnoreValueChanges:      flags&(1<<3) != 0,
+			DetectKubernetes:        flags&(1<<4) != 0,
+			DetectRenames:           flags&(1<<5) != 0,
+			NoCertInspection:        flags&(1<<6) != 0,
+			Swap:                    flags&(1<<7) != 0,
+			ChrootListToDocuments:   flags&(1<<8) != 0,
 			Chroot:                  chroot,
 		}
 		Compare(from, to, opts) //nolint:errcheck

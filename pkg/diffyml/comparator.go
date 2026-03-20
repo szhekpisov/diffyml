@@ -6,7 +6,9 @@
 package diffyml
 
 import (
+	"bytes"
 	"cmp"
+	"encoding/json"
 	"fmt"
 	"slices"
 	"sort"
@@ -629,16 +631,53 @@ func compareListsByIdentifier(path DiffPath, from, to []any, opts *Options) []Di
 
 // equalValues compares two scalar values for equality.
 func equalValues(from, to any, opts *Options) bool {
-	// Handle whitespace comparison
-	if opts != nil && opts.IgnoreWhitespaceChanges {
+	if opts != nil {
 		if fromStr, ok := from.(string); ok {
 			if toStr, ok := to.(string); ok {
-				return strings.TrimSpace(fromStr) == strings.TrimSpace(toStr)
+				if fromStr == toStr {
+					return true
+				}
+
+				if opts.FormatStrings && couldBeJSON(fromStr) && couldBeJSON(toStr) {
+					if equal, matched := jsonCanonicalEqual(fromStr, toStr); matched {
+						return equal
+					}
+				}
+
+				if opts.IgnoreWhitespaceChanges {
+					return strings.TrimSpace(fromStr) == strings.TrimSpace(toStr)
+				}
+
+				return false
 			}
 		}
 	}
 
 	return from == to
+}
+
+// couldBeJSON returns true if s starts with '{' or '[', indicating it might be
+// a JSON object or array. Used as a cheap pre-check to avoid expensive
+// json.Unmarshal calls on strings that are clearly not JSON.
+func couldBeJSON(s string) bool {
+	return len(s) >= 2 && (s[0] == '{' || s[0] == '[')
+}
+
+// jsonCanonicalEqual attempts to parse both strings as JSON and compares
+// their canonical forms. Returns (equal, true) if both parsed as JSON,
+// or (false, false) if either is not valid JSON.
+func jsonCanonicalEqual(a, b string) (bool, bool) {
+	var va, vb any
+	if err := json.Unmarshal([]byte(a), &va); err != nil {
+		return false, false
+	}
+	if err := json.Unmarshal([]byte(b), &vb); err != nil {
+		return false, false
+	}
+	// json.Marshal cannot fail on values produced by json.Unmarshal.
+	ca, _ := json.Marshal(va)
+	cb, _ := json.Marshal(vb)
+	return bytes.Equal(ca, cb), true
 }
 
 // deepEqualOrderedMaps checks deep equality between two OrderedMaps.

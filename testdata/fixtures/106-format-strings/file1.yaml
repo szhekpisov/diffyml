@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  policy: '{"effect":"allow","actions":["read","write"],"resources":["*"]}'
+  config: '{"debug":false,"timeout":30}'
+  notes: "this is a plain string"

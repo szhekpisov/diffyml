@@ -45,6 +45,9 @@ type Options struct {
 	IgnoreOrderChanges bool
 	// IgnoreWhitespaceChanges ignores leading/trailing whitespace differences when true.
 	IgnoreWhitespaceChanges bool
+	// FormatStrings canonicalizes embedded JSON strings before comparison.
+	// When true, if both values parse as valid JSON, formatting-only differences are ignored.
+	FormatStrings bool
 	// IgnoreValueChanges excludes value changes from the report when true.
 	IgnoreValueChanges bool
 	// DetectKubernetes enables Kubernetes resource structure detection.

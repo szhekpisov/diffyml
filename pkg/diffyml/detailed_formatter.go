@@ -320,6 +320,18 @@ func (f *DetailedFormatter) writeColoredLine(sb *strings.Builder, text string, c
 	sb.WriteString("\n")
 }
 
+// writeKeyValueLine writes a line with the key portion in one color and the value in another.
+func (f *DetailedFormatter) writeKeyValueLine(sb *strings.Builder, keyText string, valueText string, keyCode string, valueCode string, opts *FormatOptions) {
+	sb.WriteString(colorStart(opts, keyCode))
+	sb.WriteString(keyText)
+	sb.WriteString(colorEnd(opts))
+	sb.WriteString(colorStart(opts, valueCode))
+	sb.WriteString(" ")
+	sb.WriteString(valueText)
+	sb.WriteString(colorEnd(opts))
+	sb.WriteString("\n")
+}
+
 // writeDescriptorLine writes a descriptor line using a color function.
 func (f *DetailedFormatter) writeDescriptorLine(sb *strings.Builder, text string, colorFn func(*FormatOptions) string, opts *FormatOptions) {
 	sb.WriteString(colorStart(opts, colorFn(opts)))

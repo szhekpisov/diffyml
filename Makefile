@@ -132,8 +132,8 @@ fixture: build
 	if [ -f "$$DIR/params.cfg" ]; then PARAMS=$$(grep -v '^#' "$$DIR/params.cfg" | tr '\n' ' '); fi; \
 	echo "=== Running fixture: $$DIR ==="; \
 	if [ -d "$$DIR/dir1" ] && [ -d "$$DIR/dir2" ]; then \
-		eval $(BIN) --color off --set-exit-code $$PARAMS "$$DIR/dir1" "$$DIR/dir2"; \
+		eval $(BIN) --color always --truecolor always --set-exit-code $$PARAMS "$$DIR/dir1" "$$DIR/dir2"; \
 	else \
-		eval $(BIN) --color off --set-exit-code $$PARAMS "$$DIR/file1.yaml" "$$DIR/file2.yaml"; \
+		eval $(BIN) --color always --truecolor always --set-exit-code $$PARAMS "$$DIR/file1.yaml" "$$DIR/file2.yaml"; \
 	fi; \
 	RC=$$?; echo ""; echo "exit code: $$RC"

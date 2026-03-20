@@ -126,7 +126,7 @@ func (f *DetailedFormatter) renderKVCore(sb *strings.Builder, key string, val an
 			}
 			f.renderMultilineValue(sb, keyPrefix+":", str, palette, mlIndent, opts)
 		} else {
-			f.writeColoredLine(sb, fmt.Sprintf("%s: %v", keyPrefix, formatDetailedValue(val)), palette.ScalarColor(val), opts)
+			f.writeKeyValueLine(sb, keyPrefix+":", formatDetailedValue(val), palette.Key, palette.ScalarColor(val), opts)
 		}
 	}
 }
@@ -155,7 +155,7 @@ func (f *DetailedFormatter) renderListItems(sb *strings.Builder, items []any, in
 			}
 		default:
 			pad := strings.Repeat(" ", indent)
-			f.writeColoredLine(sb, fmt.Sprintf("%s- %v", pad, formatDetailedValue(item)), palette.ScalarColor(item), opts)
+			f.writeKeyValueLine(sb, pad+"-", fmt.Sprintf("%v", formatDetailedValue(item)), palette.Key, palette.ScalarColor(item), opts)
 		}
 	}
 }

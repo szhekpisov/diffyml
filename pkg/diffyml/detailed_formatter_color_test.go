@@ -403,13 +403,13 @@ func TestDetailedFormatter_ColorEnabled_EntryValueColored(t *testing.T) {
 	}
 
 	output := f.Format(diffs, opts)
-	// All value lines should be colored green (addition)
+	// Key and value should be colored separately (both green in 8-color mode)
 	addedColor := DetailedColorCode(DiffAdded, false)
-	if !strings.Contains(output, addedColor+"    - name: nginx") {
-		t.Errorf("expected green colored '- name: nginx', got: %q", output)
+	if !strings.Contains(output, addedColor+"    - name:"+colorReset+addedColor+" nginx") {
+		t.Errorf("expected green colored '- name:' + ' nginx', got: %q", output)
 	}
-	if !strings.Contains(output, addedColor+"      port: 80") {
-		t.Errorf("expected green colored 'port: 80' at +2 indent, got: %q", output)
+	if !strings.Contains(output, addedColor+"      port:"+colorReset+addedColor+" 80") {
+		t.Errorf("expected green colored 'port:' + ' 80' at +2 indent, got: %q", output)
 	}
 }
 
@@ -483,9 +483,9 @@ func TestDetailedFormatter_ColorEnabled_ListEntryValueColored(t *testing.T) {
 	}
 
 	output := f.Format(diffs, opts)
-	// List entries should be colored green
+	// List entries should have colored prefix and value (both green in 8-color mode)
 	addedColor := DetailedColorCode(DiffAdded, false)
-	if !strings.Contains(output, addedColor+"    - alpha") {
+	if !strings.Contains(output, addedColor+"    -"+colorReset+addedColor+" alpha") {
 		t.Errorf("expected green colored '- alpha' list item, got: %q", output)
 	}
 }
@@ -606,9 +606,9 @@ func TestDetailedFormatter_Integration_AllDiffTypesColored(t *testing.T) {
 		t.Errorf("expected italic 'string' in type change descriptor, got: %q", output)
 	}
 
-	// 3. Entry values colored (structured map added has green-colored YAML lines)
+	// 3. Entry values colored (key and value separately, both green in 8-color mode)
 	addedColor := DetailedColorCode(DiffAdded, false)
-	if !strings.Contains(output, addedColor+"    - name: nginx") {
+	if !strings.Contains(output, addedColor+"    - name:"+colorReset+addedColor+" nginx") {
 		t.Errorf("expected green colored entry value lines, got: %q", output)
 	}
 
@@ -711,10 +711,11 @@ func TestDetailedFormatter_Integration_TrueColorBoldItalicCombination(t *testing
 		t.Errorf("expected italic type names in true color mode, got: %q", output)
 	}
 
-	// Palette scalar green on entry value lines
+	// Palette key green on key, scalar green on value (split coloring)
+	paletteKey := cachedGreenPalette.Key
 	paletteScalar := cachedGreenPalette.Scalar
-	if !strings.Contains(output, paletteScalar+"    - name: nginx") {
-		t.Errorf("expected palette scalar green for entry value lines, got: %q", output)
+	if !strings.Contains(output, paletteKey+"    - name:"+colorReset+paletteScalar+" nginx") {
+		t.Errorf("expected palette key/scalar green for entry value lines, got: %q", output)
 	}
 
 	// True color red/green on order change -/+ (single-color, not palette)
@@ -1008,9 +1009,9 @@ func TestDetailedFormatter_TrueColor_DocumentPaletteColors(t *testing.T) {
 	if !strings.Contains(output, cachedGreenPalette.Key+"    metadata:") {
 		t.Errorf("expected palette key green for document key line, got: %q", output)
 	}
-	// "name: my-service" scalar line should use palette scalar color
-	if !strings.Contains(output, cachedGreenPalette.Scalar+"      name: my-service") {
-		t.Errorf("expected palette scalar green for document scalar line, got: %q", output)
+	// "name: my-service" should have key and scalar colored separately
+	if !strings.Contains(output, cachedGreenPalette.Key+"      name:"+colorReset+cachedGreenPalette.Scalar+" my-service") {
+		t.Errorf("expected palette key/scalar green for document scalar line, got: %q", output)
 	}
 }
 

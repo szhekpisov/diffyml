@@ -246,25 +246,25 @@ func (p *YAMLColorPalette) ScalarColor(val any) string {
 // flat palettes use a single ANSI code for all elements.
 var (
 	cachedGreenPalette = &YAMLColorPalette{
-		Key:            TrueColorCode(76, 175, 80),
-		Scalar:         TrueColorCode(102, 212, 80),
-		MultilineText:  TrueColorCode(148, 195, 84),
-		Null:           TrueColorCode(134, 176, 120),
-		EmptyStructure: TrueColorCode(116, 158, 104),
+		Key:            styleBold + TrueColorCode(50, 170, 100),
+		Scalar:         TrueColorCode(130, 230, 100),
+		MultilineText:  TrueColorCode(140, 200, 95),
+		Null:           TrueColorCode(100, 155, 115),
+		EmptyStructure: TrueColorCode(80, 135, 95),
 	}
 	cachedRedPalette = &YAMLColorPalette{
-		Key:            TrueColorCode(211, 84, 72),
-		Scalar:         TrueColorCode(239, 120, 96),
-		MultilineText:  TrueColorCode(222, 150, 112),
-		Null:           TrueColorCode(205, 156, 136),
-		EmptyStructure: TrueColorCode(188, 142, 122),
+		Key:            styleBold + TrueColorCode(210, 80, 70),
+		Scalar:         TrueColorCode(245, 140, 110),
+		MultilineText:  TrueColorCode(230, 155, 120),
+		Null:           TrueColorCode(195, 140, 130),
+		EmptyStructure: TrueColorCode(170, 120, 110),
 	}
 	cachedFlatGreen = flatPalette(colorGreen)
 	cachedFlatRed   = flatPalette(colorRed)
 	// Neutral palette for unexpected DiffTypes — renders as white so it's
 	// visually distinct from additions (green) and removals (red).
 	cachedNeutralPalette = &YAMLColorPalette{
-		Key:            TrueColorCode(200, 200, 200),
+		Key:            styleBold + TrueColorCode(200, 200, 200),
 		Scalar:         TrueColorCode(220, 220, 220),
 		MultilineText:  TrueColorCode(210, 210, 210),
 		Null:           TrueColorCode(180, 180, 180),

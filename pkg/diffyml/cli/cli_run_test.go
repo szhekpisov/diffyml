@@ -1156,4 +1156,3 @@ func TestRun_TrueColorAuto_EnabledByCOLORTERM(t *testing.T) {
 		t.Errorf("expected 24-bit ANSI codes with COLORTERM=truecolor, got: %s", output)
 	}
 }
-

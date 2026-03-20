@@ -817,6 +817,13 @@ func TestDetailedFormatter_TrueColor_PaletteKeyColor(t *testing.T) {
 	if !strings.Contains(output, keyGreen) {
 		t.Errorf("expected palette key green %q, got: %q", keyGreen, output)
 	}
+	// Key color must include bold style for structural emphasis
+	if !strings.HasPrefix(cachedGreenPalette.Key, styleBold) {
+		t.Errorf("green palette key should start with bold style, got: %q", cachedGreenPalette.Key)
+	}
+	if !strings.HasPrefix(cachedRedPalette.Key, styleBold) {
+		t.Errorf("red palette key should start with bold style, got: %q", cachedRedPalette.Key)
+	}
 }
 
 func TestDetailedFormatter_TrueColor_PaletteScalarColor(t *testing.T) {

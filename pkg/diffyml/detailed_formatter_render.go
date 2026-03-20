@@ -13,22 +13,23 @@ import (
 // For list entries, renders values with "- " prefix. For map entries, renders as "key: value".
 // The entire block is colored (green for adds, red for removes).
 func (f *DetailedFormatter) renderEntryValue(sb *strings.Builder, val any, symbol string, indent int, path DiffPath, isList bool, opts *FormatOptions) {
-	code := f.colorRemoved(opts)
+	diffType := DiffRemoved
 	if symbol == "+" {
-		code = f.colorAdded(opts)
+		diffType = DiffAdded
 	}
+	palette := entryPalette(diffType, opts.TrueColor)
 
 	// Map entries: render as key: value pairs
 	if !isList {
 		// When value is an OrderedMap (parent-level diff), render each key-value directly
 		if om, ok := val.(*OrderedMap); ok {
 			for _, k := range om.Keys {
-				f.renderKeyValueYAML(sb, k, om.Values[k], indent, code, opts)
+				f.renderKeyValueYAML(sb, k, om.Values[k], indent, palette, opts)
 			}
 			return
 		}
 		key := path.Last()
-		f.renderKeyValueYAML(sb, key, val, indent, code, opts)
+		f.renderKeyValueYAML(sb, key, val, indent, palette, opts)
 		return
 	}
 
@@ -36,18 +37,19 @@ func (f *DetailedFormatter) renderEntryValue(sb *strings.Builder, val any, symbo
 	// map[string]any, and scalar fallback uniformly.
 	// For []any values, pass items directly; otherwise wrap as single item.
 	if v, ok := val.([]any); ok {
-		f.renderListItems(sb, v, indent, code, opts)
+		f.renderListItems(sb, v, indent, palette, opts)
 	} else {
-		f.renderListItems(sb, []any{val}, indent, code, opts)
+		f.renderListItems(sb, []any{val}, indent, palette, opts)
 	}
 }
 
 // renderDocumentValue renders a whole YAML document (top-level key-value pairs without list "- " prefix).
 func (f *DetailedFormatter) renderDocumentValue(sb *strings.Builder, val any, symbol string, indent int, opts *FormatOptions) {
-	code := f.colorRemoved(opts)
+	diffType := DiffRemoved
 	if symbol == "+" {
-		code = f.colorAdded(opts)
+		diffType = DiffAdded
 	}
+	palette := entryPalette(diffType, opts.TrueColor)
 
 	pad := strings.Repeat(" ", indent)
 	whiteCode := colorWhite
@@ -59,40 +61,52 @@ func (f *DetailedFormatter) renderDocumentValue(sb *strings.Builder, val any, sy
 	switch v := val.(type) {
 	case *OrderedMap:
 		for _, key := range v.Keys {
-			f.renderKeyValueYAML(sb, key, v.Values[key], indent, code, opts)
+			f.renderKeyValueYAML(sb, key, v.Values[key], indent, palette, opts)
 		}
 	case map[string]any:
 		for _, key := range sortedMapKeys(v) {
-			f.renderKeyValueYAML(sb, key, v[key], indent, code, opts)
+			f.renderKeyValueYAML(sb, key, v[key], indent, palette, opts)
 		}
 	default:
-		f.writeColoredLine(sb, fmt.Sprintf("%s%v", pad, formatDetailedValue(val)), code, opts)
+		f.writeColoredLine(sb, fmt.Sprintf("%s%v", pad, formatDetailedValue(val)), palette.ScalarColor(val), opts)
 	}
 }
 
 // renderKeyValueYAML renders a key: value pair in plain YAML style with color.
 // Uses standard YAML indentation (2 spaces per level), no pipe guides.
-func (f *DetailedFormatter) renderKeyValueYAML(sb *strings.Builder, key string, val any, indent int, colorCode string, opts *FormatOptions) {
+func (f *DetailedFormatter) renderKeyValueYAML(sb *strings.Builder, key string, val any, indent int, palette *YAMLColorPalette, opts *FormatOptions) {
 	pad := strings.Repeat(" ", indent)
 	switch v := val.(type) {
 	case *OrderedMap:
-		f.writeColoredLine(sb, fmt.Sprintf("%s%s:", pad, key), colorCode, opts)
-		for _, k := range v.Keys {
-			f.renderKeyValueYAML(sb, k, v.Values[k], indent+2, colorCode, opts)
+		if len(v.Keys) == 0 {
+			f.writeColoredLine(sb, fmt.Sprintf("%s%s: {}", pad, key), palette.EmptyStructure, opts)
+		} else {
+			f.writeColoredLine(sb, fmt.Sprintf("%s%s:", pad, key), palette.Key, opts)
+			for _, k := range v.Keys {
+				f.renderKeyValueYAML(sb, k, v.Values[k], indent+2, palette, opts)
+			}
 		}
 	case map[string]any:
-		f.writeColoredLine(sb, fmt.Sprintf("%s%s:", pad, key), colorCode, opts)
-		for _, k := range sortedMapKeys(v) {
-			f.renderKeyValueYAML(sb, k, v[k], indent+2, colorCode, opts)
+		if len(v) == 0 {
+			f.writeColoredLine(sb, fmt.Sprintf("%s%s: {}", pad, key), palette.EmptyStructure, opts)
+		} else {
+			f.writeColoredLine(sb, fmt.Sprintf("%s%s:", pad, key), palette.Key, opts)
+			for _, k := range sortedMapKeys(v) {
+				f.renderKeyValueYAML(sb, k, v[k], indent+2, palette, opts)
+			}
 		}
 	case []any:
-		f.writeColoredLine(sb, fmt.Sprintf("%s%s:", pad, key), colorCode, opts)
-		f.renderListItems(sb, v, indent+2, colorCode, opts)
+		if len(v) == 0 {
+			f.writeColoredLine(sb, fmt.Sprintf("%s%s: []", pad, key), palette.EmptyStructure, opts)
+		} else {
+			f.writeColoredLine(sb, fmt.Sprintf("%s%s:", pad, key), palette.Key, opts)
+			f.renderListItems(sb, v, indent+2, palette, opts)
+		}
 	default:
 		if str, ok := val.(string); ok && strings.Contains(str, "\n") {
-			f.renderMultilineValue(sb, fmt.Sprintf("%s%s:", pad, key), str, colorCode, indent, opts)
+			f.renderMultilineValue(sb, fmt.Sprintf("%s%s:", pad, key), str, palette, indent, opts)
 		} else {
-			f.writeColoredLine(sb, fmt.Sprintf("%s%s: %v", pad, key, formatDetailedValue(val)), colorCode, opts)
+			f.writeColoredLine(sb, fmt.Sprintf("%s%s: %v", pad, key, formatDetailedValue(val)), palette.ScalarColor(val), opts)
 		}
 	}
 }
@@ -100,27 +114,39 @@ func (f *DetailedFormatter) renderKeyValueYAML(sb *strings.Builder, key string, 
 // renderFirstKeyValueYAML renders the first key of a list entry with "- " prefix.
 // The key is rendered as "    - key: value" where indent is the base indentation.
 // For nested values, continuation uses indent+2 to align under the key.
-func (f *DetailedFormatter) renderFirstKeyValueYAML(sb *strings.Builder, key string, val any, indent int, colorCode string, opts *FormatOptions) {
+func (f *DetailedFormatter) renderFirstKeyValueYAML(sb *strings.Builder, key string, val any, indent int, palette *YAMLColorPalette, opts *FormatOptions) {
 	pad := strings.Repeat(" ", indent)
 	switch v := val.(type) {
 	case *OrderedMap:
-		f.writeColoredLine(sb, fmt.Sprintf("%s- %s:", pad, key), colorCode, opts)
-		for _, k := range v.Keys {
-			f.renderKeyValueYAML(sb, k, v.Values[k], indent+4, colorCode, opts)
+		if len(v.Keys) == 0 {
+			f.writeColoredLine(sb, fmt.Sprintf("%s- %s: {}", pad, key), palette.EmptyStructure, opts)
+		} else {
+			f.writeColoredLine(sb, fmt.Sprintf("%s- %s:", pad, key), palette.Key, opts)
+			for _, k := range v.Keys {
+				f.renderKeyValueYAML(sb, k, v.Values[k], indent+4, palette, opts)
+			}
 		}
 	case map[string]any:
-		f.writeColoredLine(sb, fmt.Sprintf("%s- %s:", pad, key), colorCode, opts)
-		for _, k := range sortedMapKeys(v) {
-			f.renderKeyValueYAML(sb, k, v[k], indent+4, colorCode, opts)
+		if len(v) == 0 {
+			f.writeColoredLine(sb, fmt.Sprintf("%s- %s: {}", pad, key), palette.EmptyStructure, opts)
+		} else {
+			f.writeColoredLine(sb, fmt.Sprintf("%s- %s:", pad, key), palette.Key, opts)
+			for _, k := range sortedMapKeys(v) {
+				f.renderKeyValueYAML(sb, k, v[k], indent+4, palette, opts)
+			}
 		}
 	case []any:
-		f.writeColoredLine(sb, fmt.Sprintf("%s- %s:", pad, key), colorCode, opts)
-		f.renderListItems(sb, v, indent+4, colorCode, opts)
+		if len(v) == 0 {
+			f.writeColoredLine(sb, fmt.Sprintf("%s- %s: []", pad, key), palette.EmptyStructure, opts)
+		} else {
+			f.writeColoredLine(sb, fmt.Sprintf("%s- %s:", pad, key), palette.Key, opts)
+			f.renderListItems(sb, v, indent+4, palette, opts)
+		}
 	default:
 		if str, ok := val.(string); ok && strings.Contains(str, "\n") {
-			f.renderMultilineValue(sb, fmt.Sprintf("%s- %s:", pad, key), str, colorCode, indent+2, opts)
+			f.renderMultilineValue(sb, fmt.Sprintf("%s- %s:", pad, key), str, palette, indent+2, opts)
 		} else {
-			f.writeColoredLine(sb, fmt.Sprintf("%s- %s: %v", pad, key, formatDetailedValue(val)), colorCode, opts)
+			f.writeColoredLine(sb, fmt.Sprintf("%s- %s: %v", pad, key, formatDetailedValue(val)), palette.ScalarColor(val), opts)
 		}
 	}
 }
@@ -128,38 +154,38 @@ func (f *DetailedFormatter) renderFirstKeyValueYAML(sb *strings.Builder, key str
 // renderListItems renders items of a []any list with proper type dispatch.
 // Structured items (*OrderedMap, map[string]any) are rendered using YAML-style
 // key-value methods. Scalars use formatDetailedValue().
-func (f *DetailedFormatter) renderListItems(sb *strings.Builder, items []any, indent int, colorCode string, opts *FormatOptions) {
+func (f *DetailedFormatter) renderListItems(sb *strings.Builder, items []any, indent int, palette *YAMLColorPalette, opts *FormatOptions) {
 	for _, item := range items {
 		switch v := item.(type) {
 		case *OrderedMap:
 			for i, key := range v.Keys {
 				if i == 0 {
-					f.renderFirstKeyValueYAML(sb, key, v.Values[key], indent, colorCode, opts)
+					f.renderFirstKeyValueYAML(sb, key, v.Values[key], indent, palette, opts)
 				} else {
-					f.renderKeyValueYAML(sb, key, v.Values[key], indent+2, colorCode, opts)
+					f.renderKeyValueYAML(sb, key, v.Values[key], indent+2, palette, opts)
 				}
 			}
 		case map[string]any:
 			for i, key := range sortedMapKeys(v) {
 				if i == 0 {
-					f.renderFirstKeyValueYAML(sb, key, v[key], indent, colorCode, opts)
+					f.renderFirstKeyValueYAML(sb, key, v[key], indent, palette, opts)
 				} else {
-					f.renderKeyValueYAML(sb, key, v[key], indent+2, colorCode, opts)
+					f.renderKeyValueYAML(sb, key, v[key], indent+2, palette, opts)
 				}
 			}
 		default:
 			pad := strings.Repeat(" ", indent)
-			f.writeColoredLine(sb, fmt.Sprintf("%s- %v", pad, formatDetailedValue(item)), colorCode, opts)
+			f.writeColoredLine(sb, fmt.Sprintf("%s- %v", pad, formatDetailedValue(item)), palette.Key, opts)
 		}
 	}
 }
 
 // renderMultilineValue renders a multiline string in YAML block literal style (|).
-func (f *DetailedFormatter) renderMultilineValue(sb *strings.Builder, prefix, value, colorCode string, indent int, opts *FormatOptions) {
-	f.writeColoredLine(sb, prefix+" |", colorCode, opts)
+func (f *DetailedFormatter) renderMultilineValue(sb *strings.Builder, prefix, value string, palette *YAMLColorPalette, indent int, opts *FormatOptions) {
+	f.writeColoredLine(sb, prefix+" |", palette.Key, opts)
 	pad := strings.Repeat(" ", indent+2)
 	for _, line := range strings.Split(strings.TrimRight(value, "\n"), "\n") {
-		f.writeColoredLine(sb, pad+line, colorCode, opts)
+		f.writeColoredLine(sb, pad+line, palette.MultilineText, opts)
 	}
 }
 

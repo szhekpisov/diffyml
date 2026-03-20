@@ -223,6 +223,78 @@ func colorEnd(opts *FormatOptions) string {
 	return ""
 }
 
+// YAMLColorPalette holds per-element color codes for YAML syntax highlighting.
+// Each field is a pre-computed ANSI escape string. In TrueColor mode, fields
+// have distinct shades; in 8-color mode, all fields share the same ANSI code.
+type YAMLColorPalette struct {
+	Key            string // Map keys, key-only lines, and list "- " prefixes
+	Scalar         string // String, bool, int, float values
+	MultilineText  string // Block literal content lines
+	Null           string // nil/null values
+	EmptyStructure string // Empty maps {} and empty lists []
+}
+
+// ScalarColor returns the color for a scalar value, using Null for nil values.
+func (p *YAMLColorPalette) ScalarColor(val any) string {
+	if val == nil {
+		return p.Null
+	}
+	return p.Scalar
+}
+
+// Cached palettes (computed once). TrueColor palettes use per-element shading;
+// flat palettes use a single ANSI code for all elements.
+var (
+	cachedGreenPalette = &YAMLColorPalette{
+		Key:            TrueColorCode(76, 175, 80),
+		Scalar:         TrueColorCode(102, 212, 80),
+		MultilineText:  TrueColorCode(148, 195, 84),
+		Null:           TrueColorCode(134, 176, 120),
+		EmptyStructure: TrueColorCode(116, 158, 104),
+	}
+	cachedRedPalette = &YAMLColorPalette{
+		Key:            TrueColorCode(211, 84, 72),
+		Scalar:         TrueColorCode(239, 120, 96),
+		MultilineText:  TrueColorCode(222, 150, 112),
+		Null:           TrueColorCode(205, 156, 136),
+		EmptyStructure: TrueColorCode(188, 142, 122),
+	}
+	cachedFlatGreen      = flatPalette(colorGreen)
+	cachedFlatRed        = flatPalette(colorRed)
+	cachedFlatYellow     = flatPalette(colorYellow)
+	cachedTrueColorYellow = flatPalette(TrueColorCode(DetailedYellowR, DetailedYellowG, DetailedYellowB))
+)
+
+func flatPalette(code string) *YAMLColorPalette {
+	return &YAMLColorPalette{
+		Key: code, Scalar: code, MultilineText: code,
+		Null: code, EmptyStructure: code,
+	}
+}
+
+// entryPalette returns the color palette for rendering diff entries.
+// Always returns a non-nil palette: TrueColor mode gets per-element shading,
+// 8-color mode gets a flat palette where all fields share the same ANSI code.
+func entryPalette(diffType DiffType, useTrueColor bool) *YAMLColorPalette {
+	switch diffType {
+	case DiffAdded:
+		if useTrueColor {
+			return cachedGreenPalette
+		}
+		return cachedFlatGreen
+	case DiffRemoved:
+		if useTrueColor {
+			return cachedRedPalette
+		}
+		return cachedFlatRed
+	default:
+		if useTrueColor {
+			return cachedTrueColorYellow
+		}
+		return cachedFlatYellow
+	}
+}
+
 // clamp restricts a value to the range [lo, hi].
 func clamp(val, lo, hi int) int {
 	return max(lo, min(val, hi))

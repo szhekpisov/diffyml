@@ -1456,6 +1456,28 @@ func TestCompare_FormatStrings(t *testing.T) {
 			},
 		},
 		{
+			name: "first string looks like JSON but is invalid - falls through",
+			from: `data: '{invalid json}'`,
+			to:   `data: '{"key":"value"}'`,
+			opts: &diffyml.Options{FormatStrings: true},
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				if len(diffs) != 1 {
+					t.Fatalf("expected 1 diff, got %d", len(diffs))
+				}
+			},
+		},
+		{
+			name: "second string looks like JSON but is invalid - falls through",
+			from: `data: '{"key":"value"}'`,
+			to:   `data: '{not valid}'`,
+			opts: &diffyml.Options{FormatStrings: true},
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				if len(diffs) != 1 {
+					t.Fatalf("expected 1 diff, got %d", len(diffs))
+				}
+			},
+		},
+		{
 			name: "JSON key order differences ignored",
 			from: `data: '{"a":1,"b":2}'`,
 			to:   `data: '{"b":2,"a":1}'`,

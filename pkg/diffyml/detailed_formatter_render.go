@@ -75,78 +75,58 @@ func (f *DetailedFormatter) renderDocumentValue(sb *strings.Builder, val any, sy
 // renderKeyValueYAML renders a key: value pair in plain YAML style with color.
 // Uses standard YAML indentation (2 spaces per level), no pipe guides.
 func (f *DetailedFormatter) renderKeyValueYAML(sb *strings.Builder, key string, val any, indent int, palette *YAMLColorPalette, opts *FormatOptions) {
-	pad := strings.Repeat(" ", indent)
-	switch v := val.(type) {
-	case *OrderedMap:
-		if len(v.Keys) == 0 {
-			f.writeColoredLine(sb, fmt.Sprintf("%s%s: {}", pad, key), palette.EmptyStructure, opts)
-		} else {
-			f.writeColoredLine(sb, fmt.Sprintf("%s%s:", pad, key), palette.Key, opts)
-			for _, k := range v.Keys {
-				f.renderKeyValueYAML(sb, k, v.Values[k], indent+2, palette, opts)
-			}
-		}
-	case map[string]any:
-		if len(v) == 0 {
-			f.writeColoredLine(sb, fmt.Sprintf("%s%s: {}", pad, key), palette.EmptyStructure, opts)
-		} else {
-			f.writeColoredLine(sb, fmt.Sprintf("%s%s:", pad, key), palette.Key, opts)
-			for _, k := range sortedMapKeys(v) {
-				f.renderKeyValueYAML(sb, k, v[k], indent+2, palette, opts)
-			}
-		}
-	case []any:
-		if len(v) == 0 {
-			f.writeColoredLine(sb, fmt.Sprintf("%s%s: []", pad, key), palette.EmptyStructure, opts)
-		} else {
-			f.writeColoredLine(sb, fmt.Sprintf("%s%s:", pad, key), palette.Key, opts)
-			f.renderListItems(sb, v, indent+2, palette, opts)
-		}
-	default:
-		if str, ok := val.(string); ok && strings.Contains(str, "\n") {
-			f.renderMultilineValue(sb, fmt.Sprintf("%s%s:", pad, key), str, palette, indent, opts)
-		} else {
-			f.writeColoredLine(sb, fmt.Sprintf("%s%s: %v", pad, key, formatDetailedValue(val)), palette.ScalarColor(val), opts)
-		}
-	}
+	f.renderKVCore(sb, key, val, indent, "", indent+2, palette, opts)
 }
 
 // renderFirstKeyValueYAML renders the first key of a list entry with "- " prefix.
 // The key is rendered as "    - key: value" where indent is the base indentation.
-// For nested values, continuation uses indent+2 to align under the key.
+// For nested values, continuation uses indent+4 to align under the key.
 func (f *DetailedFormatter) renderFirstKeyValueYAML(sb *strings.Builder, key string, val any, indent int, palette *YAMLColorPalette, opts *FormatOptions) {
+	f.renderKVCore(sb, key, val, indent, "- ", indent+4, palette, opts)
+}
+
+// renderKVCore is the shared implementation for renderKeyValueYAML and renderFirstKeyValueYAML.
+// prefix is "" for plain keys or "- " for list-item first keys; childIndent is the
+// indentation level used for nested children.
+func (f *DetailedFormatter) renderKVCore(sb *strings.Builder, key string, val any, indent int, prefix string, childIndent int, palette *YAMLColorPalette, opts *FormatOptions) {
 	pad := strings.Repeat(" ", indent)
+	keyPrefix := pad + prefix + key
 	switch v := val.(type) {
 	case *OrderedMap:
 		if len(v.Keys) == 0 {
-			f.writeColoredLine(sb, fmt.Sprintf("%s- %s: {}", pad, key), palette.EmptyStructure, opts)
+			f.writeColoredLine(sb, keyPrefix+": {}", palette.EmptyStructure, opts)
 		} else {
-			f.writeColoredLine(sb, fmt.Sprintf("%s- %s:", pad, key), palette.Key, opts)
+			f.writeColoredLine(sb, keyPrefix+":", palette.Key, opts)
 			for _, k := range v.Keys {
-				f.renderKeyValueYAML(sb, k, v.Values[k], indent+4, palette, opts)
+				f.renderKeyValueYAML(sb, k, v.Values[k], childIndent, palette, opts)
 			}
 		}
 	case map[string]any:
 		if len(v) == 0 {
-			f.writeColoredLine(sb, fmt.Sprintf("%s- %s: {}", pad, key), palette.EmptyStructure, opts)
+			f.writeColoredLine(sb, keyPrefix+": {}", palette.EmptyStructure, opts)
 		} else {
-			f.writeColoredLine(sb, fmt.Sprintf("%s- %s:", pad, key), palette.Key, opts)
+			f.writeColoredLine(sb, keyPrefix+":", palette.Key, opts)
 			for _, k := range sortedMapKeys(v) {
-				f.renderKeyValueYAML(sb, k, v[k], indent+4, palette, opts)
+				f.renderKeyValueYAML(sb, k, v[k], childIndent, palette, opts)
 			}
 		}
 	case []any:
 		if len(v) == 0 {
-			f.writeColoredLine(sb, fmt.Sprintf("%s- %s: []", pad, key), palette.EmptyStructure, opts)
+			f.writeColoredLine(sb, keyPrefix+": []", palette.EmptyStructure, opts)
 		} else {
-			f.writeColoredLine(sb, fmt.Sprintf("%s- %s:", pad, key), palette.Key, opts)
-			f.renderListItems(sb, v, indent+4, palette, opts)
+			f.writeColoredLine(sb, keyPrefix+":", palette.Key, opts)
+			f.renderListItems(sb, v, childIndent, palette, opts)
 		}
 	default:
 		if str, ok := val.(string); ok && strings.Contains(str, "\n") {
-			f.renderMultilineValue(sb, fmt.Sprintf("%s- %s:", pad, key), str, palette, indent+2, opts)
+			// For multiline, content indentation is always baseIndent+2 regardless of prefix
+			mlIndent := indent
+			if prefix != "" {
+				mlIndent = indent + 2
+			}
+			f.renderMultilineValue(sb, keyPrefix+":", str, palette, mlIndent, opts)
 		} else {
-			f.writeColoredLine(sb, fmt.Sprintf("%s- %s: %v", pad, key, formatDetailedValue(val)), palette.ScalarColor(val), opts)
+			f.writeColoredLine(sb, fmt.Sprintf("%s: %v", keyPrefix, formatDetailedValue(val)), palette.ScalarColor(val), opts)
 		}
 	}
 }

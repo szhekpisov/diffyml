@@ -140,8 +140,8 @@ func TestDetailedFormatter_TrueColor_AdditionGreen(t *testing.T) {
 	}
 
 	output := f.Format(diffs, opts)
-	// Scalar list entry uses palette scalar color (102, 212, 80)
-	expectedScalar := "\033[38;2;102;212;80m"
+	// Scalar list entry uses palette scalar color
+	expectedScalar := cachedGreenPalette.Scalar
 	if !strings.Contains(output, expectedScalar) {
 		t.Errorf("expected palette scalar green %q for addition, got: %q", expectedScalar, output)
 	}
@@ -158,8 +158,8 @@ func TestDetailedFormatter_TrueColor_RemovalRed(t *testing.T) {
 	}
 
 	output := f.Format(diffs, opts)
-	// Scalar list entry uses palette scalar color (239, 120, 96)
-	expectedScalar := "\033[38;2;239;120;96m"
+	// Scalar list entry uses palette scalar color
+	expectedScalar := cachedRedPalette.Scalar
 	if !strings.Contains(output, expectedScalar) {
 		t.Errorf("expected palette scalar red %q for removal, got: %q", expectedScalar, output)
 	}
@@ -711,8 +711,8 @@ func TestDetailedFormatter_Integration_TrueColorBoldItalicCombination(t *testing
 		t.Errorf("expected italic type names in true color mode, got: %q", output)
 	}
 
-	// Palette scalar green on entry value lines (102, 212, 80)
-	paletteScalar := TrueColorCode(102, 212, 80)
+	// Palette scalar green on entry value lines
+	paletteScalar := cachedGreenPalette.Scalar
 	if !strings.Contains(output, paletteScalar+"    - name: nginx") {
 		t.Errorf("expected palette scalar green for entry value lines, got: %q", output)
 	}
@@ -811,7 +811,7 @@ func TestDetailedFormatter_TrueColor_PaletteKeyColor(t *testing.T) {
 	}
 	output := f.Format(diffs, opts)
 
-	keyGreen := TrueColorCode(76, 175, 80)
+	keyGreen := cachedGreenPalette.Key
 	// "metadata:" is a key-only line → palette.Key
 	if !strings.Contains(output, keyGreen) {
 		t.Errorf("expected palette key green %q, got: %q", keyGreen, output)
@@ -830,7 +830,7 @@ func TestDetailedFormatter_TrueColor_PaletteScalarColor(t *testing.T) {
 	}
 	output := f.Format(diffs, opts)
 
-	scalarGreen := TrueColorCode(102, 212, 80)
+	scalarGreen := cachedGreenPalette.Scalar
 	if !strings.Contains(output, scalarGreen) {
 		t.Errorf("expected palette scalar green %q, got: %q", scalarGreen, output)
 	}
@@ -848,12 +848,12 @@ func TestDetailedFormatter_TrueColor_PaletteMultilineColor(t *testing.T) {
 	}
 	output := f.Format(diffs, opts)
 
-	mlGreen := TrueColorCode(148, 195, 84)
+	mlGreen := cachedGreenPalette.MultilineText
 	if !strings.Contains(output, mlGreen) {
 		t.Errorf("expected palette multiline green %q, got: %q", mlGreen, output)
 	}
 	// The prefix "data: |" should use key color
-	keyGreen := TrueColorCode(76, 175, 80)
+	keyGreen := cachedGreenPalette.Key
 	if !strings.Contains(output, keyGreen) {
 		t.Errorf("expected palette key green for multiline prefix, got: %q", output)
 	}
@@ -871,7 +871,7 @@ func TestDetailedFormatter_TrueColor_PaletteNullColor(t *testing.T) {
 	}
 	output := f.Format(diffs, opts)
 
-	nullGreen := TrueColorCode(134, 176, 120)
+	nullGreen := cachedGreenPalette.Null
 	if !strings.Contains(output, nullGreen) {
 		t.Errorf("expected palette null green %q, got: %q", nullGreen, output)
 	}
@@ -889,7 +889,7 @@ func TestDetailedFormatter_TrueColor_RedPaletteScalarColor(t *testing.T) {
 	}
 	output := f.Format(diffs, opts)
 
-	scalarRed := TrueColorCode(239, 120, 96)
+	scalarRed := cachedRedPalette.Scalar
 	if !strings.Contains(output, scalarRed) {
 		t.Errorf("expected palette scalar red %q, got: %q", scalarRed, output)
 	}
@@ -914,7 +914,7 @@ func TestDetailedFormatter_TrueColor_RedPaletteKeyColor(t *testing.T) {
 	}
 	output := f.Format(diffs, opts)
 
-	keyRed := TrueColorCode(211, 84, 72)
+	keyRed := cachedRedPalette.Key
 	if !strings.Contains(output, keyRed) {
 		t.Errorf("expected palette key red %q, got: %q", keyRed, output)
 	}
@@ -932,7 +932,7 @@ func TestDetailedFormatter_TrueColor_RedPaletteMultilineColor(t *testing.T) {
 	}
 	output := f.Format(diffs, opts)
 
-	mlRed := TrueColorCode(222, 150, 112)
+	mlRed := cachedRedPalette.MultilineText
 	if !strings.Contains(output, mlRed) {
 		t.Errorf("expected palette multiline red %q, got: %q", mlRed, output)
 	}
@@ -955,7 +955,7 @@ func TestDetailedFormatter_TrueColor_EmptyStructureColor(t *testing.T) {
 	}
 	output := f.Format(diffs, opts)
 
-	emptyGreen := TrueColorCode(116, 158, 104)
+	emptyGreen := cachedGreenPalette.EmptyStructure
 	if !strings.Contains(output, emptyGreen) {
 		t.Errorf("expected palette empty structure green %q, got: %q", emptyGreen, output)
 	}
@@ -976,12 +976,41 @@ func TestDetailedFormatter_TrueColor_EmptyListColor(t *testing.T) {
 	}
 	output := f.Format(diffs, opts)
 
-	emptyGreen := TrueColorCode(116, 158, 104)
+	emptyGreen := cachedGreenPalette.EmptyStructure
 	if !strings.Contains(output, emptyGreen) {
 		t.Errorf("expected palette empty structure green %q, got: %q", emptyGreen, output)
 	}
 	if !strings.Contains(output, "items: []") {
 		t.Errorf("expected empty list rendered as 'items: []', got: %q", output)
+	}
+}
+
+func TestDetailedFormatter_TrueColor_DocumentPaletteColors(t *testing.T) {
+	f, _ := FormatterByName("detailed")
+	opts := DefaultFormatOptions()
+	opts.Color = true
+	opts.TrueColor = true
+	opts.OmitHeader = true
+
+	doc := NewOrderedMap()
+	doc.Keys = append(doc.Keys, "metadata")
+	inner := NewOrderedMap()
+	inner.Keys = append(inner.Keys, "name")
+	inner.Values["name"] = "my-service"
+	doc.Values["metadata"] = inner
+
+	diffs := []Difference{
+		{Path: DiffPath{"[0]"}, Type: DiffAdded, To: doc},
+	}
+	output := f.Format(diffs, opts)
+
+	// "metadata:" key-only line should use palette key color
+	if !strings.Contains(output, cachedGreenPalette.Key+"    metadata:") {
+		t.Errorf("expected palette key green for document key line, got: %q", output)
+	}
+	// "name: my-service" scalar line should use palette scalar color
+	if !strings.Contains(output, cachedGreenPalette.Scalar+"      name: my-service") {
+		t.Errorf("expected palette scalar green for document scalar line, got: %q", output)
 	}
 }
 
@@ -1001,8 +1030,7 @@ func TestDetailedFormatter_TrueColor_FallbackNoPalette(t *testing.T) {
 		t.Errorf("expected 8-color green in non-TrueColor mode, got: %q", output)
 	}
 	// Should NOT contain any palette true color codes
-	paletteScalar := TrueColorCode(102, 212, 80)
-	if strings.Contains(output, paletteScalar) {
+	if strings.Contains(output, cachedGreenPalette.Scalar) {
 		t.Errorf("palette colors should not appear in 8-color mode, got: %q", output)
 	}
 }

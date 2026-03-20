@@ -261,6 +261,16 @@ var (
 	}
 	cachedFlatGreen = flatPalette(colorGreen)
 	cachedFlatRed   = flatPalette(colorRed)
+	// Neutral palette for unexpected DiffTypes — renders as white so it's
+	// visually distinct from additions (green) and removals (red).
+	cachedNeutralPalette = &YAMLColorPalette{
+		Key:            TrueColorCode(200, 200, 200),
+		Scalar:         TrueColorCode(220, 220, 220),
+		MultilineText:  TrueColorCode(210, 210, 210),
+		Null:           TrueColorCode(180, 180, 180),
+		EmptyStructure: TrueColorCode(170, 170, 170),
+	}
+	cachedFlatNeutral = flatPalette(colorWhite)
 )
 
 func flatPalette(code string) *YAMLColorPalette {
@@ -286,12 +296,12 @@ func entryPalette(diffType DiffType, useTrueColor bool) *YAMLColorPalette {
 		}
 		return cachedFlatRed
 	default:
-		// Fallback — entryPalette is only called for Added/Removed today,
-		// but return a valid palette to avoid nil panics if new DiffTypes appear.
+		// Neutral palette for unexpected DiffTypes — visually distinct from
+		// additions (green) and removals (red) so misuse is immediately obvious.
 		if useTrueColor {
-			return cachedGreenPalette
+			return cachedNeutralPalette
 		}
-		return cachedFlatGreen
+		return cachedFlatNeutral
 	}
 }
 

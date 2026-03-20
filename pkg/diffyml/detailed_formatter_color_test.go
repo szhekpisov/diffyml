@@ -972,6 +972,32 @@ func TestDetailedFormatter_TrueColor_EmptyStructureColor(t *testing.T) {
 	}
 }
 
+func TestDetailedFormatter_TrueColor_EmptyMapStringAnyColor(t *testing.T) {
+	f, _ := FormatterByName("detailed")
+	opts := DefaultFormatOptions()
+	opts.Color = true
+	opts.TrueColor = true
+	opts.OmitHeader = true
+
+	// Use map[string]any{} to cover the map[string]any empty branch in renderKVCore
+	om := NewOrderedMap()
+	om.Keys = append(om.Keys, "labels")
+	om.Values["labels"] = map[string]any{}
+
+	diffs := []Difference{
+		{Path: DiffPath{"config", "0"}, Type: DiffAdded, To: om},
+	}
+	output := f.Format(diffs, opts)
+
+	emptyGreen := cachedGreenPalette.EmptyStructure
+	if !strings.Contains(output, emptyGreen) {
+		t.Errorf("expected palette empty structure green %q, got: %q", emptyGreen, output)
+	}
+	if !strings.Contains(output, "labels: {}") {
+		t.Errorf("expected empty map rendered as 'labels: {}', got: %q", output)
+	}
+}
+
 func TestDetailedFormatter_TrueColor_EmptyListColor(t *testing.T) {
 	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()

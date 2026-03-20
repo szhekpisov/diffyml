@@ -134,3 +134,23 @@ func TestDocNameColorCode(t *testing.T) {
 		t.Errorf("8-color fallback mismatch: got %q", fc)
 	}
 }
+
+func TestEntryPalette_NeutralFallback(t *testing.T) {
+	// DiffModified is not DiffAdded or DiffRemoved, so entryPalette returns the neutral palette.
+	p := entryPalette(DiffModified, true)
+	if p != cachedNeutralPalette {
+		t.Errorf("expected neutral TrueColor palette for DiffModified, got: %+v", p)
+	}
+	p = entryPalette(DiffModified, false)
+	if p != cachedFlatNeutral {
+		t.Errorf("expected neutral flat palette for DiffModified, got: %+v", p)
+	}
+	p = entryPalette(DiffOrderChanged, true)
+	if p != cachedNeutralPalette {
+		t.Errorf("expected neutral TrueColor palette for DiffOrderChanged, got: %+v", p)
+	}
+	p = entryPalette(DiffOrderChanged, false)
+	if p != cachedFlatNeutral {
+		t.Errorf("expected neutral flat palette for DiffOrderChanged, got: %+v", p)
+	}
+}

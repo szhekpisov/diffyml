@@ -803,10 +803,3 @@ func normalizeFilePath(path string) string {
 
 	return strings.TrimPrefix(path, "./")
 }
-
-// detectTrueColorSupport checks if the terminal supports 24-bit color
-// via the COLORTERM environment variable (standard detection method).
-func detectTrueColorSupport() bool {
-	ct := os.Getenv("COLORTERM")
-	return ct == "truecolor" || ct == "24bit"
-}

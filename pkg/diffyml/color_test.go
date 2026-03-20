@@ -135,6 +135,27 @@ func TestDocNameColorCode(t *testing.T) {
 	}
 }
 
+func TestDetectTrueColorSupport(t *testing.T) {
+	tests := []struct {
+		name     string
+		value    string
+		expected bool
+	}{
+		{"truecolor", "truecolor", true},
+		{"24bit", "24bit", true},
+		{"empty", "", false},
+		{"256color", "256color", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("COLORTERM", tt.value)
+			if got := DetectTrueColorSupport(); got != tt.expected {
+				t.Errorf("DetectTrueColorSupport() with COLORTERM=%q = %v, want %v", tt.value, got, tt.expected)
+			}
+		})
+	}
+}
+
 func TestEntryPalette_NeutralFallback(t *testing.T) {
 	// DiffModified is not DiffAdded or DiffRemoved, so entryPalette returns the neutral palette.
 	p := entryPalette(DiffModified, true)

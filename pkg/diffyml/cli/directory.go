@@ -168,7 +168,7 @@ func setupDirFormatting(cfg *CLIConfig) (diffyml.Formatter, *diffyml.FormatOptio
 	colorMode, _ := diffyml.ParseColorMode(cfg.Color)
 	trueColorMode, _ := diffyml.ParseColorMode(cfg.TrueColor)
 	useTrueColor := trueColorMode == diffyml.ColorModeAlways ||
-		(trueColorMode == diffyml.ColorModeAuto && detectTrueColorSupport())
+		(trueColorMode == diffyml.ColorModeAuto && diffyml.DetectTrueColorSupport())
 	colorCfg := diffyml.NewColorConfig(colorMode, useTrueColor)
 	colorCfg.DetectTerminal()
 	colorCfg.ToFormatOptions(formatOpts)

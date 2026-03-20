@@ -306,6 +306,13 @@ func entryPalette(diffType DiffType, useTrueColor bool) *YAMLColorPalette {
 	}
 }
 
+// DetectTrueColorSupport checks if the terminal supports 24-bit color
+// via the COLORTERM environment variable (standard detection method).
+func DetectTrueColorSupport() bool {
+	ct := os.Getenv("COLORTERM")
+	return ct == "truecolor" || ct == "24bit"
+}
+
 // clamp restricts a value to the range [lo, hi].
 func clamp(val, lo, hi int) int {
 	return max(lo, min(val, hi))

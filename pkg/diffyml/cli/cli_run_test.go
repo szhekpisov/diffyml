@@ -1157,23 +1157,3 @@ func TestRun_TrueColorAuto_EnabledByCOLORTERM(t *testing.T) {
 	}
 }
 
-func TestDetectTrueColorSupport(t *testing.T) {
-	tests := []struct {
-		name     string
-		value    string
-		expected bool
-	}{
-		{"truecolor", "truecolor", true},
-		{"24bit", "24bit", true},
-		{"empty", "", false},
-		{"256color", "256color", false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Setenv("COLORTERM", tt.value)
-			if got := detectTrueColorSupport(); got != tt.expected {
-				t.Errorf("detectTrueColorSupport() with COLORTERM=%q = %v, want %v", tt.value, got, tt.expected)
-			}
-		})
-	}
-}

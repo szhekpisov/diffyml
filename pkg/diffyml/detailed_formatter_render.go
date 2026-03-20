@@ -155,7 +155,7 @@ func (f *DetailedFormatter) renderListItems(sb *strings.Builder, items []any, in
 			}
 		default:
 			pad := strings.Repeat(" ", indent)
-			f.writeKeyValueLine(sb, pad+"-", fmt.Sprintf("%v", formatDetailedValue(item)), palette.Key, palette.ScalarColor(item), opts)
+			f.writeKeyValueLine(sb, pad+"-", formatDetailedValue(item), palette.Key, palette.ScalarColor(item), opts)
 		}
 	}
 }

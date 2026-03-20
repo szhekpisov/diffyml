@@ -1093,3 +1093,87 @@ func TestRun_TrueColorAlways(t *testing.T) {
 		t.Errorf("expected 24-bit ANSI color codes in output with TrueColor=always, got: %s", output)
 	}
 }
+
+func TestRun_TrueColorNever_OverridesAutoDetection(t *testing.T) {
+	// Even with COLORTERM=truecolor, --truecolor never should disable TrueColor
+	t.Setenv("COLORTERM", "truecolor")
+
+	yaml1 := "key: value1\n"
+	yaml2 := "key: value2\n"
+
+	cfg := NewCLIConfig()
+	cfg.Output = "detailed"
+	cfg.Color = "always"
+	cfg.TrueColor = "never"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FromContent = []byte(yaml1)
+	rc.ToContent = []byte(yaml2)
+
+	result := Run(cfg, rc)
+	if result.Code == ExitCodeError {
+		t.Fatalf("unexpected error: %v", result.Err)
+	}
+
+	output := stdout.String()
+	// Should use 8-color codes, not 24-bit
+	if strings.Contains(output, "\033[38;2;") {
+		t.Errorf("expected no 24-bit ANSI codes with TrueColor=never, got: %s", output)
+	}
+	if !strings.Contains(output, "\033[") {
+		t.Errorf("expected ANSI color codes with Color=always, got: %s", output)
+	}
+}
+
+func TestRun_TrueColorAuto_EnabledByCOLORTERM(t *testing.T) {
+	t.Setenv("COLORTERM", "truecolor")
+
+	yaml1 := "key: value1\n"
+	yaml2 := "key: value2\n"
+
+	cfg := NewCLIConfig()
+	cfg.Output = "detailed"
+	cfg.Color = "always"
+	cfg.TrueColor = "auto"
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FromContent = []byte(yaml1)
+	rc.ToContent = []byte(yaml2)
+
+	result := Run(cfg, rc)
+	if result.Code == ExitCodeError {
+		t.Fatalf("unexpected error: %v", result.Err)
+	}
+
+	output := stdout.String()
+	if !strings.Contains(output, "\033[38;2;") {
+		t.Errorf("expected 24-bit ANSI codes with COLORTERM=truecolor, got: %s", output)
+	}
+}
+
+func TestDetectTrueColorSupport(t *testing.T) {
+	tests := []struct {
+		name     string
+		value    string
+		expected bool
+	}{
+		{"truecolor", "truecolor", true},
+		{"24bit", "24bit", true},
+		{"empty", "", false},
+		{"256color", "256color", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("COLORTERM", tt.value)
+			if got := detectTrueColorSupport(); got != tt.expected {
+				t.Errorf("detectTrueColorSupport() with COLORTERM=%q = %v, want %v", tt.value, got, tt.expected)
+			}
+		})
+	}
+}

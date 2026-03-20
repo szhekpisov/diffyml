@@ -296,8 +296,9 @@ func entryPalette(diffType DiffType, useTrueColor bool) *YAMLColorPalette {
 		}
 		return cachedFlatRed
 	default:
-		// Neutral palette for unexpected DiffTypes — visually distinct from
-		// additions (green) and removals (red) so misuse is immediately obvious.
+		// Neutral palette — currently unreachable in production (DiffModified and
+		// DiffOrderChanged route through formatChangeDescriptor, not renderEntryValue).
+		// Kept as a safety net for future DiffTypes.
 		if useTrueColor {
 			return cachedNeutralPalette
 		}

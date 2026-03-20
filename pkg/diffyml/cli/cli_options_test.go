@@ -8,6 +8,7 @@ func TestCLIConfig_ToCompareOptions(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.IgnoreOrderChanges = true
 	cfg.IgnoreWhitespaceChanges = true
+	cfg.FormatStrings = true
 	cfg.Swap = true
 	cfg.Chroot = "data"
 
@@ -18,6 +19,9 @@ func TestCLIConfig_ToCompareOptions(t *testing.T) {
 	}
 	if !opts.IgnoreWhitespaceChanges {
 		t.Error("expected IgnoreWhitespaceChanges=true in Options")
+	}
+	if !opts.FormatStrings {
+		t.Error("expected FormatStrings=true in Options")
 	}
 	if !opts.Swap {
 		t.Error("expected Swap=true in Options")

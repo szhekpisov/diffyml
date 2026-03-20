@@ -1,0 +1,17 @@
+Found three differences
+
+data.policy
+  ± whitespace only change
+    - {"effect":"allow","actions":["read","write"],"resources":["*"]}
+    + {↵··"effect":·"allow",↵··"actions":·[↵····"read",↵····"write"↵··],↵··"resources":·[↵····"*"↵··]↵}↵
+
+data.config
+  ± value change
+    - {"debug":false,"timeout":30}
+    + {"debug":true,"timeout":30}
+
+data.notes
+  ± value change
+    - this is a plain string
+    + this is a different string
+

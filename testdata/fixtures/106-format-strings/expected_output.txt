@@ -1,0 +1,12 @@
+Found two differences
+
+data.config
+  ± value change
+    - {"debug":false,"timeout":30}
+    + {"debug":true,"timeout":30}
+
+data.notes
+  ± value change
+    - this is a plain string
+    + this is a different string
+

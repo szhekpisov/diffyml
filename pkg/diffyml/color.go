@@ -259,10 +259,8 @@ var (
 		Null:           TrueColorCode(205, 156, 136),
 		EmptyStructure: TrueColorCode(188, 142, 122),
 	}
-	cachedFlatGreen      = flatPalette(colorGreen)
-	cachedFlatRed        = flatPalette(colorRed)
-	cachedFlatYellow     = flatPalette(colorYellow)
-	cachedTrueColorYellow = flatPalette(TrueColorCode(DetailedYellowR, DetailedYellowG, DetailedYellowB))
+	cachedFlatGreen = flatPalette(colorGreen)
+	cachedFlatRed   = flatPalette(colorRed)
 )
 
 func flatPalette(code string) *YAMLColorPalette {
@@ -288,10 +286,12 @@ func entryPalette(diffType DiffType, useTrueColor bool) *YAMLColorPalette {
 		}
 		return cachedFlatRed
 	default:
+		// Fallback — entryPalette is only called for Added/Removed today,
+		// but return a valid palette to avoid nil panics if new DiffTypes appear.
 		if useTrueColor {
-			return cachedTrueColorYellow
+			return cachedGreenPalette
 		}
-		return cachedFlatYellow
+		return cachedFlatGreen
 	}
 }
 

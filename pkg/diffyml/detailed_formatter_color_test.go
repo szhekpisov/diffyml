@@ -140,10 +140,10 @@ func TestDetailedFormatter_TrueColor_AdditionGreen(t *testing.T) {
 	}
 
 	output := f.Format(diffs, opts)
-	// Scalar list entry uses palette key color (76, 175, 80)
-	expectedKey := "\033[38;2;76;175;80m"
-	if !strings.Contains(output, expectedKey) {
-		t.Errorf("expected palette key green %q for addition, got: %q", expectedKey, output)
+	// Scalar list entry uses palette scalar color (102, 212, 80)
+	expectedScalar := "\033[38;2;102;212;80m"
+	if !strings.Contains(output, expectedScalar) {
+		t.Errorf("expected palette scalar green %q for addition, got: %q", expectedScalar, output)
 	}
 }
 
@@ -158,10 +158,10 @@ func TestDetailedFormatter_TrueColor_RemovalRed(t *testing.T) {
 	}
 
 	output := f.Format(diffs, opts)
-	// Scalar list entry uses palette key color (211, 84, 72)
-	expectedKey := "\033[38;2;211;84;72m"
-	if !strings.Contains(output, expectedKey) {
-		t.Errorf("expected palette key red %q for removal, got: %q", expectedKey, output)
+	// Scalar list entry uses palette scalar color (239, 120, 96)
+	expectedScalar := "\033[38;2;239;120;96m"
+	if !strings.Contains(output, expectedScalar) {
+		t.Errorf("expected palette scalar red %q for removal, got: %q", expectedScalar, output)
 	}
 }
 

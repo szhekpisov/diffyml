@@ -283,6 +283,12 @@ func compareLists(path DiffPath, from, to []any, opts *Options) []Difference {
 		return compareListsUnordered(path, from, to, opts)
 	}
 
+	// For lists of maps without identifiers, use similarity-based matching
+	// to handle reordering, insertions, and removals correctly.
+	if allItemsAreMaps(from, to) {
+		return compareListsBySimilarity(path, from, to, opts)
+	}
+
 	return compareListsPositional(path, from, to, opts)
 }
 
@@ -344,7 +350,6 @@ func areListItemsHeterogeneous(from, to []any) bool {
 	return false
 }
 
-// areListsMaps checks if all items in a list are maps
 // compareListsPositional compares lists by position.
 func compareListsPositional(path DiffPath, from, to []any, opts *Options) []Difference {
 	var diffs []Difference
@@ -421,6 +426,276 @@ func compareListsUnordered(path DiffPath, from, to []any, opts *Options) []Diffe
 	}
 
 	return diffs
+}
+
+// allItemsAreMaps returns true if all items in both lists are maps (*OrderedMap or map[string]any).
+// At least one list must be non-empty.
+func allItemsAreMaps(from, to []any) bool {
+	if len(from) == 0 && len(to) == 0 {
+		return false
+	}
+	for _, item := range from {
+		switch item.(type) {
+		case *OrderedMap, map[string]any:
+		default:
+			return false
+		}
+	}
+	for _, item := range to {
+		switch item.(type) {
+		case *OrderedMap, map[string]any:
+		default:
+			return false
+		}
+	}
+	return true
+}
+
+// extractMapKeysVals returns keys and a values map from an OrderedMap or map[string]any.
+func extractMapKeysVals(item any) ([]string, map[string]any) {
+	switch v := item.(type) {
+	case *OrderedMap:
+		return v.Keys, v.Values
+	case map[string]any:
+		keys := make([]string, 0, len(v))
+		for k := range v {
+			keys = append(keys, k)
+		}
+		return keys, v
+	default:
+		return nil, nil
+	}
+}
+
+// mapSimilarity returns a similarity score (0-100) between two map items.
+// The score is the proportion of shared keys with deeply-equal values.
+func mapSimilarity(from, to any, opts *Options) int {
+	_, fromVals := extractMapKeysVals(from)
+	_, toVals := extractMapKeysVals(to)
+
+	if len(fromVals) == 0 && len(toVals) == 0 {
+		return 0
+	}
+
+	matching := 0
+	for k, fv := range fromVals {
+		if tv, ok := toVals[k]; ok && deepEqual(fv, tv, opts) {
+			matching++
+		}
+	}
+
+	// Union size = len(fromVals) + keys only in toVals.
+	onlyInTo := 0
+	for k := range toVals {
+		if _, ok := fromVals[k]; !ok {
+			onlyInTo++
+		}
+	}
+
+	return matching * 100 / (len(fromVals) + onlyInTo)
+}
+
+// compareListsBySimilarity compares lists of maps by finding the best structural
+// match between from/to items using field-level similarity scoring.
+func compareListsBySimilarity(path DiffPath, from, to []any, opts *Options) []Difference {
+	var diffs []Difference
+
+	fromMatched := make([]bool, len(from))
+	toMatched := make([]bool, len(to))
+	matchedPairs := make(map[int]int) // from index -> to index
+
+	// Phase 1: Try positional matches first (O(n) for the common case),
+	// then fall back to N*M scan for remaining unmatched items.
+	for i := range from {
+		if i < len(to) && deepEqual(from[i], to[i], opts) {
+			fromMatched[i] = true
+			toMatched[i] = true
+			matchedPairs[i] = i
+		}
+	}
+
+	// Check if everything matched positionally — early return.
+	if len(from) == len(to) {
+		allMatched := true
+		for i := range from {
+			if !fromMatched[i] {
+				allMatched = false
+				break
+			}
+		}
+		if allMatched {
+			return nil
+		}
+	}
+
+	// N*M scan for remaining unmatched items.
+	for i, fromItem := range from {
+		if fromMatched[i] {
+			continue
+		}
+		for j, toItem := range to {
+			if toMatched[j] {
+				continue
+			}
+			if deepEqual(fromItem, toItem, opts) {
+				fromMatched[i] = true
+				toMatched[j] = true
+				matchedPairs[i] = j
+				break
+			}
+		}
+	}
+
+	// Phase 2: Score remaining unmatched pairs by similarity.
+	type similarityPair struct {
+		fromIdx int
+		toIdx   int
+		score   int
+	}
+	var pairs []similarityPair
+	for i := range from {
+		if fromMatched[i] {
+			continue
+		}
+		for j := range to {
+			if toMatched[j] {
+				continue
+			}
+			score := mapSimilarity(from[i], to[j], opts)
+			if score > 0 {
+				pairs = append(pairs, similarityPair{fromIdx: i, toIdx: j, score: score})
+			}
+		}
+	}
+
+	// Sort by score descending, then by index for stability.
+	slices.SortStableFunc(pairs, func(a, b similarityPair) int {
+		return cmp.Or(
+			cmp.Compare(b.score, a.score),
+			cmp.Compare(a.fromIdx, b.fromIdx),
+			cmp.Compare(a.toIdx, b.toIdx),
+		)
+	})
+
+	// Greedy assignment.
+	for _, pair := range pairs {
+		if fromMatched[pair.fromIdx] || toMatched[pair.toIdx] {
+			continue
+		}
+		fromMatched[pair.fromIdx] = true
+		toMatched[pair.toIdx] = true
+		matchedPairs[pair.fromIdx] = pair.toIdx
+	}
+
+	// Phase 3: Positional fallback for remaining unmatched items.
+	// When similarity can't distinguish items (e.g., single-key maps where
+	// the only field changed), pair remaining items positionally.
+	var unmatchedFrom, unmatchedTo []int
+	for i := range from {
+		if !fromMatched[i] {
+			unmatchedFrom = append(unmatchedFrom, i)
+		}
+	}
+	for j := range to {
+		if !toMatched[j] {
+			unmatchedTo = append(unmatchedTo, j)
+		}
+	}
+
+	minUnmatched := min(len(unmatchedFrom), len(unmatchedTo))
+	for k := range minUnmatched {
+		i, j := unmatchedFrom[k], unmatchedTo[k]
+		fromMatched[i] = true
+		toMatched[j] = true
+		matchedPairs[i] = j
+	}
+
+	// Detect order changes among all matched items (after all pairing is done).
+	if opts == nil || !opts.IgnoreOrderChanges {
+		if orderDiff := detectSimilarityOrderChanges(path, from, to, matchedPairs); orderDiff != nil {
+			diffs = append(diffs, *orderDiff)
+		}
+	}
+
+	// Compare all matched pairs — recurse for field-level diffs.
+	for i, j := range matchedPairs {
+		childPath := path.Append(strconv.Itoa(j))
+		diffs = append(diffs, compareNodes(childPath, from[i], to[j], opts)...)
+	}
+
+	// Report remaining removed items.
+	for _, i := range unmatchedFrom[minUnmatched:] {
+		diffs = append(diffs, Difference{
+			Path: path.Append(strconv.Itoa(i)),
+			Type: DiffRemoved,
+			From: from[i],
+			To:   nil,
+		})
+	}
+
+	// Report remaining added items.
+	for _, j := range unmatchedTo[minUnmatched:] {
+		diffs = append(diffs, Difference{
+			Path: path.Append(strconv.Itoa(j)),
+			Type: DiffAdded,
+			From: nil,
+			To:   to[j],
+		})
+	}
+
+	return diffs
+}
+
+// detectSimilarityOrderChanges detects order changes among similarity-matched list items.
+func detectSimilarityOrderChanges(path DiffPath, from, to []any, matchedPairs map[int]int) *Difference {
+	if len(matchedPairs) < 2 {
+		return nil
+	}
+
+	// Collect matched pairs sorted by from-index.
+	type idxPair struct{ fromIdx, toIdx int }
+	sorted := make([]idxPair, 0, len(matchedPairs))
+	for fi, ti := range matchedPairs {
+		sorted = append(sorted, idxPair{fi, ti})
+	}
+	slices.SortFunc(sorted, func(a, b idxPair) int {
+		return cmp.Compare(a.fromIdx, b.fromIdx)
+	})
+
+	// Check if to-indices are monotonically increasing.
+	orderChanged := false
+	for i := 1; i < len(sorted); i++ {
+		if sorted[i].toIdx < sorted[i-1].toIdx {
+			orderChanged = true
+			break
+		}
+	}
+
+	if !orderChanged {
+		return nil
+	}
+
+	// Build from/to order representations using the actual list items.
+	fromOrder := make([]any, len(sorted))
+	for i, p := range sorted {
+		fromOrder[i] = from[p.fromIdx]
+	}
+	toSorted := make([]idxPair, len(sorted))
+	copy(toSorted, sorted)
+	slices.SortFunc(toSorted, func(a, b idxPair) int {
+		return cmp.Compare(a.toIdx, b.toIdx)
+	})
+	toOrder := make([]any, len(toSorted))
+	for i, p := range toSorted {
+		toOrder[i] = to[p.toIdx]
+	}
+
+	return &Difference{
+		Path: path,
+		Type: DiffOrderChanged,
+		From: fromOrder,
+		To:   toOrder,
+	}
 }
 
 // canMatchByIdentifier checks if list items can be matched by identifier.

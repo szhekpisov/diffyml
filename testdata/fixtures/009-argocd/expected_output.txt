@@ -1,4 +1,4 @@
-Found 313 differences
+Found 304 differences
 
 spec.versions.v1alpha1.schema.openAPIV3Schema.properties.operation.properties.retry.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applications.argoproj.io)
   + one map entry added:
@@ -1039,142 +1039,90 @@ rules.5.verbs.2  (rbac.authorization.k8s.io/v1/Role/argocd-applicationset-contro
   - one list entry removed:
     - watch
 
+rules  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
+  ⇆ order changed
+    - &{[apiGroups resources verbs] map[apiGroups:[argoproj.io] resources:[applications applicationsets applicationsets/finalizers] verbs:[create delete get list patch update watch]]}, &{[apiGroups resources verbs] map[apiGroups:[argoproj.io] resources:[applicationsets/status] verbs:[get patch update]]}, &{[apiGroups resources verbs] map[apiGroups:[argoproj.io] resources:[appprojects] verbs:[get list watch]]}, &{[apiGroups resources verbs] map[apiGroups:[] resources:[events] verbs:[create get list patch watch]]}, &{[apiGroups resources verbs] map[apiGroups:[] resources:[configmaps] verbs:[create update delete get list patch watch]]}, &{[apiGroups resources verbs] map[apiGroups:[] resources:[secrets] verbs:[get list watch]]}, &{[apiGroups resources verbs] map[apiGroups:[coordination.k8s.io] resources:[leases] verbs:[create delete get list patch update watch]]}
+    + &{[apiGroups resources verbs] map[apiGroups:[argoproj.io] resources:[applications applicationsets applicationsets/finalizers] verbs:[create delete get list patch update watch]]}, &{[apiGroups resources verbs] map[apiGroups:[argoproj.io] resources:[appprojects] verbs:[get list watch]]}, &{[apiGroups resources verbs] map[apiGroups:[argoproj.io] resources:[applicationsets/status] verbs:[get patch update]]}, &{[apiGroups resources verbs] map[apiGroups:[] resources:[events] verbs:[create get list patch watch]]}, &{[apiGroups resources verbs] map[apiGroups:[] resources:[secrets configmaps] verbs:[get list watch]]}, &{[apiGroups resources verbs] map[apiGroups:[coordination.k8s.io] resources:[leases] verbs:[create]]}, &{[apiGroups resourceNames resources verbs] map[apiGroups:[coordination.k8s.io] resourceNames:[58ac56fa.applicationsets.argoproj.io] resources:[leases] verbs:[get update create]]}
+
 rules.6  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
+  - one list entry removed:
+    - apiGroups:
+        - apps
+        - extensions
+      resources:
+        - deployments
+      verbs:
+        - get
+        - list
+        - watch
+
   + one list entry added:
     - resourceNames:
         - 58ac56fa.applicationsets.argoproj.io
-
-rules.7  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
-  - one list entry removed:
-    - apiGroups:
-        - coordination.k8s.io
-      resources:
-        - leases
-      verbs:
-        - create
-        - delete
-        - get
-        - list
-        - patch
-        - update
-        - watch
-
-rules.1.resources.0  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
-  ± value change
-    - applicationsets/status
-    + appprojects
-
-rules.1.verbs.1  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
-  ± value change
-    - patch
-    + list
-
-rules.1.verbs.2  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
-  ± value change
-    - update
-    + watch
-
-rules.2.resources.0  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
-  ± value change
-    - appprojects
-    + applicationsets/status
-
-rules.2.verbs.1  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
-  ± value change
-    - list
-    + patch
-
-rules.2.verbs.2  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
-  ± value change
-    - watch
-    + update
-
-rules.4.resources.0  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
-  ± value change
-    - configmaps
-    + secrets
 
 rules.4.resources.1  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   + one list entry added:
     - configmaps
 
-rules.4.verbs.0  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
-  ± value change
-    - create
-    + get
-
-rules.4.verbs.1  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
-  ± value change
-    - update
-    + list
-
-rules.4.verbs.2  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
-  ± value change
+rules.5.verbs.1  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
+  - one list entry removed:
     - delete
-    + watch
 
-rules.4.verbs.3  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
+rules.5.verbs.2  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   - one list entry removed:
     - get
 
-rules.4.verbs.4  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
+rules.5.verbs.3  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   - one list entry removed:
     - list
 
-rules.4.verbs.5  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
+rules.5.verbs.4  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   - one list entry removed:
     - patch
 
-rules.4.verbs.6  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
+rules.5.verbs.5  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   - one list entry removed:
-    - watch
+    - update
 
-rules.5.apiGroups.0  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
-  ± value change
-    - 
-    + coordination.k8s.io
-
-rules.5.resources.0  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
-  ± value change
-    - secrets
-    + leases
-
-rules.5.verbs.0  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
-  ± value change
-    - get
-    + create
-
-rules.5.verbs.1  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
-  - one list entry removed:
-    - list
-
-rules.5.verbs.2  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
+rules.5.verbs.6  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   - one list entry removed:
     - watch
 
 rules.6.apiGroups.0  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   ± value change
-    - apps
+    - 
     + coordination.k8s.io
-
-rules.6.apiGroups.1  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
-  - one list entry removed:
-    - extensions
 
 rules.6.resources.0  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   ± value change
-    - deployments
+    - configmaps
     + leases
 
-rules.6.verbs.1  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
+rules.6.verbs.0  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   ± value change
-    - list
-    + update
+    - create
+    + get
 
 rules.6.verbs.2  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
   ± value change
-    - watch
+    - delete
     + create
+
+rules.6.verbs.3  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
+  - one list entry removed:
+    - get
+
+rules.6.verbs.4  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
+  - one list entry removed:
+    - list
+
+rules.6.verbs.5  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
+  - one list entry removed:
+    - patch
+
+rules.6.verbs.6  (rbac.authorization.k8s.io/v1/ClusterRole/argocd-applicationset-controller)
+  - one list entry removed:
+    - watch
 
 spec.versions.v1alpha1.schema.openAPIV3Schema.properties.status.properties  (apiextensions.k8s.io/v1/CustomResourceDefinition/applicationsets.argoproj.io)
   + one map entry added:

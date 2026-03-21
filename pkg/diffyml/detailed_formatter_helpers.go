@@ -84,6 +84,22 @@ func formatDetailedValue(val any) string {
 	if t, ok := val.(time.Time); ok {
 		return formatTimestamp(t)
 	}
+	// Compact inline representation for maps (e.g., {path: /api, pathType: Prefix})
+	if keys, vals := extractMapKeysVals(val); keys != nil {
+		var parts []string
+		for _, k := range keys {
+			v := vals[k]
+			switch v.(type) {
+			case *OrderedMap, map[string]any, []any:
+				continue // skip nested structures
+			default:
+				parts = append(parts, fmt.Sprintf("%s: %v", k, v))
+			}
+		}
+		if len(parts) > 0 {
+			return "{" + strings.Join(parts, ", ") + "}"
+		}
+	}
 	return fmt.Sprintf("%v", val)
 }
 

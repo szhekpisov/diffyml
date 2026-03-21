@@ -462,6 +462,7 @@ func extractMapKeysVals(item any) ([]string, map[string]any) {
 		for k := range v {
 			keys = append(keys, k)
 		}
+		slices.Sort(keys)
 		return keys, v
 	default:
 		return nil, nil

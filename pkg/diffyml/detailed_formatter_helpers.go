@@ -95,7 +95,7 @@ func formatDetailedValue(val any) string {
 			case []any:
 				elems := make([]string, len(vt))
 				for i, e := range vt {
-					elems[i] = fmt.Sprintf("%v", e)
+					elems[i] = formatDetailedValue(e)
 				}
 				parts = append(parts, fmt.Sprintf("%s: [%s]", k, strings.Join(elems, ", ")))
 			default:

@@ -2119,3 +2119,184 @@ func TestDetailedFormatter_DocumentName(t *testing.T) {
 		t.Errorf("should not contain numeric index when name is set, got: %q", output)
 	}
 }
+
+// Tests for allItemsAreMaps
+
+func TestAllItemsAreMaps_BothEmpty(t *testing.T) {
+	if allItemsAreMaps(nil, nil) {
+		t.Error("expected false for two empty lists")
+	}
+}
+
+func TestAllItemsAreMaps_OneEmpty(t *testing.T) {
+	om := &OrderedMap{Keys: []string{"k"}, Values: map[string]any{"k": "v"}}
+	if !allItemsAreMaps([]any{om}, nil) {
+		t.Error("expected true when from has maps and to is empty")
+	}
+	if !allItemsAreMaps(nil, []any{om}) {
+		t.Error("expected true when from is empty and to has maps")
+	}
+}
+
+func TestAllItemsAreMaps_MixedTypes(t *testing.T) {
+	om := &OrderedMap{Keys: []string{"k"}, Values: map[string]any{"k": "v"}}
+	if allItemsAreMaps([]any{om, "string"}, []any{om}) {
+		t.Error("expected false when from contains a non-map item")
+	}
+}
+
+func TestAllItemsAreMaps_PlainMaps(t *testing.T) {
+	m := map[string]any{"k": "v"}
+	if !allItemsAreMaps([]any{m}, []any{m}) {
+		t.Error("expected true for plain map[string]any items")
+	}
+}
+
+// Tests for extractMapKeysVals
+
+func TestExtractMapKeysVals_OrderedMap(t *testing.T) {
+	om := &OrderedMap{Keys: []string{"b", "a"}, Values: map[string]any{"a": 1, "b": 2}}
+	keys, vals := extractMapKeysVals(om)
+	if len(keys) != 2 || keys[0] != "b" || keys[1] != "a" {
+		t.Errorf("expected keys [b, a] preserving OrderedMap order, got %v", keys)
+	}
+	if vals["a"] != 1 || vals["b"] != 2 {
+		t.Errorf("unexpected vals: %v", vals)
+	}
+}
+
+func TestExtractMapKeysVals_PlainMap(t *testing.T) {
+	m := map[string]any{"c": 3, "a": 1, "b": 2}
+	keys, vals := extractMapKeysVals(m)
+	if len(keys) != 3 {
+		t.Fatalf("expected 3 keys, got %d", len(keys))
+	}
+	// Keys should be sorted for map[string]any
+	if keys[0] != "a" || keys[1] != "b" || keys[2] != "c" {
+		t.Errorf("expected sorted keys [a, b, c], got %v", keys)
+	}
+	if vals["a"] != 1 {
+		t.Errorf("unexpected vals: %v", vals)
+	}
+}
+
+func TestExtractMapKeysVals_NonMap(t *testing.T) {
+	keys, vals := extractMapKeysVals("not a map")
+	if keys != nil || vals != nil {
+		t.Errorf("expected nil for non-map, got keys=%v vals=%v", keys, vals)
+	}
+}
+
+// Tests for mapSimilarity
+
+func TestMapSimilarity_Identical(t *testing.T) {
+	a := &OrderedMap{Keys: []string{"x", "y"}, Values: map[string]any{"x": 1, "y": 2}}
+	b := &OrderedMap{Keys: []string{"x", "y"}, Values: map[string]any{"x": 1, "y": 2}}
+	score := mapSimilarity(a, b, nil)
+	if score != 100 {
+		t.Errorf("expected 100, got %d", score)
+	}
+}
+
+func TestMapSimilarity_DisjointKeys(t *testing.T) {
+	a := &OrderedMap{Keys: []string{"x"}, Values: map[string]any{"x": 1}}
+	b := &OrderedMap{Keys: []string{"y"}, Values: map[string]any{"y": 2}}
+	score := mapSimilarity(a, b, nil)
+	if score != 0 {
+		t.Errorf("expected 0 for disjoint keys, got %d", score)
+	}
+}
+
+func TestMapSimilarity_PartialOverlap(t *testing.T) {
+	a := &OrderedMap{Keys: []string{"x", "y", "z"}, Values: map[string]any{"x": 1, "y": 2, "z": 3}}
+	b := &OrderedMap{Keys: []string{"x", "y", "z"}, Values: map[string]any{"x": 1, "y": 2, "z": 99}}
+	score := mapSimilarity(a, b, nil)
+	// 2 matching out of 3 union keys = 66
+	if score != 66 {
+		t.Errorf("expected 66, got %d", score)
+	}
+}
+
+func TestMapSimilarity_BothEmpty(t *testing.T) {
+	a := &OrderedMap{Keys: nil, Values: map[string]any{}}
+	b := &OrderedMap{Keys: nil, Values: map[string]any{}}
+	score := mapSimilarity(a, b, nil)
+	if score != 0 {
+		t.Errorf("expected 0 for empty maps, got %d", score)
+	}
+}
+
+// Tests for detectSimilarityOrderChanges
+
+func TestDetectSimilarityOrderChanges_NoChange(t *testing.T) {
+	from := []any{"a", "b", "c"}
+	to := []any{"a", "b", "c"}
+	pairs := map[int]int{0: 0, 1: 1, 2: 2}
+	diff := detectSimilarityOrderChanges(DiffPath{"list"}, from, to, pairs)
+	if diff != nil {
+		t.Error("expected nil for no order change")
+	}
+}
+
+func TestDetectSimilarityOrderChanges_Reordered(t *testing.T) {
+	from := []any{"a", "b", "c"}
+	to := []any{"c", "b", "a"}
+	pairs := map[int]int{0: 2, 1: 1, 2: 0}
+	diff := detectSimilarityOrderChanges(DiffPath{"list"}, from, to, pairs)
+	if diff == nil {
+		t.Fatal("expected order change diff")
+	}
+	if diff.Type != DiffOrderChanged {
+		t.Errorf("expected DiffOrderChanged, got %v", diff.Type)
+	}
+}
+
+func TestDetectSimilarityOrderChanges_SinglePair(t *testing.T) {
+	from := []any{"a"}
+	to := []any{"a"}
+	pairs := map[int]int{0: 0}
+	diff := detectSimilarityOrderChanges(DiffPath{"list"}, from, to, pairs)
+	if diff != nil {
+		t.Error("expected nil for single pair")
+	}
+}
+
+// Tests for formatDetailedValue with maps
+
+func TestFormatDetailedValue_OrderedMap(t *testing.T) {
+	om := &OrderedMap{Keys: []string{"path", "backend"}, Values: map[string]any{"path": "/api", "backend": "svc"}}
+	result := formatDetailedValue(om)
+	expected := "{path: /api, backend: svc}"
+	if result != expected {
+		t.Errorf("got %q, want %q", result, expected)
+	}
+}
+
+func TestFormatDetailedValue_MapWithNestedMap(t *testing.T) {
+	inner := &OrderedMap{Keys: []string{"a"}, Values: map[string]any{"a": 1}}
+	outer := &OrderedMap{Keys: []string{"nested"}, Values: map[string]any{"nested": inner}}
+	result := formatDetailedValue(outer)
+	expected := "{nested: {...}}"
+	if result != expected {
+		t.Errorf("got %q, want %q", result, expected)
+	}
+}
+
+func TestFormatDetailedValue_MapWithArray(t *testing.T) {
+	om := &OrderedMap{Keys: []string{"verbs"}, Values: map[string]any{"verbs": []any{"get", "list"}}}
+	result := formatDetailedValue(om)
+	expected := "{verbs: [get, list]}"
+	if result != expected {
+		t.Errorf("got %q, want %q", result, expected)
+	}
+}
+
+func TestFormatDetailedValue_MapWithNestedMapInArray(t *testing.T) {
+	inner := &OrderedMap{Keys: []string{"k"}, Values: map[string]any{"k": "v"}}
+	om := &OrderedMap{Keys: []string{"items"}, Values: map[string]any{"items": []any{inner}}}
+	result := formatDetailedValue(om)
+	expected := "{items: [{k: v}]}"
+	if result != expected {
+		t.Errorf("got %q, want %q", result, expected)
+	}
+}

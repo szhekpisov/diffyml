@@ -2773,6 +2773,46 @@ func TestCompare_SimilarityMatching_IdentifierListStillByIdentifier(t *testing.T
 	}
 }
 
+func TestCompare_SimilarityMatching_AllRemoved(t *testing.T) {
+	from := yml(`items:
+  - key: a
+    val: 1
+  - key: b
+    val: 2`)
+	to := yml(`items: []`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if len(diffs) != 2 {
+		t.Fatalf("expected 2 diffs (two removed), got %d", len(diffs))
+	}
+	for _, d := range diffs {
+		if d.Type != diffyml.DiffRemoved {
+			t.Errorf("expected DiffRemoved, got %v", d.Type)
+		}
+	}
+}
+
+func TestCompare_SimilarityMatching_AllAdded(t *testing.T) {
+	from := yml(`items: []`)
+	to := yml(`items:
+  - key: a
+    val: 1`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if len(diffs) != 1 {
+		t.Fatalf("expected 1 diff (added), got %d", len(diffs))
+	}
+	if diffs[0].Type != diffyml.DiffAdded {
+		t.Errorf("expected DiffAdded, got %v", diffs[0].Type)
+	}
+}
+
 func TestCompare_SimilarityMatching_NoChanges(t *testing.T) {
 	from := yml(`paths:
   - path: /api

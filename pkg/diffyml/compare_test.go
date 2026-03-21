@@ -2570,3 +2570,226 @@ func TestCompare_DuplicateListEntries(t *testing.T) {
 		t.Errorf("expected DiffAdded, got %v", diffs[0].Type)
 	}
 }
+
+// Tests for similarity-based list matching (compareListsBySimilarity)
+
+func TestCompare_SimilarityMatching_Reorder(t *testing.T) {
+	from := yml(`paths:
+  - path: /api
+    pathType: Prefix
+    backend: api-svc
+  - path: /static
+    pathType: Prefix
+    backend: static-svc
+  - path: /docs
+    pathType: Prefix
+    backend: docs-svc`)
+	to := yml(`paths:
+  - path: /docs
+    pathType: Prefix
+    backend: docs-svc
+  - path: /static
+    pathType: Prefix
+    backend: static-svc
+  - path: /api
+    pathType: Prefix
+    backend: api-svc`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if len(diffs) != 1 {
+		t.Fatalf("expected 1 diff (order changed), got %d", len(diffs))
+	}
+	if diffs[0].Type != diffyml.DiffOrderChanged {
+		t.Errorf("expected DiffOrderChanged, got %v", diffs[0].Type)
+	}
+}
+
+func TestCompare_SimilarityMatching_SingleFieldChange(t *testing.T) {
+	from := yml(`paths:
+  - path: /old-api
+    pathType: Prefix
+    backend: api-svc
+  - path: /static
+    pathType: Prefix
+    backend: static-svc`)
+	to := yml(`paths:
+  - path: /new-api
+    pathType: Prefix
+    backend: api-svc
+  - path: /static
+    pathType: Prefix
+    backend: static-svc`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if len(diffs) != 1 {
+		t.Fatalf("expected 1 diff (value change), got %d", len(diffs))
+	}
+	if diffs[0].Type != diffyml.DiffModified {
+		t.Errorf("expected DiffModified, got %v", diffs[0].Type)
+	}
+	if diffs[0].From != "/old-api" || diffs[0].To != "/new-api" {
+		t.Errorf("expected path change /old-api -> /new-api, got %v -> %v", diffs[0].From, diffs[0].To)
+	}
+}
+
+func TestCompare_SimilarityMatching_ReorderWithModification(t *testing.T) {
+	from := yml(`paths:
+  - path: /api
+    pathType: Prefix
+    backend: api-svc
+  - path: /static
+    pathType: Prefix
+    backend: static-svc`)
+	to := yml(`paths:
+  - path: /static
+    pathType: Prefix
+    backend: static-svc
+  - path: /api
+    pathType: Exact
+    backend: api-svc`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+
+	hasOrderChange := false
+	hasModified := false
+	for _, d := range diffs {
+		if d.Type == diffyml.DiffOrderChanged {
+			hasOrderChange = true
+		}
+		if d.Type == diffyml.DiffModified {
+			hasModified = true
+		}
+	}
+	if !hasOrderChange {
+		t.Error("expected DiffOrderChanged")
+	}
+	if !hasModified {
+		t.Error("expected DiffModified for pathType change")
+	}
+}
+
+func TestCompare_SimilarityMatching_InsertInMiddle(t *testing.T) {
+	from := yml(`items:
+  - key: a
+    val: 1
+  - key: c
+    val: 3`)
+	to := yml(`items:
+  - key: a
+    val: 1
+  - key: b
+    val: 2
+  - key: c
+    val: 3`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if len(diffs) != 1 {
+		t.Fatalf("expected 1 diff (added), got %d", len(diffs))
+	}
+	if diffs[0].Type != diffyml.DiffAdded {
+		t.Errorf("expected DiffAdded, got %v", diffs[0].Type)
+	}
+}
+
+func TestCompare_SimilarityMatching_RemoveFromMiddle(t *testing.T) {
+	from := yml(`items:
+  - key: a
+    val: 1
+  - key: b
+    val: 2
+  - key: c
+    val: 3`)
+	to := yml(`items:
+  - key: a
+    val: 1
+  - key: c
+    val: 3`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if len(diffs) != 1 {
+		t.Fatalf("expected 1 diff (removed), got %d", len(diffs))
+	}
+	if diffs[0].Type != diffyml.DiffRemoved {
+		t.Errorf("expected DiffRemoved, got %v", diffs[0].Type)
+	}
+}
+
+func TestCompare_SimilarityMatching_ScalarListStillPositional(t *testing.T) {
+	from := yml(`items: [a, b, c]`)
+	to := yml(`items: [c, b, a]`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	// Scalar lists use positional matching: items[0] a->c, items[2] c->a = 2 diffs
+	if len(diffs) != 2 {
+		t.Fatalf("expected 2 diffs (positional), got %d", len(diffs))
+	}
+	for _, d := range diffs {
+		if d.Type != diffyml.DiffModified {
+			t.Errorf("expected DiffModified, got %v", d.Type)
+		}
+	}
+}
+
+func TestCompare_SimilarityMatching_IdentifierListStillByIdentifier(t *testing.T) {
+	from := yml(`items:
+  - name: foo
+    val: 1
+  - name: bar
+    val: 2`)
+	to := yml(`items:
+  - name: bar
+    val: 2
+  - name: foo
+    val: 1`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	// Should use identifier-based matching (has "name" field), report order change
+	if len(diffs) != 1 {
+		t.Fatalf("expected 1 diff (order changed), got %d", len(diffs))
+	}
+	if diffs[0].Type != diffyml.DiffOrderChanged {
+		t.Errorf("expected DiffOrderChanged, got %v", diffs[0].Type)
+	}
+}
+
+func TestCompare_SimilarityMatching_NoChanges(t *testing.T) {
+	from := yml(`paths:
+  - path: /api
+    backend: api-svc
+  - path: /static
+    backend: static-svc`)
+	to := yml(`paths:
+  - path: /api
+    backend: api-svc
+  - path: /static
+    backend: static-svc`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if len(diffs) != 0 {
+		t.Fatalf("expected 0 diffs, got %d", len(diffs))
+	}
+}

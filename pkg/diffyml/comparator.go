@@ -10,6 +10,7 @@ import (
 	"cmp"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"slices"
 	"sort"
 	"strconv"
@@ -618,7 +619,9 @@ func compareListsBySimilarity(path DiffPath, from, to []any, opts *Options) []Di
 	}
 
 	// Compare all matched pairs — recurse for field-level diffs.
-	for i, j := range matchedPairs {
+	// Iterate in sorted order for deterministic output.
+	for _, i := range slices.Sorted(maps.Keys(matchedPairs)) {
+		j := matchedPairs[i]
 		childPath := path.Append(strconv.Itoa(j))
 		diffs = append(diffs, compareNodes(childPath, from[i], to[j], opts)...)
 	}

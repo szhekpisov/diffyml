@@ -89,16 +89,20 @@ func formatDetailedValue(val any) string {
 		var parts []string
 		for _, k := range keys {
 			v := vals[k]
-			switch v.(type) {
-			case *OrderedMap, map[string]any, []any:
-				continue // skip nested structures
+			switch vt := v.(type) {
+			case *OrderedMap, map[string]any:
+				parts = append(parts, fmt.Sprintf("%s: {...}", k))
+			case []any:
+				elems := make([]string, len(vt))
+				for i, e := range vt {
+					elems[i] = fmt.Sprintf("%v", e)
+				}
+				parts = append(parts, fmt.Sprintf("%s: [%s]", k, strings.Join(elems, ", ")))
 			default:
 				parts = append(parts, fmt.Sprintf("%s: %v", k, v))
 			}
 		}
-		if len(parts) > 0 {
-			return "{" + strings.Join(parts, ", ") + "}"
-		}
+		return "{" + strings.Join(parts, ", ") + "}"
 	}
 	return fmt.Sprintf("%v", val)
 }

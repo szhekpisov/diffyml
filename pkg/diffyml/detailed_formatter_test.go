@@ -2300,3 +2300,84 @@ func TestFormatDetailedValue_MapWithNestedMapInArray(t *testing.T) {
 		t.Errorf("got %q, want %q", result, expected)
 	}
 }
+
+// Tests for compareListsBySimilarity internals
+
+func TestCompareListsBySimilarity_DefaultOpts(t *testing.T) {
+	// Calling with default opts should detect order changes.
+	a := &OrderedMap{Keys: []string{"k"}, Values: map[string]any{"k": "1"}}
+	b := &OrderedMap{Keys: []string{"k"}, Values: map[string]any{"k": "2"}}
+	from := []any{a, b}
+	to := []any{b, a}
+	diffs := compareListsBySimilarity(DiffPath{"list"}, from, to, &Options{})
+	hasOrder := false
+	for _, d := range diffs {
+		if d.Type == DiffOrderChanged {
+			hasOrder = true
+		}
+	}
+	if !hasOrder {
+		t.Error("expected DiffOrderChanged with default opts")
+	}
+}
+
+func TestCompareListsBySimilarity_IgnoreOrderChanges(t *testing.T) {
+	a := &OrderedMap{Keys: []string{"k"}, Values: map[string]any{"k": "1"}}
+	b := &OrderedMap{Keys: []string{"k"}, Values: map[string]any{"k": "2"}}
+	from := []any{a, b}
+	to := []any{b, a}
+	opts := &Options{IgnoreOrderChanges: true}
+	diffs := compareListsBySimilarity(DiffPath{"list"}, from, to, opts)
+	for _, d := range diffs {
+		if d.Type == DiffOrderChanged {
+			t.Error("expected no DiffOrderChanged with IgnoreOrderChanges=true")
+		}
+	}
+}
+
+func TestDetectSimilarityOrderChanges_AdjacentPositions(t *testing.T) {
+	// Items at adjacent positions: from[0]→to[1], from[1]→to[0].
+	// toIdx sequence is [1, 0] which is not monotonically increasing (1 > 0 fails at i=1).
+	// With boundary mutant (<= instead of <), toIdx[1]=0 <= toIdx[0]=1 would also trigger,
+	// but for equal values like [0,0] it should NOT trigger — this can't happen naturally
+	// since to-indices are unique. Test that adjacent swap is detected.
+	from := []any{"a", "b"}
+	to := []any{"b", "a"}
+	pairs := map[int]int{0: 1, 1: 0}
+	diff := detectSimilarityOrderChanges(DiffPath{"list"}, from, to, pairs)
+	if diff == nil {
+		t.Fatal("expected order change for adjacent swap")
+	}
+	if diff.Type != DiffOrderChanged {
+		t.Errorf("expected DiffOrderChanged, got %v", diff.Type)
+	}
+}
+
+func TestCompareListsBySimilarity_ScoreZeroNotMatched(t *testing.T) {
+	// Two items with shared keys but all values different → similarity score = 0.
+	// They must NOT be matched by similarity (score > 0 gate) but by positional fallback.
+	// Verify by checking that items pair positionally (from[0]→to[0], from[1]→to[1]).
+	from := []any{
+		&OrderedMap{Keys: []string{"a", "b"}, Values: map[string]any{"a": "x", "b": "y"}},
+		&OrderedMap{Keys: []string{"a", "b"}, Values: map[string]any{"a": "p", "b": "q"}},
+	}
+	to := []any{
+		&OrderedMap{Keys: []string{"a", "b"}, Values: map[string]any{"a": "m", "b": "n"}},
+		&OrderedMap{Keys: []string{"a", "b"}, Values: map[string]any{"a": "s", "b": "t"}},
+	}
+	diffs := compareListsBySimilarity(DiffPath{"list"}, from, to, &Options{})
+	// Positional: from[0]→to[0] (2 diffs), from[1]→to[1] (2 diffs) = 4 total.
+	// No order change since positional pairs preserve order.
+	modCount := 0
+	for _, d := range diffs {
+		if d.Type == DiffOrderChanged {
+			t.Error("expected no order change for positional fallback")
+		}
+		if d.Type == DiffModified {
+			modCount++
+		}
+	}
+	if modCount != 4 {
+		t.Errorf("expected 4 modified diffs (positional fallback), got %d", modCount)
+	}
+}

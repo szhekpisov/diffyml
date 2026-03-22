@@ -564,9 +564,10 @@ func compareListsBySimilarity(path DiffPath, from, to []any, opts *Options) []Di
 				continue
 			}
 			score := mapSimilarity(from[i], to[j], opts)
-			if score > 0 {
-				pairs = append(pairs, similarityPair{fromIdx: i, toIdx: j, score: score})
+			if score == 0 {
+				continue
 			}
+			pairs = append(pairs, similarityPair{fromIdx: i, toIdx: j, score: score})
 		}
 	}
 
@@ -613,7 +614,7 @@ func compareListsBySimilarity(path DiffPath, from, to []any, opts *Options) []Di
 	}
 
 	// Detect order changes among all matched items (after all pairing is done).
-	if opts == nil || !opts.IgnoreOrderChanges {
+	if !opts.IgnoreOrderChanges {
 		if orderDiff := detectSimilarityOrderChanges(path, from, to, matchedPairs); orderDiff != nil {
 			diffs = append(diffs, *orderDiff)
 		}
@@ -667,15 +668,10 @@ func detectSimilarityOrderChanges(path DiffPath, from, to []any, matchedPairs ma
 	})
 
 	// Check if to-indices are monotonically increasing.
-	orderChanged := false
-	for i := 1; i < len(sorted); i++ {
-		if sorted[i].toIdx < sorted[i-1].toIdx {
-			orderChanged = true
-			break
-		}
-	}
-
-	if !orderChanged {
+	toIdxOrdered := slices.IsSortedFunc(sorted, func(a, b idxPair) int {
+		return cmp.Compare(a.toIdx, b.toIdx)
+	})
+	if toIdxOrdered {
 		return nil
 	}
 

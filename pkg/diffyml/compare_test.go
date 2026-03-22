@@ -2813,6 +2813,106 @@ func TestCompare_SimilarityMatching_AllAdded(t *testing.T) {
 	}
 }
 
+func TestCompare_SimilarityMatching_SimilarityVsPositional(t *testing.T) {
+	// This test verifies that similarity-based matching pairs items differently
+	// than positional fallback would. from[0] is similar to to[1] (2/3 fields match),
+	// and from[1] is similar to to[0] (2/3 fields match). Positional matching would
+	// pair from[0]→to[0] and from[1]→to[1] (0/3 fields match each), producing more diffs.
+	// Similarity matching correctly pairs from[0]→to[1] and from[1]→to[0].
+	from := yml(`items:
+  - a: 1
+    b: 2
+    c: 3
+  - a: 4
+    b: 5
+    c: 6`)
+	to := yml(`items:
+  - a: 4
+    b: 5
+    c: 60
+  - a: 1
+    b: 2
+    c: 30`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	// Similarity pairs from[0](a:1,b:2,c:3)→to[1](a:1,b:2,c:30) and
+	// from[1](a:4,b:5,c:6)→to[0](a:4,b:5,c:60). Each pair has 1 field diff + order change.
+	// Total: 1 order change + 2 modified = 3 diffs.
+	// Positional would give: from[0]→to[0] (3 diffs) + from[1]→to[1] (3 diffs) = 6 diffs.
+	hasOrderChange := false
+	modifiedCount := 0
+	for _, d := range diffs {
+		if d.Type == diffyml.DiffOrderChanged {
+			hasOrderChange = true
+		}
+		if d.Type == diffyml.DiffModified {
+			modifiedCount++
+		}
+	}
+	if !hasOrderChange {
+		t.Error("expected DiffOrderChanged from similarity matching")
+	}
+	if modifiedCount != 2 {
+		t.Errorf("expected 2 modified diffs, got %d", modifiedCount)
+	}
+}
+
+func TestCompare_SimilarityMatching_IgnoreOrderChanges(t *testing.T) {
+	from := yml(`paths:
+  - path: /api
+    pathType: Prefix
+    backend: api-svc
+  - path: /static
+    pathType: Prefix
+    backend: static-svc`)
+	to := yml(`paths:
+  - path: /static
+    pathType: Prefix
+    backend: static-svc
+  - path: /api
+    pathType: Prefix
+    backend: api-svc`)
+
+	diffs, err := compare(from, to, &diffyml.Options{IgnoreOrderChanges: true})
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if len(diffs) != 0 {
+		t.Fatalf("expected 0 diffs with IgnoreOrderChanges, got %d", len(diffs))
+	}
+}
+
+func TestCompare_SimilarityMatching_AdjacentSwap(t *testing.T) {
+	// Two adjacent items swapped — tests that order detection uses strict < not <=
+	from := yml(`items:
+  - x: 1
+    y: shared
+  - x: 2
+    y: shared`)
+	to := yml(`items:
+  - x: 2
+    y: shared
+  - x: 1
+    y: shared`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	hasOrderChange := false
+	for _, d := range diffs {
+		if d.Type == diffyml.DiffOrderChanged {
+			hasOrderChange = true
+		}
+	}
+	if !hasOrderChange {
+		t.Error("expected DiffOrderChanged for adjacent swap")
+	}
+}
+
 func TestCompare_SimilarityMatching_NoChanges(t *testing.T) {
 	from := yml(`paths:
   - path: /api

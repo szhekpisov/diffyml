@@ -499,6 +499,11 @@ func mapSimilarity(from, to any, opts *Options) int {
 
 // compareListsBySimilarity compares lists of maps by finding the best structural
 // match between from/to items using field-level similarity scoring.
+//
+// Matching uses greedy assignment (best score first, tiebreak by index), which is
+// O(n*m) and works well for typical Kubernetes lists (< 20 items with high structural
+// overlap). It can produce suboptimal pairings when multiple items share the same
+// similarity score — an optimal solution would require the Hungarian algorithm (O(n³)).
 func compareListsBySimilarity(path DiffPath, from, to []any, opts *Options) []Difference {
 	var diffs []Difference
 

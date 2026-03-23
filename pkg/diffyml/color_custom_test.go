@@ -74,10 +74,14 @@ func TestParseColor_Invalid(t *testing.T) {
 		"",
 		"blue",
 		"#gg0000",
+		"#00gg00",
+		"#0000gg",
 		"#12345",
 		"#1234567",
 		"invalid",
 		"#xyz",
+		"#0x0",
+		"#00x",
 	}
 	for _, s := range tests {
 		t.Run(s, func(t *testing.T) {
@@ -230,6 +234,34 @@ func TestCustomColorPalette_EntryPalette_Custom(t *testing.T) {
 	}
 	if palette.Key != colorCyan {
 		t.Errorf("Custom 8-color Key: got %q, want %q", palette.Key, colorCyan)
+	}
+}
+
+func TestCustomColorPalette_EntryPalette_CustomRemoved(t *testing.T) {
+	p := DefaultCustomColorPalette()
+	p.Removed = &CustomColor{R: 112, G: 45, B: 6, ANSICode: colorRed, IsCustom: true}
+
+	// Custom Removed TrueColor
+	palette := p.EntryPalette(DiffRemoved, true)
+	expectedCode := TrueColorCode(112, 45, 6)
+	if palette.Scalar != expectedCode {
+		t.Errorf("Custom Removed TrueColor Scalar: got %q, want %q", palette.Scalar, expectedCode)
+	}
+
+	// Custom Removed 8-color
+	palette = p.EntryPalette(DiffRemoved, false)
+	if palette.Scalar != colorRed {
+		t.Errorf("Custom Removed 8-color Scalar: got %q, want %q", palette.Scalar, colorRed)
+	}
+}
+
+func TestCustomColorPalette_ColorForRole_Default(t *testing.T) {
+	p := DefaultCustomColorPalette()
+	// Invalid role should fall back to Modified
+	got := p.ColorCode(ColorRole(99), false)
+	want := p.ColorCode(ColorRoleModified, false)
+	if got != want {
+		t.Errorf("invalid role: got %q, want %q (Modified default)", got, want)
 	}
 }
 

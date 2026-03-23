@@ -1312,3 +1312,33 @@ func TestSortDiffsWithOrder_SingleElement(t *testing.T) {
 		t.Errorf("single-element sort should be identity, got %v", diffs)
 	}
 }
+
+// --- compareByExactOrParentOrderCached: !okI && okJ branch ---
+
+func TestCompareByExactOrParentOrderCached_OnlyJInOrder(t *testing.T) {
+	pathOrder := map[string]int{"known": 0}
+	result := compareByExactOrParentOrderCached(
+		"unknown", "known",
+		DiffPath{"unknown"}, DiffPath{"known"},
+		pathOrder,
+		func(path DiffPath) (int, bool) { return 0, false },
+	)
+	if result != 1 {
+		t.Errorf("expected 1 when only J is in pathOrder, got %d", result)
+	}
+}
+
+// --- pathWalker.push: empty segment branch ---
+
+func TestPathWalkerPush_EmptySegment(t *testing.T) {
+	w := pathWalker{
+		buf:     make([]byte, 0, 64),
+		lengths: make([]int, 0, 4),
+	}
+	w.push("root")
+	w.push("")
+	// Empty segment gets a dot prefix (len(buf)>0 && len(seg)==0 triggers second case)
+	if got := string(w.buf); got != "root." {
+		t.Errorf("push empty segment = %q, want %q", got, "root.")
+	}
+}

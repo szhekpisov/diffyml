@@ -318,6 +318,58 @@ func TestFindConfigFile_DefaultInCwd(t *testing.T) {
 	}
 }
 
+func TestFindConfigFile_DefaultYamlExtension(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, ".diffyml.yaml")
+	if err := os.WriteFile(configPath, []byte("output: compact\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Chdir(origDir) })
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := findConfigFile("")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result != ".diffyml.yaml" {
+		t.Errorf("expected '.diffyml.yaml', got %q", result)
+	}
+}
+
+func TestFindConfigFile_YmlTakesPrecedenceOverYaml(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, ".diffyml.yml"), []byte("output: compact\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".diffyml.yaml"), []byte("output: brief\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Chdir(origDir) })
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := findConfigFile("")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result != ".diffyml.yml" {
+		t.Errorf("expected '.diffyml.yml' to take precedence, got %q", result)
+	}
+}
+
 func TestFindConfigFile_NoConfigFile(t *testing.T) {
 	dir := t.TempDir()
 
@@ -666,6 +718,24 @@ func TestParseArgs_ConfigFlag(t *testing.T) {
 	}
 	if !cfg.Swap {
 		t.Error("expected Swap=true from config")
+	}
+}
+
+func TestParseArgs_ConfigFlagEqualsForm(t *testing.T) {
+	dir := t.TempDir()
+
+	configPath := filepath.Join(dir, "custom-config.yml")
+	if err := os.WriteFile(configPath, []byte("output: github\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := NewCLIConfig()
+	if err := cfg.ParseArgs([]string{"--config=" + configPath, "from.yaml", "to.yaml"}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.Output != "github" {
+		t.Errorf("expected Output='github' from config, got %q", cfg.Output)
 	}
 }
 

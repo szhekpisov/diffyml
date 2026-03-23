@@ -6,6 +6,7 @@ package cli
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -59,7 +60,7 @@ type FileConfig struct {
 }
 
 // findConfigFile returns the config path: --config flag if given (must exist),
-// else .diffyml.yml in cwd (empty string if absent).
+// else .diffyml.yml or .diffyml.yaml in cwd (empty string if absent).
 func findConfigFile(configFlag string) (string, error) {
 	if configFlag != "" {
 		if _, err := os.Stat(configFlag); err != nil {
@@ -68,14 +69,16 @@ func findConfigFile(configFlag string) (string, error) {
 		return configFlag, nil
 	}
 
-	const defaultName = ".diffyml.yml"
-	if _, err := os.Stat(defaultName); err != nil {
-		if os.IsNotExist(err) {
-			return "", nil
+	for _, name := range []string{".diffyml.yml", ".diffyml.yaml"} {
+		if _, err := os.Stat(name); err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return "", err
 		}
-		return "", err
+		return name, nil
 	}
-	return defaultName, nil
+	return "", nil
 }
 
 // loadConfigFile reads and parses a YAML config file.
@@ -90,7 +93,7 @@ func loadConfigFile(path string) (*FileConfig, error) {
 	decoder := yaml.NewDecoder(bytes.NewReader(data))
 	decoder.KnownFields(true)
 	if err := decoder.Decode(&cfg); err != nil {
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return nil, nil // empty file
 		}
 		return nil, fmt.Errorf("parsing config file %s: %w", path, err)

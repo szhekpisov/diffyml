@@ -120,6 +120,9 @@ func TestNearestANSI(t *testing.T) {
 		{0, 200, 200, colorCyan},
 		{100, 100, 100, colorGray},
 		{240, 240, 240, colorWhite},
+		// Blue and magenta
+		{0, 0, 200, "\033[34m"},
+		{200, 0, 200, "\033[35m"},
 		// Teal (#6aa3a5) is closer to gray in RGB distance
 		{106, 163, 165, colorGray},
 	}

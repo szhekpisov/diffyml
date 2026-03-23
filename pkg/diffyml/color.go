@@ -518,6 +518,8 @@ var ansiColorRefs = []ansiColorRef{
 	{colorRed, 205, 0, 0},
 	{colorGreen, 0, 205, 0},
 	{colorYellow, 205, 205, 0},
+	{"\033[34m", 0, 0, 238},
+	{"\033[35m", 205, 0, 205},
 	{colorCyan, 0, 205, 205},
 	{colorWhite, 229, 229, 229},
 	{colorGray, 127, 127, 127},

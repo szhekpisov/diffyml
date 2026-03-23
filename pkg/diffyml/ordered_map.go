@@ -140,8 +140,13 @@ func resolveScalar(node *yaml.Node) any {
 	case "!!str":
 		return value
 	case "!!int":
-		if i, err := strconv.Atoi(value); err == nil {
-			return i
+		// Fast path: try Atoi for simple decimal integers (most common).
+		// Only call Atoi when the string looks like a plain decimal to avoid
+		// error-object allocations on hex/octal/underscore formats.
+		if isSimpleDecimal(value) {
+			if i, err := strconv.Atoi(value); err == nil {
+				return i
+			}
 		}
 	case "!!float":
 		if f, err := strconv.ParseFloat(value, 64); err == nil {
@@ -164,4 +169,26 @@ func resolveScalar(node *yaml.Node) any {
 		return value
 	}
 	return val
+}
+
+// isSimpleDecimal returns true if s consists only of an optional leading '-' followed by ASCII digits.
+// This avoids calling strconv.Atoi on hex (0x...), octal (0o...), underscore-separated, or
+// oversized integers, which would allocate an error object on failure.
+func isSimpleDecimal(s string) bool {
+	if len(s) == 0 {
+		return false
+	}
+	start := 0
+	if s[0] == '-' || s[0] == '+' {
+		start = 1
+		if len(s) == 1 {
+			return false
+		}
+	}
+	for i := start; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
 }

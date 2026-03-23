@@ -593,7 +593,7 @@ func compareListsByIdentifier(path DiffPath, from, to []any, opts *Options) []Di
 			toItem := to[toIdx]
 			// Items match by identifier - compare their contents
 			// Use identifier value in path instead of index (dyff-style)
-			idStr := fmt.Sprint(id)
+			idStr := sprintIdentifier(id)
 			childPath := path.Append(idStr)
 			diffs = append(diffs, compareNodes(childPath, fromItem, toItem, opts)...)
 		} else {
@@ -751,6 +751,19 @@ func deepEqual(from, to any, opts *Options) bool {
 			return false
 		}
 		return equalValues(from, to, opts)
+	}
+}
+
+// sprintIdentifier converts an identifier value to a string.
+// Fast-paths common types (string, int) to avoid fmt.Sprint overhead.
+func sprintIdentifier(id any) string {
+	switch v := id.(type) {
+	case string:
+		return v
+	case int:
+		return strconv.Itoa(v)
+	default:
+		return fmt.Sprint(id)
 	}
 }
 

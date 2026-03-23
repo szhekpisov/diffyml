@@ -35,6 +35,7 @@ diffyml compares YAML files and shows meaningful, structured differences — not
 | Runtime dependencies | 1 (yaml.v3) | 14 | 0 |
 | Directory comparison | Yes | No | Yes |
 | Git external diff (`GIT_EXTERNAL_DIFF`) | Yes (auto-detect) | No | N/A |
+| Custom colors | Yes (hex, named, env vars) | No | No |
 | Configuration file | Yes (`.diffyml.yml`) | No | No |
 | Performance (78 KB) | 19 ms | 129 ms (6.95x slower) | 6 ms |
 | Performance (780 KB) | 128 ms | 1,214 ms (9.49x slower) | 46 ms |
@@ -134,6 +135,7 @@ export KUBECTL_EXTERNAL_DIFF="diffyml --omit-header --set-exit-code"
 - **Certificate inspection** — inspects and compares embedded x509 certificates
 - **Chroot navigation** — focus comparison on a specific YAML subtree
 - **Git integration** — use as `GIT_EXTERNAL_DIFF` or via `.gitattributes` for YAML-only scoping
+- **Custom colors** — configurable color palette for accessibility (colorblind-friendly)
 - **Configuration file** — project-level defaults via `.diffyml.yml` (all flags supported)
 - ⭐ **AI-powered summaries** ⭐ — natural language summaries of changes via Anthropic API
 
@@ -274,6 +276,31 @@ exclude:
 ```
 
 All CLI flags are supported as config keys (kebab-case, matching the long flag name). Unknown keys are rejected to catch typos. See [`.diffyml.yml.example`](.diffyml.yml.example) for a complete reference with all keys and defaults.
+
+### Custom Colors
+
+Diff colors can be customized for accessibility (e.g., colorblind-friendly palettes). Five color roles are configurable: `added`, `removed`, `modified`, `context`, and `doc-name`.
+
+Colors are specified as hex (`#rrggbb`, `#rgb`) or named ANSI colors (`red`, `green`, `yellow`, `cyan`, `gray`, `white`).
+
+**Via config file:**
+
+```yaml
+# .diffyml.yml
+colors:
+  added: "#6aa3a5"
+  removed: "#702d06"
+```
+
+**Via environment variables** (override config file):
+
+```bash
+export DIFFYML_COLOR_ADDED="#6aa3a5"
+export DIFFYML_COLOR_REMOVED="#702d06"
+diffyml old.yaml new.yaml
+```
+
+Available environment variables: `DIFFYML_COLOR_ADDED`, `DIFFYML_COLOR_REMOVED`, `DIFFYML_COLOR_MODIFIED`, `DIFFYML_COLOR_CONTEXT`, `DIFFYML_COLOR_DOC_NAME`.
 
 ### All Flags
 

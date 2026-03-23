@@ -48,6 +48,21 @@ chroot-of-from: ""
 chroot-of-to: ""
 chroot-list-to-documents: false
 
+# Custom colors (for accessibility / colorblind users)
+# Accepts hex (#rrggbb, #rgb) or named (red, green, yellow, cyan, gray, white).
+# Environment variables override these: DIFFYML_COLOR_ADDED, DIFFYML_COLOR_REMOVED,
+# DIFFYML_COLOR_MODIFIED, DIFFYML_COLOR_CONTEXT, DIFFYML_COLOR_DOC_NAME.
+# colors:
+#   added: "#58bf38"       # default: green
+#   removed: "#b9311b"     # default: red
+#   modified: "#c7c43f"    # default: yellow
+#   context: "#696969"     # default: gray
+#   doc-name: "#b0c4de"    # default: cyan
+# Example (Fabio Crameri Glasgow palette for colorblind accessibility):
+#   colors:
+#     added: "#6aa3a5"
+#     removed: "#702d06"
+
 # AI Summary (requires ANTHROPIC_API_KEY environment variable)
 summary: false
 summary-model: "claude-haiku-4-5-20251001"

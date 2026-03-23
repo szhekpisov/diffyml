@@ -8,6 +8,7 @@ package diffyml
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -316,4 +317,229 @@ func DetectTrueColorSupport() bool {
 // clamp restricts a value to the range [lo, hi].
 func clamp(val, lo, hi int) int {
 	return max(lo, min(val, hi))
+}
+
+// ColorRole represents a semantic color role in diff output.
+type ColorRole int
+
+const (
+	ColorRoleAdded ColorRole = iota
+	ColorRoleRemoved
+	ColorRoleModified
+	ColorRoleContext
+	ColorRoleDocName
+)
+
+// CustomColor holds a parsed custom color specification.
+type CustomColor struct {
+	R, G, B  int
+	ANSICode string
+	IsCustom bool
+}
+
+// CustomColorPalette holds user-customizable colors for each semantic role.
+type CustomColorPalette struct {
+	Added    *CustomColor
+	Removed  *CustomColor
+	Modified *CustomColor
+	Context  *CustomColor
+	DocName  *CustomColor
+}
+
+// DefaultCustomColorPalette returns a palette with the built-in default colors.
+func DefaultCustomColorPalette() *CustomColorPalette {
+	return &CustomColorPalette{
+		Added:    &CustomColor{R: DetailedGreenR, G: DetailedGreenG, B: DetailedGreenB, ANSICode: colorGreen},
+		Removed:  &CustomColor{R: DetailedRedR, G: DetailedRedG, B: DetailedRedB, ANSICode: colorRed},
+		Modified: &CustomColor{R: DetailedYellowR, G: DetailedYellowG, B: DetailedYellowB, ANSICode: colorYellow},
+		Context:  &CustomColor{R: DetailedGrayR, G: DetailedGrayG, B: DetailedGrayB, ANSICode: colorGray},
+		DocName:  &CustomColor{R: DetailedDocNameR, G: DetailedDocNameG, B: DetailedDocNameB, ANSICode: colorCyan},
+	}
+}
+
+var defaultPalette = DefaultCustomColorPalette()
+
+func (p *CustomColorPalette) colorForRole(role ColorRole) *CustomColor {
+	switch role {
+	case ColorRoleAdded:
+		return p.Added
+	case ColorRoleRemoved:
+		return p.Removed
+	case ColorRoleModified:
+		return p.Modified
+	case ColorRoleContext:
+		return p.Context
+	case ColorRoleDocName:
+		return p.DocName
+	default:
+		return p.Modified
+	}
+}
+
+// ColorCode returns the ANSI escape string for a color role.
+// When the color is a default (not custom), returns the existing hardcoded value.
+func (p *CustomColorPalette) ColorCode(role ColorRole, useTrueColor bool) string {
+	c := p.colorForRole(role)
+	if !c.IsCustom {
+		switch role {
+		case ColorRoleAdded:
+			return DetailedColorCode(DiffAdded, useTrueColor)
+		case ColorRoleRemoved:
+			return DetailedColorCode(DiffRemoved, useTrueColor)
+		case ColorRoleModified:
+			return DetailedColorCode(DiffModified, useTrueColor)
+		case ColorRoleContext:
+			return ContextColorCode(useTrueColor)
+		case ColorRoleDocName:
+			return DocNameColorCode(useTrueColor)
+		}
+	}
+	if useTrueColor {
+		return TrueColorCode(c.R, c.G, c.B)
+	}
+	return c.ANSICode
+}
+
+// EntryPalette returns the YAML color palette for rendering diff entry values.
+// For default colors, returns the existing cached palettes (zero allocation).
+// For custom colors, builds a flat palette using the custom color.
+func (p *CustomColorPalette) EntryPalette(diffType DiffType, useTrueColor bool) *YAMLColorPalette {
+	var c *CustomColor
+	switch diffType {
+	case DiffAdded:
+		c = p.Added
+	case DiffRemoved:
+		c = p.Removed
+	default:
+		return entryPalette(diffType, useTrueColor)
+	}
+
+	if !c.IsCustom {
+		return entryPalette(diffType, useTrueColor)
+	}
+
+	if useTrueColor {
+		code := TrueColorCode(c.R, c.G, c.B)
+		return &YAMLColorPalette{
+			Key:            styleBold + code,
+			Scalar:         code,
+			MultilineText:  code,
+			Null:           code,
+			EmptyStructure: code,
+		}
+	}
+	return flatPalette(c.ANSICode)
+}
+
+// resolvedPalette returns the custom palette from opts, or the default palette if nil.
+func resolvedPalette(opts *FormatOptions) *CustomColorPalette {
+	if opts != nil && opts.Palette != nil {
+		return opts.Palette
+	}
+	return defaultPalette
+}
+
+// ParseColor parses a color specification string.
+// Supports hex (#rrggbb, #rgb) and named ANSI colors (red, green, yellow, cyan, gray, white).
+func ParseColor(s string) (*CustomColor, error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil, fmt.Errorf("empty color specification")
+	}
+
+	switch strings.ToLower(s) {
+	case "red":
+		return &CustomColor{R: 205, G: 0, B: 0, ANSICode: colorRed, IsCustom: true}, nil
+	case "green":
+		return &CustomColor{R: 0, G: 205, B: 0, ANSICode: colorGreen, IsCustom: true}, nil
+	case "yellow":
+		return &CustomColor{R: 205, G: 205, B: 0, ANSICode: colorYellow, IsCustom: true}, nil
+	case "cyan":
+		return &CustomColor{R: 0, G: 205, B: 205, ANSICode: colorCyan, IsCustom: true}, nil
+	case "gray", "grey":
+		return &CustomColor{R: 127, G: 127, B: 127, ANSICode: colorGray, IsCustom: true}, nil
+	case "white":
+		return &CustomColor{R: 229, G: 229, B: 229, ANSICode: colorWhite, IsCustom: true}, nil
+	}
+
+	if !strings.HasPrefix(s, "#") {
+		return nil, fmt.Errorf("invalid color %q: use hex (#rrggbb, #rgb) or named (red, green, yellow, cyan, gray, white)", s)
+	}
+
+	hex := s[1:]
+	var r, g, b uint64
+	var err error
+	switch len(hex) {
+	case 3:
+		r, err = strconv.ParseUint(string([]byte{hex[0], hex[0]}), 16, 8)
+		if err != nil {
+			return nil, fmt.Errorf("invalid hex color %q", s)
+		}
+		g, err = strconv.ParseUint(string([]byte{hex[1], hex[1]}), 16, 8)
+		if err != nil {
+			return nil, fmt.Errorf("invalid hex color %q", s)
+		}
+		b, err = strconv.ParseUint(string([]byte{hex[2], hex[2]}), 16, 8)
+		if err != nil {
+			return nil, fmt.Errorf("invalid hex color %q", s)
+		}
+	case 6:
+		r, err = strconv.ParseUint(hex[0:2], 16, 8)
+		if err != nil {
+			return nil, fmt.Errorf("invalid hex color %q", s)
+		}
+		g, err = strconv.ParseUint(hex[2:4], 16, 8)
+		if err != nil {
+			return nil, fmt.Errorf("invalid hex color %q", s)
+		}
+		b, err = strconv.ParseUint(hex[4:6], 16, 8)
+		if err != nil {
+			return nil, fmt.Errorf("invalid hex color %q", s)
+		}
+	default:
+		return nil, fmt.Errorf("invalid hex color %q: expected #rrggbb or #rgb", s)
+	}
+
+	ri, gi, bi := int(r), int(g), int(b)
+	return &CustomColor{
+		R: ri, G: gi, B: bi,
+		ANSICode: nearestANSI(ri, gi, bi),
+		IsCustom: true,
+	}, nil
+}
+
+// ansiColorRef maps an ANSI code to approximate RGB values for nearest-match.
+type ansiColorRef struct {
+	code    string
+	r, g, b int
+}
+
+var ansiColorRefs = []ansiColorRef{
+	{colorRed, 205, 0, 0},
+	{colorGreen, 0, 205, 0},
+	{colorYellow, 205, 205, 0},
+	{colorCyan, 0, 205, 205},
+	{colorWhite, 229, 229, 229},
+	{colorGray, 127, 127, 127},
+}
+
+// nearestANSI returns the nearest 8-color ANSI code for an RGB value
+// using squared Euclidean distance.
+func nearestANSI(r, g, b int) string {
+	best := ansiColorRefs[0].code
+	bestDist := colorDistSq(r, g, b, ansiColorRefs[0])
+	for _, c := range ansiColorRefs[1:] {
+		if dist := colorDistSq(r, g, b, c); dist < bestDist {
+			bestDist = dist
+			best = c.code
+		}
+	}
+	return best
+}
+
+func colorDistSq(r, g, b int, c ansiColorRef) int {
+	dr := r - c.r
+	dg := g - c.g
+	db := b - c.b
+	return dr*dr + dg*dg + db*db
 }

@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/szhekpisov/diffyml/pkg/diffyml"
 	"gopkg.in/yaml.v3"
 )
 
@@ -57,6 +58,18 @@ type FileConfig struct {
 
 	// Exit code behavior
 	SetExitCode *bool `yaml:"set-exit-code"`
+
+	// Custom color options
+	Colors *ColorOverrides `yaml:"colors"`
+}
+
+// ColorOverrides holds custom color specifications for config file.
+type ColorOverrides struct {
+	Added    *string `yaml:"added"`
+	Removed  *string `yaml:"removed"`
+	Modified *string `yaml:"modified"`
+	Context  *string `yaml:"context"`
+	DocName  *string `yaml:"doc-name"`
 }
 
 // findConfigFile returns the config path: --config flag if given (must exist),
@@ -213,4 +226,58 @@ func (c *CLIConfig) applyFileConfig(fc *FileConfig, cliSet map[string]bool) {
 	if fc.SetExitCode != nil && notSet("set-exit-code", "s") {
 		c.SetExitCode = *fc.SetExitCode
 	}
+}
+
+// loadColorPalette builds a custom color palette from config file and environment variables.
+// Environment variables override config file values. Returns nil when no custom colors are set.
+func loadColorPalette(fc *FileConfig) (*diffyml.CustomColorPalette, error) {
+	palette := diffyml.DefaultCustomColorPalette()
+	anyCustom := false
+
+	applyColor := func(name, envVar string, cfgVal *string, target **diffyml.CustomColor) error {
+		spec := os.Getenv(envVar)
+		if spec == "" && cfgVal != nil {
+			spec = *cfgVal
+		}
+		if spec == "" {
+			return nil
+		}
+		c, err := diffyml.ParseColor(spec)
+		if err != nil {
+			return fmt.Errorf("invalid %s color: %w", name, err)
+		}
+		*target = c
+		anyCustom = true
+		return nil
+	}
+
+	var added, removed, modified, context, docName *string
+	if fc != nil && fc.Colors != nil {
+		added = fc.Colors.Added
+		removed = fc.Colors.Removed
+		modified = fc.Colors.Modified
+		context = fc.Colors.Context
+		docName = fc.Colors.DocName
+	}
+
+	if err := applyColor("added", "DIFFYML_COLOR_ADDED", added, &palette.Added); err != nil {
+		return nil, err
+	}
+	if err := applyColor("removed", "DIFFYML_COLOR_REMOVED", removed, &palette.Removed); err != nil {
+		return nil, err
+	}
+	if err := applyColor("modified", "DIFFYML_COLOR_MODIFIED", modified, &palette.Modified); err != nil {
+		return nil, err
+	}
+	if err := applyColor("context", "DIFFYML_COLOR_CONTEXT", context, &palette.Context); err != nil {
+		return nil, err
+	}
+	if err := applyColor("doc-name", "DIFFYML_COLOR_DOC_NAME", docName, &palette.DocName); err != nil {
+		return nil, err
+	}
+
+	if !anyCustom {
+		return nil, nil
+	}
+	return palette, nil
 }

@@ -40,6 +40,8 @@ type FormatOptions struct {
 	// Used by GitLabFormatter for location.path and fingerprint generation.
 	// Defaults to empty string (backward compatible).
 	FilePath string
+	// Palette holds custom color overrides. Nil means use defaults.
+	Palette *CustomColorPalette
 }
 
 // DiffGroup pairs differences from a single file with its path.
@@ -152,7 +154,8 @@ func (f *CompactFormatter) formatHeader(sb *strings.Builder, diffs []Difference,
 		}
 	}
 
-	sb.WriteString(colorStart(opts, colorYellow))
+	p := resolvedPalette(opts)
+	sb.WriteString(colorStart(opts, p.ColorCode(ColorRoleModified, opts.TrueColor)))
 	fmt.Fprintf(sb, "Found %d difference(s)", len(diffs))
 	sb.WriteString(colorEnd(opts))
 	fmt.Fprintf(sb, " (%d removed, %d added, %d modified)\n\n", removed, added, modified)
@@ -166,22 +169,23 @@ func (f *CompactFormatter) formatDiff(sb *strings.Builder, diff Difference, opts
 		path = diff.Path.String()
 	}
 
+	p := resolvedPalette(opts)
 	var indicator string
 	var colorCode string
 
 	switch diff.Type {
 	case DiffAdded:
 		indicator = "+"
-		colorCode = colorGreen
+		colorCode = p.ColorCode(ColorRoleAdded, opts.TrueColor)
 	case DiffRemoved:
 		indicator = "-"
-		colorCode = colorRed
+		colorCode = p.ColorCode(ColorRoleRemoved, opts.TrueColor)
 	case DiffModified:
 		indicator = "±"
-		colorCode = colorYellow
+		colorCode = p.ColorCode(ColorRoleModified, opts.TrueColor)
 	case DiffOrderChanged:
 		indicator = "⇆"
-		colorCode = colorYellow
+		colorCode = p.ColorCode(ColorRoleModified, opts.TrueColor)
 	}
 
 	// Apply color for the indicator
@@ -195,7 +199,7 @@ func (f *CompactFormatter) formatDiff(sb *strings.Builder, diff Difference, opts
 
 	if diff.DocumentName != "" {
 		sb.WriteString(" ")
-		sb.WriteString(colorStart(opts, DocNameColorCode(opts.TrueColor)))
+		sb.WriteString(colorStart(opts, p.ColorCode(ColorRoleDocName, opts.TrueColor)))
 		fmt.Fprintf(sb, "(%s)", diff.DocumentName)
 		sb.WriteString(colorEnd(opts))
 	}
@@ -206,29 +210,30 @@ func (f *CompactFormatter) formatDiff(sb *strings.Builder, diff Difference, opts
 }
 
 func (f *CompactFormatter) formatValuesInline(sb *strings.Builder, diff Difference, opts *FormatOptions) {
+	p := resolvedPalette(opts)
 	switch diff.Type {
 	case DiffModified:
 		fromStr := formatValue(diff.From)
 		toStr := formatValue(diff.To)
 
 		sb.WriteString(" : ")
-		sb.WriteString(colorStart(opts, colorRed))
+		sb.WriteString(colorStart(opts, p.ColorCode(ColorRoleRemoved, opts.TrueColor)))
 		sb.WriteString(fromStr)
 		sb.WriteString(colorEnd(opts))
 		sb.WriteString(" → ")
-		sb.WriteString(colorStart(opts, colorGreen))
+		sb.WriteString(colorStart(opts, p.ColorCode(ColorRoleAdded, opts.TrueColor)))
 		sb.WriteString(toStr)
 		sb.WriteString(colorEnd(opts))
 	case DiffAdded:
 		toStr := formatValue(diff.To)
 		sb.WriteString(" : ")
-		sb.WriteString(colorStart(opts, colorGreen))
+		sb.WriteString(colorStart(opts, p.ColorCode(ColorRoleAdded, opts.TrueColor)))
 		sb.WriteString(toStr)
 		sb.WriteString(colorEnd(opts))
 	case DiffRemoved:
 		fromStr := formatValue(diff.From)
 		sb.WriteString(" : ")
-		sb.WriteString(colorStart(opts, colorRed))
+		sb.WriteString(colorStart(opts, p.ColorCode(ColorRoleRemoved, opts.TrueColor)))
 		sb.WriteString(fromStr)
 		sb.WriteString(colorEnd(opts))
 	case DiffOrderChanged:

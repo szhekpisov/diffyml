@@ -70,6 +70,9 @@ type CLIConfig struct {
 	// Config file
 	ConfigFile string
 
+	// Custom color palette (resolved from config file + env vars)
+	Palette *diffyml.CustomColorPalette
+
 	// Exit code behavior
 	SetExitCode bool
 	ShowHelp    bool
@@ -183,6 +186,7 @@ func (c *CLIConfig) ParseArgs(args []string) error {
 	}
 
 	// Load and apply config file (CLI flags override config values).
+	var fc *FileConfig
 	configPath, err := findConfigFile(c.ConfigFile)
 	if err != nil {
 		return err
@@ -192,12 +196,19 @@ func (c *CLIConfig) ParseArgs(args []string) error {
 		c.fs.Visit(func(f *flag.Flag) {
 			cliSet[f.Name] = true
 		})
-		fc, err := loadConfigFile(configPath)
+		fc, err = loadConfigFile(configPath)
 		if err != nil {
 			return err
 		}
 		c.applyFileConfig(fc, cliSet)
 	}
+
+	// Load custom color palette (env vars override config file).
+	palette, err := loadColorPalette(fc)
+	if err != nil {
+		return err
+	}
+	c.Palette = palette
 
 	// Get remaining non-flag arguments (file paths)
 	remaining := c.fs.Args()
@@ -323,6 +334,7 @@ func (c *CLIConfig) ToFormatOptions() *diffyml.FormatOptions {
 		UseGoPatchStyle:  c.UseGoPatchStyle,
 		ContextLines:     c.MultiLineContextLines,
 		NoCertInspection: c.NoCertInspection,
+		Palette:          c.Palette,
 	}
 }
 
@@ -387,6 +399,21 @@ func (c *CLIConfig) Usage() string {
 	sb.WriteString("  -s, --set-exit-code                 set program exit code based on differences\n")
 	sb.WriteString("  -h, --help                          show this help\n")
 	sb.WriteString("  -V, --version                       show version information\n")
+	sb.WriteString("\n")
+
+	// Custom colors
+	sb.WriteString("Custom colors:\n")
+	sb.WriteString("  Colors can be customized via .diffyml.yml or environment variables.\n")
+	sb.WriteString("  Accepted formats: hex (#rrggbb, #rgb) or named (red, green, yellow, cyan, gray, white)\n")
+	sb.WriteString("\n")
+	sb.WriteString("  Config file (.diffyml.yml):\n")
+	sb.WriteString("    colors:\n")
+	sb.WriteString("      added: \"#6aa3a5\"\n")
+	sb.WriteString("      removed: \"#d4843e\"\n")
+	sb.WriteString("\n")
+	sb.WriteString("  Environment variables (override config file):\n")
+	sb.WriteString("    DIFFYML_COLOR_ADDED, DIFFYML_COLOR_REMOVED, DIFFYML_COLOR_MODIFIED,\n")
+	sb.WriteString("    DIFFYML_COLOR_CONTEXT, DIFFYML_COLOR_DOC_NAME\n")
 	sb.WriteString("\n")
 
 	// Git integration

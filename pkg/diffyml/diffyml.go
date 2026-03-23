@@ -144,14 +144,15 @@ type pathWalker struct {
 // push appends a segment to the running path buffer.
 func (w *pathWalker) push(seg string) {
 	w.lengths = append(w.lengths, len(w.buf))
-	if strings.Contains(seg, ".") {
+	switch {
+	case strings.Contains(seg, "."):
 		w.buf = append(w.buf, '[')
 		w.buf = append(w.buf, seg...)
 		w.buf = append(w.buf, ']')
-	} else if len(w.buf) > 0 && (len(seg) == 0 || seg[0] != '[') {
+	case len(w.buf) > 0 && (len(seg) == 0 || seg[0] != '['):
 		w.buf = append(w.buf, '.')
 		w.buf = append(w.buf, seg...)
-	} else {
+	default:
 		w.buf = append(w.buf, seg...)
 	}
 }
@@ -325,7 +326,7 @@ func compareByExactOrParentOrder(pathI, pathJ DiffPath, pathOrder map[string]int
 }
 
 func sortDiffsWithOrder(diffs []Difference, pathOrder map[string]int) {
-	if len(diffs) <= 1 {
+	if len(diffs) == 0 {
 		return
 	}
 

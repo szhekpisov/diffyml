@@ -35,6 +35,7 @@ diffyml compares YAML files and shows meaningful, structured differences — not
 | Runtime dependencies | 1 (yaml.v3) | 14 | 0 |
 | Directory comparison | Yes | No | Yes |
 | Git external diff (`GIT_EXTERNAL_DIFF`) | Yes (auto-detect) | No | N/A |
+| Configuration file | Yes (`.diffyml.yml`) | No | No |
 | Performance (78 KB) | 19 ms | 142 ms (7.6x slower) | 7 ms |
 | Performance (780 KB) | 129 ms | 1,369 ms (10.6x slower) | 46 ms |
 
@@ -133,6 +134,7 @@ export KUBECTL_EXTERNAL_DIFF="diffyml --omit-header --set-exit-code"
 - **Certificate inspection** — inspects and compares embedded x509 certificates
 - **Chroot navigation** — focus comparison on a specific YAML subtree
 - **Git integration** — use as `GIT_EXTERNAL_DIFF` or via `.gitattributes` for YAML-only scoping
+- **Configuration file** — project-level defaults via `.diffyml.yml` (all flags supported)
 - ⭐ **AI-powered summaries** ⭐ — natural language summaries of changes via Anthropic API
 
 ## Usage
@@ -256,6 +258,23 @@ diffyml --summary --summary-model claude-sonnet-4-5-20250514 old.yaml new.yaml
 
 The summary is appended after the standard diff output. If the API call fails, a warning is printed to stderr and the diff output is preserved. The exit code is never affected by summary success or failure.
 
+### Configuration File
+
+diffyml loads project-level defaults from `.diffyml.yml` (or `.diffyml.yaml`) in the current directory. CLI flags override config file values. Use `--config` to specify a custom path.
+
+```yaml
+# .diffyml.yml
+output: compact
+ignore-order-changes: true
+detect-kubernetes: false
+filter:
+  - "spec.containers"
+exclude:
+  - "status"
+```
+
+All CLI flags are supported as config keys (kebab-case, matching the long flag name). Unknown keys are rejected to catch typos. See [`.diffyml.yml.example`](.diffyml.yml.example) for a complete reference with all keys and defaults.
+
 ### All Flags
 
 <details>
@@ -320,6 +339,7 @@ The summary is appended after the standard diff output. If the API call fails, a
 
 | Flag | Description |
 |------|-------------|
+| `--config <path>` | Path to config file (default `.diffyml.yml` in current directory) |
 | `-s, --set-exit-code` | Exit code 1 if differences found |
 | `-h, --help` | Show help |
 | `-V, --version` | Show version information |

@@ -67,6 +67,9 @@ type CLIConfig struct {
 	GitDisplayPath  string // repo-relative path for display headers (rename-to when renamed)
 	GitOriginalPath string // original repo-relative path (differs from GitDisplayPath on rename)
 
+	// Config file
+	ConfigFile string
+
 	// Exit code behavior
 	SetExitCode bool
 	ShowHelp    bool
@@ -155,6 +158,9 @@ func (c *CLIConfig) initFlags() {
 	c.fs.BoolVar(&c.Summary, "summary", c.Summary, "enable AI-powered summary of differences")
 	c.fs.StringVar(&c.SummaryModel, "summary-model", c.SummaryModel, "specify Anthropic model for summary")
 
+	// Config file
+	c.fs.StringVar(&c.ConfigFile, "config", c.ConfigFile, "path to config file")
+
 	// Exit code behavior
 	c.fs.BoolVar(&c.SetExitCode, "s", c.SetExitCode, "")
 	c.fs.BoolVar(&c.SetExitCode, "set-exit-code", c.SetExitCode, "set program exit code based on differences")
@@ -174,6 +180,23 @@ func (c *CLIConfig) ParseArgs(args []string) error {
 
 	if err := c.fs.Parse(reordered); err != nil {
 		return err
+	}
+
+	// Load and apply config file (CLI flags override config values).
+	configPath, err := findConfigFile(c.ConfigFile)
+	if err != nil {
+		return err
+	}
+	if configPath != "" {
+		cliSet := make(map[string]bool)
+		c.fs.Visit(func(f *flag.Flag) {
+			cliSet[f.Name] = true
+		})
+		fc, err := loadConfigFile(configPath)
+		if err != nil {
+			return err
+		}
+		c.applyFileConfig(fc, cliSet)
 	}
 
 	// Get remaining non-flag arguments (file paths)
@@ -354,6 +377,10 @@ func (c *CLIConfig) Usage() string {
 	// AI Summary options
 	sb.WriteString("  -S, --summary                       enable AI-powered summary of differences\n")
 	sb.WriteString("      --summary-model string          specify Anthropic model for summary\n")
+	sb.WriteString("\n")
+
+	// Config file
+	sb.WriteString("      --config string                 path to config file (default: .diffyml.yml in current directory)\n")
 	sb.WriteString("\n")
 
 	// Other options

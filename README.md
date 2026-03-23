@@ -17,7 +17,7 @@ diffyml compares YAML files and shows meaningful, structured differences — not
 
 ## Why diffyml?
 
-**Fastest at scale.** 7.5x faster than [dyff](https://github.com/homeport/dyff) on 78 KB files, 10.6x faster on 780 KB files, with the lowest memory footprint among YAML-aware tools at scale. Near-linear scaling. See [PERFORMANCE.md](doc/PERFORMANCE.md) for methodology and results.
+**Fastest at scale.** 7x faster than [dyff](https://github.com/homeport/dyff) on 78 KB files, 9.5x faster on 780 KB files, with the lowest memory footprint among YAML-aware tools at scale. Near-linear scaling. See [PERFORMANCE.md](doc/PERFORMANCE.md) for methodology and results.
 
 **One dependency, zero surprises.** A single runtime dependency ([yaml.v3](https://github.com/yaml/go-yaml)) and pure Go stdlib. Minimal attack surface, auditable in minutes.
 
@@ -36,10 +36,10 @@ diffyml compares YAML files and shows meaningful, structured differences — not
 | Directory comparison | Yes | No | Yes |
 | Git external diff (`GIT_EXTERNAL_DIFF`) | Yes (auto-detect) | No | N/A |
 | Configuration file | Yes (`.diffyml.yml`) | No | No |
-| Performance (78 KB) | 19 ms | 142 ms (7.6x slower) | 7 ms |
-| Performance (780 KB) | 129 ms | 1,369 ms (10.6x slower) | 46 ms |
+| Performance (78 KB) | 19 ms | 129 ms (6.95x slower) | 6 ms |
+| Performance (780 KB) | 128 ms | 1,214 ms (9.49x slower) | 46 ms |
 
-Comparison based on dyff v1.11.2 and diffyml v1.5.8. See [PERFORMANCE.md](doc/PERFORMANCE.md) for benchmark methodology. [Open an issue](https://github.com/szhekpisov/diffyml/issues) if anything is outdated.
+Comparison based on dyff v1.11.2 and diffyml v1.5.13. See [PERFORMANCE.md](doc/PERFORMANCE.md) for benchmark methodology. [Open an issue](https://github.com/szhekpisov/diffyml/issues) if anything is outdated.
 
 ## Kubernetes Intelligence
 
@@ -386,7 +386,7 @@ Every push and PR is checked by:
   [misspell](https://github.com/client9/misspell),
   [staticcheck](https://staticcheck.dev/) (all checks except style conventions)
 
-1,200+ tests (unit, e2e, fuzz, property-based), 99.9% code coverage, 100% [mutation testing](https://github.com/go-gremlins/gremlins) efficacy (575/575 mutants killed). CI enforces a 99% coverage floor.
+1,500+ tests (unit, e2e, fuzz, property-based), 99.4% code coverage, 100% [mutation testing](https://github.com/go-gremlins/gremlins) efficacy (686/686 mutants killed). CI enforces a 99% coverage floor.
 
 ## Contributing
 

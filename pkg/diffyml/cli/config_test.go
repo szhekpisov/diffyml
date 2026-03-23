@@ -305,7 +305,7 @@ func TestFindConfigFile_DefaultInCwd(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { os.Chdir(origDir) })
-	if err := os.Chdir(dir); err != nil {
+	if err = os.Chdir(dir); err != nil {
 		t.Fatal(err)
 	}
 
@@ -330,7 +330,7 @@ func TestFindConfigFile_DefaultYamlExtension(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { os.Chdir(origDir) })
-	if err := os.Chdir(dir); err != nil {
+	if err = os.Chdir(dir); err != nil {
 		t.Fatal(err)
 	}
 
@@ -357,7 +357,7 @@ func TestFindConfigFile_YmlTakesPrecedenceOverYaml(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { os.Chdir(origDir) })
-	if err := os.Chdir(dir); err != nil {
+	if err = os.Chdir(dir); err != nil {
 		t.Fatal(err)
 	}
 
@@ -378,7 +378,7 @@ func TestFindConfigFile_NoConfigFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { os.Chdir(origDir) })
-	if err := os.Chdir(dir); err != nil {
+	if err = os.Chdir(dir); err != nil {
 		t.Fatal(err)
 	}
 
@@ -641,6 +641,41 @@ func TestApplyFileConfig_AllFilterTypes(t *testing.T) {
 	}
 }
 
+func TestApplyFileConfig_EmptySlicesDoNotOverride(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.Filter = []string{"existing-filter"}
+	cfg.Exclude = []string{"existing-exclude"}
+	cfg.FilterRegexp = []string{"existing-regexp"}
+	cfg.ExcludeRegexp = []string{"existing-exclude-regexp"}
+	cfg.AdditionalIdentifiers = []string{"existing-id"}
+
+	// Config has explicit empty slices — should NOT wipe out existing values
+	fc := &FileConfig{
+		Filter:                []string{},
+		Exclude:               []string{},
+		FilterRegexp:          []string{},
+		ExcludeRegexp:         []string{},
+		AdditionalIdentifiers: []string{},
+	}
+	cfg.applyFileConfig(fc, map[string]bool{})
+
+	if len(cfg.Filter) != 1 || cfg.Filter[0] != "existing-filter" {
+		t.Errorf("expected Filter=['existing-filter'], got %v", cfg.Filter)
+	}
+	if len(cfg.Exclude) != 1 || cfg.Exclude[0] != "existing-exclude" {
+		t.Errorf("expected Exclude=['existing-exclude'], got %v", cfg.Exclude)
+	}
+	if len(cfg.FilterRegexp) != 1 || cfg.FilterRegexp[0] != "existing-regexp" {
+		t.Errorf("expected FilterRegexp=['existing-regexp'], got %v", cfg.FilterRegexp)
+	}
+	if len(cfg.ExcludeRegexp) != 1 || cfg.ExcludeRegexp[0] != "existing-exclude-regexp" {
+		t.Errorf("expected ExcludeRegexp=['existing-exclude-regexp'], got %v", cfg.ExcludeRegexp)
+	}
+	if len(cfg.AdditionalIdentifiers) != 1 || cfg.AdditionalIdentifiers[0] != "existing-id" {
+		t.Errorf("expected AdditionalIdentifiers=['existing-id'], got %v", cfg.AdditionalIdentifiers)
+	}
+}
+
 // --- Integration tests (through ParseArgs) ---
 
 func TestParseArgs_WithConfigFile(t *testing.T) {
@@ -656,7 +691,7 @@ func TestParseArgs_WithConfigFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { os.Chdir(origDir) })
-	if err := os.Chdir(dir); err != nil {
+	if err = os.Chdir(dir); err != nil {
 		t.Fatal(err)
 	}
 
@@ -686,7 +721,7 @@ func TestParseArgs_CLIOverridesConfigFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { os.Chdir(origDir) })
-	if err := os.Chdir(dir); err != nil {
+	if err = os.Chdir(dir); err != nil {
 		t.Fatal(err)
 	}
 
@@ -760,7 +795,7 @@ func TestParseArgs_ConfigFileInvalidYAML(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { os.Chdir(origDir) })
-	if err := os.Chdir(dir); err != nil {
+	if err = os.Chdir(dir); err != nil {
 		t.Fatal(err)
 	}
 
@@ -784,7 +819,7 @@ func TestParseArgs_ConfigFileUnknownKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { os.Chdir(origDir) })
-	if err := os.Chdir(dir); err != nil {
+	if err = os.Chdir(dir); err != nil {
 		t.Fatal(err)
 	}
 
@@ -808,7 +843,7 @@ func TestParseArgs_ConfigFileDetectKubernetesFalse(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { os.Chdir(origDir) })
-	if err := os.Chdir(dir); err != nil {
+	if err = os.Chdir(dir); err != nil {
 		t.Fatal(err)
 	}
 
@@ -842,7 +877,7 @@ exclude:
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { os.Chdir(origDir) })
-	if err := os.Chdir(dir); err != nil {
+	if err = os.Chdir(dir); err != nil {
 		t.Fatal(err)
 	}
 
@@ -877,7 +912,7 @@ filter:
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { os.Chdir(origDir) })
-	if err := os.Chdir(dir); err != nil {
+	if err = os.Chdir(dir); err != nil {
 		t.Fatal(err)
 	}
 
@@ -899,7 +934,7 @@ func TestParseArgs_NoConfigFileNoError(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { os.Chdir(origDir) })
-	if err := os.Chdir(dir); err != nil {
+	if err = os.Chdir(dir); err != nil {
 		t.Fatal(err)
 	}
 
@@ -927,7 +962,7 @@ func TestParseArgs_ConfigFileEmptyNoError(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { os.Chdir(origDir) })
-	if err := os.Chdir(dir); err != nil {
+	if err = os.Chdir(dir); err != nil {
 		t.Fatal(err)
 	}
 

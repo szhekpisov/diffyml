@@ -84,7 +84,7 @@ func findConfigFile(configFlag string) (string, error) {
 // loadConfigFile reads and parses a YAML config file.
 // Returns nil for empty files. Rejects unknown keys.
 func loadConfigFile(path string) (*FileConfig, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) // #nosec G304 -- path is from --config flag or hardcoded default
 	if err != nil {
 		return nil, fmt.Errorf("reading config file %s: %w", path, err)
 	}

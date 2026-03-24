@@ -2130,11 +2130,11 @@ func TestAllItemsAreMaps_BothEmpty(t *testing.T) {
 
 func TestAllItemsAreMaps_OneEmpty(t *testing.T) {
 	om := &OrderedMap{Keys: []string{"k"}, Values: map[string]any{"k": "v"}}
-	if !allItemsAreMaps([]any{om}, nil) {
-		t.Error("expected true when from has maps and to is empty")
+	if allItemsAreMaps([]any{om}, nil) {
+		t.Error("expected false when to is empty")
 	}
-	if !allItemsAreMaps(nil, []any{om}) {
-		t.Error("expected true when from is empty and to has maps")
+	if allItemsAreMaps(nil, []any{om}) {
+		t.Error("expected false when from is empty")
 	}
 }
 

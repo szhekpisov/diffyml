@@ -432,7 +432,7 @@ func compareListsUnordered(path DiffPath, from, to []any, opts *Options) []Diffe
 // allItemsAreMaps returns true if all items in both lists are maps (*OrderedMap or map[string]any).
 // At least one list must be non-empty.
 func allItemsAreMaps(from, to []any) bool {
-	if len(from) == 0 && len(to) == 0 {
+	if len(from) == 0 || len(to) == 0 {
 		return false
 	}
 	for _, item := range from {
@@ -619,7 +619,7 @@ func compareListsBySimilarity(path DiffPath, from, to []any, opts *Options) []Di
 	}
 
 	// Detect order changes among all matched items (after all pairing is done).
-	if !opts.IgnoreOrderChanges {
+	if opts == nil || !opts.IgnoreOrderChanges {
 		if orderDiff := detectSimilarityOrderChanges(path, from, to, matchedPairs); orderDiff != nil {
 			diffs = append(diffs, *orderDiff)
 		}

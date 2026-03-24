@@ -1145,3 +1145,200 @@ func TestResolveScalar_InvalidFloatFallsThrough(t *testing.T) {
 		t.Errorf("invalid !!float should not return 0.0, got %v (%T)", got, got)
 	}
 }
+
+// --- sprintIdentifier coverage ---
+
+func TestSprintIdentifier_String(t *testing.T) {
+	if got := sprintIdentifier("hello"); got != "hello" {
+		t.Errorf("sprintIdentifier(string) = %q, want %q", got, "hello")
+	}
+}
+
+func TestSprintIdentifier_Int(t *testing.T) {
+	if got := sprintIdentifier(42); got != "42" {
+		t.Errorf("sprintIdentifier(int) = %q, want %q", got, "42")
+	}
+}
+
+func TestSprintIdentifier_OtherType(t *testing.T) {
+	if got := sprintIdentifier(3.14); got != "3.14" {
+		t.Errorf("sprintIdentifier(float64) = %q, want %q", got, "3.14")
+	}
+}
+
+// --- isSimpleDecimal coverage ---
+
+func TestIsSimpleDecimal(t *testing.T) {
+	tests := []struct {
+		input string
+		want  bool
+	}{
+		{"", false},
+		{"-", false},
+		{"+", false},
+		{"42", true},
+		{"-7", true},
+		{"+7", true},
+		{"0", true},
+		{"0x1F", false},
+		{"1_000", false},
+		{"12345678901234567890", true}, // too large for int but still simple decimal
+	}
+	for _, tt := range tests {
+		if got := isSimpleDecimal(tt.input); got != tt.want {
+			t.Errorf("isSimpleDecimal(%q) = %v, want %v", tt.input, got, tt.want)
+		}
+	}
+}
+
+// --- pathWalker.push coverage ---
+
+func TestPathWalkerPush_DottedSegment(t *testing.T) {
+	w := pathWalker{
+		buf:     make([]byte, 0, 64),
+		lengths: make([]int, 0, 4),
+	}
+	w.push("helm.sh/chart")
+	if got := string(w.buf); got != "[helm.sh/chart]" {
+		t.Errorf("push dotted = %q, want %q", got, "[helm.sh/chart]")
+	}
+}
+
+func TestPathWalkerPush_BracketSegment(t *testing.T) {
+	w := pathWalker{
+		buf:     make([]byte, 0, 64),
+		lengths: make([]int, 0, 4),
+	}
+	w.push("[0]")
+	if got := string(w.buf); got != "[0]" {
+		t.Errorf("push bracket = %q, want %q", got, "[0]")
+	}
+	w.push("metadata")
+	if got := string(w.buf); got != "[0].metadata" {
+		t.Errorf("push after bracket = %q, want %q", got, "[0].metadata")
+	}
+}
+
+func TestPathWalkerPush_PopRoundtrip(t *testing.T) {
+	w := pathWalker{
+		buf:     make([]byte, 0, 64),
+		lengths: make([]int, 0, 4),
+	}
+	w.push("root")
+	w.push("child")
+	if got := string(w.buf); got != "root.child" {
+		t.Errorf("after two pushes = %q, want %q", got, "root.child")
+	}
+	w.pop()
+	if got := string(w.buf); got != "root" {
+		t.Errorf("after pop = %q, want %q", got, "root")
+	}
+	w.pop()
+	if len(w.buf) != 0 {
+		t.Errorf("after two pops, buf should be empty, got %q", string(w.buf))
+	}
+}
+
+// --- resolveScalar with isSimpleDecimal guard ---
+
+func TestResolveScalar_HexIntFallsToDecoder(t *testing.T) {
+	node := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!int", Value: "0xFF"}
+	got := resolveScalar(node)
+	if got != 255 {
+		t.Errorf("resolveScalar(0xFF) = %v (%T), want 255", got, got)
+	}
+}
+
+func TestResolveScalar_OctalIntFallsToDecoder(t *testing.T) {
+	node := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!int", Value: "0o755"}
+	got := resolveScalar(node)
+	if got != 493 {
+		t.Errorf("resolveScalar(0o755) = %v (%T), want 493", got, got)
+	}
+}
+
+func TestResolveScalar_SimpleDecimalInt(t *testing.T) {
+	node := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!int", Value: "42"}
+	got := resolveScalar(node)
+	if got != 42 {
+		t.Errorf("resolveScalar(42) = %v (%T), want 42", got, got)
+	}
+}
+
+func TestResolveScalar_NegativeInt(t *testing.T) {
+	node := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!int", Value: "-10"}
+	got := resolveScalar(node)
+	if got != -10 {
+		t.Errorf("resolveScalar(-10) = %v (%T), want -10", got, got)
+	}
+}
+
+func TestResolveScalar_SimpleDecimalReturnsInt(t *testing.T) {
+	// Verify the fast-path returns Go int (not int64 from yaml decoder fallback).
+	// This kills the CONDITIONALS_NEGATION mutant on the Atoi err==nil check.
+	node := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!int", Value: "100"}
+	got := resolveScalar(node)
+	if _, ok := got.(int); !ok {
+		t.Errorf("resolveScalar(100) type = %T, want int", got)
+	}
+}
+
+func TestResolveScalar_OverflowDecimalFallsToDecoder(t *testing.T) {
+	// A number that passes isSimpleDecimal but overflows strconv.Atoi.
+	// Kills the CONDITIONALS_NEGATION mutant: with err != nil the mutant
+	// would return Atoi's saturated value (math.MaxInt64) instead of
+	// falling through to the yaml decoder which returns the raw string.
+	node := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!int", Value: "99999999999999999999"}
+	got := resolveScalar(node)
+	// The yaml decoder returns the raw string for values that overflow all integer types.
+	// The mutant would return math.MaxInt64 (strconv.Atoi's saturated error value).
+	if _, isStr := got.(string); !isStr {
+		t.Errorf("overflow decimal should return string, got %v (%T)", got, got)
+	}
+}
+
+// --- sortDiffsWithOrder single-element boundary ---
+
+func TestSortDiffsWithOrder_SingleElement(t *testing.T) {
+	diffs := []Difference{{
+		Path: DiffPath{"root", "key"},
+		Type: DiffModified,
+		From: "old",
+		To:   "new",
+	}}
+	pathOrder := map[string]int{"root.key": 0}
+	sortDiffsWithOrder(diffs, pathOrder)
+	if len(diffs) != 1 || diffs[0].Path.String() != "root.key" {
+		t.Errorf("single-element sort should be identity, got %v", diffs)
+	}
+}
+
+// --- compareByExactOrParentOrderCached: !okI && okJ branch ---
+
+func TestCompareByExactOrParentOrderCached_OnlyJInOrder(t *testing.T) {
+	pathOrder := map[string]int{"known": 0}
+	result := compareByExactOrParentOrderCached(
+		"unknown", "known",
+		DiffPath{"unknown"}, DiffPath{"known"},
+		pathOrder,
+		func(path DiffPath) (int, bool) { return 0, false },
+	)
+	if result != 1 {
+		t.Errorf("expected 1 when only J is in pathOrder, got %d", result)
+	}
+}
+
+// --- pathWalker.push: empty segment branch ---
+
+func TestPathWalkerPush_EmptySegment(t *testing.T) {
+	w := pathWalker{
+		buf:     make([]byte, 0, 64),
+		lengths: make([]int, 0, 4),
+	}
+	w.push("root")
+	w.push("")
+	// Empty segment gets a dot prefix (len(buf)>0 && len(seg)==0 triggers second case)
+	if got := string(w.buf); got != "root." {
+		t.Errorf("push empty segment = %q, want %q", got, "root.")
+	}
+}

@@ -2,10 +2,10 @@ package diffyml
 
 import (
 	"cmp"
-	"fmt"
 	"slices"
 	"sort"
 	"strconv"
+	"strings"
 )
 
 // DiffType represents the kind of difference detected between YAML documents.
@@ -128,69 +128,111 @@ func Compare(from, to []byte, opts *Options) ([]Difference, error) {
 	return diffs, nil
 }
 
-// registerPath registers a path in the pathOrder map if not already present.
-func registerPath(pathOrder map[string]int, index *int, prefix DiffPath) {
-	if prefix.IsEmpty() {
-		return
-	}
-	key := prefix.String()
-	if _, exists := pathOrder[key]; !exists {
-		pathOrder[key] = *index
-		*index++
+// pathWalker holds state for extractPathOrder to avoid per-node DiffPath and String allocations.
+// It maintains an incremental byte buffer that is pushed/popped as we descend/ascend,
+// avoiding full path reconstruction on every node.
+type pathWalker struct {
+	pathOrder map[string]int
+	index     int
+	opts      *Options
+	// buf is the incrementally-built path string as bytes.
+	buf []byte
+	// lengths tracks buf length before each push for efficient pop.
+	lengths []int
+}
+
+// push appends a segment to the running path buffer.
+func (w *pathWalker) push(seg string) {
+	w.lengths = append(w.lengths, len(w.buf))
+	switch {
+	case strings.Contains(seg, "."):
+		w.buf = append(w.buf, '[')
+		w.buf = append(w.buf, seg...)
+		w.buf = append(w.buf, ']')
+	case len(w.buf) > 0 && (len(seg) == 0 || seg[0] != '['):
+		w.buf = append(w.buf, '.')
+		w.buf = append(w.buf, seg...)
+	default:
+		w.buf = append(w.buf, seg...)
 	}
 }
 
-// extractPathsFromValue recursively extracts path ordering from a parsed YAML value.
-func extractPathsFromValue(prefix DiffPath, val any, opts *Options, pathOrder map[string]int, index *int) {
+// pop restores the path buffer to the state before the last push.
+func (w *pathWalker) pop() {
+	n := len(w.lengths) - 1
+	w.buf = w.buf[:w.lengths[n]]
+	w.lengths = w.lengths[:n]
+}
+
+// register registers the current path in pathOrder if not already present.
+func (w *pathWalker) register() {
+	if len(w.buf) == 0 {
+		return
+	}
+	key := string(w.buf)
+	if _, exists := w.pathOrder[key]; !exists {
+		w.pathOrder[key] = w.index
+		w.index++
+	}
+}
+
+// walk recursively extracts path ordering from a parsed YAML value using an incremental path buffer.
+func (w *pathWalker) walk(val any) {
 	switch v := val.(type) {
 	case *OrderedMap:
-		registerPath(pathOrder, index, prefix)
+		w.register()
 		for _, key := range v.Keys {
-			childPath := prefix.Append(key)
-			extractPathsFromValue(childPath, v.Values[key], opts, pathOrder, index)
+			w.push(key)
+			w.walk(v.Values[key])
+			w.pop()
 		}
 	case map[string]any:
-		registerPath(pathOrder, index, prefix)
+		w.register()
 		var keys []string
 		for key := range v {
 			keys = append(keys, key)
 		}
 		sort.Strings(keys)
 		for _, key := range keys {
-			childPath := prefix.Append(key)
-			extractPathsFromValue(childPath, v[key], opts, pathOrder, index)
+			w.push(key)
+			w.walk(v[key])
+			w.pop()
 		}
 	case []any:
-		registerPath(pathOrder, index, prefix)
+		w.register()
 		for i, item := range v {
-			var childPath DiffPath
-			if id := getIdentifier(item, opts); isComparableIdentifier(id) {
-				childPath = prefix.Append(fmt.Sprint(id))
+			var seg string
+			if id := getIdentifier(item, w.opts); isComparableIdentifier(id) {
+				seg = sprintIdentifier(id)
 			} else {
-				childPath = prefix.Append(strconv.Itoa(i))
+				seg = strconv.Itoa(i)
 			}
-			extractPathsFromValue(childPath, item, opts, pathOrder, index)
+			w.push(seg)
+			w.walk(item)
+			w.pop()
 		}
 	default:
-		registerPath(pathOrder, index, prefix)
+		w.register()
 	}
 }
 
-// sortDiffs sorts differences by path for consistent output.
-// Sorts root-level additions first, then by path depth and alphabetically.
-// extractPathOrder extracts the order of all paths from parsed documents
+// extractPathOrder extracts the order of all paths from parsed documents.
 func extractPathOrder(fromDocs, toDocs []any, opts *Options) map[string]int {
-	pathOrder := make(map[string]int)
-	index := 0
+	w := pathWalker{
+		pathOrder: make(map[string]int),
+		opts:      opts,
+		buf:       make([]byte, 0, 256),
+		lengths:   make([]int, 0, 16),
+	}
 
 	for _, doc := range fromDocs {
-		extractPathsFromValue(nil, doc, opts, pathOrder, &index)
+		w.walk(doc)
 	}
 	for _, doc := range toDocs {
-		extractPathsFromValue(nil, doc, opts, pathOrder, &index)
+		w.walk(doc)
 	}
 
-	return pathOrder
+	return w.pathOrder
 }
 
 // hasIdentifierField checks if a value is a map containing "name" or "id" fields.
@@ -284,6 +326,16 @@ func compareByExactOrParentOrder(pathI, pathJ DiffPath, pathOrder map[string]int
 }
 
 func sortDiffsWithOrder(diffs []Difference, pathOrder map[string]int) {
+	if len(diffs) == 0 {
+		return
+	}
+
+	// Pre-compute path strings to avoid repeated String() calls during O(n log n) comparisons.
+	pathStrs := make([]string, len(diffs))
+	for i := range diffs {
+		pathStrs[i] = diffs[i].Path.String()
+	}
+
 	findParentOrder := func(path DiffPath) (int, bool) {
 		for !path.IsEmpty() {
 			if order, ok := pathOrder[path.String()]; ok {
@@ -294,14 +346,56 @@ func sortDiffsWithOrder(diffs []Difference, pathOrder map[string]int) {
 		return 0, false
 	}
 
-	slices.SortStableFunc(diffs, func(diffI, diffJ Difference) int {
-		pathI := diffI.Path
-		pathJ := diffJ.Path
+	// Sort indices to keep pathStrs aligned with diffs.
+	indices := make([]int, len(diffs))
+	for i := range indices {
+		indices[i] = i
+	}
+
+	slices.SortStableFunc(indices, func(i, j int) int {
+		pathI := diffs[i].Path
+		pathJ := diffs[j].Path
 
 		if c, decided := compareByRootOrder(pathI, pathJ, pathOrder); decided {
 			return c
 		}
 
-		return compareByExactOrParentOrder(pathI, pathJ, pathOrder, findParentOrder)
+		return compareByExactOrParentOrderCached(pathStrs[i], pathStrs[j], pathI, pathJ, pathOrder, findParentOrder)
 	})
+
+	// Reorder diffs according to sorted indices.
+	sorted := make([]Difference, len(diffs))
+	for i, idx := range indices {
+		sorted[i] = diffs[idx]
+	}
+	copy(diffs, sorted)
+}
+
+// compareByExactOrParentOrderCached is like compareByExactOrParentOrder but uses pre-computed path strings.
+func compareByExactOrParentOrderCached(strI, strJ string, pathI, pathJ DiffPath, pathOrder map[string]int, findParentOrder func(DiffPath) (int, bool)) int {
+	orderI, okI := pathOrder[strI]
+	orderJ, okJ := pathOrder[strJ]
+	if okI && okJ {
+		return cmp.Compare(orderI, orderJ)
+	}
+	if okI && !okJ {
+		return -1
+	}
+	if !okI && okJ {
+		return 1
+	}
+
+	parentOrderI, okI := findParentOrder(pathI)
+	parentOrderJ, okJ := findParentOrder(pathJ)
+	if okI && okJ {
+		if c := cmp.Compare(parentOrderI, parentOrderJ); c != 0 {
+			return c
+		}
+	}
+
+	if c := cmp.Compare(pathI.Depth(), pathJ.Depth()); c != 0 {
+		return c
+	}
+
+	return cmp.Compare(strI, strJ)
 }

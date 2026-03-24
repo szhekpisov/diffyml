@@ -1,0 +1,56 @@
+# diffyml configuration file
+# Place as .diffyml.yml or .diffyml.yaml in your project root.
+# CLI flags override these values. Unknown keys are rejected.
+
+# Output
+output: detailed        # detailed, compact, brief, github, gitlab, gitea, json, json-patch
+color: auto             # always, never, auto
+truecolor: auto         # always, never, auto
+
+# Comparison
+ignore-order-changes: false
+ignore-whitespace-changes: false
+format-strings: false
+ignore-value-changes: false
+detect-kubernetes: true
+detect-renames: true
+ignore-api-version: false
+no-cert-inspection: false
+swap: false
+
+# Filtering (lists — CLI replaces these entirely if specified)
+filter: []
+exclude: []
+filter-regexp: []
+exclude-regexp: []
+additional-identifier: []
+# Example:
+#   filter:
+#     - "spec.containers"
+#     - "metadata.labels"
+#   exclude:
+#     - "status"
+#   filter-regexp:
+#     - "^spec\\.template"
+#   exclude-regexp:
+#     - "password|secret"
+#   additional-identifier:
+#     - "id"
+
+# Display
+omit-header: false
+use-go-patch-style: false
+multi-line-context-lines: 4
+
+# Chroot
+chroot: ""
+chroot-of-from: ""
+chroot-of-to: ""
+chroot-list-to-documents: false
+
+# AI Summary (requires ANTHROPIC_API_KEY environment variable)
+summary: false
+summary-model: "claude-haiku-4-5-20251001"
+
+# Exit code
+set-exit-code: false

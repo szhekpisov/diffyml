@@ -33,45 +33,10 @@ func TestParseColor_Hex3(t *testing.T) {
 	}
 }
 
-func TestParseColor_Named(t *testing.T) {
-	tests := []struct {
-		name     string
-		wantR    int
-		wantG    int
-		wantB    int
-		wantANSI string
-	}{
-		{"red", 205, 0, 0, colorRed},
-		{"green", 0, 205, 0, colorGreen},
-		{"yellow", 205, 205, 0, colorYellow},
-		{"cyan", 0, 205, 205, colorCyan},
-		{"gray", 127, 127, 127, colorGray},
-		{"grey", 127, 127, 127, colorGray},
-		{"white", 229, 229, 229, colorWhite},
-		{"RED", 205, 0, 0, colorRed},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c, err := ParseColor(tt.name)
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if c.R != tt.wantR || c.G != tt.wantG || c.B != tt.wantB {
-				t.Errorf("got RGB(%d,%d,%d), want (%d,%d,%d)", c.R, c.G, c.B, tt.wantR, tt.wantG, tt.wantB)
-			}
-			if c.ANSICode != tt.wantANSI {
-				t.Errorf("got ANSICode=%q, want %q", c.ANSICode, tt.wantANSI)
-			}
-			if !c.IsCustom {
-				t.Error("expected IsCustom=true")
-			}
-		})
-	}
-}
-
 func TestParseColor_Invalid(t *testing.T) {
 	tests := []string{
 		"",
+		"red",
 		"blue",
 		"#gg0000",
 		"#00gg00",

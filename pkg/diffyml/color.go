@@ -440,30 +440,15 @@ func resolvedPalette(opts *FormatOptions) *CustomColorPalette {
 }
 
 // ParseColor parses a color specification string.
-// Supports hex (#rrggbb, #rgb) and named ANSI colors (red, green, yellow, cyan, gray, white).
+// Supports hex formats: #rrggbb and #rgb.
 func ParseColor(s string) (*CustomColor, error) {
 	s = strings.TrimSpace(s)
 	if s == "" {
 		return nil, fmt.Errorf("empty color specification")
 	}
 
-	switch strings.ToLower(s) {
-	case "red":
-		return &CustomColor{R: 205, G: 0, B: 0, ANSICode: colorRed, IsCustom: true}, nil
-	case "green":
-		return &CustomColor{R: 0, G: 205, B: 0, ANSICode: colorGreen, IsCustom: true}, nil
-	case "yellow":
-		return &CustomColor{R: 205, G: 205, B: 0, ANSICode: colorYellow, IsCustom: true}, nil
-	case "cyan":
-		return &CustomColor{R: 0, G: 205, B: 205, ANSICode: colorCyan, IsCustom: true}, nil
-	case "gray", "grey":
-		return &CustomColor{R: 127, G: 127, B: 127, ANSICode: colorGray, IsCustom: true}, nil
-	case "white":
-		return &CustomColor{R: 229, G: 229, B: 229, ANSICode: colorWhite, IsCustom: true}, nil
-	}
-
 	if !strings.HasPrefix(s, "#") {
-		return nil, fmt.Errorf("invalid color %q: use hex (#rrggbb, #rgb) or named (red, green, yellow, cyan, gray, white)", s)
+		return nil, fmt.Errorf("invalid color %q: use hex (#rrggbb or #rgb)", s)
 	}
 
 	hex := s[1:]

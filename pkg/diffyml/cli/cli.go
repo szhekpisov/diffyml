@@ -404,7 +404,7 @@ func (c *CLIConfig) Usage() string {
 	// Custom colors
 	sb.WriteString("Custom colors:\n")
 	sb.WriteString("  Colors can be customized via .diffyml.yml or environment variables.\n")
-	sb.WriteString("  Accepted formats: hex (#rrggbb, #rgb) or named (red, green, yellow, cyan, gray, white)\n")
+	sb.WriteString("  Accepted formats: hex (#rrggbb, #rgb)\n")
 	sb.WriteString("\n")
 	sb.WriteString("  Config file (.diffyml.yml):\n")
 	sb.WriteString("    colors:\n")

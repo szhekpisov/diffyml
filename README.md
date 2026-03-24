@@ -35,7 +35,7 @@ diffyml compares YAML files and shows meaningful, structured differences — not
 | Runtime dependencies | 1 (yaml.v3) | 14 | 0 |
 | Directory comparison | Yes | No | Yes |
 | Git external diff (`GIT_EXTERNAL_DIFF`) | Yes (auto-detect) | No | N/A |
-| Custom colors | Yes (hex, named, env vars) | No | No |
+| Custom colors | Yes (hex, env vars) | No | No |
 | Configuration file | Yes (`.diffyml.yml`) | No | No |
 | Performance (78 KB) | 19 ms | 129 ms (6.95x slower) | 6 ms |
 | Performance (780 KB) | 128 ms | 1,214 ms (9.49x slower) | 46 ms |
@@ -281,7 +281,7 @@ All CLI flags are supported as config keys (kebab-case, matching the long flag n
 
 Diff colors can be customized for accessibility (e.g., colorblind-friendly palettes). Five color roles are configurable: `added`, `removed`, `modified`, `context`, and `doc-name`.
 
-Colors are specified as hex (`#rrggbb`, `#rgb`) or named ANSI colors (`red`, `green`, `yellow`, `cyan`, `gray`, `white`).
+Colors are specified as hex (`#rrggbb`, `#rgb`).
 
 **Via config file:**
 

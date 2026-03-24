@@ -48,9 +48,9 @@ set-exit-code: true
 colors:
   added: "#6aa3a5"
   removed: "#702d06"
-  modified: yellow
+  modified: "#cdcd00"
   context: "#888888"
-  doc-name: cyan
+  doc-name: "#00cdcd"
 `
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
@@ -169,14 +169,14 @@ colors:
 	if fc.Colors.Removed == nil || *fc.Colors.Removed != "#702d06" {
 		t.Errorf("expected Colors.Removed='#702d06', got %v", fc.Colors.Removed)
 	}
-	if fc.Colors.Modified == nil || *fc.Colors.Modified != "yellow" {
-		t.Errorf("expected Colors.Modified='yellow', got %v", fc.Colors.Modified)
+	if fc.Colors.Modified == nil || *fc.Colors.Modified != "#cdcd00" {
+		t.Errorf("expected Colors.Modified='#cdcd00', got %v", fc.Colors.Modified)
 	}
 	if fc.Colors.Context == nil || *fc.Colors.Context != "#888888" {
 		t.Errorf("expected Colors.Context='#888888', got %v", fc.Colors.Context)
 	}
-	if fc.Colors.DocName == nil || *fc.Colors.DocName != "cyan" {
-		t.Errorf("expected Colors.DocName='cyan', got %v", fc.Colors.DocName)
+	if fc.Colors.DocName == nil || *fc.Colors.DocName != "#00cdcd" {
+		t.Errorf("expected Colors.DocName='#00cdcd', got %v", fc.Colors.DocName)
 	}
 }
 

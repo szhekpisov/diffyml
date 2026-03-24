@@ -27,7 +27,7 @@ func TestLoadColorPalette_EmptyColors(t *testing.T) {
 
 func TestLoadColorPalette_ConfigFile(t *testing.T) {
 	added := "#6aa3a5"
-	removed := "red"
+	removed := "#cd0000"
 	fc := &FileConfig{
 		Colors: &ColorOverrides{
 			Added:   &added,
@@ -51,8 +51,8 @@ func TestLoadColorPalette_ConfigFile(t *testing.T) {
 	if !palette.Removed.IsCustom {
 		t.Error("expected Removed.IsCustom=true")
 	}
-	if palette.Removed.R != 205 {
-		t.Errorf("Removed.R: got %d, want 205", palette.Removed.R)
+	if palette.Removed.R != 205 || palette.Removed.G != 0 || palette.Removed.B != 0 {
+		t.Errorf("Removed: got RGB(%d,%d,%d), want (205,0,0)", palette.Removed.R, palette.Removed.G, palette.Removed.B)
 	}
 	// Modified should remain default
 	if palette.Modified.IsCustom {
@@ -107,7 +107,7 @@ func TestLoadColorPalette_AllEnvVars(t *testing.T) {
 	t.Setenv("DIFFYML_COLOR_REMOVED", "#ff1111")
 	t.Setenv("DIFFYML_COLOR_MODIFIED", "#ffff11")
 	t.Setenv("DIFFYML_COLOR_CONTEXT", "#888888")
-	t.Setenv("DIFFYML_COLOR_DOC_NAME", "cyan")
+	t.Setenv("DIFFYML_COLOR_DOC_NAME", "#00cdcd")
 
 	palette, err := loadColorPalette(nil)
 	if err != nil {

@@ -49,7 +49,7 @@ chroot-of-to: ""
 chroot-list-to-documents: false
 
 # Custom colors (for accessibility / colorblind users)
-# Accepts hex (#rrggbb, #rgb) or named (red, green, yellow, cyan, gray, white).
+# Accepts hex (#rrggbb, #rgb).
 # Environment variables override these: DIFFYML_COLOR_ADDED, DIFFYML_COLOR_REMOVED,
 # DIFFYML_COLOR_MODIFIED, DIFFYML_COLOR_CONTEXT, DIFFYML_COLOR_DOC_NAME.
 # colors:

@@ -17,7 +17,7 @@ func (f *DetailedFormatter) renderEntryValue(sb *strings.Builder, val any, symbo
 	if symbol == "+" {
 		diffType = DiffAdded
 	}
-	palette := entryPalette(diffType, opts.TrueColor)
+	palette := resolvedPalette(opts).EntryPalette(diffType, opts.TrueColor)
 
 	// Map entries: render as key: value pairs
 	if !isList {
@@ -49,7 +49,7 @@ func (f *DetailedFormatter) renderDocumentValue(sb *strings.Builder, val any, sy
 	if symbol == "+" {
 		diffType = DiffAdded
 	}
-	palette := entryPalette(diffType, opts.TrueColor)
+	palette := resolvedPalette(opts).EntryPalette(diffType, opts.TrueColor)
 
 	pad := strings.Repeat(" ", indent)
 	whiteCode := colorWhite

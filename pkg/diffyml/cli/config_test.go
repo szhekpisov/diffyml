@@ -45,6 +45,12 @@ chroot-list-to-documents: true
 summary: true
 summary-model: "claude-sonnet-4-20250514"
 set-exit-code: true
+colors:
+  added: "#6aa3a5"
+  removed: "#702d06"
+  modified: "#cdcd00"
+  context: "#888888"
+  doc-name: "#00cdcd"
 `
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
@@ -151,6 +157,26 @@ set-exit-code: true
 	// Exit code
 	if fc.SetExitCode == nil || !*fc.SetExitCode {
 		t.Error("expected SetExitCode=true")
+	}
+
+	// Custom colors
+	if fc.Colors == nil {
+		t.Fatal("expected Colors to be set")
+	}
+	if fc.Colors.Added == nil || *fc.Colors.Added != "#6aa3a5" {
+		t.Errorf("expected Colors.Added='#6aa3a5', got %v", fc.Colors.Added)
+	}
+	if fc.Colors.Removed == nil || *fc.Colors.Removed != "#702d06" {
+		t.Errorf("expected Colors.Removed='#702d06', got %v", fc.Colors.Removed)
+	}
+	if fc.Colors.Modified == nil || *fc.Colors.Modified != "#cdcd00" {
+		t.Errorf("expected Colors.Modified='#cdcd00', got %v", fc.Colors.Modified)
+	}
+	if fc.Colors.Context == nil || *fc.Colors.Context != "#888888" {
+		t.Errorf("expected Colors.Context='#888888', got %v", fc.Colors.Context)
+	}
+	if fc.Colors.DocName == nil || *fc.Colors.DocName != "#00cdcd" {
+		t.Errorf("expected Colors.DocName='#00cdcd', got %v", fc.Colors.DocName)
 	}
 }
 

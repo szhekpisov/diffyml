@@ -133,7 +133,7 @@ func (f *DetailedFormatter) writeBold(sb *strings.Builder, text string, opts *Fo
 // writeDocLabel writes a document label suffix in light steel blue.
 func (f *DetailedFormatter) writeDocLabel(sb *strings.Builder, label string, opts *FormatOptions) {
 	sb.WriteString("  ")
-	sb.WriteString(colorStart(opts, DocNameColorCode(opts.TrueColor)))
+	sb.WriteString(colorStart(opts, resolvedPalette(opts).ColorCode(ColorRoleDocName, opts.TrueColor)))
 	fmt.Fprintf(sb, "(%s)", label)
 	sb.WriteString(colorEnd(opts))
 }
@@ -345,17 +345,17 @@ func (f *DetailedFormatter) writeDescriptorLine(sb *strings.Builder, text string
 // Color helper methods for DetailedFormatter
 
 func (f *DetailedFormatter) colorAdded(opts *FormatOptions) string {
-	return DetailedColorCode(DiffAdded, opts.TrueColor)
+	return resolvedPalette(opts).ColorCode(ColorRoleAdded, opts.TrueColor)
 }
 
 func (f *DetailedFormatter) colorRemoved(opts *FormatOptions) string {
-	return DetailedColorCode(DiffRemoved, opts.TrueColor)
+	return resolvedPalette(opts).ColorCode(ColorRoleRemoved, opts.TrueColor)
 }
 
 func (f *DetailedFormatter) colorModified(opts *FormatOptions) string {
-	return DetailedColorCode(DiffModified, opts.TrueColor)
+	return resolvedPalette(opts).ColorCode(ColorRoleModified, opts.TrueColor)
 }
 
 func (f *DetailedFormatter) colorContext(opts *FormatOptions) string {
-	return ContextColorCode(opts.TrueColor)
+	return resolvedPalette(opts).ColorCode(ColorRoleContext, opts.TrueColor)
 }

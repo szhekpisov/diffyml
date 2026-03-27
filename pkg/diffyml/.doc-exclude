@@ -7,10 +7,17 @@
 ColorConfig
 ColorMode
 ColorReset
+ColorRole
 ContextColorCode
+CustomColor
+CustomColorPalette
+DefaultCustomColorPalette
+DetectTrueColorSupport
 DetailedColorCode
+DocNameColorCode
 IsTerminal
 NewColorConfig
+ParseColor
 ParseColorMode
 ResolveColorMode
 TrueColorCode
@@ -30,13 +37,16 @@ FormatRenameFileHeader
 
 # Formatter supporting types (documented via Formatter / FormatterByName)
 DiffGroup
+DiffPath
 DiffType
 FormatOptions
 StructuredFormatter
+YAMLColorPalette
 
 # Kubernetes matching internals
 CanMatchByIdentifierWithAdditional
 IdentifierWithAdditional
+K8sResourceDisplayName
 
 # Parser internals (most users call Compare directly)
 DocumentParser

@@ -236,15 +236,17 @@ func loadColorPalette(fc *FileConfig) (*diffyml.CustomColorPalette, error) {
 
 	applyColor := func(name, envVar string, cfgVal *string, target **diffyml.CustomColor) error {
 		spec := os.Getenv(envVar)
+		source := envVar
 		if spec == "" && cfgVal != nil {
 			spec = *cfgVal
+			source = "config file colors." + name
 		}
 		if spec == "" {
 			return nil
 		}
 		c, err := diffyml.ParseColor(spec)
 		if err != nil {
-			return fmt.Errorf("invalid %s color: %w", name, err)
+			return fmt.Errorf("invalid %s color (from %s): %w", name, source, err)
 		}
 		*target = c
 		anyCustom = true

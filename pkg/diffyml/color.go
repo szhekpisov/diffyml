@@ -452,40 +452,24 @@ func ParseColor(s string) (*CustomColor, error) {
 	}
 
 	hex := s[1:]
-	var r, g, b uint64
-	var err error
+	var ri, gi, bi int
 	switch len(hex) {
 	case 3:
-		r, err = strconv.ParseUint(string([]byte{hex[0], hex[0]}), 16, 8)
+		val, err := strconv.ParseUint(string([]byte{hex[0], hex[0], hex[1], hex[1], hex[2], hex[2]}), 16, 24)
 		if err != nil {
 			return nil, fmt.Errorf("invalid hex color %q", s)
 		}
-		g, err = strconv.ParseUint(string([]byte{hex[1], hex[1]}), 16, 8)
-		if err != nil {
-			return nil, fmt.Errorf("invalid hex color %q", s)
-		}
-		b, err = strconv.ParseUint(string([]byte{hex[2], hex[2]}), 16, 8)
-		if err != nil {
-			return nil, fmt.Errorf("invalid hex color %q", s)
-		}
+		ri, gi, bi = int(val>>16)&0xFF, int(val>>8)&0xFF, int(val)&0xFF
 	case 6:
-		r, err = strconv.ParseUint(hex[0:2], 16, 8)
+		val, err := strconv.ParseUint(hex, 16, 24)
 		if err != nil {
 			return nil, fmt.Errorf("invalid hex color %q", s)
 		}
-		g, err = strconv.ParseUint(hex[2:4], 16, 8)
-		if err != nil {
-			return nil, fmt.Errorf("invalid hex color %q", s)
-		}
-		b, err = strconv.ParseUint(hex[4:6], 16, 8)
-		if err != nil {
-			return nil, fmt.Errorf("invalid hex color %q", s)
-		}
+		ri, gi, bi = int(val>>16)&0xFF, int(val>>8)&0xFF, int(val)&0xFF
 	default:
 		return nil, fmt.Errorf("invalid hex color %q: expected #rrggbb or #rgb", s)
 	}
 
-	ri, gi, bi := int(r), int(g), int(b)
 	return &CustomColor{
 		R: ri, G: gi, B: bi,
 		ANSICode: nearestANSI(ri, gi, bi),

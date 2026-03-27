@@ -1,6 +1,7 @@
 package diffyml
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -65,6 +66,19 @@ func TestParseColor_HexCaseInsensitive(t *testing.T) {
 	}
 	if c.R != 255 || c.G != 0 || c.B != 255 {
 		t.Errorf("got RGB(%d,%d,%d), want (255,0,255)", c.R, c.G, c.B)
+	}
+}
+
+func TestParseColor_Hex3_Uppercase(t *testing.T) {
+	c, err := ParseColor("#F0A")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if c.R != 255 || c.G != 0 || c.B != 170 {
+		t.Errorf("got RGB(%d,%d,%d), want (255,0,170)", c.R, c.G, c.B)
+	}
+	if !c.IsCustom {
+		t.Error("expected IsCustom=true")
 	}
 }
 
@@ -262,5 +276,66 @@ func TestResolvedPalette_Custom(t *testing.T) {
 	got := resolvedPalette(opts)
 	if got != custom {
 		t.Error("opts with custom Palette should return it")
+	}
+}
+
+func TestCompactFormatter_CustomPalette(t *testing.T) {
+	palette := DefaultCustomColorPalette()
+	palette.Added = &CustomColor{R: 106, G: 163, B: 165, ANSICode: colorCyan, IsCustom: true}
+	palette.Removed = &CustomColor{R: 112, G: 45, B: 6, ANSICode: colorRed, IsCustom: true}
+
+	diffs := []Difference{
+		{Type: DiffAdded, Path: DiffPath{"key"}, To: "new"},
+		{Type: DiffRemoved, Path: DiffPath{"old"}, From: "gone"},
+		{Type: DiffModified, Path: DiffPath{"val"}, From: "a", To: "b"},
+	}
+
+	f := &CompactFormatter{}
+
+	// TrueColor mode: custom colors should appear as 24-bit ANSI codes
+	opts := &FormatOptions{Color: true, TrueColor: true, Palette: palette}
+	out := f.Format(diffs, opts)
+
+	addedCode := TrueColorCode(106, 163, 165)
+	removedCode := TrueColorCode(112, 45, 6)
+
+	if !strings.Contains(out, addedCode) {
+		t.Errorf("expected custom added TrueColor code %q in output:\n%s", addedCode, out)
+	}
+	if !strings.Contains(out, removedCode) {
+		t.Errorf("expected custom removed TrueColor code %q in output:\n%s", removedCode, out)
+	}
+
+	// 8-color mode: custom colors should fall back to nearest ANSI
+	opts8 := &FormatOptions{Color: true, TrueColor: false, Palette: palette}
+	out8 := f.Format(diffs, opts8)
+
+	if !strings.Contains(out8, colorCyan) {
+		t.Errorf("expected custom added ANSI code %q in 8-color output:\n%s", colorCyan, out8)
+	}
+}
+
+func TestDetailedFormatter_CustomPalette(t *testing.T) {
+	palette := DefaultCustomColorPalette()
+	palette.Added = &CustomColor{R: 106, G: 163, B: 165, ANSICode: colorCyan, IsCustom: true}
+	palette.Removed = &CustomColor{R: 112, G: 45, B: 6, ANSICode: colorRed, IsCustom: true}
+
+	diffs := []Difference{
+		{Type: DiffAdded, Path: DiffPath{"key"}, To: "new-value"},
+		{Type: DiffRemoved, Path: DiffPath{"old"}, From: "removed-value"},
+	}
+
+	f := &DetailedFormatter{}
+	opts := &FormatOptions{Color: true, TrueColor: true, Palette: palette}
+	out := f.Format(diffs, opts)
+
+	addedCode := TrueColorCode(106, 163, 165)
+	removedCode := TrueColorCode(112, 45, 6)
+
+	if !strings.Contains(out, addedCode) {
+		t.Errorf("expected custom added TrueColor code %q in detailed output:\n%s", addedCode, out)
+	}
+	if !strings.Contains(out, removedCode) {
+		t.Errorf("expected custom removed TrueColor code %q in detailed output:\n%s", removedCode, out)
 	}
 }

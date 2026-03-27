@@ -108,6 +108,8 @@ func TestNearestANSI(t *testing.T) {
 		{200, 0, 200, "\033[35m"},
 		// Teal (#6aa3a5) is closer to gray in RGB distance
 		{106, 163, 165, colorGray},
+		// Equidistant to white and gray — first match (white) wins
+		{178, 178, 178, colorWhite},
 	}
 	for _, tt := range tests {
 		got := nearestANSI(tt.r, tt.g, tt.b)

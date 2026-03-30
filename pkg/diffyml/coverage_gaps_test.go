@@ -694,6 +694,81 @@ func TestCompareListsByIdentifier_NoIDExcessAdded(t *testing.T) {
 	}
 }
 
+func TestCompareUnidentifiedItems_CursorSkipMatchedTo(t *testing.T) {
+	// Exercises the toNoIDMatched skip branch in the cursor loop:
+	// "shared" exact-matches, so the cursor must skip it in to before pairing
+	// "only-from" with "only-to".
+	from := []any{
+		&OrderedMap{
+			Keys:   []string{"name"},
+			Values: map[string]any{"name": "x"},
+		},
+		"only-from",
+		"shared",
+	}
+	to := []any{
+		&OrderedMap{
+			Keys:   []string{"name"},
+			Values: map[string]any{"name": "x"},
+		},
+		"shared",
+		"only-to",
+	}
+
+	diffs := compareListsByIdentifier(DiffPath{"items"}, from, to, nil)
+
+	// "shared" matches exactly. Remaining: "only-from" vs "only-to" → modification.
+	var modified int
+	for _, d := range diffs {
+		if d.Type == DiffModified {
+			modified++
+		}
+	}
+	if modified != 1 {
+		t.Errorf("expected 1 modified diff, got %d; diffs: %v", modified, diffs)
+	}
+}
+
+func TestCompareUnidentifiedItems_ExcessFromWithMatchedSkip(t *testing.T) {
+	// Exercises the fromNoIDMatched skip in the excess-from tail loop:
+	// from has more unidentified items than to, and a matched item ("shared")
+	// appears between unmatched items in the from-side cursor walk.
+	from := []any{
+		&OrderedMap{
+			Keys:   []string{"name"},
+			Values: map[string]any{"name": "x"},
+		},
+		"removed-a",
+		"shared",
+		"removed-b",
+	}
+	to := []any{
+		&OrderedMap{
+			Keys:   []string{"name"},
+			Values: map[string]any{"name": "x"},
+		},
+		"shared",
+	}
+
+	diffs := compareListsByIdentifier(DiffPath{"items"}, from, to, nil)
+
+	// "shared" matches exactly. Remaining from: ["removed-a", "removed-b"] vs to: [].
+	// Both are excess → 2 modifications? No — no to items left, so "removed-a" has
+	// nothing to pair with, and "removed-b" has nothing either. But wait — the cursor
+	// loop pairs positionally: no unmatched to items, so both go to excess-from.
+	// Actually: cursor loop finds "removed-a" in from, no unmatched to → exits loop.
+	// Excess-from: "removed-a" (removed), skip "shared" (matched), "removed-b" (removed).
+	var removed int
+	for _, d := range diffs {
+		if d.Type == DiffRemoved {
+			removed++
+		}
+	}
+	if removed != 2 {
+		t.Errorf("expected 2 removed diffs, got %d; diffs: %v", removed, diffs)
+	}
+}
+
 func TestAreListItemsHeterogeneous_SingleKeyHomogeneous(t *testing.T) {
 	// Kills CONDITIONALS_BOUNDARY at comparator.go areListItemsHeterogeneous:
 	// len(allKeys) > 1 mutated to >= 1.

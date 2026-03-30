@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.15] - 2026-03-30
+
+### Fixed
+
+- Produce precise nested diffs with --ignore-order-changes (#85) ([#85](https://github.com/szhekpisov/diffyml/pull/85))
+
 ## [1.5.14] - 2026-03-27
 
 ### Added
@@ -172,6 +178,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add GOPATH/bin PATH hint to Go Install section (#3) ([#3](https://github.com/szhekpisov/diffyml/pull/3))
 - Cleanup (#6) ([#6](https://github.com/szhekpisov/diffyml/pull/6))
 
+[1.5.15]: https://github.com/szhekpisov/diffyml/compare/v1.5.14...v1.5.15
 [1.5.14]: https://github.com/szhekpisov/diffyml/compare/v1.5.13...v1.5.14
 [1.5.13]: https://github.com/szhekpisov/diffyml/compare/v1.5.12...v1.5.13
 [1.5.12]: https://github.com/szhekpisov/diffyml/compare/v1.5.11...v1.5.12

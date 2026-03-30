@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.17] - 2026-03-30
+
+### Fixed
+
+- Upload SLSA provenance to draft release before publishing (#87) ([#87](https://github.com/szhekpisov/diffyml/pull/87))
+
+## [1.5.16] - 2026-03-30
+
+### Fixed
+
+- Use draft release to allow SLSA provenance upload (#86) ([#86](https://github.com/szhekpisov/diffyml/pull/86))
+
 ## [1.5.15] - 2026-03-30
 
 ### Fixed
@@ -178,6 +190,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add GOPATH/bin PATH hint to Go Install section (#3) ([#3](https://github.com/szhekpisov/diffyml/pull/3))
 - Cleanup (#6) ([#6](https://github.com/szhekpisov/diffyml/pull/6))
 
+[1.5.17]: https://github.com/szhekpisov/diffyml/compare/v1.5.16...v1.5.17
+[1.5.16]: https://github.com/szhekpisov/diffyml/compare/v1.5.15...v1.5.16
 [1.5.15]: https://github.com/szhekpisov/diffyml/compare/v1.5.14...v1.5.15
 [1.5.14]: https://github.com/szhekpisov/diffyml/compare/v1.5.13...v1.5.14
 [1.5.13]: https://github.com/szhekpisov/diffyml/compare/v1.5.12...v1.5.13

@@ -88,6 +88,7 @@ changelog:
       - "^chore:"
 
 release:
+  draft: true
   name_template: "v{{.Version}}"
 
 snapshot:

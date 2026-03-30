@@ -110,8 +110,20 @@ jobs:
       base64-subjects: "${{ needs.release.outputs.hashes }}"
       upload-assets: true
 
+  publish:
+    needs: [release, provenance]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: gh release edit "$TAG" --draft=false --repo "$GITHUB_REPOSITORY"
+
   update-changelog:
-    needs: release
+    needs: publish
     runs-on: ubuntu-latest
     permissions:
       contents: write

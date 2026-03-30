@@ -43,6 +43,12 @@ body:
         - Performance
         - CI integration
         - Remote file support
+        - AI summary
+        - Configuration file
+        - Colors / accessibility
+        - Certificate inspection
+        - Directory comparison
+        - Git integration
         - Other
     validations:
       required: true

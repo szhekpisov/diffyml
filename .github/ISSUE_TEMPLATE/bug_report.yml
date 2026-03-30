@@ -35,7 +35,8 @@ body:
       label: Command and flags
       description: >-
         The exact command you ran. Flags like --detect-kubernetes, --chroot,
-        and --filter-regexp trigger different code paths, so include them all.
+        --filter-regexp, --summary, --config, and --ignore-order-changes
+        trigger different code paths, so include them all.
       placeholder: diffyml --detect-kubernetes old.yaml new.yaml
       render: bash
     validations:
@@ -65,12 +66,14 @@ body:
       label: Output format
       description: Which output format were you using?
       options:
-        - pretty (default)
+        - detailed (default)
+        - compact
+        - brief
         - github
         - gitlab
+        - gitea
         - json
-        - quiet
-        - summary
+        - json-patch
     validations:
       required: true
 
@@ -85,6 +88,8 @@ body:
         - label: YAML anchors/aliases
         - label: Remote URL input
         - label: Large files (>1000 lines)
+        - label: Directory comparison
+        - label: Config file (.diffyml.yml) in use
 
   - type: input
     id: version

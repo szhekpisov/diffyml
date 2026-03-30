@@ -227,25 +227,20 @@ func TestCompareListsByIdentifier_NoIDFallback(t *testing.T) {
 
 	diffs := compareListsByIdentifier(DiffPath{"items"}, from, to, nil)
 
-	// "a" matched by name → modified value
-	// "scalar-from-only" has no identifier → removed (fallback)
-	// "new-scalar" has no identifier → added (fallback)
+	// "a" matched by name → modified value (1 → 2)
 	// "shared-scalar" matched by deepEqual in fallback → no diff
-	var removed, added int
+	// "scalar-from-only" and "new-scalar" both lack identifiers, unmatched by deepEqual
+	// → compared positionally producing a modification
+	var modified int
 	for _, d := range diffs {
-		switch d.Type {
-		case DiffRemoved:
-			removed++
-		case DiffAdded:
-			added++
+		if d.Type == DiffModified {
+			modified++
 		}
 	}
 
-	if removed < 1 {
-		t.Errorf("expected at least 1 removed diff (scalar-from-only), got %d removed", removed)
-	}
-	if added < 1 {
-		t.Errorf("expected at least 1 added diff (new-scalar), got %d added", added)
+	// Expect 2 modifications: "a".value (1→2) and scalar-from-only→new-scalar
+	if modified != 2 {
+		t.Errorf("expected 2 modified diffs, got %d; diffs: %v", modified, diffs)
 	}
 }
 
@@ -656,6 +651,76 @@ func TestCompareListsByIdentifier_NoIDMatchedSkip(t *testing.T) {
 		if d.Type == DiffRemoved || d.Type == DiffAdded {
 			t.Errorf("unexpected diff: %+v", d)
 		}
+	}
+}
+
+func TestCompareListsByIdentifier_NoIDExcessAdded(t *testing.T) {
+	// to has more unidentified items than from, exercising the excess-added loop
+	// in compareUnidentifiedItems.
+	from := []any{
+		&OrderedMap{
+			Keys:   []string{"name", "v"},
+			Values: map[string]any{"name": "x", "v": "1"},
+		},
+		"only-in-from",
+	}
+	to := []any{
+		&OrderedMap{
+			Keys:   []string{"name", "v"},
+			Values: map[string]any{"name": "x", "v": "1"},
+		},
+		"new-a",
+		"new-b",
+	}
+
+	diffs := compareListsByIdentifier(DiffPath{"items"}, from, to, nil)
+
+	// "only-in-from" vs "new-a" → positional modification
+	// "new-b" has no counterpart → added
+	var modified, added int
+	for _, d := range diffs {
+		switch d.Type {
+		case DiffModified:
+			modified++
+		case DiffAdded:
+			added++
+		}
+	}
+	if modified != 1 {
+		t.Errorf("expected 1 modified diff, got %d; diffs: %v", modified, diffs)
+	}
+	if added != 1 {
+		t.Errorf("expected 1 added diff, got %d; diffs: %v", added, diffs)
+	}
+}
+
+func TestAreListItemsHeterogeneous_SingleKeyHomogeneous(t *testing.T) {
+	// Kills CONDITIONALS_BOUNDARY at comparator.go areListItemsHeterogeneous:
+	// len(allKeys) > 1 mutated to >= 1.
+	// Single-key items with the SAME key are homogeneous → positional comparison.
+	// The mutation would wrongly classify them as heterogeneous → unordered comparison.
+	// With unordered: {a:1} exact-matches {a:1} in to, leaving {a:2} vs {a:3} → 1 diff.
+	// With positional: {a:1} vs {a:1} → 0 diffs, {a:2} vs {a:3} → 1 diff → 1 diff total.
+	// But {a:1} vs {a:3} and {a:2} vs {a:1} → 2 diffs with positional when order differs.
+	from := `---
+items:
+  - a: "1"
+  - a: "2"
+`
+	to := `---
+items:
+  - a: "2"
+  - a: "3"
+`
+	diffs, err := Compare([]byte(from), []byte(to), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Positional: items.0.a (1→2) + items.1.a (2→3) = 2 modifications
+	// Unordered would produce: items.0.a (1→3) = 1 modification (a:2 matches exactly)
+	if len(diffs) != 2 {
+		t.Errorf("expected 2 diffs (positional comparison), got %d: %v", len(diffs), diffs)
 	}
 }
 

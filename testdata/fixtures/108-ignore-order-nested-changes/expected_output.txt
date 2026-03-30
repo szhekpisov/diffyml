@@ -1,0 +1,11 @@
+Found one difference
+
+spec.anArray.0.withNestedArray.0.andAnotherNestedArray.0.multilineString
+  ± value change in multiline text (two inserts, zero deletions)
+      multiline
+      string
+    + with changes
+    + that weren't there
+      before
+      
+

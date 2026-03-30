@@ -379,45 +379,62 @@ func compareListsPositional(path DiffPath, from, to []any, opts *Options) []Diff
 }
 
 // compareListsUnordered compares lists ignoring order.
+// Exact matches (via deepEqual) are removed first regardless of position,
+// then remaining items are compared positionally via compareNodes to produce
+// precise nested diffs instead of coarse remove+add.
 func compareListsUnordered(path DiffPath, from, to []any, opts *Options) []Difference {
-	var diffs []Difference
-
-	// Track which items have been matched
+	fromMatched := make([]bool, len(from))
 	toMatched := make([]bool, len(to))
 
 	for i, fromItem := range from {
-		found := false
 		for j, toItem := range to {
 			if toMatched[j] {
 				continue
 			}
 			if deepEqual(fromItem, toItem, opts) {
+				fromMatched[i] = true
 				toMatched[j] = true
-				found = true
 				break
 			}
 		}
-		if !found {
-			// Item was removed
-			diffs = append(diffs, Difference{
-				Path: path.Append(strconv.Itoa(i)),
-				Type: DiffRemoved,
-				From: fromItem,
-				To:   nil,
-			})
-		}
 	}
 
-	// Check for added items
-	for j, toItem := range to {
-		if !toMatched[j] {
-			diffs = append(diffs, Difference{
-				Path: path.Append(strconv.Itoa(j)),
-				Type: DiffAdded,
-				From: nil,
-				To:   toItem,
-			})
+	// Walk both lists with cursors, skipping matched items.
+	// Unmatched items are paired positionally (from-index used for diff paths).
+	var diffs []Difference
+	fi, tj := 0, 0
+	for fi < len(from) && tj < len(to) {
+		if fromMatched[fi] {
+			fi++
+			continue
 		}
+		if toMatched[tj] {
+			tj++
+			continue
+		}
+		diffs = append(diffs, compareNodes(path.Append(strconv.Itoa(fi)), from[fi], to[tj], opts)...)
+		fi++
+		tj++
+	}
+	for ; fi < len(from); fi++ {
+		if fromMatched[fi] {
+			continue
+		}
+		diffs = append(diffs, Difference{
+			Path: path.Append(strconv.Itoa(fi)),
+			Type: DiffRemoved,
+			From: from[fi],
+		})
+	}
+	for ; tj < len(to); tj++ {
+		if toMatched[tj] {
+			continue
+		}
+		diffs = append(diffs, Difference{
+			Path: path.Append(strconv.Itoa(tj)),
+			Type: DiffAdded,
+			To:   to[tj],
+		})
 	}
 
 	return diffs
@@ -506,41 +523,57 @@ func detectListOrderChanges(path DiffPath, fromIDs []any, fromIndex, toIndex map
 	}
 }
 
-// compareUnidentifiedItems compares list items that lack usable identifiers using unordered matching.
+// compareUnidentifiedItems compares list items that lack usable identifiers.
+// Same strategy as compareListsUnordered: exact-match first, then positional remainder.
 func compareUnidentifiedItems(path DiffPath, from, to []any, fromNoID, toNoID []int, opts *Options) []Difference {
-	var diffs []Difference
+	fromNoIDMatched := make([]bool, len(fromNoID))
 	toNoIDMatched := make([]bool, len(toNoID))
-	for _, fromIdx := range fromNoID {
-		fromItem := from[fromIdx]
-		found := false
-		for j, toIdx := range toNoID {
-			if toNoIDMatched[j] {
+	for fi, fromIdx := range fromNoID {
+		for tj, toIdx := range toNoID {
+			if toNoIDMatched[tj] {
 				continue
 			}
-			if deepEqual(fromItem, to[toIdx], opts) {
-				toNoIDMatched[j] = true
-				found = true
+			if deepEqual(from[fromIdx], to[toIdx], opts) {
+				fromNoIDMatched[fi] = true
+				toNoIDMatched[tj] = true
 				break
 			}
 		}
-		if !found {
-			diffs = append(diffs, Difference{
-				Path: path.Append(strconv.Itoa(fromIdx)),
-				Type: DiffRemoved,
-				From: fromItem,
-				To:   nil,
-			})
-		}
 	}
-	for j, toIdx := range toNoID {
-		if toNoIDMatched[j] {
+
+	var diffs []Difference
+	fi, tj := 0, 0
+	for fi < len(fromNoID) && tj < len(toNoID) {
+		if fromNoIDMatched[fi] {
+			fi++
+			continue
+		}
+		if toNoIDMatched[tj] {
+			tj++
+			continue
+		}
+		diffs = append(diffs, compareNodes(path.Append(strconv.Itoa(fromNoID[fi])), from[fromNoID[fi]], to[toNoID[tj]], opts)...)
+		fi++
+		tj++
+	}
+	for ; fi < len(fromNoID); fi++ {
+		if fromNoIDMatched[fi] {
 			continue
 		}
 		diffs = append(diffs, Difference{
-			Path: path.Append(strconv.Itoa(toIdx)),
+			Path: path.Append(strconv.Itoa(fromNoID[fi])),
+			Type: DiffRemoved,
+			From: from[fromNoID[fi]],
+		})
+	}
+	for ; tj < len(toNoID); tj++ {
+		if toNoIDMatched[tj] {
+			continue
+		}
+		diffs = append(diffs, Difference{
+			Path: path.Append(strconv.Itoa(toNoID[tj])),
 			Type: DiffAdded,
-			From: nil,
-			To:   to[toIdx],
+			To:   to[toNoID[tj]],
 		})
 	}
 	return diffs

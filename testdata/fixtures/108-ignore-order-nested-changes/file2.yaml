@@ -1,0 +1,18 @@
+apiVersion: example/v1
+kind: Resource
+metadata:
+  name: test
+spec:
+  anArray:
+  - withNestedArray:
+    - something:
+        key: value
+      andAnotherNestedArray:
+      - something:
+          key: value
+        multilineString: |
+          multiline
+          string
+          with changes
+          that weren't there
+          before

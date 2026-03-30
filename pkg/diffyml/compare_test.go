@@ -1666,6 +1666,137 @@ items:
 				}
 			},
 		},
+		{
+			name: "ignore order - nested modification produces precise diff",
+			from: `---
+items:
+  - host: example.com
+    port: 80
+`,
+			to: `---
+items:
+  - host: example.com
+    port: 8080
+`,
+			opts: &diffyml.Options{IgnoreOrderChanges: true},
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				if len(diffs) != 1 {
+					t.Fatalf("expected 1 diff, got %d: %v", len(diffs), diffs)
+				}
+				if diffs[0].Type != diffyml.DiffModified {
+					t.Errorf("expected DiffModified, got %v", diffs[0].Type)
+				}
+				if diffs[0].Path.String() != "items.0.port" {
+					t.Errorf("expected path items.0.port, got %s", diffs[0].Path.String())
+				}
+			},
+		},
+		{
+			name: "ignore order - reordered list with nested modification",
+			from: `---
+items:
+  - host: a.com
+    port: 80
+  - host: b.com
+    port: 443
+`,
+			to: `---
+items:
+  - host: b.com
+    port: 443
+  - host: a.com
+    port: 8080
+`,
+			opts: &diffyml.Options{IgnoreOrderChanges: true},
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				if len(diffs) != 1 {
+					t.Fatalf("expected 1 diff, got %d: %v", len(diffs), diffs)
+				}
+				if diffs[0].Type != diffyml.DiffModified {
+					t.Errorf("expected DiffModified, got %v", diffs[0].Type)
+				}
+			},
+		},
+		{
+			name: "ignore order - mixed exact and modified items",
+			from: `---
+items:
+  - host: a.com
+    port: 80
+  - host: b.com
+    port: 443
+  - host: c.com
+    port: 9090
+`,
+			to: `---
+items:
+  - host: b.com
+    port: 443
+  - host: c.com
+    port: 9090
+  - host: a.com
+    port: 8080
+`,
+			opts: &diffyml.Options{IgnoreOrderChanges: true},
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				// b.com and c.com match exactly; a.com has port change
+				if len(diffs) != 1 {
+					t.Fatalf("expected 1 diff, got %d: %v", len(diffs), diffs)
+				}
+				if diffs[0].Type != diffyml.DiffModified {
+					t.Errorf("expected DiffModified, got %v", diffs[0].Type)
+				}
+			},
+		},
+		{
+			name: "ignore order - addition and removal with modification",
+			from: `---
+items:
+  - host: a.com
+    port: 80
+  - host: removed.com
+    port: 999
+`,
+			to: `---
+items:
+  - host: a.com
+    port: 8080
+  - host: added.com
+    port: 111
+`,
+			opts: &diffyml.Options{IgnoreOrderChanges: true},
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				// No exact matches. Positional comparison:
+				// a.com(80) vs a.com(8080) → modified port
+				// removed.com vs added.com → modified host + port
+				if len(diffs) == 0 {
+					t.Fatal("expected diffs, got 0")
+				}
+				// All diffs should be modifications (positional comparison),
+				// not remove+add
+				for _, d := range diffs {
+					if d.Type == diffyml.DiffRemoved || d.Type == diffyml.DiffAdded {
+						t.Errorf("expected modifications not remove/add, got %v at %s", d.Type, d.Path)
+					}
+				}
+			},
+		},
+		{
+			name: "ignore order - scalar list with actual value change",
+			from: `items: [a, b, c]`,
+			to:   `items: [c, b, d]`,
+			opts: &diffyml.Options{IgnoreOrderChanges: true},
+			check: func(t *testing.T, diffs []diffyml.Difference) {
+				// a and d don't match anything exactly.
+				// "c" and "b" match exactly. Remaining: a vs d → modified
+				if len(diffs) != 1 {
+					t.Fatalf("expected 1 diff, got %d: %v", len(diffs), diffs)
+				}
+				if diffs[0].Type != diffyml.DiffModified {
+					t.Errorf("expected DiffModified, got %v", diffs[0].Type)
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {

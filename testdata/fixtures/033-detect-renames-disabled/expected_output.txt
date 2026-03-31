@@ -1,6 +1,6 @@
 Found two differences
 
-(document)
+(document)  (v1/ConfigMap/production/app-config-abc123)
   - one document removed:
     ---
     apiVersion: v1

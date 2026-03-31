@@ -1,11 +1,11 @@
 Found two differences
 
-data.config
+data.config  (v1/ConfigMap/app-config)
   ± value change
     - {"debug":false,"timeout":30}
     + {"debug":true,"timeout":30}
 
-data.notes
+data.notes  (v1/ConfigMap/app-config)
   ± value change
     - this is a plain string
     + this is a different string

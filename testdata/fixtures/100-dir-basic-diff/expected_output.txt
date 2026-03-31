@@ -2,7 +2,7 @@
 +++ b/deploy.yaml
 Found one difference
 
-spec.replicas
+spec.replicas  (apps/v1/Deployment/myapp)
   ± value change
     - 1
     + 3

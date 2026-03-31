@@ -1,26 +1,26 @@
 Found eight differences
 
-spec.replicas
+spec.replicas  (apps/v1/Deployment/default/web-app)
   ± value change
     - 1
     + 2
 
-spec.template.spec.containers.web.image
+spec.template.spec.containers.web.image  (apps/v1/Deployment/default/web-app)
   ± value change
     - nginx:1.25
     + nginx:1.26
 
-spec.template.spec.containers.web.ports
+spec.template.spec.containers.web.ports  (apps/v1/Deployment/default/web-app)
   + one list entry added:
     - name: https
       containerPort: 443
 
-spec.template.spec.containers.web.volumeMounts
+spec.template.spec.containers.web.volumeMounts  (apps/v1/Deployment/default/web-app)
   + one list entry added:
     - name: tls
       mountPath: /etc/tls
 
-spec.template.spec.containers.web.env
+spec.template.spec.containers.web.env  (apps/v1/Deployment/default/web-app)
   + one list entry added:
     - name: LOG_LEVEL
       valueFrom:
@@ -28,18 +28,18 @@ spec.template.spec.containers.web.env
           name: app-config
           key: log-level
 
-spec.template.spec.containers.web.env.ENV.value
+spec.template.spec.containers.web.env.ENV.value  (apps/v1/Deployment/default/web-app)
   ± value change
     - production
     + staging
 
-spec.template.spec.volumes
+spec.template.spec.volumes  (apps/v1/Deployment/default/web-app)
   + one list entry added:
     - name: tls
       secret:
         secretName: tls-cert
 
-spec.template.spec.containers.web.envFrom.1
+spec.template.spec.containers.web.envFrom.1  (apps/v1/Deployment/default/web-app)
   + one list entry added:
     - secretRef:
         name: app-secret

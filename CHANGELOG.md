@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.18] - 2026-03-31
+
+### Fixed
+
+- Show K8s document name in detailed output for single-doc files (#89) ([#89](https://github.com/szhekpisov/diffyml/pull/89))
+
 ## [1.5.17] - 2026-03-30
 
 ### Fixed
@@ -190,6 +196,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add GOPATH/bin PATH hint to Go Install section (#3) ([#3](https://github.com/szhekpisov/diffyml/pull/3))
 - Cleanup (#6) ([#6](https://github.com/szhekpisov/diffyml/pull/6))
 
+[1.5.18]: https://github.com/szhekpisov/diffyml/compare/v1.5.17...v1.5.18
 [1.5.17]: https://github.com/szhekpisov/diffyml/compare/v1.5.16...v1.5.17
 [1.5.16]: https://github.com/szhekpisov/diffyml/compare/v1.5.15...v1.5.16
 [1.5.15]: https://github.com/szhekpisov/diffyml/compare/v1.5.14...v1.5.15

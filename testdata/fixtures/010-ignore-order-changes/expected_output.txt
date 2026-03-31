@@ -1,6 +1,6 @@
 Found one difference
 
-spec.template.spec.containers.sidecar.image
+spec.template.spec.containers.sidecar.image  (apps/v1/Deployment/web-app)
   ± value change
     - envoy:1.28
     + envoy:1.29

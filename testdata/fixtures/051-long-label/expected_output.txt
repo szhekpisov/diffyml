@@ -1,6 +1,6 @@
 Found two differences
 
-metadata.labels
+metadata.labels  (v1/ConfigMap/production/my-config)
   - two map entries removed:
     helm.sh/chart: my-chart-1.0.0
     app.kubernetes.io/managed-by: Helm

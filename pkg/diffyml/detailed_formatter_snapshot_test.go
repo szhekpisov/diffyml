@@ -174,6 +174,28 @@ func TestDetailedFormatter_Snapshot_Header(t *testing.T) {
 	}
 }
 
+func TestDetailedFormatter_Snapshot_SingleDocK8sDocumentName(t *testing.T) {
+	f, _ := FormatterByName("detailed")
+	opts := DefaultFormatOptions()
+	opts.OmitHeader = true
+
+	diffs := []Difference{
+		{
+			Path:         DiffPath{"spec", "replicas"},
+			Type:         DiffModified,
+			From:         1,
+			To:           3,
+			DocumentName: "apps/v1/Deployment/web",
+		},
+	}
+
+	output := f.Format(diffs, opts)
+	expected := "spec.replicas  (apps/v1/Deployment/web)\n  ± value change\n    - 1\n    + 3\n\n"
+	if output != expected {
+		t.Errorf("snapshot mismatch for single-doc K8s document name.\nExpected:\n%s\nGot:\n%s", expected, output)
+	}
+}
+
 func TestDetailedFormatter_Snapshot_MultiplePathGroups(t *testing.T) {
 	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()

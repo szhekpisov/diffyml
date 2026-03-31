@@ -113,12 +113,18 @@ func (f *DetailedFormatter) formatPathHeading(sb *strings.Builder, path DiffPath
 			f.writeDocLabel(sb, documentLabel(idx, docName), opts)
 		} else {
 			f.writeBold(sb, k8sDocumentPath.String(), opts)
+			if docName != "" {
+				f.writeDocLabel(sb, docName, opts)
+			}
 		}
 	} else if idx, rest, ok := path.DocIndexPrefix(); ok {
 		f.writeBold(sb, pathString(rest, opts.UseGoPatchStyle), opts)
 		f.writeDocLabel(sb, documentLabel(idx, docName), opts)
 	} else {
 		f.writeBold(sb, pathString(path, opts.UseGoPatchStyle), opts)
+		if docName != "" {
+			f.writeDocLabel(sb, docName, opts)
+		}
 	}
 	sb.WriteString("\n")
 }

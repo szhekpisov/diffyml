@@ -1,6 +1,6 @@
 Found one difference
 
-data.query
+data.query  (v1/ConfigMap/app-config)
   ± value change
     - SELECT * FROM users
     + SELECT * FROM orders

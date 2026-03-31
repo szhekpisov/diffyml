@@ -1,6 +1,6 @@
 Found one difference
 
-data
+data  (v1/ConfigMap/app-config)
   + one map entry added:
     feature_flag: enabled
 

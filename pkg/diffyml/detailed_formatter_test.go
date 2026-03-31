@@ -2119,3 +2119,81 @@ func TestDetailedFormatter_DocumentName(t *testing.T) {
 		t.Errorf("should not contain numeric index when name is set, got: %q", output)
 	}
 }
+
+func TestDetailedFormatter_DocumentName_SingleDoc(t *testing.T) {
+	f := &DetailedFormatter{}
+	opts := DefaultFormatOptions()
+	opts.OmitHeader = true
+	diffs := []Difference{
+		{
+			Path:          DiffPath{"spec", "replicas"},
+			Type:          DiffModified,
+			From:          3,
+			To:            5,
+			DocumentIndex: 0,
+			DocumentName:  "apps/v1/Deployment/web",
+		},
+	}
+	output := f.Format(diffs, opts)
+	if !strings.Contains(output, "(apps/v1/Deployment/web)") {
+		t.Errorf("expected document name in single-doc output, got: %q", output)
+	}
+}
+
+func TestDetailedFormatter_DocumentName_SingleDoc_NoName(t *testing.T) {
+	f := &DetailedFormatter{}
+	opts := DefaultFormatOptions()
+	opts.OmitHeader = true
+	diffs := []Difference{
+		{
+			Path: DiffPath{"spec", "replicas"},
+			Type: DiffModified,
+			From: 3,
+			To:   5,
+		},
+	}
+	output := f.Format(diffs, opts)
+	if strings.Contains(output, "(") {
+		t.Errorf("non-K8s single-doc should not contain document label, got: %q", output)
+	}
+}
+
+func TestDetailedFormatter_DocumentName_BareDocIndex_SingleDoc(t *testing.T) {
+	f := &DetailedFormatter{}
+	opts := DefaultFormatOptions()
+	opts.OmitHeader = true
+	diffs := []Difference{
+		{
+			Path:          DiffPath{"[0]"},
+			Type:          DiffAdded,
+			To:            map[string]any{"apiVersion": "v1", "kind": "Ingress"},
+			DocumentIndex: 0,
+			DocumentName:  "v1/Ingress/myapp",
+		},
+	}
+	output := f.Format(diffs, opts)
+	if !strings.Contains(output, "(v1/Ingress/myapp)") {
+		t.Errorf("expected document name for bare doc index single-doc, got: %q", output)
+	}
+}
+
+func TestDetailedFormatter_DocumentName_BareDocIndex_SingleDoc_NoName(t *testing.T) {
+	f := &DetailedFormatter{}
+	opts := DefaultFormatOptions()
+	opts.OmitHeader = true
+	diffs := []Difference{
+		{
+			Path:          DiffPath{"[0]"},
+			Type:          DiffAdded,
+			To:            map[string]any{"key": "value"},
+			DocumentIndex: 0,
+		},
+	}
+	output := f.Format(diffs, opts)
+	if !strings.Contains(output, "(document)") {
+		t.Errorf("expected '(document)' text for bare doc index, got: %q", output)
+	}
+	if strings.Contains(output, "()") {
+		t.Errorf("should not contain empty label, got: %q", output)
+	}
+}

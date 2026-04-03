@@ -7,6 +7,21 @@ spec.replicas  (apps/v1/Deployment/ns-a/nested-app)
     - 2
     + 5
 
+--- a/ns-b/removed.yaml
++++ /dev/null
+Found one difference
+
+(document)  (v1/ConfigMap/ns-b/old-config)
+  - one document removed:
+    ---
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: old-config
+      namespace: ns-b
+    data:
+      key: value
+
 --- /dev/null
 +++ b/ns-b/service.yaml
 Found one difference

@@ -211,6 +211,30 @@ func TestDiscoverFiles_UnreadableSubdirectory(t *testing.T) {
 	}
 }
 
+func TestDiscoverFiles_SkipsSymlinks(t *testing.T) {
+	dir := t.TempDir()
+
+	createFile(t, dir, "real.yaml", "a: 1")
+
+	// Create a circular symlink directory — must not cause infinite recursion
+	if err := os.Symlink(dir, filepath.Join(dir, "loop")); err != nil {
+		t.Fatal(err)
+	}
+	// Create a symlink to a regular file — should also be skipped
+	if err := os.Symlink(filepath.Join(dir, "real.yaml"), filepath.Join(dir, "link.yaml")); err != nil {
+		t.Fatal(err)
+	}
+
+	files, err := DiscoverFiles(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(files) != 1 || files[0] != "real.yaml" {
+		t.Errorf("expected [real.yaml], got %v", files)
+	}
+}
+
 func TestDiscoverFiles_EmptySubdirectories(t *testing.T) {
 	dir := t.TempDir()
 

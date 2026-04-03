@@ -67,23 +67,25 @@ func TestDiscoverFiles_AlphabeticalOrder(t *testing.T) {
 	}
 }
 
-func TestDiscoverFiles_SkipsSubdirectories(t *testing.T) {
+func TestDiscoverFiles_RecursesIntoSubdirectories(t *testing.T) {
 	dir := t.TempDir()
 
 	createFile(t, dir, "top.yaml", "key: value")
-	// Create a subdirectory — should be skipped
-	subdir := filepath.Join(dir, "nested")
-	if err := os.Mkdir(subdir, 0o755); err != nil {
-		t.Fatal(err)
-	}
+	createFile(t, dir, "nested/inner.yaml", "key: nested")
 
 	files, err := DiscoverFiles(dir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if len(files) != 1 || files[0] != "top.yaml" {
-		t.Errorf("expected [top.yaml], got %v", files)
+	expected := []string{"nested/inner.yaml", "top.yaml"}
+	if len(files) != len(expected) {
+		t.Fatalf("expected %d files, got %d: %v", len(expected), len(files), files)
+	}
+	for i, name := range expected {
+		if files[i] != name {
+			t.Errorf("expected files[%d]=%q, got %q", i, name, files[i])
+		}
 	}
 }
 
@@ -94,21 +96,136 @@ func TestDiscoverFiles_NonExistentDirectory(t *testing.T) {
 	}
 }
 
-func TestDiscoverFiles_ReturnsBaseNamesOnly(t *testing.T) {
+func TestDiscoverFiles_ReturnsRelativePaths(t *testing.T) {
 	dir := t.TempDir()
 	createFile(t, dir, "deploy.yaml", "key: value")
+	createFile(t, dir, "sub/nested.yaml", "key: nested")
 
 	files, err := DiscoverFiles(dir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if len(files) != 1 {
-		t.Fatalf("expected 1 file, got %d", len(files))
+	if len(files) != 2 {
+		t.Fatalf("expected 2 files, got %d: %v", len(files), files)
 	}
-	// Should be just the base name, not a full path
+	// Flat files return base name (which is the relative path)
 	if files[0] != "deploy.yaml" {
-		t.Errorf("expected base name 'deploy.yaml', got %q", files[0])
+		t.Errorf("expected 'deploy.yaml', got %q", files[0])
+	}
+	// Nested files return forward-slash relative paths
+	if files[1] != "sub/nested.yaml" {
+		t.Errorf("expected 'sub/nested.yaml', got %q", files[1])
+	}
+}
+
+func TestDiscoverFiles_NestedFiles(t *testing.T) {
+	dir := t.TempDir()
+
+	createFile(t, dir, "ns-a/deploy.yaml", "a: 1")
+	createFile(t, dir, "ns-a/service.yaml", "b: 2")
+	createFile(t, dir, "ns-b/deploy.yaml", "c: 3")
+
+	files, err := DiscoverFiles(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := []string{"ns-a/deploy.yaml", "ns-a/service.yaml", "ns-b/deploy.yaml"}
+	if len(files) != len(expected) {
+		t.Fatalf("expected %d files, got %d: %v", len(expected), len(files), files)
+	}
+	for i, name := range expected {
+		if files[i] != name {
+			t.Errorf("expected files[%d]=%q, got %q", i, name, files[i])
+		}
+	}
+}
+
+func TestDiscoverFiles_DeepNesting(t *testing.T) {
+	dir := t.TempDir()
+
+	createFile(t, dir, "a/b/c/deep.yaml", "key: deep")
+	createFile(t, dir, "a/b/mid.yaml", "key: mid")
+	createFile(t, dir, "a/top.yaml", "key: top")
+
+	files, err := DiscoverFiles(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := []string{"a/b/c/deep.yaml", "a/b/mid.yaml", "a/top.yaml"}
+	if len(files) != len(expected) {
+		t.Fatalf("expected %d files, got %d: %v", len(expected), len(files), files)
+	}
+	for i, name := range expected {
+		if files[i] != name {
+			t.Errorf("expected files[%d]=%q, got %q", i, name, files[i])
+		}
+	}
+}
+
+func TestDiscoverFiles_MixedTopAndNestedFiles(t *testing.T) {
+	dir := t.TempDir()
+
+	createFile(t, dir, "top.yaml", "a: 1")
+	createFile(t, dir, "ns-a/deploy.yaml", "b: 2")
+	createFile(t, dir, "ns-a/service.yaml", "c: 3")
+	createFile(t, dir, "zebra.yaml", "d: 4")
+
+	files, err := DiscoverFiles(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Lexicographic sort: "/" (0x2F) < lowercase letters,
+	// so "ns-a/..." sorts before "top.yaml" — consistent with git diff.
+	expected := []string{"ns-a/deploy.yaml", "ns-a/service.yaml", "top.yaml", "zebra.yaml"}
+	if len(files) != len(expected) {
+		t.Fatalf("expected %d files, got %d: %v", len(expected), len(files), files)
+	}
+	for i, name := range expected {
+		if files[i] != name {
+			t.Errorf("expected files[%d]=%q, got %q", i, name, files[i])
+		}
+	}
+}
+
+func TestDiscoverFiles_UnreadableSubdirectory(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root user")
+	}
+
+	dir := t.TempDir()
+	createFile(t, dir, "top.yaml", "key: value")
+
+	restricted := filepath.Join(dir, "restricted")
+	if err := os.Mkdir(restricted, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(restricted, 0o755) })
+
+	_, err := DiscoverFiles(dir)
+	if err == nil {
+		t.Error("expected error for unreadable subdirectory")
+	}
+}
+
+func TestDiscoverFiles_EmptySubdirectories(t *testing.T) {
+	dir := t.TempDir()
+
+	createFile(t, dir, "top.yaml", "key: value")
+	if err := os.MkdirAll(filepath.Join(dir, "empty-sub"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	files, err := DiscoverFiles(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(files) != 1 || files[0] != "top.yaml" {
+		t.Errorf("expected [top.yaml], got %v", files)
 	}
 }
 

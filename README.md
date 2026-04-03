@@ -180,7 +180,7 @@ diffyml --detect-kubernetes=false file1.yaml file2.yaml
 
 ### Directory Comparison
 
-diffyml accepts two directories as positional arguments. It discovers all regular files in each directory (regardless of extension), matches them by filename, and shows aggregated differences. Files that cannot be parsed as YAML are silently skipped.
+diffyml accepts two directories as positional arguments. It recursively discovers all regular files in each directory (regardless of extension), matches them by relative path, and shows aggregated differences. Files that cannot be parsed as YAML are silently skipped.
 
 This makes diffyml a drop-in `KUBECTL_EXTERNAL_DIFF` provider — kubectl passes two temporary directories containing extensionless temp files (e.g. `apps.v1.Deployment.default.nginx`), and diffyml discovers them automatically:
 

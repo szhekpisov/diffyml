@@ -1,6 +1,7 @@
 package diffyml
 
 import (
+	"path/filepath"
 	"testing"
 )
 
@@ -230,5 +231,88 @@ func TestBuildFilePairPlan_FullPaths(t *testing.T) {
 	}
 	if pairs[0].ToPath != expectedTo {
 		t.Errorf("ToPath = %q, want %q", pairs[0].ToPath, expectedTo)
+	}
+}
+
+func TestBuildFilePairPlan_NestedFiles(t *testing.T) {
+	fromDir := t.TempDir()
+	toDir := t.TempDir()
+
+	createFile(t, fromDir, "ns-a/deploy.yaml", "a: 1")
+	createFile(t, toDir, "ns-a/deploy.yaml", "a: 2")
+	createFile(t, fromDir, "ns-a/removed.yaml", "b: 1")
+	createFile(t, toDir, "ns-b/added.yaml", "c: 1")
+
+	pairs, err := BuildFilePairPlan(fromDir, toDir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(pairs) != 3 {
+		t.Fatalf("expected 3 pairs, got %d: %+v", len(pairs), pairs)
+	}
+
+	expected := []struct {
+		name     string
+		pairType FilePairType
+	}{
+		{"ns-a/deploy.yaml", FilePairBothExist},
+		{"ns-a/removed.yaml", FilePairOnlyFrom},
+		{"ns-b/added.yaml", FilePairOnlyTo},
+	}
+
+	for i, exp := range expected {
+		if pairs[i].Name != exp.name {
+			t.Errorf("pairs[%d].Name = %q, want %q", i, pairs[i].Name, exp.name)
+		}
+		if pairs[i].Type != exp.pairType {
+			t.Errorf("pairs[%d].Type = %d, want %d", i, pairs[i].Type, exp.pairType)
+		}
+	}
+
+	// Verify full paths are constructed correctly
+	p := pairs[0]
+	wantFrom := filepath.Join(fromDir, "ns-a/deploy.yaml")
+	wantTo := filepath.Join(toDir, "ns-a/deploy.yaml")
+	if p.FromPath != wantFrom {
+		t.Errorf("FromPath = %q, want %q", p.FromPath, wantFrom)
+	}
+	if p.ToPath != wantTo {
+		t.Errorf("ToPath = %q, want %q", p.ToPath, wantTo)
+	}
+}
+
+func TestBuildFilePairPlan_SameBaseNameDifferentSubdirs(t *testing.T) {
+	fromDir := t.TempDir()
+	toDir := t.TempDir()
+
+	// Same base name "deploy.yaml" in different subdirs — must NOT be matched
+	createFile(t, fromDir, "ns-a/deploy.yaml", "a: 1")
+	createFile(t, toDir, "ns-b/deploy.yaml", "a: 2")
+
+	pairs, err := BuildFilePairPlan(fromDir, toDir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(pairs) != 2 {
+		t.Fatalf("expected 2 pairs, got %d: %+v", len(pairs), pairs)
+	}
+
+	expected := []struct {
+		name     string
+		pairType FilePairType
+	}{
+		{"ns-a/deploy.yaml", FilePairOnlyFrom},
+		{"ns-b/deploy.yaml", FilePairOnlyTo},
+	}
+
+	for i, exp := range expected {
+		if pairs[i].Name != exp.name {
+			t.Errorf("pairs[%d].Name = %q, want %q", i, pairs[i].Name, exp.name)
+		}
+		if pairs[i].Type != exp.pairType {
+			t.Errorf("pairs[%d].Type = %d, want %d (%s)", i, pairs[i].Type, exp.pairType, exp.name)
+		}
 	}
 }

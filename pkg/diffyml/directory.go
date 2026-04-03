@@ -6,6 +6,7 @@ package diffyml
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -24,27 +25,33 @@ func IsDirectory(path string) bool {
 	return info.IsDir()
 }
 
-// DiscoverFiles returns sorted filenames of all regular files
-// in the given directory (non-recursive).
-// Returns base names only (not full paths), sorted alphabetically.
-// Skips subdirectories and symlinks silently.
+// DiscoverFiles returns sorted relative paths of all regular files
+// in the given directory, recursing into subdirectories.
+// Paths use forward slashes regardless of OS (e.g. "ns-a/deploy.yaml").
+// Symlinks are skipped, including symlinks to directories, to avoid
+// infinite loops from circular symlinks.
 // All regular files are included regardless of extension, so that
 // kubectl temp files (e.g. "apps.v1.Deployment.default.nginx") are
 // discovered when diffyml is used as KUBECTL_EXTERNAL_DIFF.
 func DiscoverFiles(dir string) ([]string, error) {
-	entries, err := os.ReadDir(dir)
+	var files []string
+	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.Type().IsRegular() {
+			return nil
+		}
+		rel, relErr := filepath.Rel(dir, path)
+		if relErr != nil {
+			return relErr
+		}
+		files = append(files, filepath.ToSlash(rel))
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	var files []string
-	for _, entry := range entries {
-		if !entry.Type().IsRegular() {
-			continue
-		}
-		files = append(files, entry.Name())
-	}
-
 	sort.Strings(files)
 	return files, nil
 }
@@ -63,14 +70,14 @@ const (
 
 // FilePair represents a matched pair of files for comparison.
 type FilePair struct {
-	Name     string       // Base filename (e.g., "deployment.yaml")
+	Name     string       // Relative path from root dir (e.g., "deployment.yaml" or "ns/deployment.yaml")
 	Type     FilePairType // Relationship between from and to
 	FromPath string       // Full path in from-directory (empty if OnlyTo)
 	ToPath   string       // Full path in to-directory (empty if OnlyFrom)
 }
 
 // BuildFilePairPlan creates an alphabetically sorted plan of file
-// pairs from two directories, matching files by filename.
+// pairs from two directories, matching files by relative path.
 // Every file from both directories appears exactly once.
 // Returns an error if either directory cannot be read.
 func BuildFilePairPlan(fromDir, toDir string) ([]FilePair, error) {

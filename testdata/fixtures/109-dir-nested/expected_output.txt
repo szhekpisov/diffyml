@@ -1,0 +1,34 @@
+--- a/ns-a/deploy.yaml
++++ b/ns-a/deploy.yaml
+Found one difference
+
+spec.replicas  (apps/v1/Deployment/ns-a/nested-app)
+  ± value change
+    - 2
+    + 5
+
+--- /dev/null
++++ b/ns-b/service.yaml
+Found one difference
+
+(document)  (v1/Service/ns-b/new-service)
+  + one document added:
+    ---
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: new-service
+      namespace: ns-b
+    spec:
+      ports:
+        - port: 80
+
+--- a/top.yaml
++++ b/top.yaml
+Found one difference
+
+spec.replicas  (apps/v1/Deployment/top-app)
+  ± value change
+    - 1
+    + 3
+

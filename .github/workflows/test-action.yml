@@ -1,0 +1,159 @@
+name: Test Action
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'action.yml'
+      - '.github/workflows/test-action.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'action.yml'
+      - '.github/workflows/test-action.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - name: Resolve latest version
+        id: version
+        shell: bash
+        run: |
+          VERSION=$(gh api repos/szhekpisov/diffyml/releases/latest --jq '.tag_name' | sed 's/^v//')
+          echo "resolved=$VERSION" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: "Test: diff detected (fail-on-diff: false)"
+        id: diff-detected
+        uses: ./
+        with:
+          from: testdata/fixtures/001-indentation/file1.yaml
+          to: testdata/fixtures/001-indentation/file2.yaml
+          version: ${{ steps.version.outputs.resolved }}
+          fail-on-diff: 'false'
+
+      - name: "Verify: has-differences is true"
+        shell: bash
+        env:
+          HAS_DIFF: ${{ steps.diff-detected.outputs.has-differences }}
+          EXIT_CODE: ${{ steps.diff-detected.outputs.exit-code }}
+        run: |
+          if [ "$HAS_DIFF" != "true" ]; then
+            echo "::error::Expected has-differences=true, got '$HAS_DIFF'"
+            exit 1
+          fi
+          if [ "$EXIT_CODE" != "1" ]; then
+            echo "::error::Expected exit-code=1, got '$EXIT_CODE'"
+            exit 1
+          fi
+
+      - name: "Test: no diff"
+        id: no-diff
+        uses: ./
+        with:
+          from: testdata/fixtures/002-self-comparison/file1.yaml
+          to: testdata/fixtures/002-self-comparison/file2.yaml
+          version: ${{ steps.version.outputs.resolved }}
+
+      - name: "Verify: no differences"
+        shell: bash
+        env:
+          HAS_DIFF: ${{ steps.no-diff.outputs.has-differences }}
+          EXIT_CODE: ${{ steps.no-diff.outputs.exit-code }}
+        run: |
+          if [ "$HAS_DIFF" != "false" ]; then
+            echo "::error::Expected has-differences=false, got '$HAS_DIFF'"
+            exit 1
+          fi
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "::error::Expected exit-code=0, got '$EXIT_CODE'"
+            exit 1
+          fi
+
+      - name: "Test: JSON output"
+        id: json-output
+        uses: ./
+        with:
+          from: testdata/fixtures/001-indentation/file1.yaml
+          to: testdata/fixtures/001-indentation/file2.yaml
+          version: ${{ steps.version.outputs.resolved }}
+          output: json
+          fail-on-diff: 'false'
+
+      - name: "Verify: JSON output is valid"
+        shell: bash
+        env:
+          DIFF: ${{ steps.json-output.outputs.diff }}
+        run: |
+          echo "$DIFF" | jq . > /dev/null
+
+      - name: "Test: diff detected (fail-on-diff: true)"
+        id: should-fail
+        uses: ./
+        continue-on-error: true
+        with:
+          from: testdata/fixtures/001-indentation/file1.yaml
+          to: testdata/fixtures/001-indentation/file2.yaml
+          version: ${{ steps.version.outputs.resolved }}
+          fail-on-diff: 'true'
+
+      - name: "Verify: step failed"
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.should-fail.outcome }}
+        run: |
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::Expected step to fail, got outcome='$OUTCOME'"
+            exit 1
+          fi
+
+      - name: "Test: extra-args"
+        uses: ./
+        with:
+          from: testdata/fixtures/001-indentation/file1.yaml
+          to: testdata/fixtures/001-indentation/file2.yaml
+          version: ${{ steps.version.outputs.resolved }}
+          output: compact
+          fail-on-diff: 'false'
+          extra-args: '--ignore-whitespace-changes'
+
+      - name: "Test: version pinning"
+        uses: ./
+        with:
+          from: testdata/fixtures/002-self-comparison/file1.yaml
+          to: testdata/fixtures/002-self-comparison/file2.yaml
+          version: '1.5.10'
+          cache: 'false'
+
+      - name: "Test: caching disabled"
+        uses: ./
+        with:
+          from: testdata/fixtures/002-self-comparison/file1.yaml
+          to: testdata/fixtures/002-self-comparison/file2.yaml
+          version: ${{ steps.version.outputs.resolved }}
+          cache: 'false'
+
+      - name: "Test: version latest resolution"
+        uses: ./
+        with:
+          from: testdata/fixtures/002-self-comparison/file1.yaml
+          to: testdata/fixtures/002-self-comparison/file2.yaml
+          version: 'latest'
+          cache: 'false'

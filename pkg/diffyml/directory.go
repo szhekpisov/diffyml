@@ -42,10 +42,8 @@ func DiscoverFiles(dir string) ([]string, error) {
 		if !d.Type().IsRegular() {
 			return nil
 		}
-		rel, relErr := filepath.Rel(dir, path)
-		if relErr != nil {
-			return relErr
-		}
+		// filepath.Rel cannot fail here: WalkDir always yields paths under dir.
+		rel, _ := filepath.Rel(dir, path)
 		files = append(files, filepath.ToSlash(rel))
 		return nil
 	})

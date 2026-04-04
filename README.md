@@ -34,7 +34,7 @@ diffyml compares YAML files and shows meaningful, structured differences — not
 | CI annotation formats | 3 (GitHub, GitLab, Gitea) | 0 | 0 |
 | Runtime dependencies | 1 (yaml.v3) | 14 | 0 |
 | Directory comparison | Yes | No | Yes |
-| Git external diff (`GIT_EXTERNAL_DIFF`) | Yes (auto-detect) | No | N/A |
+| Git external diff (`GIT_EXTERNAL_DIFF`) | Yes (auto-detect) | Manual (wrapper script) | N/A |
 | Inline diff highlighting | Yes (word-level) | Yes (character-level) | No |
 | Custom colors | Yes (hex, env vars) | No | No |
 | Configuration file | Yes (`.diffyml.yml`) | No | No |

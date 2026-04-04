@@ -15,6 +15,31 @@ A fast, structural YAML diff tool with built-in Kubernetes intelligence. One dep
 
 diffyml compares YAML files and shows meaningful, structured differences — not line-by-line text diffs.
 
+## Table of Contents
+
+- [Why diffyml?](#why-diffyml)
+- [How It Compares](#how-it-compares)
+- [Kubernetes Intelligence](#kubernetes-intelligence)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Features](#features)
+- [Usage](#usage)
+  - [Output Formats](#output-formats)
+  - [Kubernetes Support](#kubernetes-support)
+  - [Directory Comparison](#directory-comparison)
+  - [Git Integration](#git-integration)
+  - [Filtering](#filtering)
+  - [CI Integration](#ci-integration)
+  - [AI Summary](#ai-summary)
+  - [Configuration File](#configuration-file)
+  - [Custom Colors](#custom-colors)
+  - [All Flags](#all-flags)
+- [Library Usage](#library-usage)
+- [Code Quality](#code-quality)
+- [Contributing](#contributing)
+- [Acknowledgments](#acknowledgments)
+- [License](#license)
+
 ## Why diffyml?
 
 **Fastest at scale.** 7x faster than [dyff](https://github.com/homeport/dyff) on 78 KB files, 9.5x faster on 780 KB files, with the lowest memory footprint among YAML-aware tools at scale. Near-linear scaling. See [PERFORMANCE.md](doc/PERFORMANCE.md) for methodology and results.
@@ -81,6 +106,8 @@ go build -o diffyml
 ```
 
 ### Verifying Releases
+
+Published release artifacts are never modified or re-uploaded — each version is a one-time, append-only event.
 
 Every release includes cryptographic verification artifacts:
 

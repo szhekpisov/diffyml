@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: web-api
-        image: myapp:2.0.0
+        image: registry.example.com/web-api:2.0.0
         ports:
         - containerPort: 8080
         env:
@@ -23,5 +23,7 @@ spec:
           value: debug
         - name: MAX_CONNECTIONS
           value: "200"
+        - name: DATABASE_URL
+          value: "postgres://db.prod.internal:5433/myapp"
         - name: ENABLE_METRICS
           value: "true"

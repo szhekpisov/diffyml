@@ -293,36 +293,12 @@ func (f *DetailedFormatter) formatModified(sb *strings.Builder, diff Difference,
 		}
 
 		// Scalar string value change (may be cert-transformed)
-		f.writeDescriptorLine(sb, "  ± value change", f.colorModified, opts)
-		if opts.Color {
-			if fromSegs, toSegs := computeInlineDiff(fromStr, toStr); fromSegs != nil {
-				f.writeInlineDiffLine(sb, "    - ", fromSegs, ColorRoleRemoved, opts)
-				f.writeInlineDiffLine(sb, "    + ", toSegs, ColorRoleAdded, opts)
-				sb.WriteString("\n")
-				return
-			}
-		}
-		f.writeColoredLine(sb, fmt.Sprintf("    - %s", fromStr), f.colorRemoved(opts), opts)
-		f.writeColoredLine(sb, fmt.Sprintf("    + %s", toStr), f.colorAdded(opts), opts)
-		sb.WriteString("\n")
+		f.writeValueChange(sb, fromStr, toStr, opts)
 		return
 	}
 
 	// Default: non-string scalar value change
-	fromVal := formatDetailedValue(diff.From)
-	toVal := formatDetailedValue(diff.To)
-	f.writeDescriptorLine(sb, "  ± value change", f.colorModified, opts)
-	if opts.Color {
-		if fromSegs, toSegs := computeInlineDiff(fromVal, toVal); fromSegs != nil {
-			f.writeInlineDiffLine(sb, "    - ", fromSegs, ColorRoleRemoved, opts)
-			f.writeInlineDiffLine(sb, "    + ", toSegs, ColorRoleAdded, opts)
-			sb.WriteString("\n")
-			return
-		}
-	}
-	f.writeColoredLine(sb, fmt.Sprintf("    - %v", fromVal), f.colorRemoved(opts), opts)
-	f.writeColoredLine(sb, fmt.Sprintf("    + %v", toVal), f.colorAdded(opts), opts)
-	sb.WriteString("\n")
+	f.writeValueChange(sb, formatDetailedValue(diff.From), formatDetailedValue(diff.To), opts)
 }
 
 // detectMultiDoc checks if diffs span multiple documents by examining DocumentIndex values.
@@ -336,6 +312,24 @@ func (f *DetailedFormatter) detectMultiDoc(diffs []Difference) bool {
 		}
 	}
 	return false
+}
+
+// writeValueChange writes a "± value change" block with inline diff highlighting
+// when color is enabled and the values are similar enough, otherwise falls back
+// to plain colored lines.
+func (f *DetailedFormatter) writeValueChange(sb *strings.Builder, from, to string, opts *FormatOptions) {
+	f.writeDescriptorLine(sb, "  ± value change", f.colorModified, opts)
+	if opts.Color {
+		if fromSegs, toSegs := computeInlineDiff(from, to); fromSegs != nil {
+			f.writeInlineDiffLine(sb, "    - ", fromSegs, ColorRoleRemoved, opts)
+			f.writeInlineDiffLine(sb, "    + ", toSegs, ColorRoleAdded, opts)
+			sb.WriteString("\n")
+			return
+		}
+	}
+	f.writeColoredLine(sb, fmt.Sprintf("    - %s", from), f.colorRemoved(opts), opts)
+	f.writeColoredLine(sb, fmt.Sprintf("    + %s", to), f.colorAdded(opts), opts)
+	sb.WriteString("\n")
 }
 
 // writeColoredLine writes a line with color code and newline.

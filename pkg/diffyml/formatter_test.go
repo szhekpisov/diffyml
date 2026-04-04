@@ -1689,6 +1689,88 @@ func TestCompactFormatter_InlineColor(t *testing.T) {
 	}
 }
 
+// Inline diff highlighting tests for compact formatter
+
+func TestCompactFormatter_InlineDiffBold(t *testing.T) {
+	f := &CompactFormatter{}
+	opts := DefaultFormatOptions()
+	opts.Color = true
+	opts.OmitHeader = true
+
+	diffs := []Difference{
+		{Path: DiffPath{"image"}, Type: DiffModified, From: "demo:v1.20.1", To: "demo:v1.21.1"},
+	}
+
+	output := f.Format(diffs, opts)
+	// Changed parts should be bold
+	if !strings.Contains(output, styleBold) {
+		t.Errorf("expected bold styling for changed inline diff segments, got: %q", output)
+	}
+	// Arrow separator should still be present
+	if !strings.Contains(output, " → ") {
+		t.Errorf("expected arrow separator, got: %q", output)
+	}
+}
+
+func TestCompactFormatter_InlineDiffFallback(t *testing.T) {
+	f := &CompactFormatter{}
+	opts := DefaultFormatOptions()
+	opts.Color = true
+	opts.OmitHeader = true
+
+	// Completely different values — should fall back to full-color
+	diffs := []Difference{
+		{Path: DiffPath{"name"}, Type: DiffModified, From: "alpha", To: "omega"},
+	}
+
+	output := f.Format(diffs, opts)
+	if !strings.Contains(output, "alpha") || !strings.Contains(output, "omega") {
+		t.Errorf("expected both values in fallback output, got: %q", output)
+	}
+	if !strings.Contains(output, " → ") {
+		t.Errorf("expected arrow separator, got: %q", output)
+	}
+}
+
+func TestCompactFormatter_InlineDiffNoColor(t *testing.T) {
+	f := &CompactFormatter{}
+	opts := DefaultFormatOptions()
+	opts.Color = false
+	opts.OmitHeader = true
+
+	diffs := []Difference{
+		{Path: DiffPath{"image"}, Type: DiffModified, From: "demo:v1.20.1", To: "demo:v1.21.1"},
+	}
+
+	output := f.Format(diffs, opts)
+	// No ANSI codes when color disabled
+	if strings.Contains(output, "\033[") {
+		t.Errorf("expected no ANSI codes when color disabled, got: %q", output)
+	}
+	if !strings.Contains(output, "demo:v1.20.1 → demo:v1.21.1") {
+		t.Errorf("expected plain values, got: %q", output)
+	}
+}
+
+func TestCompactFormatter_TrueColor_InlineDiffDimmed(t *testing.T) {
+	f := &CompactFormatter{}
+	opts := DefaultFormatOptions()
+	opts.Color = true
+	opts.TrueColor = true
+	opts.OmitHeader = true
+
+	diffs := []Difference{
+		{Path: DiffPath{"image"}, Type: DiffModified, From: "demo:v1.20.1", To: "demo:v1.21.1"},
+	}
+
+	output := f.Format(diffs, opts)
+	// Should have dimmed colors for unchanged parts
+	dimRed := TrueColorCode((DetailedRedR+128)/2, (DetailedRedG+128)/2, (DetailedRedB+128)/2)
+	if !strings.Contains(output, dimRed) {
+		t.Errorf("expected dimmed red color, got: %q", output)
+	}
+}
+
 // DiffOrderChanged compact indicator test
 
 func TestCompactFormatter_OrderChangedIndicator(t *testing.T) {

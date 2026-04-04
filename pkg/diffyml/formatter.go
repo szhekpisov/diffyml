@@ -217,13 +217,27 @@ func (f *CompactFormatter) formatValuesInline(sb *strings.Builder, diff Differen
 		toStr := formatValue(diff.To)
 
 		sb.WriteString(" : ")
-		sb.WriteString(colorStart(opts, p.ColorCode(ColorRoleRemoved, opts.TrueColor)))
-		sb.WriteString(fromStr)
-		sb.WriteString(colorEnd(opts))
-		sb.WriteString(" → ")
-		sb.WriteString(colorStart(opts, p.ColorCode(ColorRoleAdded, opts.TrueColor)))
-		sb.WriteString(toStr)
-		sb.WriteString(colorEnd(opts))
+		if opts.Color {
+			if fromSegs, toSegs := computeInlineDiff(fromStr, toStr); fromSegs != nil {
+				renderInlineSegments(sb, fromSegs, p.ColorCode(ColorRoleRemoved, opts.TrueColor), dimColorCode(ColorRoleRemoved, opts), opts)
+				sb.WriteString(colorEnd(opts))
+				sb.WriteString(" → ")
+				renderInlineSegments(sb, toSegs, p.ColorCode(ColorRoleAdded, opts.TrueColor), dimColorCode(ColorRoleAdded, opts), opts)
+				sb.WriteString(colorEnd(opts))
+			} else {
+				sb.WriteString(colorStart(opts, p.ColorCode(ColorRoleRemoved, opts.TrueColor)))
+				sb.WriteString(fromStr)
+				sb.WriteString(colorEnd(opts))
+				sb.WriteString(" → ")
+				sb.WriteString(colorStart(opts, p.ColorCode(ColorRoleAdded, opts.TrueColor)))
+				sb.WriteString(toStr)
+				sb.WriteString(colorEnd(opts))
+			}
+		} else {
+			sb.WriteString(fromStr)
+			sb.WriteString(" → ")
+			sb.WriteString(toStr)
+		}
 	case DiffAdded:
 		toStr := formatValue(diff.To)
 		sb.WriteString(" : ")

@@ -3,6 +3,7 @@ package diffyml
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 // Basic color coding tests
@@ -1066,5 +1067,91 @@ func TestDetailedFormatter_TrueColor_FallbackNoPalette(t *testing.T) {
 	// Should NOT contain any palette true color codes
 	if strings.Contains(output, cachedGreenPalette.Scalar) {
 		t.Errorf("palette colors should not appear in 8-color mode, got: %q", output)
+	}
+}
+
+// Inline diff highlighting tests
+
+func TestDetailedFormatter_ColorEnabled_InlineDiffBold(t *testing.T) {
+	f, _ := FormatterByName("detailed")
+	opts := DefaultFormatOptions()
+	opts.Color = true
+	opts.OmitHeader = true
+
+	diffs := []Difference{
+		{Path: DiffPath{"image"}, Type: DiffModified, From: "demo:v1.20.1", To: "demo:v1.21.1"},
+	}
+
+	output := f.Format(diffs, opts)
+	// Changed parts should be bold
+	if !strings.Contains(output, styleBold) {
+		t.Errorf("expected bold styling for changed inline diff segments, got: %q", output)
+	}
+	if !strings.Contains(output, styleBoldOff) {
+		t.Errorf("expected bold-off styling after changed inline diff segments, got: %q", output)
+	}
+}
+
+func TestDetailedFormatter_ColorEnabled_InlineDiffFallback(t *testing.T) {
+	f, _ := FormatterByName("detailed")
+	opts := DefaultFormatOptions()
+	opts.Color = true
+	opts.OmitHeader = true
+
+	// Completely different values — should fall back to full-color (no bold)
+	diffs := []Difference{
+		{Path: DiffPath{"name"}, Type: DiffModified, From: "alpha", To: "omega"},
+	}
+
+	output := f.Format(diffs, opts)
+	if !strings.Contains(output, "- alpha") {
+		t.Errorf("expected fallback rendering with full old value, got: %q", output)
+	}
+	if !strings.Contains(output, "+ omega") {
+		t.Errorf("expected fallback rendering with full new value, got: %q", output)
+	}
+}
+
+func TestDetailedFormatter_ColorEnabled_InlineDiffNonString(t *testing.T) {
+	f, _ := FormatterByName("detailed")
+	opts := DefaultFormatOptions()
+	opts.Color = true
+	opts.OmitHeader = true
+
+	// time.Time values produce multi-token formatted strings (e.g. "2024-01-15T10:30:00Z")
+	// which are eligible for inline diff highlighting.
+	from := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+	to := time.Date(2024, 3, 20, 10, 30, 0, 0, time.UTC)
+	diffs := []Difference{
+		{Path: DiffPath{"config", "updated"}, Type: DiffModified, From: from, To: to},
+	}
+
+	output := f.Format(diffs, opts)
+	// Should use bold for changed parts (month/day differ)
+	if !strings.Contains(output, styleBold) {
+		t.Errorf("expected bold styling for changed inline diff segments in non-string scalar, got: %q", output)
+	}
+}
+
+func TestDetailedFormatter_TrueColor_InlineDiffDimmed(t *testing.T) {
+	f, _ := FormatterByName("detailed")
+	opts := DefaultFormatOptions()
+	opts.Color = true
+	opts.TrueColor = true
+	opts.OmitHeader = true
+
+	diffs := []Difference{
+		{Path: DiffPath{"image"}, Type: DiffModified, From: "demo:v1.20.1", To: "demo:v1.21.1"},
+	}
+
+	output := f.Format(diffs, opts)
+	// Should have dimmed color for unchanged parts (blended toward gray)
+	dimRed := TrueColorCode((DetailedRedR+128)/2, (DetailedRedG+128)/2, (DetailedRedB+128)/2)
+	dimGreen := TrueColorCode((DetailedGreenR+128)/2, (DetailedGreenG+128)/2, (DetailedGreenB+128)/2)
+	if !strings.Contains(output, dimRed) {
+		t.Errorf("expected dimmed red for unchanged parts of old value, got: %q", output)
+	}
+	if !strings.Contains(output, dimGreen) {
+		t.Errorf("expected dimmed green for unchanged parts of new value, got: %q", output)
 	}
 }

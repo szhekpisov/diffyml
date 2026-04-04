@@ -294,6 +294,14 @@ func (f *DetailedFormatter) formatModified(sb *strings.Builder, diff Difference,
 
 		// Scalar string value change (may be cert-transformed)
 		f.writeDescriptorLine(sb, "  ± value change", f.colorModified, opts)
+		if opts.Color {
+			if fromSegs, toSegs := computeInlineDiff(fromStr, toStr); fromSegs != nil {
+				f.writeInlineDiffLine(sb, "    - ", fromSegs, ColorRoleRemoved, opts)
+				f.writeInlineDiffLine(sb, "    + ", toSegs, ColorRoleAdded, opts)
+				sb.WriteString("\n")
+				return
+			}
+		}
 		f.writeColoredLine(sb, fmt.Sprintf("    - %s", fromStr), f.colorRemoved(opts), opts)
 		f.writeColoredLine(sb, fmt.Sprintf("    + %s", toStr), f.colorAdded(opts), opts)
 		sb.WriteString("\n")
@@ -301,9 +309,19 @@ func (f *DetailedFormatter) formatModified(sb *strings.Builder, diff Difference,
 	}
 
 	// Default: non-string scalar value change
+	fromVal := formatDetailedValue(diff.From)
+	toVal := formatDetailedValue(diff.To)
 	f.writeDescriptorLine(sb, "  ± value change", f.colorModified, opts)
-	f.writeColoredLine(sb, fmt.Sprintf("    - %v", formatDetailedValue(diff.From)), f.colorRemoved(opts), opts)
-	f.writeColoredLine(sb, fmt.Sprintf("    + %v", formatDetailedValue(diff.To)), f.colorAdded(opts), opts)
+	if opts.Color {
+		if fromSegs, toSegs := computeInlineDiff(fromVal, toVal); fromSegs != nil {
+			f.writeInlineDiffLine(sb, "    - ", fromSegs, ColorRoleRemoved, opts)
+			f.writeInlineDiffLine(sb, "    + ", toSegs, ColorRoleAdded, opts)
+			sb.WriteString("\n")
+			return
+		}
+	}
+	f.writeColoredLine(sb, fmt.Sprintf("    - %v", fromVal), f.colorRemoved(opts), opts)
+	f.writeColoredLine(sb, fmt.Sprintf("    + %v", toVal), f.colorAdded(opts), opts)
 	sb.WriteString("\n")
 }
 
@@ -344,6 +362,20 @@ func (f *DetailedFormatter) writeKeyValueLine(sb *strings.Builder, keyText strin
 func (f *DetailedFormatter) writeDescriptorLine(sb *strings.Builder, text string, colorFn func(*FormatOptions) string, opts *FormatOptions) {
 	sb.WriteString(colorStart(opts, colorFn(opts)))
 	sb.WriteString(text)
+	sb.WriteString(colorEnd(opts))
+	sb.WriteString("\n")
+}
+
+// writeInlineDiffLine writes a prefixed line with inline diff highlighting.
+// Changed segments are rendered in bold with the base color; unchanged segments
+// use a dimmed color for visual contrast.
+func (f *DetailedFormatter) writeInlineDiffLine(sb *strings.Builder, prefix string, segments []inlineSegment, role ColorRole, opts *FormatOptions) {
+	p := resolvedPalette(opts)
+	baseColor := p.ColorCode(role, opts.TrueColor)
+	dim := dimColorCode(role, opts)
+	sb.WriteString(colorStart(opts, dim))
+	sb.WriteString(prefix)
+	renderInlineSegments(sb, segments, baseColor, dim, opts)
 	sb.WriteString(colorEnd(opts))
 	sb.WriteString("\n")
 }

@@ -135,6 +135,7 @@ export KUBECTL_EXTERNAL_DIFF="diffyml --omit-header --set-exit-code"
 - **Certificate inspection** — inspects and compares embedded x509 certificates
 - **Chroot navigation** — focus comparison on a specific YAML subtree
 - **Git integration** — use as `GIT_EXTERNAL_DIFF` or via `.gitattributes` for YAML-only scoping
+- **Inline diff highlighting** — highlights only the changed parts within scalar values (version tags, IPs, ports) for quick scanning
 - **Custom colors** — configurable color palette for accessibility (colorblind-friendly)
 - **Configuration file** — project-level defaults via `.diffyml.yml` (all flags supported)
 - ⭐ **AI-powered summaries** ⭐ — natural language summaries of changes via Anthropic API

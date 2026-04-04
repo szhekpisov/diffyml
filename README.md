@@ -35,7 +35,7 @@ diffyml compares YAML files and shows meaningful, structured differences — not
 | Runtime dependencies | 1 (yaml.v3) | 14 | 0 |
 | Directory comparison | Yes | No | Yes |
 | Git external diff (`GIT_EXTERNAL_DIFF`) | Yes (auto-detect) | No | N/A |
-| Inline diff highlighting | Yes (word-level, bold + dim) | No | No |
+| Inline diff highlighting | Yes (word-level, bold + dim) | Yes (character-level) | No |
 | Custom colors | Yes (hex, env vars) | No | No |
 | Configuration file | Yes (`.diffyml.yml`) | No | No |
 | Performance (78 KB) | 19 ms | 129 ms (6.95x slower) | 6 ms |

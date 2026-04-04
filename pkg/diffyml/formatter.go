@@ -217,27 +217,8 @@ func (f *CompactFormatter) formatValuesInline(sb *strings.Builder, diff Differen
 		toStr := formatValue(diff.To)
 
 		sb.WriteString(" : ")
-		if opts.Color {
-			if fromSegs, toSegs := computeInlineDiff(fromStr, toStr); fromSegs != nil {
-				renderInlineSegments(sb, fromSegs, p.ColorCode(ColorRoleRemoved, opts.TrueColor), dimColorCode(ColorRoleRemoved, opts), opts)
-				sb.WriteString(colorEnd(opts))
-				sb.WriteString(" → ")
-				renderInlineSegments(sb, toSegs, p.ColorCode(ColorRoleAdded, opts.TrueColor), dimColorCode(ColorRoleAdded, opts), opts)
-				sb.WriteString(colorEnd(opts))
-			} else {
-				sb.WriteString(colorStart(opts, p.ColorCode(ColorRoleRemoved, opts.TrueColor)))
-				sb.WriteString(fromStr)
-				sb.WriteString(colorEnd(opts))
-				sb.WriteString(" → ")
-				sb.WriteString(colorStart(opts, p.ColorCode(ColorRoleAdded, opts.TrueColor)))
-				sb.WriteString(toStr)
-				sb.WriteString(colorEnd(opts))
-			}
-		} else {
-			sb.WriteString(fromStr)
-			sb.WriteString(" → ")
-			sb.WriteString(toStr)
-		}
+		f.writeCompactValueChange(sb, fromStr, toStr, p, opts)
+
 	case DiffAdded:
 		toStr := formatValue(diff.To)
 		sb.WriteString(" : ")
@@ -253,6 +234,28 @@ func (f *CompactFormatter) formatValuesInline(sb *strings.Builder, diff Differen
 	case DiffOrderChanged:
 		sb.WriteString(" (order changed)")
 	}
+}
+
+// writeCompactValueChange writes an inline modified value with inline diff
+// highlighting when applicable, otherwise falls back to full-color rendering.
+func (f *CompactFormatter) writeCompactValueChange(sb *strings.Builder, from, to string, p *CustomColorPalette, opts *FormatOptions) {
+	if opts.Color {
+		if fromSegs, toSegs := computeInlineDiff(from, to); fromSegs != nil {
+			renderInlineSegments(sb, fromSegs, p.ColorCode(ColorRoleRemoved, opts.TrueColor), dimColorCode(ColorRoleRemoved, opts), opts)
+			sb.WriteString(colorEnd(opts))
+			sb.WriteString(" → ")
+			renderInlineSegments(sb, toSegs, p.ColorCode(ColorRoleAdded, opts.TrueColor), dimColorCode(ColorRoleAdded, opts), opts)
+			sb.WriteString(colorEnd(opts))
+			return
+		}
+	}
+	sb.WriteString(colorStart(opts, p.ColorCode(ColorRoleRemoved, opts.TrueColor)))
+	sb.WriteString(from)
+	sb.WriteString(colorEnd(opts))
+	sb.WriteString(" → ")
+	sb.WriteString(colorStart(opts, p.ColorCode(ColorRoleAdded, opts.TrueColor)))
+	sb.WriteString(to)
+	sb.WriteString(colorEnd(opts))
 }
 
 // formatValue converts a value to string.

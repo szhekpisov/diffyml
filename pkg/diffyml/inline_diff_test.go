@@ -179,6 +179,26 @@ func TestComputeInlineDiff_BelowThreshold(t *testing.T) {
 	}
 }
 
+func TestComputeInlineDiff_ExactlyTwoTokens(t *testing.T) {
+	// Both sides have exactly 2 tokens — should be skipped as too short.
+	// "a." → ["a", "."], "b." → ["b", "."]
+	fromSegs, toSegs := computeInlineDiff("a.", "b.")
+	if fromSegs != nil || toSegs != nil {
+		t.Error("expected nil for 2-token strings")
+	}
+}
+
+func TestComputeInlineDiff_ExactThreshold30Percent(t *testing.T) {
+	// Exactly 30% character similarity — on the boundary, should still produce
+	// segments (the guard is strict less-than, not less-than-or-equal).
+	// "ab-cd.ef-g" vs "xy-zw.mn-q": shared tokens are "-", ".", "-" = 3 chars.
+	// longer = 10, keepChars*10 = 30 == longer*3 = 30 → not < → passes.
+	fromSegs, toSegs := computeInlineDiff("ab-cd.ef-g", "xy-zw.mn-q")
+	if fromSegs == nil || toSegs == nil {
+		t.Error("expected segments at exactly 30% similarity boundary")
+	}
+}
+
 // --- renderInlineSegments tests ---
 
 func TestRenderInlineSegments_NoColor(t *testing.T) {

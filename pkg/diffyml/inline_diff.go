@@ -35,7 +35,7 @@ func tokenize(s string) []string {
 		return tokens
 	}
 
-	tokens := make([]string, 0, len(matches)*2+1)
+	var tokens []string
 	pos := 0
 	for _, m := range matches {
 		// Characters before this word match → individual tokens.

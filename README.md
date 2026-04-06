@@ -8,7 +8,7 @@ A fast, structural YAML diff tool with built-in Kubernetes intelligence. One dep
 [![codecov](https://codecov.io/gh/szhekpisov/diffyml/branch/main/graph/badge.svg)](https://codecov.io/gh/szhekpisov/diffyml)
 [![Release](https://img.shields.io/github/v/release/szhekpisov/diffyml)](https://github.com/szhekpisov/diffyml/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fszhekpisov%2Fdiffyml.svg?type=shield&issueType=license)](https://app.fossa.com/projects/git%2Bgithub.com%2Fszhekpisov%2Fdiffyml?ref=badge_shield&issueType=license)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fszhekpisov%2Fdiffyml.svg?type=shield&issueType=security)](https://app.fossa.com/projects/git%2Bgithub.com%2Fszhekpisov%2Fdiffyml?ref=badge_shield&issueType=security)
 [![Security & Static Analysis](https://github.com/szhekpisov/diffyml/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/szhekpisov/diffyml/actions/workflows/security.yml)
 
 <img src="doc/demo.png" alt="diffyml output" width="600">

@@ -19,7 +19,6 @@ diffyml compares YAML files and shows meaningful, structured differences — not
 
 - [Why diffyml?](#why-diffyml)
 - [How It Compares](#how-it-compares)
-- [Kubernetes Intelligence](#kubernetes-intelligence)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Features](#features)
@@ -67,14 +66,6 @@ diffyml compares YAML files and shows meaningful, structured differences — not
 | Performance (780 KB) | 128 ms | 1,214 ms (9.49x slower) | 46 ms |
 
 Comparison based on dyff v1.11.2 and diffyml v1.5.13. See [PERFORMANCE.md](doc/PERFORMANCE.md) for benchmark methodology. [Open an issue](https://github.com/szhekpisov/diffyml/issues) if anything is outdated.
-
-## Kubernetes Intelligence
-
-diffyml auto-detects Kubernetes resources and matches them by `apiVersion`, `kind`, and `metadata.name` (or `metadata.generateName`) — so diffs stay meaningful even when document order changes.
-
-- **Rename detection** — detects renamed/moved resources by content similarity (e.g., kustomize `configMapGenerator` hash-suffix changes like `app-config-abc123` → `app-config-def456`) and shows field-level diffs instead of bulk add/remove
-- **API migration support** — `--ignore-api-version` drops `apiVersion` from the matching key, so an upgrade from `apps/v1beta1` to `apps/v1` shows field-level diffs instead of a remove + add
-- **Drop-in for kubectl** — compare two directories of YAML files and use as `KUBECTL_EXTERNAL_DIFF` with no extra setup
 
 ## Installation
 

@@ -1,0 +1,5 @@
+metadata:
+  name: myaccount
+  namespace: production
+data:
+  key1: value1

@@ -34,7 +34,7 @@ diffyml compares YAML files and shows meaningful, structured differences — not
   - [Custom Colors](#custom-colors)
   - [All Flags](#all-flags)
 - [Library Usage](#library-usage)
-- [Code Quality](#code-quality)
+- [Security & Code Quality](#security--code-quality)
 - [Contributing](#contributing)
 - [Acknowledgments](#acknowledgments)
 - [License](#license)
@@ -98,14 +98,15 @@ go build -o diffyml
 
 ### Verifying Releases
 
-Published release artifacts are never modified or re-uploaded — each version is a one-time, append-only event.
-
-Every release includes cryptographic verification artifacts:
+Published release artifacts are never modified or re-uploaded — each version is a one-time, append-only event. Every release includes:
 
 - **Checksums** (`checksums.txt`) — SHA256 hashes for all archives
 - **Cosign signature** (`checksums.txt.sigstore.json`) — keyless Sigstore signature
 - **SBOMs** (`*.spdx.json`) — SPDX Software Bill of Materials for each archive
 - **SLSA provenance** — Level 3 provenance attestation
+
+<details>
+<summary>Verification commands</summary>
 
 **Verify the checksums signature:**
 
@@ -127,6 +128,8 @@ shasum -a 256 --check checksums.txt --ignore-missing
 gh attestation verify diffyml_<VERSION>_linux_amd64.tar.gz \
   --repo szhekpisov/diffyml
 ```
+
+</details>
 
 ## Quick Start
 
@@ -444,11 +447,13 @@ fmt.Print(formatter.Format(diffs, diffyml.DefaultFormatOptions()))
 
 See the [package documentation](https://pkg.go.dev/github.com/szhekpisov/diffyml/pkg/diffyml) for the full API reference.
 
-## Code Quality
+## Security & Code Quality
 
-Every push and PR is checked by:
+**Supply chain.** Releases are signed with [cosign](https://docs.sigstore.dev/) (keyless Sigstore), ship [SPDX](https://spdx.dev/) SBOMs for every artifact, and carry [SLSA Level 3](https://slsa.dev/spec/v1.0/levels#build-l3) build provenance. Published tags are immutable. See [Verifying Releases](#verifying-releases) for verification commands. The repo is tracked by [OpenSSF Scorecard](https://scorecard.dev/viewer/?uri=github.com/szhekpisov/diffyml) (badge above).
 
-- [govulncheck](https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck) — known vulnerability detection
+**Continuous checks.** Every push and PR is scanned by:
+
+- [govulncheck](https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck) — known vulnerability detection (runs on `main` weekly as well)
 - [zizmor](https://github.com/zizmorcore/zizmor-action) — GitHub Actions workflow security scanning
 - [golangci-lint](https://golangci-lint.run/) running:
   [errcheck](https://github.com/kisielk/errcheck),
@@ -459,7 +464,9 @@ Every push and PR is checked by:
   [misspell](https://github.com/client9/misspell),
   [staticcheck](https://staticcheck.dev/) (all checks except style conventions)
 
-1,500+ tests (unit, e2e, fuzz, property-based), 99.4% code coverage, 100% [mutation testing](https://github.com/go-gremlins/gremlins) efficacy (686/686 mutants killed). CI enforces a 99% coverage floor.
+**Test quality.** 1,500+ tests (unit, e2e, fuzz, property-based), 99.4% code coverage, 100% [mutation testing](https://github.com/go-gremlins/gremlins) efficacy (686/686 mutants killed). CI enforces a 99% coverage floor.
+
+**Reporting vulnerabilities.** See [SECURITY.md](SECURITY.md) — preferred path is a [private GitHub Security Advisory](https://github.com/szhekpisov/diffyml/security/advisories/new).
 
 ## Contributing
 

@@ -81,9 +81,24 @@ brews:
 
 changelog:
   sort: asc
+  groups:
+    - title: Security
+      regexp: '^fix\(security\)'
+      order: 0
+    - title: Features
+      regexp: "^feat"
+      order: 1
+    - title: Fixes
+      regexp: "^(fix|bug)"
+      order: 2
+    - title: Documentation
+      regexp: "^(doc|docs|readme)"
+      order: 3
+    - title: Other
+      order: 99
   filters:
     exclude:
-      - "^docs:"
+      - "^doc"
       - "^test:"
       - "^chore:"
 

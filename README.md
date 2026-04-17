@@ -24,12 +24,12 @@ diffyml compares YAML files and shows meaningful, structured differences — not
 - [Features](#features)
 - [Usage](#usage)
   - [Output Formats](#output-formats)
+  - [CI Integration](#ci-integration)
   - [Kubernetes Support](#kubernetes-support)
   - [Directory Comparison](#directory-comparison)
   - [Git Integration](#git-integration)
-  - [Filtering](#filtering)
-  - [CI Integration](#ci-integration)
   - [AI Summary](#ai-summary)
+  - [Filtering](#filtering)
   - [Configuration File](#configuration-file)
   - [Custom Colors](#custom-colors)
   - [All Flags](#all-flags)
@@ -180,6 +180,46 @@ diffyml [flags] <from> <to>
 | gitea | `-o gitea` | Gitea CI annotations |
 | json | `-o json` | Machine-readable — piping, scripting, CI |
 
+### CI Integration
+
+Use `-s` / `--set-exit-code` to set the exit code based on differences:
+
+| Exit code | Meaning |
+|-----------|---------|
+| `0` | No differences (or success without `-s`) |
+| `1` | Differences detected (only with `-s`) |
+| `255` | Error occurred |
+
+```bash
+diffyml -s before.yaml after.yaml || echo "Config drift detected"
+```
+
+**GitHub Actions** — use the [`diffyml-action`](https://github.com/szhekpisov/diffyml-action) composite action (no manual binary install):
+
+```yaml
+- uses: szhekpisov/diffyml-action@v1
+  with:
+    from: old.yaml
+    to: new.yaml
+```
+
+To inspect drift without failing the job, read the `has-differences` output:
+
+```yaml
+- uses: szhekpisov/diffyml-action@v1
+  id: diff
+  with:
+    from: old.yaml
+    to: new.yaml
+    fail-on-diff: 'false'
+    output: github
+
+- if: steps.diff.outputs.has-differences == 'true'
+  run: echo "Configuration drift detected"
+```
+
+See the [action repo](https://github.com/szhekpisov/diffyml-action) for the full list of inputs and outputs.
+
 ### Kubernetes Support
 
 Resources are auto-detected and matched by `apiVersion` + `kind` + `metadata.name` (or `metadata.generateName`), so diffs stay meaningful even when document order changes.
@@ -237,59 +277,6 @@ git config diff.diffyml.command diffyml
 
 Color and truecolor are auto-forced (git's pager makes stdout a pipe). Use `--color never` to disable. `--set-exit-code` is silently ignored — git aborts external diff programs that exit non-zero. Parse errors are non-fatal: a warning is printed and git continues to the next file.
 
-### Filtering
-
-```bash
-# Show only changes under a specific path
-diffyml --filter spec.replicas old.yaml new.yaml
-
-# Exclude noisy paths
-diffyml --exclude metadata.annotations old.yaml new.yaml
-
-# Regex filtering
-diffyml --filter-regexp 'spec\.containers\[.*\]\.image' old.yaml new.yaml
-```
-
-### CI Integration
-
-Use `-s` / `--set-exit-code` to set the exit code based on differences:
-
-| Exit code | Meaning |
-|-----------|---------|
-| `0` | No differences (or success without `-s`) |
-| `1` | Differences detected (only with `-s`) |
-| `255` | Error occurred |
-
-```bash
-diffyml -s before.yaml after.yaml || echo "Config drift detected"
-```
-
-**GitHub Actions** — use the [`diffyml-action`](https://github.com/szhekpisov/diffyml-action) composite action (no manual binary install):
-
-```yaml
-- uses: szhekpisov/diffyml-action@v1
-  with:
-    from: old.yaml
-    to: new.yaml
-```
-
-To inspect drift without failing the job, read the `has-differences` output:
-
-```yaml
-- uses: szhekpisov/diffyml-action@v1
-  id: diff
-  with:
-    from: old.yaml
-    to: new.yaml
-    fail-on-diff: 'false'
-    output: github
-
-- if: steps.diff.outputs.has-differences == 'true'
-  run: echo "Configuration drift detected"
-```
-
-See the [action repo](https://github.com/szhekpisov/diffyml-action) for the full list of inputs and outputs.
-
 ### AI Summary
 
 Generate a natural language summary of changes using the Anthropic API:
@@ -308,6 +295,19 @@ diffyml --summary --summary-model claude-sonnet-4-5-20250514 old.yaml new.yaml
 ```
 
 The summary is appended after the standard diff output. If the API call fails, a warning is printed to stderr and the diff output is preserved. The exit code is never affected by summary success or failure.
+
+### Filtering
+
+```bash
+# Show only changes under a specific path
+diffyml --filter spec.replicas old.yaml new.yaml
+
+# Exclude noisy paths
+diffyml --exclude metadata.annotations old.yaml new.yaml
+
+# Regex filtering
+diffyml --filter-regexp 'spec\.containers\[.*\]\.image' old.yaml new.yaml
+```
 
 ### Configuration File
 

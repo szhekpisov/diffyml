@@ -270,6 +270,32 @@ Use `-s` / `--set-exit-code` to set the exit code based on differences:
 diffyml -s before.yaml after.yaml || echo "Config drift detected"
 ```
 
+**GitHub Actions** — use the [`diffyml-action`](https://github.com/szhekpisov/diffyml-action) composite action (no manual binary install):
+
+```yaml
+- uses: szhekpisov/diffyml-action@v1
+  with:
+    from: old.yaml
+    to: new.yaml
+```
+
+To inspect drift without failing the job, read the `has-differences` output:
+
+```yaml
+- uses: szhekpisov/diffyml-action@v1
+  id: diff
+  with:
+    from: old.yaml
+    to: new.yaml
+    fail-on-diff: 'false'
+    output: github
+
+- if: steps.diff.outputs.has-differences == 'true'
+  run: echo "Configuration drift detected"
+```
+
+See the [action repo](https://github.com/szhekpisov/diffyml-action) for the full list of inputs and outputs.
+
 ### AI Summary
 
 Generate a natural language summary of changes using the Anthropic API:

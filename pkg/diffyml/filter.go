@@ -42,15 +42,17 @@ func FilterDiffs(diffs []Difference, opts *FilterOptions) []Difference {
 
 	for _, diff := range diffs {
 		pathStr := diff.Path.String()
+		nested := nestedKeyPaths(diff)
+
 		// Step 1: Apply include filter (if specified)
 		if len(opts.IncludePaths) > 0 {
-			if !matchesAnyPath(pathStr, opts.IncludePaths) {
+			if !matchesAnyPathWithNested(pathStr, nested, opts.IncludePaths) {
 				continue // Not included, skip
 			}
 		}
 
 		// Step 2: Apply exclude filter (if specified)
-		if matchesAnyPath(pathStr, opts.ExcludePaths) {
+		if matchesAnyPathWithNested(pathStr, nested, opts.ExcludePaths) {
 			continue // Excluded, skip
 		}
 
@@ -64,6 +66,20 @@ func FilterDiffs(diffs []Difference, opts *FilterOptions) []Difference {
 func matchesAnyPath(diffPath string, filterPaths []string) bool {
 	for _, filterPath := range filterPaths {
 		if pathMatches(diffPath, filterPath) {
+			return true
+		}
+	}
+	return false
+}
+
+// matchesAnyPathWithNested checks if the diff path or any of its nested
+// key paths match any filter path.
+func matchesAnyPathWithNested(diffPath string, nestedPaths []string, filterPaths []string) bool {
+	if matchesAnyPath(diffPath, filterPaths) {
+		return true
+	}
+	for _, np := range nestedPaths {
+		if matchesAnyPath(np, filterPaths) {
 			return true
 		}
 	}
@@ -116,6 +132,51 @@ func matchesAnyRegex(diffPath string, patterns []*regexp.Regexp) bool {
 	return false
 }
 
+// matchesAnyRegexWithNested checks if the diff path or any of its nested
+// key paths match any regex pattern.
+func matchesAnyRegexWithNested(diffPath string, nestedPaths []string, patterns []*regexp.Regexp) bool {
+	if matchesAnyRegex(diffPath, patterns) {
+		return true
+	}
+	for _, np := range nestedPaths {
+		if matchesAnyRegex(np, patterns) {
+			return true
+		}
+	}
+	return false
+}
+
+// nestedKeyPaths returns extended path strings for diffs that report
+// added/removed map entries at the parent path. For such diffs, the
+// actual key lives inside the From/To OrderedMap. Returns nil if the
+// diff does not contain nested map keys.
+//
+// Note: this also activates for list item additions/removals when the
+// item is an OrderedMap (e.g., a container removed from spec.containers).
+// In that case every top-level key of the item becomes a nested path,
+// and matching any one of them causes the entire diff to be
+// included/excluded. This is intentional — list item diffs are atomic,
+// so partial filtering would not be meaningful.
+func nestedKeyPaths(diff Difference) []string {
+	var om *OrderedMap
+	switch diff.Type {
+	case DiffRemoved:
+		om, _ = diff.From.(*OrderedMap)
+	case DiffAdded:
+		om, _ = diff.To.(*OrderedMap)
+	default:
+		return nil
+	}
+	if om == nil || len(om.Keys) == 0 {
+		return nil
+	}
+	paths := make([]string, len(om.Keys))
+	for i, key := range om.Keys {
+		paths[i] = diff.Path.Append(key).String()
+	}
+	return paths
+}
+
 // FilterDiffsWithRegexp filters differences with support for regex patterns.
 // This function returns an error if any regex pattern is invalid.
 // Include filters (paths and regex) are applied before exclude filters.
@@ -146,12 +207,13 @@ func FilterDiffsWithRegexp(diffs []Difference, opts *FilterOptions) ([]Differenc
 
 	for _, diff := range diffs {
 		pathStr := diff.Path.String()
+		nested := nestedKeyPaths(diff)
 		included := true
 
 		// Step 1: Apply include filters (path or regex)
 		if hasIncludeFilters {
-			included = matchesAnyPath(pathStr, opts.IncludePaths) ||
-				matchesAnyRegex(pathStr, includeRegex)
+			included = matchesAnyPathWithNested(pathStr, nested, opts.IncludePaths) ||
+				matchesAnyRegexWithNested(pathStr, nested, includeRegex)
 		}
 
 		if !included {
@@ -159,8 +221,8 @@ func FilterDiffsWithRegexp(diffs []Difference, opts *FilterOptions) ([]Differenc
 		}
 
 		// Step 2: Apply exclude filters (path or regex)
-		if matchesAnyPath(pathStr, opts.ExcludePaths) ||
-			matchesAnyRegex(pathStr, excludeRegex) {
+		if matchesAnyPathWithNested(pathStr, nested, opts.ExcludePaths) ||
+			matchesAnyRegexWithNested(pathStr, nested, excludeRegex) {
 			continue
 		}
 

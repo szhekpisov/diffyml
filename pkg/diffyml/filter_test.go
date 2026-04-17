@@ -495,6 +495,270 @@ func TestCompileRegexPatterns_Empty(t *testing.T) {
 	}
 }
 
+// --- Nested key path tests (issue #101) ---
+
+func TestNestedKeyPaths_RemovedOrderedMap(t *testing.T) {
+	diff := Difference{
+		Path: DiffPath{"metadata"},
+		Type: DiffRemoved,
+		From: &OrderedMap{Keys: []string{"namespace"}, Values: map[string]any{"namespace": "production"}},
+	}
+	paths := nestedKeyPaths(diff)
+	if len(paths) != 1 || paths[0] != "metadata.namespace" {
+		t.Errorf("expected [metadata.namespace], got %v", paths)
+	}
+}
+
+func TestNestedKeyPaths_AddedOrderedMap(t *testing.T) {
+	diff := Difference{
+		Path: DiffPath{"metadata"},
+		Type: DiffAdded,
+		To:   &OrderedMap{Keys: []string{"namespace"}, Values: map[string]any{"namespace": "staging"}},
+	}
+	paths := nestedKeyPaths(diff)
+	if len(paths) != 1 || paths[0] != "metadata.namespace" {
+		t.Errorf("expected [metadata.namespace], got %v", paths)
+	}
+}
+
+func TestNestedKeyPaths_DottedKey(t *testing.T) {
+	diff := Difference{
+		Path: DiffPath{"metadata", "annotations"},
+		Type: DiffRemoved,
+		From: &OrderedMap{
+			Keys:   []string{"helm.sh/chart"},
+			Values: map[string]any{"helm.sh/chart": "myapp-1.0"},
+		},
+	}
+	paths := nestedKeyPaths(diff)
+	if len(paths) != 1 || paths[0] != "metadata.annotations[helm.sh/chart]" {
+		t.Errorf("expected [metadata.annotations[helm.sh/chart]], got %v", paths)
+	}
+}
+
+func TestNestedKeyPaths_NonOrderedMap(t *testing.T) {
+	diff := Difference{
+		Path: DiffPath{"metadata"},
+		Type: DiffRemoved,
+		From: "scalar-value",
+	}
+	paths := nestedKeyPaths(diff)
+	if paths != nil {
+		t.Errorf("expected nil for non-OrderedMap, got %v", paths)
+	}
+}
+
+func TestNestedKeyPaths_DiffModified(t *testing.T) {
+	diff := Difference{
+		Path: DiffPath{"metadata", "name"},
+		Type: DiffModified,
+		From: "old",
+		To:   "new",
+	}
+	paths := nestedKeyPaths(diff)
+	if paths != nil {
+		t.Errorf("expected nil for DiffModified, got %v", paths)
+	}
+}
+
+func TestNestedKeyPaths_EmptyPath(t *testing.T) {
+	diff := Difference{
+		Path: DiffPath{},
+		Type: DiffRemoved,
+		From: &OrderedMap{Keys: []string{"topkey"}, Values: map[string]any{"topkey": "val"}},
+	}
+	paths := nestedKeyPaths(diff)
+	if len(paths) != 1 || paths[0] != "topkey" {
+		t.Errorf("expected [topkey], got %v", paths)
+	}
+}
+
+func TestFilterDiffs_ExcludePaths_NestedKeyInOrderedMap(t *testing.T) {
+	diffs := []Difference{
+		{
+			Path: DiffPath{"metadata"},
+			Type: DiffRemoved,
+			From: &OrderedMap{Keys: []string{"namespace"}, Values: map[string]any{"namespace": "production"}},
+		},
+		{Path: DiffPath{"data", "key1"}, Type: DiffModified, From: "old", To: "new"},
+	}
+
+	opts := &FilterOptions{
+		ExcludePaths: []string{"metadata.namespace"},
+	}
+
+	result := FilterDiffs(diffs, opts)
+
+	if len(result) != 1 {
+		t.Fatalf("expected 1 diff, got %d", len(result))
+	}
+	if result[0].Path.String() != "data.key1" {
+		t.Errorf("expected data.key1, got %s", result[0].Path)
+	}
+}
+
+func TestFilterDiffs_ExcludePaths_NestedKeyNoMatch(t *testing.T) {
+	diffs := []Difference{
+		{
+			Path: DiffPath{"metadata"},
+			Type: DiffRemoved,
+			From: &OrderedMap{Keys: []string{"namespace"}, Values: map[string]any{"namespace": "production"}},
+		},
+	}
+
+	opts := &FilterOptions{
+		ExcludePaths: []string{"metadata.labels"},
+	}
+
+	result := FilterDiffs(diffs, opts)
+
+	if len(result) != 1 {
+		t.Fatalf("expected 1 diff (no match), got %d", len(result))
+	}
+}
+
+func TestFilterDiffs_ExcludePaths_ParentStillExcludesNestedKey(t *testing.T) {
+	diffs := []Difference{
+		{
+			Path: DiffPath{"metadata"},
+			Type: DiffRemoved,
+			From: &OrderedMap{Keys: []string{"namespace"}, Values: map[string]any{"namespace": "production"}},
+		},
+	}
+
+	opts := &FilterOptions{
+		ExcludePaths: []string{"metadata"},
+	}
+
+	result := FilterDiffs(diffs, opts)
+
+	if len(result) != 0 {
+		t.Fatalf("expected 0 diffs (parent exclude), got %d", len(result))
+	}
+}
+
+func TestFilterDiffs_IncludePaths_NestedKeyInOrderedMap(t *testing.T) {
+	diffs := []Difference{
+		{
+			Path: DiffPath{"metadata"},
+			Type: DiffRemoved,
+			From: &OrderedMap{Keys: []string{"namespace"}, Values: map[string]any{"namespace": "production"}},
+		},
+		{Path: DiffPath{"data", "key1"}, Type: DiffModified, From: "old", To: "new"},
+	}
+
+	opts := &FilterOptions{
+		IncludePaths: []string{"metadata.namespace"},
+	}
+
+	result := FilterDiffs(diffs, opts)
+
+	if len(result) != 1 {
+		t.Fatalf("expected 1 diff, got %d", len(result))
+	}
+	if result[0].Path.String() != "metadata" {
+		t.Errorf("expected metadata, got %s", result[0].Path)
+	}
+}
+
+func TestFilterDiffs_IncludePaths_NestedKeyNoMatch(t *testing.T) {
+	diffs := []Difference{
+		{
+			Path: DiffPath{"metadata"},
+			Type: DiffRemoved,
+			From: &OrderedMap{Keys: []string{"namespace"}, Values: map[string]any{"namespace": "production"}},
+		},
+	}
+
+	opts := &FilterOptions{
+		IncludePaths: []string{"config.name"},
+	}
+
+	result := FilterDiffs(diffs, opts)
+
+	if len(result) != 0 {
+		t.Fatalf("expected 0 diffs, got %d", len(result))
+	}
+}
+
+func TestFilterDiffsRegex_ExcludePattern_NestedKey(t *testing.T) {
+	diffs := []Difference{
+		{
+			Path: DiffPath{"metadata"},
+			Type: DiffRemoved,
+			From: &OrderedMap{Keys: []string{"namespace"}, Values: map[string]any{"namespace": "production"}},
+		},
+		{Path: DiffPath{"data", "key1"}, Type: DiffModified, From: "old", To: "new"},
+	}
+
+	opts := &FilterOptions{
+		ExcludeRegexp: []string{`namespace`},
+	}
+
+	result, err := FilterDiffsWithRegexp(diffs, opts)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result) != 1 {
+		t.Fatalf("expected 1 diff, got %d", len(result))
+	}
+	if result[0].Path.String() != "data.key1" {
+		t.Errorf("expected data.key1, got %s", result[0].Path)
+	}
+}
+
+func TestFilterDiffsRegex_IncludePattern_NestedKey(t *testing.T) {
+	diffs := []Difference{
+		{
+			Path: DiffPath{"metadata"},
+			Type: DiffAdded,
+			To:   &OrderedMap{Keys: []string{"namespace"}, Values: map[string]any{"namespace": "staging"}},
+		},
+		{Path: DiffPath{"data", "key1"}, Type: DiffModified, From: "old", To: "new"},
+	}
+
+	opts := &FilterOptions{
+		IncludeRegexp: []string{`^metadata\.namespace$`},
+	}
+
+	result, err := FilterDiffsWithRegexp(diffs, opts)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result) != 1 {
+		t.Fatalf("expected 1 diff, got %d", len(result))
+	}
+	if result[0].Path.String() != "metadata" {
+		t.Errorf("expected metadata, got %s", result[0].Path)
+	}
+}
+
+func TestFilterDiffs_ExcludePaths_AddedNestedKey(t *testing.T) {
+	diffs := []Difference{
+		{
+			Path: DiffPath{"metadata"},
+			Type: DiffAdded,
+			To:   &OrderedMap{Keys: []string{"namespace"}, Values: map[string]any{"namespace": "staging"}},
+		},
+		{Path: DiffPath{"data", "key1"}, Type: DiffModified, From: "old", To: "new"},
+	}
+
+	opts := &FilterOptions{
+		ExcludePaths: []string{"metadata.namespace"},
+	}
+
+	result := FilterDiffs(diffs, opts)
+
+	if len(result) != 1 {
+		t.Fatalf("expected 1 diff, got %d", len(result))
+	}
+	if result[0].Path.String() != "data.key1" {
+		t.Errorf("expected data.key1, got %s", result[0].Path)
+	}
+}
+
 // --- Mutation testing: filter.go combined include path + regex ---
 
 func TestFilterDiffsRegex_CombinedIncludePathAndRegex(t *testing.T) {

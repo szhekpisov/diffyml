@@ -150,6 +150,13 @@ func matchesAnyRegexWithNested(diffPath string, nestedPaths []string, patterns [
 // added/removed map entries at the parent path. For such diffs, the
 // actual key lives inside the From/To OrderedMap. Returns nil if the
 // diff does not contain nested map keys.
+//
+// Note: this also activates for list item additions/removals when the
+// item is an OrderedMap (e.g., a container removed from spec.containers).
+// In that case every top-level key of the item becomes a nested path,
+// and matching any one of them causes the entire diff to be
+// included/excluded. This is intentional — list item diffs are atomic,
+// so partial filtering would not be meaningful.
 func nestedKeyPaths(diff Difference) []string {
 	var om *OrderedMap
 	switch diff.Type {

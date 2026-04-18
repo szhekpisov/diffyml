@@ -11,7 +11,7 @@ A fast, structural YAML diff tool with built-in Kubernetes intelligence. One dep
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fszhekpisov%2Fdiffyml.svg?type=shield&issueType=security)](https://app.fossa.com/projects/git%2Bgithub.com%2Fszhekpisov%2Fdiffyml?ref=badge_shield&issueType=security)
 [![Security & Static Analysis](https://github.com/szhekpisov/diffyml/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/szhekpisov/diffyml/actions/workflows/security.yml)
 
-<img src="doc/demo.png" alt="diffyml output" width="600">
+<img src="doc/demo.png" alt="diffyml output" width="800">
 
 diffyml compares YAML files and shows meaningful, structured differences — not line-by-line text diffs.
 
@@ -147,7 +147,7 @@ diffyml -s deployment-old.yaml deployment-new.yaml
 export KUBECTL_EXTERNAL_DIFF="diffyml --omit-header --set-exit-code"
 ```
 
-<img src="doc/kubectl-demo.png" alt="kubectl diff with diffyml" width="600">
+<img src="doc/kubectl-demo.png" alt="kubectl diff with diffyml" width="800">
 
 ## Features
 
@@ -304,6 +304,9 @@ diffyml --filter spec.replicas old.yaml new.yaml
 
 # Exclude noisy paths
 diffyml --exclude metadata.annotations old.yaml new.yaml
+
+# Keys containing dots use bracket syntax
+diffyml --exclude 'metadata.annotations[argocd.argoproj.io/tracking-id]' old.yaml new.yaml
 
 # Regex filtering
 diffyml --filter-regexp 'spec\.containers\[.*\]\.image' old.yaml new.yaml

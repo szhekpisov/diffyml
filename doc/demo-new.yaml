@@ -3,6 +3,8 @@ kind: Deployment
 metadata:
   name: web-api
   namespace: production
+  annotations:
+    argocd.argoproj.io/tracking-id: web-api-v2
 spec:
   replicas: 3
   selector:
@@ -21,8 +23,6 @@ spec:
         env:
         - name: LOG_LEVEL
           value: debug
-        - name: MAX_CONNECTIONS
-          value: "200"
         - name: DATABASE_URL
           value: "postgres://db.prod.internal:5433/myapp"
         - name: ENABLE_METRICS

@@ -21,7 +21,7 @@ linters:
           allow:
             - $gostd
             - github.com/szhekpisov/diffyml
-            - gopkg.in/yaml.v3
+            - go.yaml.in/yaml/v3
     errcheck:
       # Terminal output and cleanup — errors are intentionally ignored
       exclude-functions:

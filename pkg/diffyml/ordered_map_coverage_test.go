@@ -3,7 +3,7 @@ package diffyml
 import (
 	"testing"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 func TestNodeToInterface_EdgeCases(t *testing.T) {

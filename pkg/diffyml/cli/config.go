@@ -12,7 +12,7 @@ import (
 	"os"
 
 	"github.com/szhekpisov/diffyml/pkg/diffyml"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // FileConfig represents the YAML configuration file structure.

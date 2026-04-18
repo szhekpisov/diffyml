@@ -1,6 +1,6 @@
 // parser.go - YAML parsing wrapper.
 //
-// Wraps gopkg.in/yaml.v3 to parse YAML content into Go any values.
+// Wraps go.yaml.in/yaml/v3 to parse YAML content into Go any values.
 // Handles multi-document YAML files (--- separators).
 // Key types: ParseError (with line/column info), DocumentParser (streaming).
 package diffyml
@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"io"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // DocumentParser allows incremental parsing of multi-document YAML.

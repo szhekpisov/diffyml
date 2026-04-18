@@ -5,7 +5,7 @@ import (
 	"hash/crc32"
 	"slices"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 const (

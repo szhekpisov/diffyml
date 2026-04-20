@@ -143,7 +143,7 @@ if [ "$SKIP_INSTALL" = false ]; then
   ok "diffyml built"
 
   info "Installing dyff..."
-  GOBIN="$TOOL_DIR" go install github.com/homeport/dyff/cmd/dyff@v1.11.2
+  GOBIN="$TOOL_DIR" go install github.com/homeport/dyff/cmd/dyff@v1.11.3
   ok "dyff installed"
 
   info "Installing semihbkgr/yamldiff..."

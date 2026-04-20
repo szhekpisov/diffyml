@@ -97,7 +97,7 @@ Both tools exhibit super-linear scaling: they take ~1 second at Large (5,000 lin
 | `sahilm/yamldiff` | 3.6 ± 0.4 | 2.9 | 5.0 | 1.72 ± 0.40 |
 | `diff (unix)` | 2.1 ± 0.4 | 1.6 | 3.9 | 1.00 |
 
-At this size, all Go tools are within a narrow band (~4-6 ms). The ~2 ms gap between diffyml and the simpler tools is startup overhead from capabilities they lack: `net/http` (remote URL fetching, AI summaries) and `crypto/x509` (certificate inspection) add ~87 transitive packages to the binary. CPU profiling confirms the actual diff algorithm completes in <1 ms on small inputs.
+At this size, all Go tools are within a narrow band (~4-6 ms). The ~2 ms gap between diffyml and the simpler tools is startup overhead from capabilities they lack: importing `net/http` (remote URL fetching, AI summaries) and `crypto/x509` (certificate inspection) pulls in large portions of the standard library. CPU profiling confirms the actual diff algorithm completes in <1 ms on small inputs.
 
 #### Medium (~530 lines, ~8 KB)
 
@@ -110,7 +110,7 @@ At this size, all Go tools are within a narrow band (~4-6 ms). The ~2 ms gap bet
 | `sahilm/yamldiff` | 16.6 ± 0.6 | 15.3 | 18.4 | 6.36 ± 1.07 |
 | `diff (unix)` | 2.6 ± 0.4 | 2.0 | 4.0 | 1.00 |
 
-Algorithmic differences become visible. diffyml and semihbkgr/yamldiff remain close (~6-7 ms), while sters/yaml-diff (12 ms), sahilm/yamldiff (17 ms), and dyff (24 ms) fall behind. diffyml is 1.2x faster than semihbkgr/yamldiff and 3.6x faster than dyff.
+Algorithmic differences become visible. diffyml and semihbkgr/yamldiff remain close (~6-7 ms) — semihbkgr/yamldiff is marginally faster here (5.5 ms vs 6.7 ms), its narrower feature set paying off at this size — while sters/yaml-diff (12 ms), sahilm/yamldiff (17 ms), and dyff (24 ms) fall behind. diffyml is 3.6x faster than dyff at this size.
 
 #### Large (~5,000 lines, ~78 KB)
 
@@ -166,7 +166,7 @@ diffyml scales nearly linearly — growing ~3.4x when input grows 70x (small to 
 
 ## Key Findings
 
-1. **diffyml is the fastest YAML-aware diff tool** at medium, large, and xlarge sizes, where algorithmic efficiency dominates over startup overhead.
+1. **diffyml is the fastest YAML-aware diff tool** at large and xlarge sizes, where algorithmic efficiency dominates over startup overhead. At small and medium sizes, simpler tools win by 1–2 ms on process startup, but the gap inverts as input grows.
 
 2. **The performance advantage grows with file size.** At small sizes, all Go tools are comparable (~4-6 ms). At large (5K lines), diffyml is 1.48x faster than the nearest competitor. At xlarge (50K lines), the gap widens to 1.86x.
 

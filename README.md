@@ -41,7 +41,7 @@ diffyml compares YAML files and shows meaningful, structured differences — not
 
 ## Why diffyml?
 
-**Fastest structural YAML diff tool.** On medium and large inputs diffyml is 1.2–1.9× faster than the nearest competitor. On small files (~50 lines) it ties within 2 ms — the only overhead comes from capabilities the other tools lack (x509 certificate inspection, remote URL fetching, AI-powered summaries). See [PERFORMANCE.md](doc/PERFORMANCE.md) for methodology and results.
+**Fastest structural YAML diff tool at scale.** On large (5K lines) and xlarge (50K lines) inputs diffyml is 1.5–1.9× faster than the nearest YAML-aware competitor. On small and medium files it ties within a few milliseconds — the residual overhead comes from capabilities the simpler tools lack (x509 certificate inspection, remote URL fetching, AI-powered summaries). See [PERFORMANCE.md](doc/PERFORMANCE.md) for methodology and results.
 
 **One dependency, zero surprises.** A single module dependency ([yaml.v3](https://github.com/yaml/go-yaml)) and pure Go stdlib. Minimal attack surface, auditable in minutes.
 

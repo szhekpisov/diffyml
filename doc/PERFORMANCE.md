@@ -80,7 +80,9 @@ Both tools exhibit super-linear scaling: they take ~1 second at Large (5,000 lin
 
 ## Results
 
-**Environment:** Apple M1 Pro, macOS, Go 1.26.1, 20 runs with 5 warmup iterations.
+**Environment:** Apple M1 Pro, macOS, Go 1.26.2, 20 runs with 5 warmup iterations.
+
+**Tool versions:** diffyml (built from source), dyff v1.11.3, semihbkgr/yamldiff v0.3.1, sters/yaml-diff v1.4.1, sahilm/yamldiff v1.3.
 
 ### Execution Time
 
@@ -88,91 +90,91 @@ Both tools exhibit super-linear scaling: they take ~1 second at Large (5,000 lin
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `diffyml` | 5.6 ± 1.5 | 4.3 | 22.5 | 2.68 ± 0.99 |
-| `dyff` | 13.5 ± 1.0 | 11.7 | 17.1 | 6.49 ± 1.66 |
-| `semihbkgr/yamldiff` | 3.5 ± 0.8 | 2.7 | 13.1 | 1.70 ± 0.57 |
-| `sters/yaml-diff` | 3.6 ± 0.5 | 2.7 | 5.2 | 1.71 ± 0.49 |
-| `sahilm/yamldiff` | 3.5 ± 0.6 | 2.6 | 8.5 | 1.67 ± 0.49 |
-| `diff (unix)` | 2.1 ± 0.5 | 1.4 | 3.7 | 1.00 |
+| `diffyml` | 5.5 ± 0.5 | 4.7 | 7.2 | 2.66 ± 0.58 |
+| `dyff` | 13.2 ± 0.5 | 11.9 | 15.0 | 6.39 ± 1.30 |
+| `semihbkgr/yamldiff` | 3.6 ± 0.6 | 2.9 | 9.8 | 1.75 ± 0.45 |
+| `sters/yaml-diff` | 3.6 ± 0.5 | 2.9 | 5.6 | 1.73 ± 0.42 |
+| `sahilm/yamldiff` | 3.6 ± 0.4 | 2.9 | 5.0 | 1.72 ± 0.40 |
+| `diff (unix)` | 2.1 ± 0.4 | 1.6 | 3.9 | 1.00 |
 
-At this size, all Go tools are within a narrow band (~4-6 ms). The numbers are dominated by process startup and shell overhead; the differences are not statistically significant.
+At this size, all Go tools are within a narrow band (~4-6 ms). The ~2 ms gap between diffyml and the simpler tools is startup overhead from capabilities they lack: `net/http` (remote URL fetching, AI summaries) and `crypto/x509` (certificate inspection) add ~87 transitive packages to the binary. The actual diff algorithm completes in <1 ms.
 
 #### Medium (~530 lines, ~8 KB)
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `diffyml` | 6.7 ± 1.0 | 5.5 | 18.5 | 2.50 ± 0.77 |
-| `dyff` | 25.1 ± 1.0 | 23.3 | 28.2 | 9.40 ± 2.57 |
-| `semihbkgr/yamldiff` | 5.5 ± 0.8 | 4.5 | 14.2 | 2.05 ± 0.63 |
-| `sters/yaml-diff` | 11.4 ± 1.2 | 10.1 | 26.6 | 4.29 ± 1.25 |
-| `sahilm/yamldiff` | 16.6 ± 0.7 | 14.9 | 18.6 | 6.21 ± 1.70 |
-| `diff (unix)` | 2.7 ± 0.7 | 1.8 | 12.9 | 1.00 |
+| `diffyml` | 6.7 ± 0.5 | 5.8 | 8.4 | 2.58 ± 0.47 |
+| `dyff` | 23.9 ± 1.0 | 22.4 | 30.1 | 9.16 ± 1.56 |
+| `semihbkgr/yamldiff` | 5.5 ± 0.4 | 4.8 | 7.1 | 2.09 ± 0.38 |
+| `sters/yaml-diff` | 11.5 ± 0.5 | 10.5 | 15.5 | 4.41 ± 0.76 |
+| `sahilm/yamldiff` | 16.6 ± 0.6 | 15.3 | 18.4 | 6.36 ± 1.07 |
+| `diff (unix)` | 2.6 ± 0.4 | 2.0 | 4.0 | 1.00 |
 
-Algorithmic differences become visible. diffyml and semihbkgr/yamldiff remain close (~6-7 ms), while sters/yaml-diff (11 ms), sahilm/yamldiff (17 ms), and dyff (25 ms) fall behind. diffyml is 1.2x faster than semihbkgr/yamldiff and 3.7x faster than dyff.
+Algorithmic differences become visible. diffyml and semihbkgr/yamldiff remain close (~6-7 ms), while sters/yaml-diff (12 ms), sahilm/yamldiff (17 ms), and dyff (24 ms) fall behind. diffyml is 1.2x faster than semihbkgr/yamldiff and 3.6x faster than dyff.
 
 #### Large (~5,000 lines, ~78 KB)
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `diffyml` | 18.5 ± 0.7 | 17.0 | 20.5 | 2.98 ± 0.28 |
-| `dyff` | 128.6 ± 3.7 | 123.8 | 143.5 | 20.73 ± 1.91 |
-| `semihbkgr/yamldiff` | 27.9 ± 0.7 | 26.4 | 29.7 | 4.49 ± 0.41 |
-| `sters/yaml-diff` | 1007.2 ± 8.7 | 997.1 | 1027.5 | 162.37 ± 14.30 |
-| `sahilm/yamldiff` | 1323.8 ± 9.3 | 1311.0 | 1348.9 | 213.40 ± 18.76 |
-| `diff (unix)` | 6.2 ± 0.5 | 5.3 | 7.9 | 1.00 |
+| `diffyml` | 18.8 ± 0.6 | 17.6 | 21.7 | 3.05 ± 0.25 |
+| `dyff` | 120.1 ± 1.8 | 117.1 | 124.2 | 19.47 ± 1.48 |
+| `semihbkgr/yamldiff` | 27.9 ± 0.6 | 26.7 | 29.8 | 4.52 ± 0.35 |
+| `sters/yaml-diff` | 998.6 ± 12.2 | 976.2 | 1022.5 | 161.96 ± 12.26 |
+| `sahilm/yamldiff` | 1317.2 ± 4.4 | 1310.6 | 1327.3 | 213.64 ± 15.97 |
+| `diff (unix)` | 6.2 ± 0.5 | 5.4 | 7.6 | 1.00 |
 
-The scaling characteristics become clear. diffyml (19 ms) is **1.51x faster** than semihbkgr/yamldiff (28 ms), **6.95x faster** than dyff (129 ms), **54x faster** than sters/yaml-diff (1,007 ms), and **72x faster** than sahilm/yamldiff (1,324 ms).
+The scaling characteristics become clear. diffyml (19 ms) is **1.48x faster** than semihbkgr/yamldiff (28 ms), **6.39x faster** than dyff (120 ms), **53x faster** than sters/yaml-diff (999 ms), and **70x faster** than sahilm/yamldiff (1,317 ms).
 
 #### XLarge (~50,000 lines, ~780 KB)
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `diffyml` | 127.9 ± 3.2 | 124.1 | 140.3 | 2.78 ± 0.10 |
-| `dyff` | 1213.6 ± 8.4 | 1199.9 | 1230.5 | 26.39 ± 0.66 |
-| `semihbkgr/yamldiff` | 241.4 ± 3.3 | 237.1 | 250.9 | 5.25 ± 0.15 |
+| `diffyml` | 128.6 ± 1.2 | 125.7 | 130.6 | 2.84 ± 0.04 |
+| `dyff` | 1145.9 ± 8.6 | 1134.6 | 1164.6 | 25.27 ± 0.35 |
+| `semihbkgr/yamldiff` | 239.7 ± 3.4 | 235.1 | 249.2 | 5.29 ± 0.10 |
 | `sters/yaml-diff` | — | — | — | _excluded (>100s est.)_ |
 | `sahilm/yamldiff` | — | — | — | _excluded (>100s est.)_ |
-| `diff (unix)` | 46.0 ± 1.1 | 44.5 | 52.7 | 1.00 |
+| `diff (unix)` | 45.3 ± 0.5 | 44.3 | 46.6 | 1.00 |
 
-At maximum scale, diffyml (128 ms) is **1.89x faster** than semihbkgr/yamldiff (241 ms) and **9.49x faster** than dyff (1,214 ms). sters/yaml-diff and sahilm/yamldiff were excluded — their super-linear scaling from 1s at Large (10x smaller) would project to well over 100 seconds per run.
+At maximum scale, diffyml (129 ms) is **1.86x faster** than semihbkgr/yamldiff (240 ms) and **8.91x faster** than dyff (1,146 ms). sters/yaml-diff and sahilm/yamldiff were excluded — their super-linear scaling from 1s at Large (10x smaller) would project to well over 100 seconds per run.
 
 ### Peak Memory Usage (RSS)
 
 | Tool | Small | Medium | Large | XLarge |
 |------|------:|-------:|------:|-------:|
-| diffyml | 10.5 MB | 11.5 MB | 18.6 MB | 61.4 MB |
-| dyff | 18.9 MB | 19.4 MB | 29.1 MB | 110.4 MB |
-| semihbkgr/yamldiff | 5.5 MB | 7.8 MB | 22.6 MB | 153.8 MB |
-| sters/yaml-diff | 5.3 MB | 10.7 MB | 326.1 MB | — |
-| sahilm/yamldiff | 5.2 MB | 10.7 MB | 13.6 MB | — |
-| diff (unix) | 1.8 MB | 5.5 MB | 6.2 MB | 14.8 MB |
+| diffyml | 10.7 MB | 11.8 MB | 18.5 MB | 66.2 MB |
+| dyff | 18.6 MB | 19.5 MB | 29.3 MB | 113.3 MB |
+| semihbkgr/yamldiff | 5.5 MB | 7.9 MB | 22.3 MB | 155.3 MB |
+| sters/yaml-diff | 5.4 MB | 10.8 MB | 331.5 MB | — |
+| sahilm/yamldiff | 5.4 MB | 10.8 MB | 13.5 MB | — |
+| diff (unix) | 1.9 MB | 5.5 MB | 6.2 MB | 14.8 MB |
 
-diffyml has the lowest memory footprint among YAML-aware tools at Large and XLarge. At Large, it uses **18.6 MB** — 1.2x less than semihbkgr/yamldiff, 1.6x less than dyff, and 17.5x less than sters/yaml-diff (which consumes 326 MB). At XLarge, diffyml uses **61 MB** — 1.8x less than dyff and 2.5x less than semihbkgr/yamldiff.
+diffyml has the lowest memory footprint among YAML-aware tools at Large and XLarge. At Large, it uses **18.5 MB** — 1.2x less than semihbkgr/yamldiff, 1.6x less than dyff, and 17.9x less than sters/yaml-diff (which consumes 332 MB). At XLarge, diffyml uses **66 MB** — 1.7x less than dyff and 2.3x less than semihbkgr/yamldiff.
 
 ### Scaling Summary
 
 | Tool | Small → Large (70x lines) | Medium → Large (10x lines) |
 |------|---------------------------|----------------------------|
-| diffyml | 5.6 → 18.5 ms (**3.3x**) | 6.7 → 18.5 ms (**2.8x**) |
-| semihbkgr/yamldiff | 3.5 → 27.9 ms (8.0x) | 5.5 → 27.9 ms (5.1x) |
-| dyff | 13.5 → 128.6 ms (9.5x) | 25.1 → 128.6 ms (5.1x) |
-| sters/yaml-diff | 3.6 → 1007 ms (280x) | 11.4 → 1007 ms (88x) |
-| sahilm/yamldiff | 3.5 → 1324 ms (378x) | 16.6 → 1324 ms (80x) |
-| diff (unix) | 2.1 → 6.2 ms (3.0x) | 2.7 → 6.2 ms (2.3x) |
+| diffyml | 5.5 → 18.8 ms (**3.4x**) | 6.7 → 18.8 ms (**2.8x**) |
+| semihbkgr/yamldiff | 3.6 → 27.9 ms (7.8x) | 5.5 → 27.9 ms (5.1x) |
+| dyff | 13.2 → 120.1 ms (9.1x) | 23.9 → 120.1 ms (5.0x) |
+| sters/yaml-diff | 3.6 → 999 ms (278x) | 11.5 → 999 ms (87x) |
+| sahilm/yamldiff | 3.6 → 1317 ms (366x) | 16.6 → 1317 ms (79x) |
+| diff (unix) | 2.1 → 6.2 ms (3.0x) | 2.6 → 6.2 ms (2.4x) |
 
-diffyml scales nearly linearly — growing ~3.3x when input grows 70x (small to large). sters/yaml-diff and sahilm/yamldiff exhibit super-linear (likely quadratic or worse) scaling, growing 280x and 378x respectively over the same range.
+diffyml scales nearly linearly — growing ~3.4x when input grows 70x (small to large). sters/yaml-diff and sahilm/yamldiff exhibit super-linear (likely quadratic or worse) scaling, growing 278x and 366x respectively over the same range.
 
 ## Key Findings
 
-1. **diffyml is the fastest YAML-aware diff tool** at large and xlarge sizes, where algorithmic efficiency dominates over startup overhead.
+1. **diffyml is the fastest YAML-aware diff tool** at medium, large, and xlarge sizes, where algorithmic efficiency dominates over startup overhead.
 
-2. **The performance advantage grows with file size.** At small sizes, all Go tools are comparable (~4-6 ms). At large (5K lines), diffyml is 1.51x faster than the nearest competitor. At xlarge (50K lines), the gap widens to 1.89x.
+2. **The performance advantage grows with file size.** At small sizes, all Go tools are comparable (~4-6 ms). At large (5K lines), diffyml is 1.48x faster than the nearest competitor. At xlarge (50K lines), the gap widens to 1.86x.
 
-3. **diffyml has the best memory efficiency** among YAML-aware tools at large scale, using 19 MB at large vs 23-326 MB for alternatives, and 61 MB at xlarge vs 110-154 MB.
+3. **diffyml has the best memory efficiency** among YAML-aware tools at large scale, using 19 MB at large vs 22-332 MB for alternatives, and 66 MB at xlarge vs 113-155 MB.
 
 4. **diffyml scales near-linearly**, while sters/yaml-diff and sahilm/yamldiff exhibit super-linear scaling that makes them impractical for large files.
 
-5. **dyff has consistently high overhead** (~3x baseline even at small sizes), likely due to its rich output formatting and multi-document comparison pipeline.
+5. **dyff has consistently high overhead** (~2.4x the baseline even at small sizes), likely due to its 23 module dependencies (cobra, go-colorful, go-diff, etc.) and rich output formatting pipeline.
 
 ## Reproducing These Results
 

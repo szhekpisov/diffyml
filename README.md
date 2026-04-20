@@ -56,16 +56,16 @@ diffyml compares YAML files and shows meaningful, structured differences — not
 | Rename detection | Yes (content similarity — handles name changes) | Yes (identifier-based — name must stay the same) | No |
 | API version migration | Yes (`--ignore-api-version`) | No | No |
 | CI annotation formats | 3 (GitHub, GitLab, Gitea) | 0 | 0 |
-| Runtime dependencies | 1 (yaml.v3) | 14 | 0 |
+| Module dependencies | 1 (yaml.v3) | 23 | 0 |
 | Directory comparison | Yes | No | Yes |
 | Git external diff (`GIT_EXTERNAL_DIFF`) | Yes (auto-detect) | Manual (wrapper script) | N/A |
 | Inline diff highlighting | Yes (word-level) | Yes (character-level) | No |
 | Custom colors | Yes (hex, env vars) | No | No |
 | Configuration file | Yes (`.diffyml.yml`) | No | No |
-| Performance (78 KB) | 19 ms | 129 ms (6.95x slower) | 6 ms |
-| Performance (780 KB) | 128 ms | 1,214 ms (9.49x slower) | 46 ms |
+| Performance (78 KB) | 19 ms | 120 ms (6.4x slower) | 6 ms |
+| Performance (780 KB) | 129 ms | 1,146 ms (8.9x slower) | 45 ms |
 
-Comparison based on dyff v1.11.2 and diffyml v1.5.13. See [PERFORMANCE.md](doc/PERFORMANCE.md) for benchmark methodology. [Open an issue](https://github.com/szhekpisov/diffyml/issues) if anything is outdated.
+Comparison based on dyff v1.11.3 and diffyml v1.5.23. See [PERFORMANCE.md](doc/PERFORMANCE.md) for full benchmark methodology and results against 5 competitors. [Open an issue](https://github.com/szhekpisov/diffyml/issues) if anything is outdated.
 
 ## Installation
 

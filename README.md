@@ -41,9 +41,9 @@ diffyml compares YAML files and shows meaningful, structured differences — not
 
 ## Why diffyml?
 
-**Fastest structural YAML diff tool.** On medium and large inputs diffyml is 1.2–1.7× faster than the nearest competitor. On small files (~50 lines) it ties within 2 ms — the only overhead comes from capabilities the other tools lack (x509 certificate inspection, remote URL fetching, AI-powered summaries). See [PERFORMANCE.md](doc/PERFORMANCE.md) for methodology and results.
+**Fastest structural YAML diff tool.** On medium and large inputs diffyml is 1.2–1.9× faster than the nearest competitor. On small files (~50 lines) it ties within 2 ms — the only overhead comes from capabilities the other tools lack (x509 certificate inspection, remote URL fetching, AI-powered summaries). See [PERFORMANCE.md](doc/PERFORMANCE.md) for methodology and results.
 
-**One dependency, zero surprises.** A single runtime dependency ([yaml.v3](https://github.com/yaml/go-yaml)) and pure Go stdlib. Minimal attack surface, auditable in minutes.
+**One dependency, zero surprises.** A single module dependency ([yaml.v3](https://github.com/yaml/go-yaml)) and pure Go stdlib. Minimal attack surface, auditable in minutes.
 
 **Gets YAML right.** Dotted keys, type preservation, mixed-type lists, nil values — concrete edge cases other tools get wrong. diffyml treats YAML semantics as first-class, not an afterthought.
 
@@ -62,8 +62,8 @@ diffyml compares YAML files and shows meaningful, structured differences — not
 | Inline diff highlighting | Yes (word-level) | Yes (character-level) | No |
 | Custom colors | Yes (hex, env vars) | No | No |
 | Configuration file | Yes (`.diffyml.yml`) | No | No |
-| Performance (78 KB) | 19 ms | 120 ms (6.4x slower) | 6 ms |
-| Performance (780 KB) | 129 ms | 1,146 ms (8.9x slower) | 45 ms |
+| Performance (78 KB) | 19 ms | 120 ms (6.4x) | 6 ms |
+| Performance (780 KB) | 129 ms | 1,146 ms (8.9x) | 45 ms |
 
 Comparison based on dyff v1.11.3 and diffyml v1.5.23. See [PERFORMANCE.md](doc/PERFORMANCE.md) for full benchmark methodology and results against 5 competitors. [Open an issue](https://github.com/szhekpisov/diffyml/issues) if anything is outdated.
 

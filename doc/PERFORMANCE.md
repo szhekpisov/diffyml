@@ -97,7 +97,7 @@ Both tools exhibit super-linear scaling: they take ~1 second at Large (5,000 lin
 | `sahilm/yamldiff` | 3.6 ± 0.4 | 2.9 | 5.0 | 1.72 ± 0.40 |
 | `diff (unix)` | 2.1 ± 0.4 | 1.6 | 3.9 | 1.00 |
 
-At this size, all Go tools are within a narrow band (~4-6 ms). The ~2 ms gap between diffyml and the simpler tools is startup overhead from capabilities they lack: `net/http` (remote URL fetching, AI summaries) and `crypto/x509` (certificate inspection) add ~87 transitive packages to the binary. The actual diff algorithm completes in <1 ms.
+At this size, all Go tools are within a narrow band (~4-6 ms). The ~2 ms gap between diffyml and the simpler tools is startup overhead from capabilities they lack: `net/http` (remote URL fetching, AI summaries) and `crypto/x509` (certificate inspection) add ~87 transitive packages to the binary. CPU profiling confirms the actual diff algorithm completes in <1 ms on small inputs.
 
 #### Medium (~530 lines, ~8 KB)
 
@@ -174,7 +174,7 @@ diffyml scales nearly linearly — growing ~3.4x when input grows 70x (small to 
 
 4. **diffyml scales near-linearly**, while sters/yaml-diff and sahilm/yamldiff exhibit super-linear scaling that makes them impractical for large files.
 
-5. **dyff has consistently high overhead** (~2.4x the baseline even at small sizes), likely due to its 23 module dependencies (cobra, go-colorful, go-diff, etc.) and rich output formatting pipeline.
+5. **dyff has consistently high overhead** (~6x slower than unix diff even at small sizes), likely due to its 23 module dependencies (cobra, go-colorful, go-diff, etc.) and rich output formatting pipeline.
 
 ## Reproducing These Results
 

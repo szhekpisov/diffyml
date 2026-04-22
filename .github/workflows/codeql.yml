@@ -1,6 +1,7 @@
 name: CodeQL
 
-permissions: read-all
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -40,6 +41,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       security-events: write
+      contents: read
+      actions: read
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6

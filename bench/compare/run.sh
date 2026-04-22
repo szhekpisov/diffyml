@@ -143,20 +143,20 @@ if [ "$SKIP_INSTALL" = false ]; then
   ok "diffyml built"
 
   info "Installing dyff..."
-  GOBIN="$TOOL_DIR" go install github.com/homeport/dyff/cmd/dyff@v1.11.3
+  GOBIN="$TOOL_DIR" go install github.com/homeport/dyff/cmd/dyff@4512053136bcd17cc8784b386f6c75bda7e01ec2 # v1.11.3
   ok "dyff installed"
 
   info "Installing semihbkgr/yamldiff..."
-  GOBIN="$TOOL_DIR" go install github.com/semihbkgr/yamldiff@v0.3.1
+  GOBIN="$TOOL_DIR" go install github.com/semihbkgr/yamldiff@1179190f34163df0a03e702d3597fd07863d2f9d # v0.3.1
   mv "$TOOL_DIR/yamldiff" "$TOOL_DIR/yamldiff-semihbkgr"
   ok "yamldiff-semihbkgr installed"
 
   info "Installing sters/yaml-diff..."
-  GOBIN="$TOOL_DIR" go install github.com/sters/yaml-diff/cmd/yaml-diff@v1.4.1
+  GOBIN="$TOOL_DIR" go install github.com/sters/yaml-diff/cmd/yaml-diff@a570d2fe557fd127a2b1fe9bff9e75e0cf5a8f6b # v1.4.1
   ok "yaml-diff installed"
 
   info "Installing sahilm/yamldiff..."
-  GOBIN="$TOOL_DIR" go install github.com/sahilm/yamldiff@1.3
+  GOBIN="$TOOL_DIR" go install github.com/sahilm/yamldiff@584d5771767b262cf171d9c1f890d6daeb82492c # 1.3
   mv "$TOOL_DIR/yamldiff" "$TOOL_DIR/yamldiff-sahilm"
   ok "yamldiff-sahilm installed"
 

@@ -59,11 +59,19 @@ jobs:
       contents: write
       id-token: write
       attestations: write
+      packages: write
+      security-events: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
           persist-credentials: false
+
+      - name: Lint Dockerfile with hadolint
+        uses: hadolint/hadolint-action@3fc49fb50d59c6ab7917a2e4195dba633e515b29 # v3.2.0
+        with:
+          dockerfile: Dockerfile.goreleaser
+          failure-threshold: warning
 
       - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
@@ -75,6 +83,19 @@ jobs:
 
       - name: Install syft
         uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@4574d27a4764455b42196d70a065bc6853246a25 # v3.4.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f7ce87c1d6bead3e36075b2ce75da1f6cc28aaca # v3.9.0
+
+      - name: Log in to GHCR
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run GoReleaser
         id: goreleaser
@@ -98,6 +119,100 @@ jobs:
         uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
         with:
           subject-checksums: ./dist/checksums.txt
+
+      - name: Export per-arch images for scanning
+        id: images
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          VERSION="${TAG#v}"
+          mkdir -p image-tars
+          for arch in amd64 arm64; do
+            IMG="ghcr.io/szhekpisov/diffyml:${VERSION}-${arch}"
+            docker save "$IMG" -o "image-tars/diffyml-${arch}.tar"
+          done
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Scan amd64 image with Grype
+        uses: anchore/scan-action@f6601287cdb1efc985d6b765bbf99cb4c0ac29d8 # v7.0.0
+        id: grype-amd64
+        with:
+          path: image-tars/diffyml-amd64.tar
+          fail-build: true
+          severity-cutoff: high
+          output-format: sarif
+
+      - name: Upload Grype amd64 SARIF
+        if: always() && steps.grype-amd64.outputs.sarif != ''
+        uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13 # v4.35.1
+        with:
+          sarif_file: ${{ steps.grype-amd64.outputs.sarif }}
+          category: grype-image-amd64
+
+      - name: Scan arm64 image with Grype
+        uses: anchore/scan-action@f6601287cdb1efc985d6b765bbf99cb4c0ac29d8 # v7.0.0
+        id: grype-arm64
+        with:
+          path: image-tars/diffyml-arm64.tar
+          fail-build: true
+          severity-cutoff: high
+          output-format: sarif
+
+      - name: Upload Grype arm64 SARIF
+        if: always() && steps.grype-arm64.outputs.sarif != ''
+        uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13 # v4.35.1
+        with:
+          sarif_file: ${{ steps.grype-arm64.outputs.sarif }}
+          category: grype-image-arm64
+
+      - name: Push per-arch images to GHCR
+        env:
+          VERSION: ${{ steps.images.outputs.version }}
+        run: |
+          for arch in amd64 arm64; do
+            docker push "ghcr.io/szhekpisov/diffyml:${VERSION}-${arch}"
+          done
+
+      - name: Create multi-arch manifests
+        env:
+          VERSION: ${{ steps.images.outputs.version }}
+        run: |
+          docker buildx imagetools create \
+            -t "ghcr.io/szhekpisov/diffyml:${VERSION}" \
+            "ghcr.io/szhekpisov/diffyml:${VERSION}-amd64" \
+            "ghcr.io/szhekpisov/diffyml:${VERSION}-arm64"
+          docker buildx imagetools create \
+            -t "ghcr.io/szhekpisov/diffyml:latest" \
+            "ghcr.io/szhekpisov/diffyml:${VERSION}-amd64" \
+            "ghcr.io/szhekpisov/diffyml:${VERSION}-arm64"
+
+      - name: Resolve manifest digest
+        id: manifest
+        env:
+          VERSION: ${{ steps.images.outputs.version }}
+        run: |
+          IMAGE="ghcr.io/szhekpisov/diffyml:${VERSION}"
+          DIGEST=$(docker buildx imagetools inspect "$IMAGE" | awk '/^Digest:/ {print $2; exit}')
+          if [[ -z "$DIGEST" ]]; then
+            echo "::error::Could not resolve manifest digest for $IMAGE"
+            exit 1
+          fi
+          echo "image=ghcr.io/szhekpisov/diffyml" >> "$GITHUB_OUTPUT"
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+
+      - name: Sign manifest with cosign
+        env:
+          IMAGE: ${{ steps.manifest.outputs.image }}
+          DIGEST: ${{ steps.manifest.outputs.digest }}
+        run: |
+          cosign sign --yes "${IMAGE}@${DIGEST}"
+
+      - name: Attest image build provenance
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
+        with:
+          subject-name: ${{ steps.manifest.outputs.image }}
+          subject-digest: ${{ steps.manifest.outputs.digest }}
+          push-to-registry: true
 
   provenance:
     needs: release

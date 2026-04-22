@@ -1,0 +1,5 @@
+FROM gcr.io/distroless/static-debian12:nonroot
+
+COPY diffyml /usr/local/bin/diffyml
+
+ENTRYPOINT ["/usr/local/bin/diffyml"]

@@ -1,6 +1,7 @@
 name: Benchmark Smoke Check
 
-permissions: read-all
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

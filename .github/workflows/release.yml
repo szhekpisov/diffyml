@@ -137,7 +137,7 @@ jobs:
         uses: anchore/scan-action@f6601287cdb1efc985d6b765bbf99cb4c0ac29d8 # v7.0.0
         id: grype-amd64
         with:
-          path: image-tars/diffyml-amd64.tar
+          image: docker-archive:image-tars/diffyml-amd64.tar
           fail-build: true
           severity-cutoff: high
           output-format: sarif
@@ -153,7 +153,7 @@ jobs:
         uses: anchore/scan-action@f6601287cdb1efc985d6b765bbf99cb4c0ac29d8 # v7.0.0
         id: grype-arm64
         with:
-          path: image-tars/diffyml-arm64.tar
+          image: docker-archive:image-tars/diffyml-arm64.tar
           fail-build: true
           severity-cutoff: high
           output-format: sarif

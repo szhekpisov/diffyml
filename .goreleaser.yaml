@@ -49,6 +49,40 @@ signs:
       - "--yes"
     artifacts: sbom
 
+dockers:
+  - image_templates:
+      - "ghcr.io/szhekpisov/diffyml:{{ .Version }}-amd64"
+    skip_push: true
+    use: buildx
+    dockerfile: Dockerfile.goreleaser
+    goarch: amd64
+    build_flag_templates:
+      - "--platform=linux/amd64"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.description=Structural diff tool for YAML files"
+      - "--label=org.opencontainers.image.source=https://github.com/szhekpisov/diffyml"
+      - "--label=org.opencontainers.image.url=https://github.com/szhekpisov/diffyml"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.licenses=MIT"
+  - image_templates:
+      - "ghcr.io/szhekpisov/diffyml:{{ .Version }}-arm64"
+    skip_push: true
+    use: buildx
+    dockerfile: Dockerfile.goreleaser
+    goarch: arm64
+    build_flag_templates:
+      - "--platform=linux/arm64"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.description=Structural diff tool for YAML files"
+      - "--label=org.opencontainers.image.source=https://github.com/szhekpisov/diffyml"
+      - "--label=org.opencontainers.image.url=https://github.com/szhekpisov/diffyml"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.licenses=MIT"
+
 brews:
   - repository:
       owner: szhekpisov

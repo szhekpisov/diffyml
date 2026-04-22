@@ -15,3 +15,11 @@ updates:
       day: "monday"
     cooldown:
       default-days: 7
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    cooldown:
+      default-days: 7

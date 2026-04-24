@@ -205,7 +205,7 @@ jobs:
           IMAGE: ${{ steps.manifest.outputs.image }}
           DIGEST: ${{ steps.manifest.outputs.digest }}
         run: |
-          cosign sign --yes "${IMAGE}@${DIGEST}"
+          cosign sign --yes --registry-referrers-mode=oci-1-1 "${IMAGE}@${DIGEST}"
 
       - name: Attest image build provenance
         uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0

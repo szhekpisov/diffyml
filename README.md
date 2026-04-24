@@ -88,6 +88,19 @@ Make sure `$GOPATH/bin` is in your `PATH`:
 export PATH="$(go env GOPATH)/bin:$PATH"
 ```
 
+### Docker
+
+Multi-arch images (linux/amd64, linux/arm64) are published to GitHub Container Registry:
+
+```bash
+docker pull ghcr.io/szhekpisov/diffyml:latest
+
+# Compare two files from the current directory
+docker run --rm -v "$PWD:/work" -w /work ghcr.io/szhekpisov/diffyml:latest old.yaml new.yaml
+```
+
+Images are built from a [distroless](https://github.com/GoogleContainerTools/distroless) base and run as a non-root user. Use `:latest` or pin to a specific version (e.g. `:1.5.25`).
+
 ### From Source
 
 ```bash

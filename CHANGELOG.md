@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.25] - 2026-04-23
+
+### Added
+
+- Publish multi-arch Docker images to GHCR with pre-push scan (#113) ([#113](https://github.com/szhekpisov/diffyml/pull/113))
+
+### Fixed
+
+- Pass docker-archive scheme to Grype image scans (#119) ([#119](https://github.com/szhekpisov/diffyml/pull/119))
+
+### Documentation
+
+- Refresh performance claims and benchmark data (#111) ([#111](https://github.com/szhekpisov/diffyml/pull/111))
+
 ## [1.5.23] - 2026-04-18
 
 ### Documentation
@@ -232,6 +246,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add GOPATH/bin PATH hint to Go Install section (#3) ([#3](https://github.com/szhekpisov/diffyml/pull/3))
 - Cleanup (#6) ([#6](https://github.com/szhekpisov/diffyml/pull/6))
 
+[1.5.25]: https://github.com/szhekpisov/diffyml/compare/v1.5.23...v1.5.25
 [1.5.23]: https://github.com/szhekpisov/diffyml/compare/v1.5.22...v1.5.23
 [1.5.22]: https://github.com/szhekpisov/diffyml/compare/v1.5.21...v1.5.22
 [1.5.21]: https://github.com/szhekpisov/diffyml/compare/v1.5.20...v1.5.21

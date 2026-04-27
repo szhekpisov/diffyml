@@ -15,6 +15,8 @@ A fast, structural YAML diff tool with built-in Kubernetes intelligence. One dep
 
 diffyml compares YAML files and shows meaningful, structured differences — not line-by-line text diffs.
 
+**📖 Full documentation: [szhekpisov.github.io/diffyml](https://szhekpisov.github.io/diffyml/)**
+
 ## Table of Contents
 
 - [Why diffyml?](#why-diffyml)

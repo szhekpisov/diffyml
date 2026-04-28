@@ -1,46 +1,74 @@
+/*
+ * Custom site header for hugo-book.
+ * Loaded via Hugo's assets pipeline (resources.Get → minify → fingerprint)
+ * from layouts/_partials/docs/inject/head.html.
+ *
+ * The hugo-book CSS variables overridden in the [data-theme] blocks below
+ * mirror the values in themes/hugo-book/assets/_defaults.scss
+ * (mixins theme-light / theme-dark). Re-sync if hugo-book is upgraded.
+ */
+
 :root {
   --site-header-height: 56px;
   --site-header-total: var(--site-header-height);
   /* Light defaults */
   --site-header-bg: #ffffff;
-  --site-header-bg-tabs: #f3f4f6;
   --site-header-fg: #111827;
   --site-header-fg-muted: #6b7280;
-  --site-header-accent: #2563eb;
   --site-header-hover: rgba(0, 0, 0, 0.06);
   --site-header-border: rgba(0, 0, 0, 0.08);
+  --site-header-focus: #2563eb;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --site-header-bg: #1f2937;
-    --site-header-bg-tabs: #111827;
     --site-header-fg: #f9fafb;
     --site-header-fg-muted: #9ca3af;
-    --site-header-accent: #60a5fa;
     --site-header-hover: rgba(255, 255, 255, 0.08);
     --site-header-border: rgba(255, 255, 255, 0.06);
+    --site-header-focus: #60a5fa;
   }
 }
 
+/* Explicit per-user override. Sets both site-header tokens and hugo-book
+ * tokens in the same block so a future palette tweak only touches one place. */
 html[data-theme="light"] {
   --site-header-bg: #ffffff;
-  --site-header-bg-tabs: #f3f4f6;
   --site-header-fg: #111827;
   --site-header-fg-muted: #6b7280;
-  --site-header-accent: #2563eb;
   --site-header-hover: rgba(0, 0, 0, 0.06);
   --site-header-border: rgba(0, 0, 0, 0.08);
+  --site-header-focus: #2563eb;
+
+  --body-background: white;
+  --body-background-tint: none;
+  --body-font-color: black;
+  --color-link: #0055bb;
+  --color-visited-link: #5500bb;
+  --icon-filter: none;
+  --gray-100: #f8f9fa;
+  --gray-200: #e9ecef;
+  --gray-500: #adb5bd;
 }
 
 html[data-theme="dark"] {
   --site-header-bg: #1f2937;
-  --site-header-bg-tabs: #111827;
   --site-header-fg: #f9fafb;
   --site-header-fg-muted: #9ca3af;
-  --site-header-accent: #60a5fa;
   --site-header-hover: rgba(255, 255, 255, 0.08);
   --site-header-border: rgba(255, 255, 255, 0.06);
+  --site-header-focus: #60a5fa;
+
+  --body-background: #343a40;
+  --body-background-tint: none;
+  --body-font-color: #e9ecef;
+  --color-link: #84b2ff;
+  --color-visited-link: #b88dff;
+  --icon-filter: brightness(0) invert(1);
+  --gray-100: #494e54;
+  --gray-200: #5c6165;
+  --gray-500: #999d9f;
 }
 
 .site-header {
@@ -53,11 +81,18 @@ html[data-theme="dark"] {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
 }
 
-/* Override hugo-book's global `a[href]` blue link color inside the header */
+/* Override hugo-book's global `a[href] { color: var(--color-link) }`
+ * inside the header. Specificity must match (class + attribute selector). */
 .site-header a[href],
 .site-header a[href]:visited {
   color: var(--site-header-fg);
   text-decoration: none;
+}
+
+.site-header :focus-visible {
+  outline: 2px solid var(--site-header-focus);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 .site-header__bar {
@@ -68,6 +103,7 @@ html[data-theme="dark"] {
   background: var(--site-header-bg);
   color: var(--site-header-fg);
   gap: 0.75rem;
+  border-bottom: 1px solid var(--site-header-border);
 }
 
 .site-header__menu-toggle {
@@ -150,31 +186,6 @@ html[data-theme="light"] .site-header__theme-icon--sun  { display: none; }
 html[data-theme="dark"]  .site-header__theme-icon--moon { display: none; }
 html[data-theme="dark"]  .site-header__theme-icon--sun  { display: inline-flex; }
 
-/* Force-apply hugo-book's dark/light variables when user has chosen explicitly. */
-html[data-theme="dark"] {
-  --body-background: #343a40;
-  --body-background-tint: none;
-  --body-font-color: #e9ecef;
-  --color-link: #84b2ff;
-  --color-visited-link: #b88dff;
-  --icon-filter: brightness(0) invert(1);
-  --gray-100: #494e54;
-  --gray-200: #5c6165;
-  --gray-500: #999d9f;
-}
-
-html[data-theme="light"] {
-  --body-background: white;
-  --body-background-tint: none;
-  --body-font-color: black;
-  --color-link: #0055bb;
-  --color-visited-link: #5500bb;
-  --icon-filter: none;
-  --gray-100: #f8f9fa;
-  --gray-200: #e9ecef;
-  --gray-500: #adb5bd;
-}
-
 .site-header__repo {
   display: inline-flex;
   align-items: center;
@@ -242,17 +253,14 @@ html[data-theme="light"] {
   opacity: 0.85;
 }
 
-/* Add a clear divider under the single header bar */
-.site-header__bar {
-  border-bottom: 1px solid var(--site-header-border);
-}
-
 /* Push hugo-book content below the fixed header */
 body {
   padding-top: var(--site-header-total);
 }
 
-/* Re-anchor hugo-book's sticky sidebar/toc beneath the new header */
+/* Re-anchor hugo-book's sticky sidebar/toc beneath the new header.
+ * !important is required because hugo-book sets `top: 0` directly on
+ * .book-menu-content / .book-toc-content, with the same specificity. */
 .book-menu .book-menu-content,
 .book-toc .book-toc-content {
   top: var(--site-header-total) !important;

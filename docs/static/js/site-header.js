@@ -1,18 +1,27 @@
 (function () {
-  var toggle = document.querySelector("[data-theme-toggle]");
-  if (toggle) {
-    toggle.addEventListener("click", function () {
-      var current = document.documentElement.getAttribute("data-theme");
-      if (!current) {
-        var prefersDark = window.matchMedia &&
-          window.matchMedia("(prefers-color-scheme: dark)").matches;
-        current = prefersDark ? "dark" : "light";
-      }
-      var next = current === "dark" ? "light" : "dark";
-      document.documentElement.setAttribute("data-theme", next);
-      try { localStorage.setItem("site-theme", next); } catch (_) {}
+  var menuToggle = document.getElementById("site-header-menu-toggle");
+  if (menuToggle) {
+    menuToggle.addEventListener("click", function () {
+      var ctrl = document.getElementById("menu-control");
+      if (ctrl) ctrl.click();
     });
   }
+})();
+
+(function () {
+  var toggle = document.querySelector("[data-theme-toggle]");
+  if (!toggle) return;
+  toggle.addEventListener("click", function () {
+    var current = document.documentElement.getAttribute("data-theme");
+    if (!current) {
+      var prefersDark = window.matchMedia &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches;
+      current = prefersDark ? "dark" : "light";
+    }
+    var next = current === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    try { localStorage.setItem("site-theme", next); } catch (_) {}
+  });
 })();
 
 (function () {
@@ -23,7 +32,7 @@
   if (!repo) return;
 
   var TTL = 60 * 60 * 1000;
-  var key = "site-header:" + repo;
+  var key = "site-header:v1:" + repo;
 
   function fmt(n) {
     if (n == null) return null;

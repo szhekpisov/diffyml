@@ -1,0 +1,11 @@
+<link rel="stylesheet" href="{{ "css/site-header.css" | relURL }}" />
+<script>
+(function () {
+  try {
+    var t = localStorage.getItem("site-theme");
+    if (t === "dark" || t === "light") {
+      document.documentElement.setAttribute("data-theme", t);
+    }
+  } catch (_) {}
+})();
+</script>

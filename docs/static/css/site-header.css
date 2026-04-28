@@ -1,0 +1,286 @@
+:root {
+  --site-header-height: 56px;
+  --site-header-total: var(--site-header-height);
+  /* Light defaults */
+  --site-header-bg: #ffffff;
+  --site-header-bg-tabs: #f3f4f6;
+  --site-header-fg: #111827;
+  --site-header-fg-muted: #6b7280;
+  --site-header-accent: #2563eb;
+  --site-header-hover: rgba(0, 0, 0, 0.06);
+  --site-header-border: rgba(0, 0, 0, 0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --site-header-bg: #1f2937;
+    --site-header-bg-tabs: #111827;
+    --site-header-fg: #f9fafb;
+    --site-header-fg-muted: #9ca3af;
+    --site-header-accent: #60a5fa;
+    --site-header-hover: rgba(255, 255, 255, 0.08);
+    --site-header-border: rgba(255, 255, 255, 0.06);
+  }
+}
+
+html[data-theme="light"] {
+  --site-header-bg: #ffffff;
+  --site-header-bg-tabs: #f3f4f6;
+  --site-header-fg: #111827;
+  --site-header-fg-muted: #6b7280;
+  --site-header-accent: #2563eb;
+  --site-header-hover: rgba(0, 0, 0, 0.06);
+  --site-header-border: rgba(0, 0, 0, 0.08);
+}
+
+html[data-theme="dark"] {
+  --site-header-bg: #1f2937;
+  --site-header-bg-tabs: #111827;
+  --site-header-fg: #f9fafb;
+  --site-header-fg-muted: #9ca3af;
+  --site-header-accent: #60a5fa;
+  --site-header-hover: rgba(255, 255, 255, 0.08);
+  --site-header-border: rgba(255, 255, 255, 0.06);
+}
+
+.site-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  font-family: inherit;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+}
+
+/* Override hugo-book's global `a[href]` blue link color inside the header */
+.site-header a[href],
+.site-header a[href]:visited {
+  color: var(--site-header-fg);
+  text-decoration: none;
+}
+
+.site-header__bar {
+  display: flex;
+  align-items: center;
+  height: var(--site-header-height);
+  padding: 0 1.25rem;
+  background: var(--site-header-bg);
+  color: var(--site-header-fg);
+  gap: 0.75rem;
+}
+
+.site-header__menu-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: transparent;
+  border: 0;
+  color: var(--site-header-fg);
+  cursor: pointer;
+  padding: 0;
+}
+
+.site-header__brand {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  color: var(--site-header-fg);
+  text-decoration: none;
+  min-width: 0;
+}
+
+.site-header__brand:hover {
+  text-decoration: none;
+}
+
+.site-header__title {
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.site-header__tagline {
+  color: var(--site-header-fg-muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.site-header__spacer {
+  flex: 1;
+}
+
+.site-header__theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  color: var(--site-header-fg);
+  cursor: pointer;
+  padding: 0;
+  transition: background-color 120ms ease;
+}
+
+.site-header__theme-toggle:hover {
+  background: var(--site-header-hover);
+}
+
+.site-header__theme-icon {
+  display: none;
+}
+
+/* Default (no preference): show moon when system is light, sun when system is dark */
+.site-header__theme-icon--moon { display: inline-flex; }
+@media (prefers-color-scheme: dark) {
+  .site-header__theme-icon--moon { display: none; }
+  .site-header__theme-icon--sun { display: inline-flex; }
+}
+
+/* Explicit override via data-theme */
+html[data-theme="light"] .site-header__theme-icon--moon { display: inline-flex; }
+html[data-theme="light"] .site-header__theme-icon--sun  { display: none; }
+html[data-theme="dark"]  .site-header__theme-icon--moon { display: none; }
+html[data-theme="dark"]  .site-header__theme-icon--sun  { display: inline-flex; }
+
+/* Force-apply hugo-book's dark/light variables when user has chosen explicitly. */
+html[data-theme="dark"] {
+  --body-background: #343a40;
+  --body-background-tint: none;
+  --body-font-color: #e9ecef;
+  --color-link: #84b2ff;
+  --color-visited-link: #b88dff;
+  --icon-filter: brightness(0) invert(1);
+  --gray-100: #494e54;
+  --gray-200: #5c6165;
+  --gray-500: #999d9f;
+}
+
+html[data-theme="light"] {
+  --body-background: white;
+  --body-background-tint: none;
+  --body-font-color: black;
+  --color-link: #0055bb;
+  --color-visited-link: #5500bb;
+  --icon-filter: none;
+  --gray-100: #f8f9fa;
+  --gray-200: #e9ecef;
+  --gray-500: #adb5bd;
+}
+
+.site-header__repo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  max-width: 18rem;
+  color: var(--site-header-fg);
+  text-decoration: none;
+  padding: 0.35rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  transition: background-color 120ms ease;
+}
+
+.site-header__repo:hover {
+  background: var(--site-header-hover);
+  text-decoration: none;
+}
+
+.site-header__repo-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.site-header__repo-info {
+  display: inline-flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.site-header__repo-path {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.site-header__facts {
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 0;
+  display: flex;
+  gap: 0.7rem;
+  font-size: 0.72rem;
+  color: var(--site-header-fg-muted);
+}
+
+.site-header__fact {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+}
+
+.site-header__fact[hidden] {
+  display: none;
+}
+
+.site-header__fact svg {
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+/* Add a clear divider under the single header bar */
+.site-header__bar {
+  border-bottom: 1px solid var(--site-header-border);
+}
+
+/* Push hugo-book content below the fixed header */
+body {
+  padding-top: var(--site-header-total);
+}
+
+/* Re-anchor hugo-book's sticky sidebar/toc beneath the new header */
+.book-menu .book-menu-content,
+.book-toc .book-toc-content {
+  top: var(--site-header-total) !important;
+  max-height: calc(100vh - var(--site-header-total)) !important;
+}
+
+/* Hide hugo-book's brand block in the sidebar — site title now lives in the header */
+.book-menu .book-brand {
+  display: none;
+}
+
+/* Mobile: collapse to hamburger + brand */
+@media (max-width: 56rem) {
+  .site-header__menu-toggle {
+    display: inline-flex;
+  }
+  .site-header__tagline {
+    display: none;
+  }
+  .site-header__repo-info {
+    display: none;
+  }
+  .site-header__repo {
+    padding: 0.35rem;
+    max-width: none;
+  }
+  /* Hugo-book hides its mobile header above the page; we already provide one */
+  .book-page > .book-header {
+    display: none !important;
+  }
+}

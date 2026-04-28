@@ -10,6 +10,8 @@ theme        = "hugo-book"
   BookSearch       = true
   BookToC          = true
   BookPortableLinks = true
+  BookTheme        = "auto"
+  SiteTagline      = "Structural YAML diff with Kubernetes intelligence"
 
 [markup.goldmark.renderer]
   unsafe = true

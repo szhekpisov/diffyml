@@ -29,7 +29,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  HUGO_VERSION: 0.140.2
+  # Hugo extended >= 0.146 is required by hugo-book v13.
+  HUGO_VERSION: 0.161.0
   # Pinned to a release tag for reproducible builds; bump manually when upgrading the theme.
   HUGO_BOOK_REF: v13
 

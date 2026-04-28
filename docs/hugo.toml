@@ -1,0 +1,31 @@
+baseURL      = "https://szhekpisov.github.io/diffyml/"
+languageCode = "en-us"
+title        = "diffyml"
+theme        = "hugo-book"
+
+[params]
+  BookSection      = "docs"
+  BookRepo         = "https://github.com/szhekpisov/diffyml"
+  BookEditPath     = "edit/main/docs/content"
+  BookSearch       = true
+  BookToC          = true
+  BookPortableLinks = true
+
+[markup.goldmark.renderer]
+  unsafe = true
+
+[markup.tableOfContents]
+  startLevel = 2
+  endLevel   = 3
+  ordered    = false
+
+[markup.highlight]
+  style       = "github-dark"
+  noClasses   = false
+  lineNos     = false
+  codeFences  = true
+  guessSyntax = true
+
+[outputs]
+  home    = ["HTML", "RSS"]
+  section = ["HTML", "RSS"]

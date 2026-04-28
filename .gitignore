@@ -48,3 +48,9 @@ CLAUDE.md
 .claude/
 spec.md
 .DS_Store
+
+# Hugo docs site (theme cloned at build time, public/resources are build output)
+docs/public/
+docs/resources/
+docs/.hugo_build.lock
+docs/themes/

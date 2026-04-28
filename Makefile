@@ -1,4 +1,4 @@
-.PHONY: build coverage check-coverage check-doc bench bench-cpu bench-mem bench-compare govulncheck golangci-lint security test e2e fmt lint vet ci fixture changelog fuzz fuzz-long mutation mutation-dry
+.PHONY: build coverage check-coverage check-doc bench bench-cpu bench-mem bench-compare govulncheck golangci-lint security test e2e fmt lint vet ci fixture changelog fuzz fuzz-long mutation mutation-dry docs-gen docs-check docs-serve docs-build
 
 BIN = /tmp/diffyml-dev
 
@@ -117,7 +117,29 @@ mutation:
 mutation-dry:
 	gremlins unleash --dry-run --coverpkg="./pkg/diffyml/..." ./pkg/diffyml/
 
-ci: fmt vet test check-coverage security
+ci: fmt vet test check-coverage security docs-check
+
+# Regenerate the auto-generated CLI reference page from pkg/diffyml/cli.FlagDocs.
+docs-gen:
+	go run ./doc/gen-cli-ref > docs/content/docs/reference.md
+
+# Fail if the committed CLI reference is stale.
+docs-check:
+	@go run ./doc/gen-cli-ref > /tmp/diffyml-cli-ref.md; \
+	if ! diff -u docs/content/docs/reference.md /tmp/diffyml-cli-ref.md > /dev/null; then \
+		echo "docs/content/docs/reference.md is stale; run 'make docs-gen' and commit"; \
+		diff -u docs/content/docs/reference.md /tmp/diffyml-cli-ref.md || true; \
+		exit 1; \
+	fi
+
+# Live-reload server for local docs development. Requires Hugo extended on PATH.
+docs-serve: docs-gen
+	cd docs && hugo server --bind 0.0.0.0 --port 1313
+
+# Production build of the docs site. Requires Hugo extended and a populated
+# docs/themes/hugo-book directory (the deploy workflow clones it at build time).
+docs-build: docs-gen
+	cd docs && hugo --minify
 
 fixture: build
 	@if [ -z "$(N)" ]; then echo "Usage: make fixture N=<number>  (e.g. make fixture N=1)"; exit 1; fi

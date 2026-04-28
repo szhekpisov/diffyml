@@ -14,18 +14,23 @@
   toggle.addEventListener("click", function () {
     var saved = null;
     try { saved = localStorage.getItem("site-theme"); } catch (_) {}
-    /* Cycle: auto (no preference) -> light -> dark -> auto */
-    var next;
-    if (saved === "light") next = "dark";
-    else if (saved === "dark") next = null;
-    else next = "light";
 
-    if (next === null) {
+    var prefersDark = window.matchMedia &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches;
+    var osTheme = prefersDark ? "dark" : "light";
+    var visible = saved || osTheme;
+    var nextVisible = visible === "dark" ? "light" : "dark";
+
+    /* If the next visible theme matches the OS preference, store no
+     * explicit choice (auto). Otherwise pin it explicitly. This way every
+     * click changes the visible theme, and "follow OS" is reachable again
+     * without clearing storage manually. */
+    if (nextVisible === osTheme) {
       document.documentElement.removeAttribute("data-theme");
       try { localStorage.removeItem("site-theme"); } catch (_) {}
     } else {
-      document.documentElement.setAttribute("data-theme", next);
-      try { localStorage.setItem("site-theme", next); } catch (_) {}
+      document.documentElement.setAttribute("data-theme", nextVisible);
+      try { localStorage.setItem("site-theme", nextVisible); } catch (_) {}
     }
   });
 })();

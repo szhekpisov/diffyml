@@ -1,0 +1,13 @@
+{{- with resources.Get "css/site-header.css" | resources.Minify | resources.Fingerprint -}}
+<link rel="stylesheet" href="{{ .RelPermalink }}" integrity="{{ .Data.Integrity }}" crossorigin="anonymous" />
+{{- end }}
+<script>
+(function () {
+  try {
+    var t = localStorage.getItem("site-theme");
+    if (t === "dark" || t === "light") {
+      document.documentElement.setAttribute("data-theme", t);
+    }
+  } catch (_) {}
+})();
+</script>

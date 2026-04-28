@@ -1,0 +1,3 @@
+{{- with resources.Get "js/site-header.js" | resources.Minify | resources.Fingerprint -}}
+<script defer src="{{ .RelPermalink }}" integrity="{{ .Data.Integrity }}" crossorigin="anonymous"></script>
+{{- end }}

@@ -1,0 +1,12 @@
+{{/* Local override of hugo-book v13's brand partial.
+     Drops the deprecated `.Sites.Default.Home.RelPermalink` (Hugo v0.156+
+     warns and will remove it). For a single-site setup `.Site.Home.RelPermalink`
+     is always correct. The element is hidden via CSS in site-header.css. */}}
+<h2 class="book-brand">
+  <a class="flex align-center" href="{{ .Site.Home.RelPermalink }}">
+    {{- with .Site.Params.BookLogo -}}
+    <img src="{{ . | relURL }}" alt="{{ partial "docs/text/i18n" "Logo" }}" />
+    {{- end -}}
+    <span>{{ .Site.Title }}</span>
+  </a>
+</h2>

@@ -134,7 +134,7 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Scan amd64 image with Grype
-        uses: anchore/scan-action@f6601287cdb1efc985d6b765bbf99cb4c0ac29d8 # v7.0.0
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
         id: grype-amd64
         with:
           image: docker-archive:image-tars/diffyml-amd64.tar
@@ -150,7 +150,7 @@ jobs:
           category: grype-image-amd64
 
       - name: Scan arm64 image with Grype
-        uses: anchore/scan-action@f6601287cdb1efc985d6b765bbf99cb4c0ac29d8 # v7.0.0
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
         id: grype-arm64
         with:
           image: docker-archive:image-tars/diffyml-arm64.tar

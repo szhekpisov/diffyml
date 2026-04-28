@@ -12,15 +12,21 @@
   var toggle = document.querySelector("[data-theme-toggle]");
   if (!toggle) return;
   toggle.addEventListener("click", function () {
-    var current = document.documentElement.getAttribute("data-theme");
-    if (!current) {
-      var prefersDark = window.matchMedia &&
-        window.matchMedia("(prefers-color-scheme: dark)").matches;
-      current = prefersDark ? "dark" : "light";
+    var saved = null;
+    try { saved = localStorage.getItem("site-theme"); } catch (_) {}
+    /* Cycle: auto (no preference) -> light -> dark -> auto */
+    var next;
+    if (saved === "light") next = "dark";
+    else if (saved === "dark") next = null;
+    else next = "light";
+
+    if (next === null) {
+      document.documentElement.removeAttribute("data-theme");
+      try { localStorage.removeItem("site-theme"); } catch (_) {}
+    } else {
+      document.documentElement.setAttribute("data-theme", next);
+      try { localStorage.setItem("site-theme", next); } catch (_) {}
     }
-    var next = current === "dark" ? "light" : "dark";
-    document.documentElement.setAttribute("data-theme", next);
-    try { localStorage.setItem("site-theme", next); } catch (_) {}
   });
 })();
 

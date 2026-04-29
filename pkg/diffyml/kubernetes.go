@@ -140,10 +140,7 @@ func K8sResourceDisplayName(doc any) string {
 	if !ok {
 		return ""
 	}
-	if f.namespace != "" {
-		return fmt.Sprintf("%s/%s/%s/%s", f.apiVersion, f.kind, f.namespace, f.name)
-	}
-	return fmt.Sprintf("%s/%s/%s", f.apiVersion, f.kind, f.name)
+	return f.displayName()
 }
 
 // K8sResourceKind returns the "kind" field of a Kubernetes resource document.
@@ -154,6 +151,14 @@ func K8sResourceKind(doc any) string {
 		return ""
 	}
 	return f.kind
+}
+
+// displayName renders k8sResourceFields in the same format as K8sResourceDisplayName.
+func (f k8sResourceFields) displayName() string {
+	if f.namespace != "" {
+		return fmt.Sprintf("%s/%s/%s/%s", f.apiVersion, f.kind, f.namespace, f.name)
+	}
+	return fmt.Sprintf("%s/%s/%s", f.apiVersion, f.kind, f.name)
 }
 
 // IdentifierWithAdditional gets an identifier value from a map,
@@ -335,8 +340,11 @@ func compareMatchedK8sDocs(matched map[int]int, from, to []any, opts *Options, u
 		}
 
 		nodeDiffs := compareNodes(pathPrefix, fromDoc, toDoc, opts)
-		docName := K8sResourceDisplayName(toDoc)
-		docKind := K8sResourceKind(toDoc)
+		var docName, docKind string
+		if f, ok := k8sExtractFields(toDoc); ok {
+			docName = f.displayName()
+			docKind = f.kind
+		}
 		for i := range nodeDiffs {
 			nodeDiffs[i].DocumentIndex = docIdx
 			nodeDiffs[i].DocumentName = docName
@@ -376,14 +384,19 @@ func compareK8sDocs(from, to []any, opts *Options) []Difference {
 			continue
 		}
 		pathPrefix := DiffPath{fmt.Sprintf("[%d]", fromIdx)}
+		var docName, docKind string
+		if f, ok := k8sExtractFields(from[fromIdx]); ok {
+			docName = f.displayName()
+			docKind = f.kind
+		}
 		diffs = append(diffs, Difference{
 			Path:          pathPrefix,
 			Type:          DiffRemoved,
 			From:          from[fromIdx],
 			To:            nil,
 			DocumentIndex: fromIdx,
-			DocumentName:  K8sResourceDisplayName(from[fromIdx]),
-			DocumentKind:  K8sResourceKind(from[fromIdx]),
+			DocumentName:  docName,
+			DocumentKind:  docKind,
 		})
 	}
 
@@ -393,14 +406,19 @@ func compareK8sDocs(from, to []any, opts *Options) []Difference {
 			continue
 		}
 		pathPrefix := DiffPath{fmt.Sprintf("[%d]", toIdx)}
+		var docName, docKind string
+		if f, ok := k8sExtractFields(to[toIdx]); ok {
+			docName = f.displayName()
+			docKind = f.kind
+		}
 		diffs = append(diffs, Difference{
 			Path:          pathPrefix,
 			Type:          DiffAdded,
 			From:          nil,
 			To:            to[toIdx],
 			DocumentIndex: toIdx,
-			DocumentName:  K8sResourceDisplayName(to[toIdx]),
-			DocumentKind:  K8sResourceKind(to[toIdx]),
+			DocumentName:  docName,
+			DocumentKind:  docKind,
 		})
 	}
 

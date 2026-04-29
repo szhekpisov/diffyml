@@ -87,9 +87,11 @@ const (
 var secretMaskedKeys = map[string]bool{"data": true, "stringData": true}
 
 func maskScopeFor(d Difference, opts MaskOptions, regex []*regexp.Regexp) maskScope {
-	pathStr := pathWithoutDocIndex(d.Path)
-	if matchesAnyPath(pathStr, opts.MaskPaths) || matchesAnyRegex(pathStr, regex) {
-		return maskScopeAll
+	if len(opts.MaskPaths) > 0 || len(regex) > 0 {
+		pathStr := pathWithoutDocIndex(d.Path)
+		if matchesAnyPath(pathStr, opts.MaskPaths) || matchesAnyRegex(pathStr, regex) {
+			return maskScopeAll
+		}
 	}
 	if !opts.MaskSecrets || d.DocumentKind != "Secret" {
 		return maskScopeNone
@@ -178,7 +180,7 @@ func maskSecretSubtrees(v any, placeholder string) any {
 // pathWithoutDocIndex renders the diff path without a leading document-index
 // segment like "[0]". The result is what users specify with --mask-path.
 func pathWithoutDocIndex(p DiffPath) string {
-	if len(p) > 0 && len(p[0]) > 0 && p[0][0] == '[' {
+	if _, ok := p.DocIndex(); ok {
 		return p[1:].String()
 	}
 	return p.String()
@@ -188,14 +190,14 @@ func pathWithoutDocIndex(p DiffPath) string {
 // path, e.g. "data" for both "data.password" and "[0].data.password". Returns
 // ("", false) if no field segment exists.
 func firstFieldAfterDocIndex(p DiffPath) (string, bool) {
-	if len(p) == 0 {
-		return "", false
-	}
-	if len(p[0]) > 0 && p[0][0] == '[' {
+	if _, ok := p.DocIndex(); ok {
 		if len(p) < 2 {
 			return "", false
 		}
 		return p[1], true
+	}
+	if len(p) == 0 {
+		return "", false
 	}
 	return p[0], true
 }
@@ -203,5 +205,5 @@ func firstFieldAfterDocIndex(p DiffPath) (string, bool) {
 // isWholeDocDiff reports whether the path refers to a whole document
 // (e.g., "[0]") rather than a field within one.
 func isWholeDocDiff(p DiffPath) bool {
-	return len(p) == 1 && len(p[0]) > 0 && p[0][0] == '['
+	return p.IsBareDocIndex()
 }

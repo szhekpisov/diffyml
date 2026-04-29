@@ -1,18 +1,24 @@
-name: Docs
+name: Docs Deploy
 
 on:
-  pull_request:
+  push:
     branches: [main]
     paths:
       - 'docs/**'
       - 'doc/gen-cli-ref/**'
+      - 'README.md'
       - 'pkg/diffyml/cli/cli.go'
       - 'pkg/diffyml/cli/flag_metadata.go'
-      - '.github/workflows/docs.yml'
+      - '.diffyml.yml.example'
+      - '.github/workflows/docs-deploy.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
 env:
   # Hugo extended >= 0.146 is required by hugo-book v13.
@@ -57,13 +63,25 @@ jobs:
       - name: Regenerate CLI reference
         run: make docs-gen
 
-      - name: Verify CLI reference is up to date
-        run: |
-          if ! git diff --exit-code docs/content/docs/reference.md; then
-            echo "::error::docs/content/docs/reference.md is stale; run 'make docs-gen' and commit"
-            exit 1
-          fi
-
       - name: Build site
         working-directory: docs
         run: hugo --minify
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
+        with:
+          path: docs/public
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
+      - id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5

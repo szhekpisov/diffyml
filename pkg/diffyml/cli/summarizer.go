@@ -161,7 +161,7 @@ func (s *Summarizer) Summarize(ctx context.Context, groups []diffyml.DiffGroup) 
 
 // checkHTTPError converts HTTP error status codes into descriptive errors.
 func checkHTTPError(statusCode int, result *messagesResponse) error {
-	//nolint:gocritic // if-else kept intentionally: switch/case conditions fall outside Go coverage blocks, causing gremlins to misclassify mutations as NOT COVERED
+	//nolint:gocritic // if-else kept intentionally: switch/case conditions fall outside Go coverage blocks, causing gomutant to misclassify mutations as NOT COVERED
 	if statusCode == 401 {
 		return fmt.Errorf("invalid API key")
 	} else if statusCode == 429 {

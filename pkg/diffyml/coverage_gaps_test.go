@@ -10,7 +10,7 @@ import (
 	"go.yaml.in/yaml/v3"
 )
 
-// Tests targeting remaining coverage gaps identified by gremlins mutation testing.
+// Tests targeting remaining coverage gaps identified by gomutant mutation testing.
 
 // --- deepEqual: *OrderedMap different lengths ---
 

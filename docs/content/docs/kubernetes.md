@@ -37,6 +37,10 @@ diffyml --ignore-api-version manifests-v1.yaml manifests-v2.yaml
 diffyml --detect-kubernetes=false file1.yaml file2.yaml
 ```
 
+## Hiding Secret values
+
+`--mask-secrets` redacts the `data` / `stringData` fields of `Secret` resources before any output is produced — useful when diffs land in CI logs or PR comments. See [Sensitive Value Masking]({{< relref "/docs/masking" >}}).
+
 ## kubectl external diff
 
 See [CI Integration → kubectl external diff]({{< relref "/docs/ci#kubectl-external-diff" >}}) for the full setup.

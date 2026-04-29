@@ -63,6 +63,12 @@ chroot-of-from: ""
 chroot-of-to: ""
 chroot-list-to-documents: false
 
+# Sensitive value masking (opt-in)
+mask-secrets: false
+mask-path: []
+mask-path-regexp: []
+mask-placeholder: "***"
+
 # AI Summary (requires ANTHROPIC_API_KEY environment variable)
 summary: false
 summary-model: "claude-haiku-4-5-20251001"
@@ -70,6 +76,8 @@ summary-model: "claude-haiku-4-5-20251001"
 # Exit code
 set-exit-code: false
 ```
+
+See [Sensitive Value Masking]({{< relref "/docs/masking" >}}) for usage.
 
 ## Custom colors
 

@@ -66,6 +66,7 @@ var categoryOrder = []string{
 	"Output",
 	"Comparison",
 	"Filtering",
+	"Masking",
 	"Display",
 	"Chroot",
 	"AI Summary",

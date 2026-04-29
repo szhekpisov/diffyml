@@ -52,6 +52,12 @@ type CLIConfig struct {
 	FilterRegexp  []string
 	ExcludeRegexp []string
 
+	// Sensitive value masking options
+	MaskSecrets     bool
+	MaskPaths       []string
+	MaskPathRegexp  []string
+	MaskPlaceholder string
+
 	// Chroot options
 	Chroot                string
 	ChrootFrom            string
@@ -90,6 +96,7 @@ func NewCLIConfig() *CLIConfig {
 		DetectKubernetes:      true,
 		DetectRenames:         true,
 		MultiLineContextLines: 4,
+		MaskPlaceholder:       diffyml.DefaultMaskPlaceholder,
 	}
 	cfg.initFlags()
 	return cfg
@@ -149,6 +156,18 @@ func (c *CLIConfig) initFlags() {
 		c.AdditionalIdentifiers = append(c.AdditionalIdentifiers, s)
 		return nil
 	})
+
+	// Sensitive value masking options
+	c.fs.BoolVar(&c.MaskSecrets, "mask-secrets", c.MaskSecrets, "auto-mask data/stringData of Kubernetes Secret resources")
+	c.fs.Func("mask-path", "additional path to mask (dot-notation, prefix match)", func(s string) error {
+		c.MaskPaths = append(c.MaskPaths, s)
+		return nil
+	})
+	c.fs.Func("mask-path-regexp", "additional path to mask (regex)", func(s string) error {
+		c.MaskPathRegexp = append(c.MaskPathRegexp, s)
+		return nil
+	})
+	c.fs.StringVar(&c.MaskPlaceholder, "mask-placeholder", c.MaskPlaceholder, "placeholder for masked values")
 
 	// Chroot options
 	c.fs.StringVar(&c.Chroot, "chroot", c.Chroot, "change the root level of the input file")
@@ -327,6 +346,16 @@ func (c *CLIConfig) ToFilterOptions() *diffyml.FilterOptions {
 	}
 }
 
+// ToMaskOptions converts CLI config to MaskOptions.
+func (c *CLIConfig) ToMaskOptions() diffyml.MaskOptions {
+	return diffyml.MaskOptions{
+		MaskSecrets:    c.MaskSecrets,
+		MaskPaths:      c.MaskPaths,
+		MaskPathRegexp: c.MaskPathRegexp,
+		Placeholder:    c.MaskPlaceholder,
+	}
+}
+
 // ToFormatOptions converts CLI config to FormatOptions.
 func (c *CLIConfig) ToFormatOptions() *diffyml.FormatOptions {
 	return &diffyml.FormatOptions{
@@ -371,6 +400,13 @@ func (c *CLIConfig) Usage() string {
 	sb.WriteString("      --filter-regexp strings         filter reports using regular expressions\n")
 	sb.WriteString("      --exclude-regexp strings        exclude reports using regular expressions\n")
 	sb.WriteString("      --additional-identifier string  use additional identifier in named entry lists\n")
+	sb.WriteString("\n")
+
+	// Sensitive value masking
+	sb.WriteString("      --mask-secrets                  auto-mask data/stringData of K8s Secrets\n")
+	sb.WriteString("      --mask-path strings             additional path to mask (dot-notation, prefix match)\n")
+	sb.WriteString("      --mask-path-regexp strings      additional path to mask (regex)\n")
+	sb.WriteString("      --mask-placeholder string       placeholder for masked values (default \"***\")\n")
 	sb.WriteString("\n")
 
 	// Display options
@@ -467,6 +503,9 @@ func (c *CLIConfig) Validate() error {
 		return err
 	}
 	if err := ValidateRegexPatterns(c.ExcludeRegexp, "exclude-regexp"); err != nil {
+		return err
+	}
+	if err := ValidateRegexPatterns(c.MaskPathRegexp, "mask-path-regexp"); err != nil {
 		return err
 	}
 
@@ -647,6 +686,17 @@ func runComparison(cfg *CLIConfig, rc *RunConfig, fromContent, toContent []byte,
 	diffs, err := diffyml.Compare(fromContent, toContent, compareOpts)
 	if err != nil {
 		err = fmt.Errorf("failed to compare files: %w", err)
+		if !cfg.GitExternalDiff {
+			fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
+		}
+		return NewExitResult(ExitCodeError, err)
+	}
+
+	// Mask sensitive values (runs before filter so masked diffs can still be
+	// filtered if desired)
+	diffs, err = diffyml.MaskDifferences(diffs, cfg.ToMaskOptions())
+	if err != nil {
+		err = fmt.Errorf("mask error: %w", err)
 		if !cfg.GitExternalDiff {
 			fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
 		}

@@ -1,0 +1,7 @@
+Found one difference
+
+stringData.token  (v1/Secret/app-secret)
+  ± value change
+    - ***
+    + ***
+

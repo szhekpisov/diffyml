@@ -1,0 +1,12 @@
+Found two differences
+
+data.password  (v1/Secret/app-secret)
+  ± value change
+    - ***
+    + ***
+
+data.api_key  (v1/Secret/app-secret)
+  ± value change
+    - ***
+    + ***
+

@@ -1,0 +1,12 @@
+Found two differences
+
+data.api_key  (v1/ConfigMap/app-config)
+  ± value change
+    - ***
+    + ***
+
+data.log_level  (v1/ConfigMap/app-config)
+  ± value change
+    - info
+    + debug
+

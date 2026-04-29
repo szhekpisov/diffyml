@@ -146,6 +146,16 @@ func K8sResourceDisplayName(doc any) string {
 	return fmt.Sprintf("%s/%s/%s", f.apiVersion, f.kind, f.name)
 }
 
+// K8sResourceKind returns the "kind" field of a Kubernetes resource document.
+// Returns empty string if the document is not a valid K8s resource.
+func K8sResourceKind(doc any) string {
+	f, ok := k8sExtractFields(doc)
+	if !ok {
+		return ""
+	}
+	return f.kind
+}
+
 // IdentifierWithAdditional gets an identifier value from a map,
 // checking default fields (name, id) and any additional specified fields.
 func IdentifierWithAdditional(m map[string]any, additionalIdentifiers []string) any {
@@ -326,9 +336,11 @@ func compareMatchedK8sDocs(matched map[int]int, from, to []any, opts *Options, u
 
 		nodeDiffs := compareNodes(pathPrefix, fromDoc, toDoc, opts)
 		docName := K8sResourceDisplayName(toDoc)
+		docKind := K8sResourceKind(toDoc)
 		for i := range nodeDiffs {
 			nodeDiffs[i].DocumentIndex = docIdx
 			nodeDiffs[i].DocumentName = docName
+			nodeDiffs[i].DocumentKind = docKind
 		}
 		diffs = append(diffs, nodeDiffs...)
 	}
@@ -371,6 +383,7 @@ func compareK8sDocs(from, to []any, opts *Options) []Difference {
 			To:            nil,
 			DocumentIndex: fromIdx,
 			DocumentName:  K8sResourceDisplayName(from[fromIdx]),
+			DocumentKind:  K8sResourceKind(from[fromIdx]),
 		})
 	}
 
@@ -387,6 +400,7 @@ func compareK8sDocs(from, to []any, opts *Options) []Difference {
 			To:            to[toIdx],
 			DocumentIndex: toIdx,
 			DocumentName:  K8sResourceDisplayName(to[toIdx]),
+			DocumentKind:  K8sResourceKind(to[toIdx]),
 		})
 	}
 

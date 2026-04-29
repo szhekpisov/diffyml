@@ -43,6 +43,15 @@ diffyml [flags] <from> <to>
 | `--exclude-regexp` | `list` | — | exclude reports using regular expressions (repeatable) |
 | `--additional-identifier` | `list` | — | use additional identifier in named entry lists (repeatable) |
 
+## Masking
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--mask-secrets` | `bool` | — | auto-mask data/stringData of Kubernetes Secret resources |
+| `--mask-path` | `list` | — | additional path to mask (dot-notation, prefix match; repeatable) |
+| `--mask-path-regexp` | `list` | — | additional path to mask (regex; repeatable) |
+| `--mask-placeholder` | `string` | `***` | placeholder for masked values |
+
 ## Display
 
 | Flag | Type | Default | Description |

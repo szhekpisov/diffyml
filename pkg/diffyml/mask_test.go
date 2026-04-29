@@ -227,6 +227,40 @@ func TestMaskValueRecursive_NestedStructure(t *testing.T) {
 	}
 }
 
+func TestMaskSecretSubtrees_PlainMap(t *testing.T) {
+	in := map[string]any{
+		"apiVersion": "v1",
+		"kind":       "Secret",
+		"data":       map[string]any{"password": "aGVsbG8="},
+	}
+	out, ok := maskSecretSubtrees(in, "***").(map[string]any)
+	if !ok {
+		t.Fatalf("expected map[string]any, got %T", out)
+	}
+	if out["apiVersion"] != "v1" || out["kind"] != "Secret" {
+		t.Errorf("non-data fields should be preserved, got %v", out)
+	}
+	dataMap, ok := out["data"].(map[string]any)
+	if !ok || dataMap["password"] != "***" {
+		t.Errorf("data.password should be masked, got %v", out["data"])
+	}
+}
+
+func TestMaskSecretSubtrees_NonMapValue_Unchanged(t *testing.T) {
+	if got := maskSecretSubtrees("scalar", "***"); got != "scalar" {
+		t.Errorf("non-map value should pass through, got %v", got)
+	}
+	if got := maskSecretSubtrees([]any{"a", "b"}, "***"); got == nil {
+		t.Errorf("non-map value should pass through, got nil")
+	}
+}
+
+func TestMaskSecretSubtrees_Nil(t *testing.T) {
+	if got := maskSecretSubtrees(nil, "***"); got != nil {
+		t.Errorf("nil should pass through, got %v", got)
+	}
+}
+
 func TestMaskValueRecursive_DoesNotMutateInput(t *testing.T) {
 	in := &OrderedMap{Keys: []string{"a"}, Values: map[string]any{"a": "original"}}
 	_ = maskValueRecursive(in, "X")

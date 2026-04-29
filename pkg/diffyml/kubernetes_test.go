@@ -1446,6 +1446,20 @@ func TestK8sResourceDisplayName_NotK8s(t *testing.T) {
 	}
 }
 
+func TestK8sResourceKind(t *testing.T) {
+	k8s := map[string]any{
+		"apiVersion": "v1",
+		"kind":       "Secret",
+		"metadata":   map[string]any{"name": "foo"},
+	}
+	if got := K8sResourceKind(k8s); got != "Secret" {
+		t.Errorf("expected 'Secret', got %q", got)
+	}
+	if got := K8sResourceKind(map[string]any{"key": "value"}); got != "" {
+		t.Errorf("expected empty string for non-K8s doc, got %q", got)
+	}
+}
+
 func TestK8sResourceDisplayName_WithNamespace(t *testing.T) {
 	doc := map[string]any{
 		"apiVersion": "apps/v1",

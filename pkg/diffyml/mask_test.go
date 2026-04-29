@@ -294,6 +294,7 @@ func TestFirstFieldAfterDocIndex(t *testing.T) {
 	}{
 		{DiffPath{"data", "x"}, "data", true},
 		{DiffPath{"[0]", "data", "x"}, "data", true},
+		{DiffPath{"[0]", "data"}, "data", true},
 		{DiffPath{"[0]"}, "", false},
 		{DiffPath{}, "", false},
 	}

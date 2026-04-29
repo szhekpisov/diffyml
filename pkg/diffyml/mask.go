@@ -87,11 +87,9 @@ const (
 var secretMaskedKeys = map[string]bool{"data": true, "stringData": true}
 
 func maskScopeFor(d Difference, opts MaskOptions, regex []*regexp.Regexp) maskScope {
-	if len(opts.MaskPaths) > 0 || len(regex) > 0 {
-		pathStr := pathWithoutDocIndex(d.Path)
-		if matchesAnyPath(pathStr, opts.MaskPaths) || matchesAnyRegex(pathStr, regex) {
-			return maskScopeAll
-		}
+	pathStr := pathWithoutDocIndex(d.Path)
+	if matchesAnyPath(pathStr, opts.MaskPaths) || matchesAnyRegex(pathStr, regex) {
+		return maskScopeAll
 	}
 	if !opts.MaskSecrets || d.DocumentKind != "Secret" {
 		return maskScopeNone

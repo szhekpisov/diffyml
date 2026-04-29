@@ -31,6 +31,7 @@ diffyml compares YAML files and shows meaningful, structured differences — not
   - [Directory Comparison](#directory-comparison)
   - [Git Integration](#git-integration)
   - [AI Summary](#ai-summary)
+  - [Sensitive Value Masking](#sensitive-value-masking)
   - [Filtering](#filtering)
   - [Configuration File](#configuration-file)
   - [Custom Colors](#custom-colors)
@@ -185,6 +186,7 @@ export KUBECTL_EXTERNAL_DIFF="diffyml --omit-header --set-exit-code"
 - **Inline diff highlighting** — highlights only the changed parts within scalar values (version tags, IPs, ports) for quick scanning
 - **Custom colors** — configurable color palette for accessibility (colorblind-friendly)
 - **Configuration file** — project-level defaults via `.diffyml.yml` (all flags supported)
+- **Sensitive value masking** — opt-in redaction of Kubernetes Secret `data` / `stringData` and arbitrary paths; applies to every output format
 - ⭐ **AI-powered summaries** ⭐ — natural language summaries of changes via Anthropic API
 
 ## Usage
@@ -321,6 +323,37 @@ diffyml --summary --summary-model claude-sonnet-4-5-20250514 old.yaml new.yaml
 
 The summary is appended after the standard diff output. If the API call fails, a warning is printed to stderr and the diff output is preserved. The exit code is never affected by summary success or failure.
 
+### Sensitive Value Masking
+
+Masking is **opt-in**. When enabled, diffyml replaces the value of any matching diff with `***` before rendering — applies to every output format (including `json`, `json-patch`, and the `--summary` prompt). Diffs still show *that* a value changed, just not what the value was.
+
+```bash
+# Auto-mask data/stringData of Kubernetes Secret resources
+diffyml --mask-secrets secrets-old.yaml secrets-new.yaml
+
+# Mask additional paths (e.g., a ConfigMap field that holds an API key)
+diffyml --mask-path 'data.api_key' --mask-path 'data.db_url' old.yaml new.yaml
+
+# Regex variant — mask any field whose path matches
+diffyml --mask-path-regexp '(?i)password|token|secret' old.yaml new.yaml
+
+# Custom placeholder
+diffyml --mask-secrets --mask-placeholder '<REDACTED>' old.yaml new.yaml
+```
+
+Mask paths use the same dot-notation as `--filter` / `--exclude` (prefix match honored). The leading document index for multi-document files (`[0]`, `[1]`) is automatically stripped before matching.
+
+Configure defaults via `.diffyml.yml` so masking is always on for this repo:
+
+```yaml
+mask-secrets: true
+mask-path:
+  - "data.api_key"
+mask-path-regexp:
+  - "(?i)password"
+mask-placeholder: "***"
+```
+
 ### Filtering
 
 ```bash
@@ -414,6 +447,15 @@ Available environment variables: `DIFFYML_COLOR_ADDED`, `DIFFYML_COLOR_REMOVED`,
 | `--filter-regexp <pattern>` | Filter using regular expressions (repeatable) |
 | `--exclude-regexp <pattern>` | Exclude using regular expressions (repeatable) |
 | `--additional-identifier <field>` | Additional field for list item identification |
+
+**Sensitive Value Masking**
+
+| Flag | Description |
+|------|-------------|
+| `--mask-secrets` | Auto-mask `data` / `stringData` of Kubernetes Secret resources |
+| `--mask-path <path>` | Additional path to mask, dot-notation with prefix match (repeatable) |
+| `--mask-path-regexp <pattern>` | Additional path to mask, regex (repeatable) |
+| `--mask-placeholder <string>` | Placeholder for masked values (default `***`) |
 
 **Display**
 

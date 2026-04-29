@@ -37,6 +37,11 @@ type Difference struct {
 	// DocumentName is a human-readable label for the document (e.g., K8s resource display name).
 	// Empty for non-K8s documents or when detection is disabled.
 	DocumentName string
+	// DocumentKind is the Kubernetes "kind" of the document (e.g., "Secret", "ConfigMap").
+	// Empty for non-K8s documents or when detection is disabled. Used by sensitive value
+	// masking to identify Secret resources without parsing DocumentName, since apiVersion
+	// can itself contain "/" (e.g., "apps/v1").
+	DocumentKind string
 }
 
 // Options configures the comparison behavior.

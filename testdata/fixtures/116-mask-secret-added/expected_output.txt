@@ -1,0 +1,13 @@
+Found one difference
+
+(document)  (v1/Secret/db-secret)
+  + one document added:
+    ---
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      name: db-secret
+    type: Opaque
+    data:
+      password: ***
+

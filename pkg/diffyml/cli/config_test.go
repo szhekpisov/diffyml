@@ -702,6 +702,25 @@ func TestApplyFileConfig_EmptySlicesDoNotOverride(t *testing.T) {
 	}
 }
 
+func TestApplyFileConfig_EmptyMaskSlicesDoNotOverride(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.MaskPaths = []string{"existing-mask-path"}
+	cfg.MaskPathRegexp = []string{"existing-mask-regexp"}
+
+	fc := &FileConfig{
+		MaskPaths:      []string{},
+		MaskPathRegexp: []string{},
+	}
+	cfg.applyFileConfig(fc, map[string]bool{})
+
+	if len(cfg.MaskPaths) != 1 || cfg.MaskPaths[0] != "existing-mask-path" {
+		t.Errorf("expected MaskPaths=['existing-mask-path'], got %v", cfg.MaskPaths)
+	}
+	if len(cfg.MaskPathRegexp) != 1 || cfg.MaskPathRegexp[0] != "existing-mask-regexp" {
+		t.Errorf("expected MaskPathRegexp=['existing-mask-regexp'], got %v", cfg.MaskPathRegexp)
+	}
+}
+
 // --- Integration tests (through ParseArgs) ---
 
 func TestParseArgs_WithConfigFile(t *testing.T) {

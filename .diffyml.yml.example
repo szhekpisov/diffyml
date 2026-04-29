@@ -63,6 +63,21 @@ chroot-list-to-documents: false
 #     added: "#6aa3a5"
 #     removed: "#702d06"
 
+# Sensitive value masking
+# Opt-in. When enabled, applies to every output format (including json,
+# json-patch, and AI summary). Set mask-secrets to true to auto-mask
+# Kubernetes Secret data/stringData; add custom paths via mask-path.
+mask-secrets: false
+mask-path: []
+mask-path-regexp: []
+mask-placeholder: "***"
+# Example:
+#   mask-path:
+#     - "data.api_key"
+#     - "data.db_url"
+#   mask-path-regexp:
+#     - "(?i)password|token|secret"
+
 # AI Summary (requires ANTHROPIC_API_KEY environment variable)
 summary: false
 summary-model: "claude-haiku-4-5-20251001"

@@ -45,6 +45,12 @@ func FlagDocs() []FlagDoc {
 		{Long: "exclude-regexp", Type: "list", Category: "Filtering", Usage: "exclude reports using regular expressions (repeatable)"},
 		{Long: "additional-identifier", Type: "list", Category: "Filtering", Usage: "use additional identifier in named entry lists (repeatable)"},
 
+		// Sensitive value masking
+		{Long: "mask-secrets", Type: "bool", Category: "Masking", Usage: "auto-mask data/stringData of Kubernetes Secret resources"},
+		{Long: "mask-path", Type: "list", Category: "Masking", Usage: "additional path to mask (dot-notation, prefix match; repeatable)"},
+		{Long: "mask-path-regexp", Type: "list", Category: "Masking", Usage: "additional path to mask (regex; repeatable)"},
+		{Long: "mask-placeholder", Type: "string", Default: "***", Category: "Masking", Usage: "placeholder for masked values"},
+
 		// Display
 		{Long: "omit-header", Short: "b", Type: "bool", Category: "Display", Usage: "omit the diffyml summary header"},
 		{Long: "use-go-patch-style", Short: "g", Type: "bool", Category: "Display", Usage: "use Go-Patch style paths in outputs"},

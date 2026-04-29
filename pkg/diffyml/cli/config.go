@@ -41,6 +41,12 @@ type FileConfig struct {
 	ExcludeRegexp         []string `yaml:"exclude-regexp"`
 	AdditionalIdentifiers []string `yaml:"additional-identifier"`
 
+	// Sensitive value masking options
+	MaskSecrets     *bool    `yaml:"mask-secrets"`
+	MaskPaths       []string `yaml:"mask-path"`
+	MaskPathRegexp  []string `yaml:"mask-path-regexp"`
+	MaskPlaceholder *string  `yaml:"mask-placeholder"`
+
 	// Display options
 	OmitHeader            *bool `yaml:"omit-header"`
 	UseGoPatchStyle       *bool `yaml:"use-go-patch-style"`
@@ -187,6 +193,20 @@ func (c *CLIConfig) applyFileConfig(fc *FileConfig, cliSet map[string]bool) {
 	}
 	if len(fc.AdditionalIdentifiers) > 0 && notSet("additional-identifier") {
 		c.AdditionalIdentifiers = fc.AdditionalIdentifiers
+	}
+
+	// Sensitive value masking options
+	if fc.MaskSecrets != nil && notSet("mask-secrets") {
+		c.MaskSecrets = *fc.MaskSecrets
+	}
+	if len(fc.MaskPaths) > 0 && notSet("mask-path") {
+		c.MaskPaths = fc.MaskPaths
+	}
+	if len(fc.MaskPathRegexp) > 0 && notSet("mask-path-regexp") {
+		c.MaskPathRegexp = fc.MaskPathRegexp
+	}
+	if fc.MaskPlaceholder != nil && notSet("mask-placeholder") {
+		c.MaskPlaceholder = *fc.MaskPlaceholder
 	}
 
 	// Display options

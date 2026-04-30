@@ -3,6 +3,7 @@ package property
 import (
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -11,20 +12,20 @@ import (
 // successfully without errors and produces an executable binary.
 // **Validates: Requirements 2.1**
 func TestProperty2_BuildSystemSuccess(t *testing.T) {
-	cleanup := chdirToRepoRoot(t)
-	defer cleanup()
+	repoRoot, err := getRepoRoot()
+	if err != nil {
+		t.Fatalf("Failed to find repository root: %v", err)
+	}
 
-	binaryName := "diffyml_build_test"
-	os.Remove(binaryName)
-	defer os.Remove(binaryName)
-
-	cmd := exec.Command("go", "build", "-o", binaryName)
+	binaryPath := filepath.Join(t.TempDir(), "diffyml_build_test")
+	cmd := exec.Command("go", "build", "-o", binaryPath)
+	cmd.Dir = repoRoot
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("Build failed: %v\nOutput: %s", err, string(output))
 	}
 
-	info, err := os.Stat(binaryName)
+	info, err := os.Stat(binaryPath)
 	if err != nil {
 		t.Fatalf("Binary not found after build: %v", err)
 	}
@@ -42,18 +43,18 @@ func TestProperty2_BuildSystemSuccess(t *testing.T) {
 // succeeds even in a clean environment without cached dependencies.
 // **Validates: Requirements 2.1**
 func TestProperty2_BuildSystemSuccess_WithCleanEnvironment(t *testing.T) {
-	cleanup := chdirToRepoRoot(t)
-	defer cleanup()
+	repoRoot, err := getRepoRoot()
+	if err != nil {
+		t.Fatalf("Failed to find repository root: %v", err)
+	}
 
-	binaryName := "diffyml_clean_build_test"
-	os.Remove(binaryName)
-	defer os.Remove(binaryName)
-
-	if _, err := os.Stat("go.mod"); err != nil {
+	if _, err := os.Stat(filepath.Join(repoRoot, "go.mod")); err != nil {
 		t.Fatalf("go.mod not found: %v", err)
 	}
 
-	cmd := exec.Command("go", "build", "-v", "-o", binaryName)
+	binaryPath := filepath.Join(t.TempDir(), "diffyml_clean_build_test")
+	cmd := exec.Command("go", "build", "-v", "-o", binaryPath)
+	cmd.Dir = repoRoot
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("Build failed: %v\nOutput: %s", err, string(output))
@@ -64,7 +65,7 @@ func TestProperty2_BuildSystemSuccess_WithCleanEnvironment(t *testing.T) {
 		t.Fatalf("Build output contains errors: %s", string(output))
 	}
 
-	info, err := os.Stat(binaryName)
+	info, err := os.Stat(binaryPath)
 	if err != nil {
 		t.Fatalf("Binary not found: %v", err)
 	}
@@ -78,21 +79,21 @@ func TestProperty2_BuildSystemSuccess_WithCleanEnvironment(t *testing.T) {
 // with version information injected via ldflags.
 // **Validates: Requirements 2.1**
 func TestProperty2_BuildSystemSuccess_WithLdflags(t *testing.T) {
-	cleanup := chdirToRepoRoot(t)
-	defer cleanup()
+	repoRoot, err := getRepoRoot()
+	if err != nil {
+		t.Fatalf("Failed to find repository root: %v", err)
+	}
 
-	binaryName := "diffyml_ldflags_test"
-	os.Remove(binaryName)
-	defer os.Remove(binaryName)
-
+	binaryPath := filepath.Join(t.TempDir(), "diffyml_ldflags_test")
 	ldflags := "-X main.version=1.0.0 -X main.commit=test123 -X main.buildDate=2024-01-15"
-	cmd := exec.Command("go", "build", "-ldflags", ldflags, "-o", binaryName)
+	cmd := exec.Command("go", "build", "-ldflags", ldflags, "-o", binaryPath)
+	cmd.Dir = repoRoot
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("Build with ldflags failed: %v\nOutput: %s", err, string(output))
 	}
 
-	info, err := os.Stat(binaryName)
+	info, err := os.Stat(binaryPath)
 	if err != nil {
 		t.Fatalf("Binary not found: %v", err)
 	}
@@ -101,7 +102,7 @@ func TestProperty2_BuildSystemSuccess_WithLdflags(t *testing.T) {
 		t.Fatal("Binary is not a regular executable file")
 	}
 
-	versionCmd := exec.Command("./"+binaryName, "--version")
+	versionCmd := exec.Command(binaryPath, "--version")
 	versionOutput, err := versionCmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("Version check failed: %v", err)
@@ -113,6 +114,36 @@ func TestProperty2_BuildSystemSuccess_WithLdflags(t *testing.T) {
 	}
 	if !strings.Contains(versionStr, "test123") {
 		t.Error("output missing injected commit 'test123'")
+	}
+}
+
+// TestProperty4_DefaultBinaryName tests that `go build` without `-o` produces
+// a binary named after the module path's last component (`diffyml`).
+// **Validates: Requirements 2.3**
+func TestProperty4_DefaultBinaryName(t *testing.T) {
+	repoRoot, err := getRepoRoot()
+	if err != nil {
+		t.Fatalf("Failed to find repository root: %v", err)
+	}
+
+	tempDir := t.TempDir()
+	// Trailing separator tells `go build` to write into tempDir while still
+	// choosing the default binary name from the module path.
+	cmd := exec.Command("go", "build", "-o", tempDir+string(os.PathSeparator))
+	cmd.Dir = repoRoot
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("Build failed: %v\nOutput: %s", err, string(output))
+	}
+
+	binaryPath := filepath.Join(tempDir, "diffyml")
+	info, err := os.Stat(binaryPath)
+	if err != nil {
+		t.Fatalf("Default-name binary not found at %s: %v", binaryPath, err)
+	}
+
+	if !info.Mode().IsRegular() || info.Mode()&0o111 == 0 {
+		t.Fatal("Binary is not a regular executable file")
 	}
 }
 
@@ -230,26 +261,27 @@ func TestProperty5_DependencyIntegrity_NoUnversionedDeps(t *testing.T) {
 // after verifying dependencies succeeds.
 // **Validates: Requirements 2.5**
 func TestProperty5_DependencyIntegrity_BuildWithVerify(t *testing.T) {
-	cleanup := chdirToRepoRoot(t)
-	defer cleanup()
+	repoRoot, err := getRepoRoot()
+	if err != nil {
+		t.Fatalf("Failed to find repository root: %v", err)
+	}
 
 	verifyCmd := exec.Command("go", "mod", "verify")
+	verifyCmd.Dir = repoRoot
 	verifyOutput, err := verifyCmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("go mod verify failed: %v\nOutput: %s", err, string(verifyOutput))
 	}
 
-	binaryName := "diffyml_verify_build_test"
-	os.Remove(binaryName)
-	defer os.Remove(binaryName)
-
-	buildCmd := exec.Command("go", "build", "-o", binaryName)
+	binaryPath := filepath.Join(t.TempDir(), "diffyml_verify_build_test")
+	buildCmd := exec.Command("go", "build", "-o", binaryPath)
+	buildCmd.Dir = repoRoot
 	buildOutput, err := buildCmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("Build failed after verify: %v\nOutput: %s", err, string(buildOutput))
 	}
 
-	info, err := os.Stat(binaryName)
+	info, err := os.Stat(binaryPath)
 	if err != nil {
 		t.Fatalf("Binary not found: %v", err)
 	}

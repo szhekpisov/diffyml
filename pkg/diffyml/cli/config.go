@@ -215,21 +215,18 @@ func (c *CLIConfig) applyFileConfig(fc *FileConfig, cliSet map[string]bool) {
 	// Neat options. Config uses positive truth-table (helm: false ⇒ drop helm),
 	// CLI uses opt-out flags (--no-neat-helm), so polarity is inverted on apply.
 	if fc.Neat != nil {
+		applyInverted := func(name string, src *bool, dst *bool) {
+			if src != nil && notSet(name) {
+				*dst = !*src
+			}
+		}
 		if fc.Neat.Enabled != nil && notSet("neat") {
 			c.Neat = *fc.Neat.Enabled
 		}
-		if fc.Neat.Helm != nil && notSet("no-neat-helm") {
-			c.NoNeatHelm = !*fc.Neat.Helm
-		}
-		if fc.Neat.ArgoCD != nil && notSet("no-neat-argocd") {
-			c.NoNeatArgoCD = !*fc.Neat.ArgoCD
-		}
-		if fc.Neat.Flux != nil && notSet("no-neat-flux") {
-			c.NoNeatFlux = !*fc.Neat.Flux
-		}
-		if fc.Neat.Status != nil && notSet("no-neat-status") {
-			c.NoNeatStatus = !*fc.Neat.Status
-		}
+		applyInverted("no-neat-helm", fc.Neat.Helm, &c.NoNeatHelm)
+		applyInverted("no-neat-argocd", fc.Neat.ArgoCD, &c.NoNeatArgoCD)
+		applyInverted("no-neat-flux", fc.Neat.Flux, &c.NoNeatFlux)
+		applyInverted("no-neat-status", fc.Neat.Status, &c.NoNeatStatus)
 		if fc.Neat.Explain != nil && notSet("neat-explain") {
 			c.NeatExplain = *fc.Neat.Explain
 		}

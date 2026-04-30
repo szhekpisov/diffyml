@@ -1,11 +1,6 @@
-// neat.go - Curated noise-filter bundles for Kubernetes/Helm/ArgoCD/Flux diffs.
-//
-// Provides a stable v1 set of regex patterns that match noise paths injected
-// by the K8s API server, kubectl, Helm, ArgoCD, and Flux. CLI exposes these
-// via --neat; library consumers call BuildNeatExcludeRegexp directly.
-//
-// Patterns are written against DiffPath.String() output: dot-separated
-// segments, with keys containing dots wrapped in [...] without quoting.
+// Package-level note: neat patterns are written against DiffPath.String()
+// output — dot-separated segments, with keys containing dots wrapped in [...]
+// without quoting (e.g. metadata.annotations[meta.helm.sh/release-name]).
 package diffyml
 
 // NeatProfile names a single bundle of noise-filter patterns.
@@ -90,7 +85,6 @@ var neatProfileArgoCD = []NeatPattern{
 	{NeatProfileArgoCD, `^metadata\.annotations\[pref\.argocd\.argoproj\.io/[^\]]+\]$`, "pref.argocd.argoproj.io/* annotations"},
 }
 
-// neatProfileFlux contains paths injected by Flux.
 var neatProfileFlux = []NeatPattern{
 	{NeatProfileFlux, `^metadata\.labels\[kustomize\.toolkit\.fluxcd\.io/name\]$`, "kustomize.toolkit.fluxcd.io/name label"},
 	{NeatProfileFlux, `^metadata\.labels\[kustomize\.toolkit\.fluxcd\.io/namespace\]$`, "kustomize.toolkit.fluxcd.io/namespace label"},
@@ -101,44 +95,35 @@ var neatProfileFlux = []NeatPattern{
 // NeatPatterns returns the curated patterns for the enabled profiles.
 // Order is stable: K8s, Status, Helm, ArgoCD, Flux. Disabled profiles are omitted.
 func NeatPatterns(opts NeatOptions) []NeatPattern {
+	bundles := []struct {
+		on       bool
+		patterns []NeatPattern
+	}{
+		{opts.K8s, neatProfileK8s},
+		{opts.Status, neatProfileStatus},
+		{opts.Helm, neatProfileHelm},
+		{opts.ArgoCD, neatProfileArgoCD},
+		{opts.Flux, neatProfileFlux},
+	}
 	total := 0
-	if opts.K8s {
-		total += len(neatProfileK8s)
-	}
-	if opts.Status {
-		total += len(neatProfileStatus)
-	}
-	if opts.Helm {
-		total += len(neatProfileHelm)
-	}
-	if opts.ArgoCD {
-		total += len(neatProfileArgoCD)
-	}
-	if opts.Flux {
-		total += len(neatProfileFlux)
+	for _, b := range bundles {
+		if b.on {
+			total += len(b.patterns)
+		}
 	}
 	out := make([]NeatPattern, 0, total)
-	if opts.K8s {
-		out = append(out, neatProfileK8s...)
-	}
-	if opts.Status {
-		out = append(out, neatProfileStatus...)
-	}
-	if opts.Helm {
-		out = append(out, neatProfileHelm...)
-	}
-	if opts.ArgoCD {
-		out = append(out, neatProfileArgoCD...)
-	}
-	if opts.Flux {
-		out = append(out, neatProfileFlux...)
+	for _, b := range bundles {
+		if b.on {
+			out = append(out, b.patterns...)
+		}
 	}
 	return out
 }
 
 // BuildNeatExcludeRegexp returns the curated exclude-regexp list for the
-// enabled bundles. Project NeatPatterns(opts) to the .Pattern field;
-// suitable for direct use as FilterOptions.ExcludeRegexp.
+// enabled bundles. The result corresponds positionally to NeatPatterns(opts):
+// index i of the returned slice is the .Pattern of NeatPatterns(opts)[i].
+// Suitable for direct use as FilterOptions.ExcludeRegexp.
 func BuildNeatExcludeRegexp(opts NeatOptions) []string {
 	patterns := NeatPatterns(opts)
 	out := make([]string, len(patterns))

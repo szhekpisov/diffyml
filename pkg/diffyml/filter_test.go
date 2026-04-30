@@ -858,14 +858,14 @@ func TestFilterDiffs_NeatExcludesNoise(t *testing.T) {
 	if err != nil {
 		t.Fatalf("FilterDiffsWithRegexp: %v", err)
 	}
-	if len(result) != 2 {
-		t.Fatalf("expected 2 diffs to survive (spec.replicas, spec.template…image), got %d", len(result))
-		for _, d := range result {
-			t.Logf("  survived: %s", d.Path.String())
-		}
+	survived := make([]string, len(result))
+	for i, d := range result {
+		survived[i] = d.Path.String()
 	}
-	for _, d := range result {
-		path := d.Path.String()
+	if len(result) != 2 {
+		t.Fatalf("expected 2 diffs to survive (spec.replicas, spec.template…image), got %d: %v", len(result), survived)
+	}
+	for _, path := range survived {
 		if path != "spec.replicas" && path != "spec.template.spec.containers[0].image" {
 			t.Errorf("unexpected surviving diff: %q", path)
 		}
@@ -886,14 +886,16 @@ func TestFilterDiffs_NeatNoHelmKeepsHelmDiffs(t *testing.T) {
 		t.Fatalf("FilterDiffsWithRegexp: %v", err)
 	}
 	helmFound := 0
-	for _, d := range result {
-		if d.Path.String() == "metadata.labels[helm.sh/chart]" ||
-			d.Path.String() == "metadata.annotations[meta.helm.sh/release-name]" {
+	survived := make([]string, len(result))
+	for i, d := range result {
+		survived[i] = d.Path.String()
+		if survived[i] == "metadata.labels[helm.sh/chart]" ||
+			survived[i] == "metadata.annotations[meta.helm.sh/release-name]" {
 			helmFound++
 		}
 	}
 	if helmFound != 2 {
-		t.Errorf("expected 2 Helm diffs to survive --no-neat-helm, got %d (full: %v)", helmFound, pathsOf(result))
+		t.Errorf("expected 2 Helm diffs to survive --no-neat-helm, got %d (full: %v)", helmFound, survived)
 	}
 }
 
@@ -958,12 +960,4 @@ func TestFilterDiffsWithRegexpReport_PathExclusionNotCounted(t *testing.T) {
 			t.Errorf("hit count[%d] should be 0 (path filter ran first), got %d", i, h)
 		}
 	}
-}
-
-func pathsOf(diffs []Difference) []string {
-	out := make([]string, len(diffs))
-	for i, d := range diffs {
-		out[i] = d.Path.String()
-	}
-	return out
 }

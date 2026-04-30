@@ -6,8 +6,10 @@ import (
 	"testing"
 )
 
-// TestNeatRegexes_Compile verifies every pattern in every bundle compiles.
-func TestNeatRegexes_Compile(t *testing.T) {
+// TestNeatPatterns_PerPatternInvariants walks every pattern in the default
+// bundle and asserts: it compiles, it is anchored at start (^), and it carries
+// a non-empty Label for --neat-explain output.
+func TestNeatPatterns_PerPatternInvariants(t *testing.T) {
 	all := NeatPatterns(DefaultNeatOptions())
 	if len(all) == 0 {
 		t.Fatal("DefaultNeatOptions() returned no patterns")
@@ -16,31 +18,29 @@ func TestNeatRegexes_Compile(t *testing.T) {
 		if _, err := regexp.Compile(p.Pattern); err != nil {
 			t.Errorf("profile %s: pattern %q does not compile: %v", p.Profile, p.Pattern, err)
 		}
+		if !strings.HasPrefix(p.Pattern, "^") {
+			t.Errorf("profile %s: pattern %q must be anchored with ^", p.Profile, p.Pattern)
+		}
 		if p.Label == "" {
 			t.Errorf("profile %s: pattern %q has empty Label", p.Profile, p.Pattern)
 		}
 	}
 }
 
-// TestBuildNeatExcludeRegexp_AllProfiles verifies the default profile returns
-// every bundle.
-func TestBuildNeatExcludeRegexp_AllProfiles(t *testing.T) {
-	got := BuildNeatExcludeRegexp(DefaultNeatOptions())
-	want := len(neatProfileK8s) + len(neatProfileStatus) + len(neatProfileHelm) +
-		len(neatProfileArgoCD) + len(neatProfileFlux)
-	if len(got) != want {
-		t.Errorf("DefaultNeatOptions(): got %d patterns, want %d", len(got), want)
-	}
-}
-
-// TestBuildNeatExcludeRegexp_OptOuts verifies disabling individual profiles
-// removes only their patterns.
-func TestBuildNeatExcludeRegexp_OptOuts(t *testing.T) {
+// TestBuildNeatExcludeRegexp_BundleSelection verifies each bundle gate
+// independently controls the resulting pattern count, including the all-on
+// (default) and all-off cases.
+func TestBuildNeatExcludeRegexp_BundleSelection(t *testing.T) {
 	tests := []struct {
 		name string
 		opts NeatOptions
 		want int
 	}{
+		{
+			"default (all profiles)",
+			DefaultNeatOptions(),
+			len(neatProfileK8s) + len(neatProfileStatus) + len(neatProfileHelm) + len(neatProfileArgoCD) + len(neatProfileFlux),
+		},
 		{
 			"no helm",
 			NeatOptions{K8s: true, Status: true, ArgoCD: true, Flux: true},
@@ -327,15 +327,5 @@ func TestNeatPatterns_StableOrder(t *testing.T) {
 	}
 	if idx != len(want) {
 		t.Errorf("missing profiles in default bundle: saw only %d/%d", idx, len(want))
-	}
-}
-
-// TestNeatRegexes_Anchored guards against accidentally writing unanchored
-// patterns that would over-match. Each pattern must be anchored at start (^).
-func TestNeatRegexes_Anchored(t *testing.T) {
-	for _, p := range NeatPatterns(DefaultNeatOptions()) {
-		if !strings.HasPrefix(p.Pattern, "^") {
-			t.Errorf("pattern %q must be anchored with ^", p.Pattern)
-		}
 	}
 }

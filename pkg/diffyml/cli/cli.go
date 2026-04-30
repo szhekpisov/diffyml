@@ -365,7 +365,7 @@ func (c *CLIConfig) ToCompareOptions() *diffyml.Options {
 func (c *CLIConfig) ToFilterOptions() *diffyml.FilterOptions {
 	excludeRegexp := c.ExcludeRegexp
 	if c.Neat {
-		neat := diffyml.BuildNeatExcludeRegexp(c.NeatOptions())
+		neat := diffyml.BuildNeatExcludeRegexp(c.ToNeatOptions())
 		merged := make([]string, 0, len(neat)+len(c.NeatStripPath)+len(excludeRegexp))
 		merged = append(merged, neat...)
 		merged = append(merged, c.NeatStripPath...)
@@ -380,10 +380,9 @@ func (c *CLIConfig) ToFilterOptions() *diffyml.FilterOptions {
 	}
 }
 
-// NeatOptions returns the diffyml.NeatOptions implied by the CLI flags.
-// Only meaningful when c.Neat is true; the per-bundle gates default-on
-// and are inverted to opt-out via --no-neat-{helm,argocd,flux,status}.
-func (c *CLIConfig) NeatOptions() diffyml.NeatOptions {
+// ToNeatOptions returns the diffyml.NeatOptions implied by the CLI flags.
+// Only meaningful when c.Neat is true.
+func (c *CLIConfig) ToNeatOptions() diffyml.NeatOptions {
 	return diffyml.NeatOptions{
 		K8s:    true,
 		Status: !c.NoNeatStatus,
@@ -743,25 +742,24 @@ func loadContents(cfg *CLIConfig, rc *RunConfig) ([]byte, []byte, error) {
 }
 
 // writeNeatExplain prints which neat regexes fired and their hit counts to w.
-// Patterns with zero hits are suppressed. Only the leading slice of
-// report.ExcludeHits corresponds to neat patterns (user --exclude-regexp
-// entries follow them in ToFilterOptions but are not reported here).
+// Patterns with zero hits are suppressed. The leading slice of
+// report.ExcludeHits corresponds positionally to NeatPatterns(opts) — see
+// ToFilterOptions for how the merged list is built.
 func writeNeatExplain(w io.Writer, cfg *CLIConfig, report *diffyml.FilterReport) {
-	patterns := diffyml.NeatPatterns(cfg.NeatOptions())
-	total := 0
+	patterns := diffyml.NeatPatterns(cfg.ToNeatOptions())
 	type entry struct {
 		profile diffyml.NeatProfile
 		label   string
 		hits    int
 	}
-	var fired []entry
-	limit := min(len(patterns), len(report.ExcludeHits))
-	for i := 0; i < limit; i++ {
+	fired := make([]entry, 0, len(patterns))
+	total := 0
+	for i, p := range patterns {
 		hits := report.ExcludeHits[i]
 		if hits == 0 {
 			continue
 		}
-		fired = append(fired, entry{patterns[i].Profile, patterns[i].Label, hits})
+		fired = append(fired, entry{p.Profile, p.Label, hits})
 		total += hits
 	}
 	if total == 0 {

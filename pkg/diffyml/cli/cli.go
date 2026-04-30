@@ -742,11 +742,15 @@ func loadContents(cfg *CLIConfig, rc *RunConfig) ([]byte, []byte, error) {
 }
 
 // writeNeatExplain prints which neat regexes fired and their hit counts to w.
-// Patterns with zero hits are suppressed. The leading slice of
-// report.ExcludeHits corresponds positionally to NeatPatterns(opts) — see
-// ToFilterOptions for how the merged list is built.
+// Patterns with zero hits are suppressed. report.ExcludeHits is positionally
+// aligned with NeatPatterns(opts) because ToFilterOptions prepends the neat
+// bundle to FilterOptions.ExcludeRegexp; the length-check below is a guard
+// against future callers wiring up a mismatched FilterReport.
 func writeNeatExplain(w io.Writer, cfg *CLIConfig, report *diffyml.FilterReport) {
 	patterns := diffyml.NeatPatterns(cfg.ToNeatOptions())
+	if len(report.ExcludeHits) < len(patterns) {
+		return
+	}
 	type entry struct {
 		profile diffyml.NeatProfile
 		label   string

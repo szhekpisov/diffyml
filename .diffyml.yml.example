@@ -63,6 +63,21 @@ chroot-list-to-documents: false
 #     added: "#6aa3a5"
 #     removed: "#702d06"
 
+# Neat mode (curated K8s/Helm/ArgoCD/Flux noise filter)
+# Set enabled: true to drop well-known noise paths (managedFields, status,
+# helm.sh/chart, argocd.argoproj.io/*, kustomize.toolkit.fluxcd.io/*, ...).
+# Per-bundle gates are positive in config (helm: false ⇒ drop helm), inverted
+# from CLI's --no-neat-helm. See doc/neat.md for the full strip list.
+# neat:
+#   enabled: true
+#   helm: true
+#   argocd: true
+#   flux: true
+#   status: true
+#   strip-path:
+#     - '\.metadata\.creationTimestamp$'
+#   explain: false
+
 # Sensitive value masking
 # Opt-in. When enabled, applies to every output format (including json,
 # json-patch, and AI summary). Set mask-secrets to true to auto-mask

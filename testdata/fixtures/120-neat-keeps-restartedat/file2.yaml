@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+      annotations:
+        kubectl.kubernetes.io/restartedAt: "2026-04-30T10:00:00Z"
+    spec:
+      containers:
+      - name: api
+        image: api:1.0.0

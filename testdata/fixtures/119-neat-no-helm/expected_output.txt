@@ -1,0 +1,17 @@
+Found three differences
+
+metadata.labels[helm.sh/chart]  (apps/v1/Deployment/default/nginx)
+  ± value change
+    - nginx-1.0.0
+    + nginx-1.0.1
+
+spec.replicas  (apps/v1/Deployment/default/nginx)
+  ± value change
+    - 3
+    + 5
+
+spec.template.spec.containers.nginx.image  (apps/v1/Deployment/default/nginx)
+  ± value change
+    - nginx:1.20
+    + nginx:1.21
+

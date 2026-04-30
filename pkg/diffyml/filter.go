@@ -177,11 +177,27 @@ func nestedKeyPaths(diff Difference) []string {
 	return paths
 }
 
+// FilterReport collects per-pattern statistics from FilterDiffsWithRegexpReport.
+// ExcludeHits is parallel to FilterOptions.ExcludeRegexp; entry i counts how
+// many diffs were excluded by the i-th regex pattern. Each excluded diff is
+// attributed to the first regex that matched (scan order).
+type FilterReport struct {
+	ExcludeHits []int
+}
+
 // FilterDiffsWithRegexp filters differences with support for regex patterns.
 // This function returns an error if any regex pattern is invalid.
 // Include filters (paths and regex) are applied before exclude filters.
 // Path filters are evaluated first, then regex filters.
 func FilterDiffsWithRegexp(diffs []Difference, opts *FilterOptions) ([]Difference, error) {
+	return FilterDiffsWithRegexpReport(diffs, opts, nil)
+}
+
+// FilterDiffsWithRegexpReport behaves like FilterDiffsWithRegexp and additionally
+// records per-regex hit counts in report (when non-nil). report.ExcludeHits is
+// allocated to len(opts.ExcludeRegexp) on entry and incremented on each diff
+// excluded by a regex. Path-based exclusions are not counted.
+func FilterDiffsWithRegexpReport(diffs []Difference, opts *FilterOptions, report *FilterReport) ([]Difference, error) {
 	if opts == nil {
 		return diffs, nil
 	}
@@ -198,6 +214,10 @@ func FilterDiffsWithRegexp(diffs []Difference, opts *FilterOptions) ([]Differenc
 
 	// Check if any filters are specified
 	hasIncludeFilters := len(opts.IncludePaths) > 0 || len(includeRegex) > 0
+
+	if report != nil {
+		report.ExcludeHits = make([]int, len(excludeRegex))
+	}
 
 	if !hasIncludeFilters && len(opts.ExcludePaths) == 0 && len(excludeRegex) == 0 {
 		return diffs, nil
@@ -220,9 +240,14 @@ func FilterDiffsWithRegexp(diffs []Difference, opts *FilterOptions) ([]Differenc
 			continue
 		}
 
-		// Step 2: Apply exclude filters (path or regex)
-		if matchesAnyPathWithNested(pathStr, nested, opts.ExcludePaths) ||
-			matchesAnyRegexWithNested(pathStr, nested, excludeRegex) {
+		// Step 2: Apply exclude filters (path first, then regex with hit attribution)
+		if matchesAnyPathWithNested(pathStr, nested, opts.ExcludePaths) {
+			continue
+		}
+		if idx, ok := firstMatchingRegexWithNested(pathStr, nested, excludeRegex); ok {
+			if report != nil {
+				report.ExcludeHits[idx]++
+			}
 			continue
 		}
 
@@ -230,4 +255,21 @@ func FilterDiffsWithRegexp(diffs []Difference, opts *FilterOptions) ([]Differenc
 	}
 
 	return result, nil
+}
+
+// firstMatchingRegexWithNested returns the index of the first regex in patterns
+// that matches diffPath or any nested path, plus true. Returns (0, false) if
+// no pattern matches.
+func firstMatchingRegexWithNested(diffPath string, nestedPaths []string, patterns []*regexp.Regexp) (int, bool) {
+	for i, re := range patterns {
+		if re.MatchString(diffPath) {
+			return i, true
+		}
+		for _, np := range nestedPaths {
+			if re.MatchString(np) {
+				return i, true
+			}
+		}
+	}
+	return 0, false
 }

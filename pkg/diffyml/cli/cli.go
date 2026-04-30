@@ -52,6 +52,15 @@ type CLIConfig struct {
 	FilterRegexp  []string
 	ExcludeRegexp []string
 
+	// Neat options (curated K8s/Helm/ArgoCD/Flux noise filter)
+	Neat          bool
+	NoNeatHelm    bool
+	NoNeatArgoCD  bool
+	NoNeatFlux    bool
+	NoNeatStatus  bool
+	NeatExplain   bool
+	NeatStripPath []string
+
 	// Sensitive value masking options
 	MaskSecrets     bool
 	MaskPaths       []string
@@ -154,6 +163,18 @@ func (c *CLIConfig) initFlags() {
 	})
 	c.fs.Func("additional-identifier", "use additional identifier in named entry lists", func(s string) error {
 		c.AdditionalIdentifiers = append(c.AdditionalIdentifiers, s)
+		return nil
+	})
+
+	// Neat options
+	c.fs.BoolVar(&c.Neat, "neat", c.Neat, "exclude well-known noisy K8s/Helm/ArgoCD/Flux paths")
+	c.fs.BoolVar(&c.NoNeatHelm, "no-neat-helm", c.NoNeatHelm, "with --neat: keep Helm-injected paths")
+	c.fs.BoolVar(&c.NoNeatArgoCD, "no-neat-argocd", c.NoNeatArgoCD, "with --neat: keep ArgoCD-injected paths")
+	c.fs.BoolVar(&c.NoNeatFlux, "no-neat-flux", c.NoNeatFlux, "with --neat: keep Flux-injected paths")
+	c.fs.BoolVar(&c.NoNeatStatus, "no-neat-status", c.NoNeatStatus, "with --neat: keep .status subtree and spec.nodeName")
+	c.fs.BoolVar(&c.NeatExplain, "neat-explain", c.NeatExplain, "print neat exclude regexes that fired (to stderr)")
+	c.fs.Func("neat-strip-path", "additional regex appended to the neat bundle (requires --neat)", func(s string) error {
+		c.NeatStripPath = append(c.NeatStripPath, s)
 		return nil
 	})
 
@@ -337,12 +358,38 @@ func (c *CLIConfig) ToCompareOptions() *diffyml.Options {
 }
 
 // ToFilterOptions converts CLI config to FilterOptions.
+// When --neat is set, the curated neat bundle is prepended to ExcludeRegexp,
+// followed by --neat-strip-path entries, then user-supplied --exclude-regexp.
+// Filtering is OR-of-patterns so order does not affect which diffs survive,
+// but neat-first ordering keeps --neat-explain reporting stable.
 func (c *CLIConfig) ToFilterOptions() *diffyml.FilterOptions {
+	excludeRegexp := c.ExcludeRegexp
+	if c.Neat {
+		neat := diffyml.BuildNeatExcludeRegexp(c.NeatOptions())
+		merged := make([]string, 0, len(neat)+len(c.NeatStripPath)+len(excludeRegexp))
+		merged = append(merged, neat...)
+		merged = append(merged, c.NeatStripPath...)
+		merged = append(merged, excludeRegexp...)
+		excludeRegexp = merged
+	}
 	return &diffyml.FilterOptions{
 		IncludePaths:  c.Filter,
 		ExcludePaths:  c.Exclude,
 		IncludeRegexp: c.FilterRegexp,
-		ExcludeRegexp: c.ExcludeRegexp,
+		ExcludeRegexp: excludeRegexp,
+	}
+}
+
+// NeatOptions returns the diffyml.NeatOptions implied by the CLI flags.
+// Only meaningful when c.Neat is true; the per-bundle gates default-on
+// and are inverted to opt-out via --no-neat-{helm,argocd,flux,status}.
+func (c *CLIConfig) NeatOptions() diffyml.NeatOptions {
+	return diffyml.NeatOptions{
+		K8s:    true,
+		Status: !c.NoNeatStatus,
+		Helm:   !c.NoNeatHelm,
+		ArgoCD: !c.NoNeatArgoCD,
+		Flux:   !c.NoNeatFlux,
 	}
 }
 
@@ -400,6 +447,16 @@ func (c *CLIConfig) Usage() string {
 	sb.WriteString("      --filter-regexp strings         filter reports using regular expressions\n")
 	sb.WriteString("      --exclude-regexp strings        exclude reports using regular expressions\n")
 	sb.WriteString("      --additional-identifier string  use additional identifier in named entry lists\n")
+	sb.WriteString("\n")
+
+	// Neat mode
+	sb.WriteString("      --neat                          exclude well-known noisy K8s/Helm/ArgoCD/Flux paths\n")
+	sb.WriteString("      --no-neat-helm                  with --neat: keep Helm-injected paths\n")
+	sb.WriteString("      --no-neat-argocd                with --neat: keep ArgoCD-injected paths\n")
+	sb.WriteString("      --no-neat-flux                  with --neat: keep Flux-injected paths\n")
+	sb.WriteString("      --no-neat-status                with --neat: keep .status subtree and spec.nodeName\n")
+	sb.WriteString("      --neat-explain                  print neat exclude regexes that fired (to stderr)\n")
+	sb.WriteString("      --neat-strip-path strings       additional regex appended to the neat bundle (requires --neat)\n")
 	sb.WriteString("\n")
 
 	// Sensitive value masking
@@ -507,6 +564,14 @@ func (c *CLIConfig) Validate() error {
 	}
 	if err := ValidateRegexPatterns(c.MaskPathRegexp, "mask-path-regexp"); err != nil {
 		return err
+	}
+	if err := ValidateRegexPatterns(c.NeatStripPath, "neat-strip-path"); err != nil {
+		return err
+	}
+
+	// Neat option constraints
+	if len(c.NeatStripPath) > 0 && !c.Neat {
+		return fmt.Errorf("--neat-strip-path requires --neat")
 	}
 
 	// Validate AI summary configuration
@@ -677,6 +742,42 @@ func loadContents(cfg *CLIConfig, rc *RunConfig) ([]byte, []byte, error) {
 	return fromContent, toContent, nil
 }
 
+// writeNeatExplain prints which neat regexes fired and their hit counts to w.
+// Patterns with zero hits are suppressed. Only the leading slice of
+// report.ExcludeHits corresponds to neat patterns (user --exclude-regexp
+// entries follow them in ToFilterOptions but are not reported here).
+func writeNeatExplain(w io.Writer, cfg *CLIConfig, report *diffyml.FilterReport) {
+	patterns := diffyml.NeatPatterns(cfg.NeatOptions())
+	total := 0
+	type entry struct {
+		profile diffyml.NeatProfile
+		label   string
+		hits    int
+	}
+	var fired []entry
+	limit := min(len(patterns), len(report.ExcludeHits))
+	for i := 0; i < limit; i++ {
+		hits := report.ExcludeHits[i]
+		if hits == 0 {
+			continue
+		}
+		fired = append(fired, entry{patterns[i].Profile, patterns[i].Label, hits})
+		total += hits
+	}
+	if total == 0 {
+		fmt.Fprintln(w, "neat: no patterns fired")
+		return
+	}
+	fmt.Fprintf(w, "neat: filtered %d diffs across %d patterns\n", total, len(fired))
+	for _, e := range fired {
+		hitWord := "hits"
+		if e.hits == 1 {
+			hitWord = "hit"
+		}
+		fmt.Fprintf(w, "  [%s] %s (%d %s)\n", e.profile, e.label, e.hits, hitWord)
+	}
+}
+
 // runComparison performs the compare, filter, format, and optional AI summary for a single file pair.
 func runComparison(cfg *CLIConfig, rc *RunConfig, fromContent, toContent []byte, formatter diffyml.Formatter, formatOpts *diffyml.FormatOptions) *ExitResult {
 	compareOpts := cfg.ToCompareOptions()
@@ -703,14 +804,21 @@ func runComparison(cfg *CLIConfig, rc *RunConfig, fromContent, toContent []byte,
 		return NewExitResult(ExitCodeError, err)
 	}
 
-	// Apply filters
-	diffs, err = diffyml.FilterDiffsWithRegexp(diffs, filterOpts)
+	// Apply filters; collect per-pattern hit counts when --neat-explain is set.
+	var filterReport *diffyml.FilterReport
+	if cfg.Neat && cfg.NeatExplain {
+		filterReport = &diffyml.FilterReport{}
+	}
+	diffs, err = diffyml.FilterDiffsWithRegexpReport(diffs, filterOpts, filterReport)
 	if err != nil {
 		err = fmt.Errorf("filter error: %w", err)
 		if !cfg.GitExternalDiff {
 			fmt.Fprintf(rc.Stderr, "Error: %v\n", err)
 		}
 		return NewExitResult(ExitCodeError, err)
+	}
+	if filterReport != nil {
+		writeNeatExplain(rc.Stderr, cfg, filterReport)
 	}
 
 	// For brief + summary: defer output until we know if the API call succeeds

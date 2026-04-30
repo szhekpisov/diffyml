@@ -2,6 +2,7 @@ package property
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 )
@@ -67,4 +68,27 @@ func chdirToRepoRoot(t *testing.T) func() {
 	return func() {
 		os.Chdir(origDir)
 	}
+}
+
+// buildTestBinary compiles diffyml into a per-test temp directory and returns
+// the absolute binary path. Per-test temp dirs keep concurrent test workers
+// from trampling each other's output. Extra args are passed to `go build`
+// between `build` and `-o <path>`.
+func buildTestBinary(t *testing.T, name string, extraArgs ...string) string {
+	t.Helper()
+	repoRoot, err := getRepoRoot()
+	if err != nil {
+		t.Fatalf("Failed to find repository root: %v", err)
+	}
+
+	binaryPath := filepath.Join(t.TempDir(), name)
+	args := append([]string{"build"}, extraArgs...)
+	args = append(args, "-o", binaryPath)
+
+	cmd := exec.Command("go", args...)
+	cmd.Dir = repoRoot
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("Build failed: %v\nOutput: %s", err, output)
+	}
+	return binaryPath
 }

@@ -12,18 +12,7 @@ import (
 // successfully without errors and produces an executable binary.
 // **Validates: Requirements 2.1**
 func TestProperty2_BuildSystemSuccess(t *testing.T) {
-	repoRoot, err := getRepoRoot()
-	if err != nil {
-		t.Fatalf("Failed to find repository root: %v", err)
-	}
-
-	binaryPath := filepath.Join(t.TempDir(), "diffyml_build_test")
-	cmd := exec.Command("go", "build", "-o", binaryPath)
-	cmd.Dir = repoRoot
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("Build failed: %v\nOutput: %s", err, string(output))
-	}
+	binaryPath := buildTestBinary(t, "diffyml_build_test")
 
 	info, err := os.Stat(binaryPath)
 	if err != nil {
@@ -43,27 +32,7 @@ func TestProperty2_BuildSystemSuccess(t *testing.T) {
 // succeeds even in a clean environment without cached dependencies.
 // **Validates: Requirements 2.1**
 func TestProperty2_BuildSystemSuccess_WithCleanEnvironment(t *testing.T) {
-	repoRoot, err := getRepoRoot()
-	if err != nil {
-		t.Fatalf("Failed to find repository root: %v", err)
-	}
-
-	if _, statErr := os.Stat(filepath.Join(repoRoot, "go.mod")); statErr != nil {
-		t.Fatalf("go.mod not found: %v", statErr)
-	}
-
-	binaryPath := filepath.Join(t.TempDir(), "diffyml_clean_build_test")
-	cmd := exec.Command("go", "build", "-v", "-o", binaryPath)
-	cmd.Dir = repoRoot
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("Build failed: %v\nOutput: %s", err, string(output))
-	}
-
-	outputStr := strings.ToLower(string(output))
-	if strings.Contains(outputStr, "error:") || strings.Contains(outputStr, "fatal:") {
-		t.Fatalf("Build output contains errors: %s", string(output))
-	}
+	binaryPath := buildTestBinary(t, "diffyml_clean_build_test", "-v")
 
 	info, err := os.Stat(binaryPath)
 	if err != nil {
@@ -79,19 +48,8 @@ func TestProperty2_BuildSystemSuccess_WithCleanEnvironment(t *testing.T) {
 // with version information injected via ldflags.
 // **Validates: Requirements 2.1**
 func TestProperty2_BuildSystemSuccess_WithLdflags(t *testing.T) {
-	repoRoot, err := getRepoRoot()
-	if err != nil {
-		t.Fatalf("Failed to find repository root: %v", err)
-	}
-
-	binaryPath := filepath.Join(t.TempDir(), "diffyml_ldflags_test")
 	ldflags := "-X main.version=1.0.0 -X main.commit=test123 -X main.buildDate=2024-01-15"
-	cmd := exec.Command("go", "build", "-ldflags", ldflags, "-o", binaryPath)
-	cmd.Dir = repoRoot
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("Build with ldflags failed: %v\nOutput: %s", err, string(output))
-	}
+	binaryPath := buildTestBinary(t, "diffyml_ldflags_test", "-ldflags", ldflags)
 
 	info, err := os.Stat(binaryPath)
 	if err != nil {
@@ -273,13 +231,7 @@ func TestProperty5_DependencyIntegrity_BuildWithVerify(t *testing.T) {
 		t.Fatalf("go mod verify failed: %v\nOutput: %s", err, string(verifyOutput))
 	}
 
-	binaryPath := filepath.Join(t.TempDir(), "diffyml_verify_build_test")
-	buildCmd := exec.Command("go", "build", "-o", binaryPath)
-	buildCmd.Dir = repoRoot
-	buildOutput, err := buildCmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("Build failed after verify: %v\nOutput: %s", err, string(buildOutput))
-	}
+	binaryPath := buildTestBinary(t, "diffyml_verify_build_test")
 
 	info, err := os.Stat(binaryPath)
 	if err != nil {

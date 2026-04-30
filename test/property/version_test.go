@@ -1,45 +1,16 @@
 package property
 
 import (
-	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"testing"
 )
-
-// buildTestBinary compiles diffyml into a per-test temp directory with the
-// given ldflags and returns the absolute binary path. Using t.TempDir() keeps
-// concurrent test workers from trampling each other's output files.
-func buildTestBinary(t *testing.T, name, ldflags string) string {
-	t.Helper()
-	repoRoot, err := getRepoRoot()
-	if err != nil {
-		t.Fatalf("Failed to find repository root: %v", err)
-	}
-
-	binaryPath := filepath.Join(t.TempDir(), name)
-	args := []string{"build"}
-	if ldflags != "" {
-		args = append(args, "-ldflags", ldflags)
-	}
-	args = append(args, "-o", binaryPath)
-
-	cmd := exec.Command("go", args...)
-	cmd.Dir = repoRoot
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("Failed to build binary for testing: %v", err)
-	}
-	return binaryPath
-}
 
 // TestProperty23_VersionFlagFunctionality tests that running the binary with
 // the --version flag outputs version information and exits successfully.
 // **Validates: Requirements 10.5**
 func TestProperty23_VersionFlagFunctionality(t *testing.T) {
-	binaryPath := buildTestBinary(t, "diffyml_test", "")
+	binaryPath := buildTestBinary(t, "diffyml_test")
 
 	cmd := exec.Command(binaryPath, "--version")
 	output, err := cmd.CombinedOutput()
@@ -70,7 +41,7 @@ func TestProperty23_VersionFlagFunctionality(t *testing.T) {
 // to ensure all common variations work correctly.
 // **Validates: Requirements 10.5**
 func TestProperty23_VersionFlagVariations(t *testing.T) {
-	binaryPath := buildTestBinary(t, "diffyml_test_variations", "")
+	binaryPath := buildTestBinary(t, "diffyml_test_variations")
 
 	versionFlags := []string{"--version", "-version", "-V"}
 
@@ -112,7 +83,7 @@ func TestProperty23_VersionFlagWithLdflags(t *testing.T) {
 		" -X main.commit=" + testCommit +
 		" -X main.buildDate=" + testBuildDate
 
-	binaryPath := buildTestBinary(t, "diffyml_test_ldflags", ldflags)
+	binaryPath := buildTestBinary(t, "diffyml_test_ldflags", "-ldflags", ldflags)
 
 	cmd := exec.Command(binaryPath, "--version")
 	output, err := cmd.CombinedOutput()
@@ -140,7 +111,7 @@ func TestProperty23_VersionFlagWithLdflags(t *testing.T) {
 // follows the expected format.
 // **Validates: Requirements 10.5**
 func TestProperty23_VersionFlagOutputFormat(t *testing.T) {
-	binaryPath := buildTestBinary(t, "diffyml_test_format", "")
+	binaryPath := buildTestBinary(t, "diffyml_test_format")
 
 	cmd := exec.Command(binaryPath, "--version")
 	output, err := cmd.CombinedOutput()
@@ -176,11 +147,10 @@ func TestProperty23_VersionFlagOutputFormat(t *testing.T) {
 // causes the program to exit without processing other arguments.
 // **Validates: Requirements 10.5**
 func TestProperty23_VersionFlagExitsWithoutProcessing(t *testing.T) {
-	binaryPath := buildTestBinary(t, "diffyml_test_exit", "")
+	binaryPath := buildTestBinary(t, "diffyml_test_exit")
 
 	cmd := exec.Command(binaryPath, "--version", "invalid_file.yaml", "another_invalid.yaml")
 	output, err := cmd.CombinedOutput()
-	// Should exit successfully (exit code 0) despite invalid arguments
 	if err != nil {
 		t.Fatalf("--version with extra args failed: %v", err)
 	}

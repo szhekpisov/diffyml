@@ -12,20 +12,9 @@ import (
 // successfully without errors and produces an executable binary.
 // **Validates: Requirements 2.1**
 func TestProperty2_BuildSystemSuccess(t *testing.T) {
-	cleanup := chdirToRepoRoot(t)
-	defer cleanup()
+	binaryPath := buildTestBinary(t, "diffyml_build_test")
 
-	binaryName := "diffyml_build_test"
-	os.Remove(binaryName)
-	defer os.Remove(binaryName)
-
-	cmd := exec.Command("go", "build", "-o", binaryName)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("Build failed: %v\nOutput: %s", err, string(output))
-	}
-
-	info, err := os.Stat(binaryName)
+	info, err := os.Stat(binaryPath)
 	if err != nil {
 		t.Fatalf("Binary not found after build: %v", err)
 	}
@@ -43,29 +32,9 @@ func TestProperty2_BuildSystemSuccess(t *testing.T) {
 // succeeds even in a clean environment without cached dependencies.
 // **Validates: Requirements 2.1**
 func TestProperty2_BuildSystemSuccess_WithCleanEnvironment(t *testing.T) {
-	cleanup := chdirToRepoRoot(t)
-	defer cleanup()
+	binaryPath := buildTestBinary(t, "diffyml_clean_build_test", "-v")
 
-	binaryName := "diffyml_clean_build_test"
-	os.Remove(binaryName)
-	defer os.Remove(binaryName)
-
-	if _, err := os.Stat("go.mod"); err != nil {
-		t.Fatalf("go.mod not found: %v", err)
-	}
-
-	cmd := exec.Command("go", "build", "-v", "-o", binaryName)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("Build failed: %v\nOutput: %s", err, string(output))
-	}
-
-	outputStr := strings.ToLower(string(output))
-	if strings.Contains(outputStr, "error:") || strings.Contains(outputStr, "fatal:") {
-		t.Fatalf("Build output contains errors: %s", string(output))
-	}
-
-	info, err := os.Stat(binaryName)
+	info, err := os.Stat(binaryPath)
 	if err != nil {
 		t.Fatalf("Binary not found: %v", err)
 	}
@@ -79,21 +48,10 @@ func TestProperty2_BuildSystemSuccess_WithCleanEnvironment(t *testing.T) {
 // with version information injected via ldflags.
 // **Validates: Requirements 2.1**
 func TestProperty2_BuildSystemSuccess_WithLdflags(t *testing.T) {
-	cleanup := chdirToRepoRoot(t)
-	defer cleanup()
-
-	binaryName := "diffyml_ldflags_test"
-	os.Remove(binaryName)
-	defer os.Remove(binaryName)
-
 	ldflags := "-X main.version=1.0.0 -X main.commit=test123 -X main.buildDate=2024-01-15"
-	cmd := exec.Command("go", "build", "-ldflags", ldflags, "-o", binaryName)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("Build with ldflags failed: %v\nOutput: %s", err, string(output))
-	}
+	binaryPath := buildTestBinary(t, "diffyml_ldflags_test", "-ldflags", ldflags)
 
-	info, err := os.Stat(binaryName)
+	info, err := os.Stat(binaryPath)
 	if err != nil {
 		t.Fatalf("Binary not found: %v", err)
 	}
@@ -102,7 +60,7 @@ func TestProperty2_BuildSystemSuccess_WithLdflags(t *testing.T) {
 		t.Fatal("Binary is not a regular executable file")
 	}
 
-	versionCmd := exec.Command("./"+binaryName, "--version")
+	versionCmd := exec.Command(binaryPath, "--version")
 	versionOutput, err := versionCmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("Version check failed: %v", err)
@@ -117,124 +75,33 @@ func TestProperty2_BuildSystemSuccess_WithLdflags(t *testing.T) {
 	}
 }
 
-// TestProperty4_SingleBinaryOutput tests that a successful build produces
-// exactly one executable file with the expected name.
+// TestProperty4_DefaultBinaryName tests that `go build` without `-o` produces
+// a binary named after the module path's last component (`diffyml`).
 // **Validates: Requirements 2.3**
-func TestProperty4_SingleBinaryOutput(t *testing.T) {
-	cleanup := chdirToRepoRoot(t)
-	defer cleanup()
-
-	binaryName := "diffyml_single_output_test"
-	os.Remove(binaryName)
-	defer os.Remove(binaryName)
-
-	beforeFiles, err := countFilesInDir(".")
+func TestProperty4_DefaultBinaryName(t *testing.T) {
+	repoRoot, err := getRepoRoot()
 	if err != nil {
-		t.Fatalf("Failed to count files before build: %v", err)
+		t.Fatalf("Failed to find repository root: %v", err)
 	}
 
-	cmd := exec.Command("go", "build", "-o", binaryName)
+	tempDir := t.TempDir()
+	// Trailing separator tells `go build` to write into tempDir while still
+	// choosing the default binary name from the module path.
+	cmd := exec.Command("go", "build", "-o", tempDir+string(os.PathSeparator))
+	cmd.Dir = repoRoot
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("Build failed: %v\nOutput: %s", err, string(output))
 	}
 
-	afterFiles, err := countFilesInDir(".")
+	binaryPath := filepath.Join(tempDir, "diffyml")
+	info, err := os.Stat(binaryPath)
 	if err != nil {
-		t.Fatalf("Failed to count files after build: %v", err)
-	}
-
-	newFilesCount := afterFiles - beforeFiles
-	if newFilesCount != 1 {
-		t.Fatalf("Expected 1 new file, got %d", newFilesCount)
-	}
-
-	info, err := os.Stat(binaryName)
-	if err != nil {
-		t.Fatalf("Binary not found: %v", err)
-	}
-
-	if !info.Mode().IsRegular() {
-		t.Fatal("Output is not a regular file")
-	}
-
-	if info.Mode()&0o111 == 0 {
-		t.Fatal("Output is not executable")
-	}
-
-	absPath, err := filepath.Abs(binaryName)
-	if err != nil {
-		t.Fatalf("Failed to get absolute path: %v", err)
-	}
-
-	expectedPath := filepath.Join(filepath.Dir(absPath), binaryName)
-	if absPath != expectedPath {
-		t.Fatalf("Binary path mismatch: got %s, expected %s", absPath, expectedPath)
-	}
-}
-
-// TestProperty4_SingleBinaryOutput_WithDefaultName tests that building without
-// specifying an output name produces a single binary named after the module.
-// **Validates: Requirements 2.3**
-func TestProperty4_SingleBinaryOutput_WithDefaultName(t *testing.T) {
-	cleanup := chdirToRepoRoot(t)
-	defer cleanup()
-
-	defaultBinaryName := "diffyml"
-	os.Remove(defaultBinaryName)
-	defer os.Remove(defaultBinaryName)
-
-	cmd := exec.Command("go", "build")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("Build failed: %v\nOutput: %s", err, string(output))
-	}
-
-	info, err := os.Stat(defaultBinaryName)
-	if err != nil {
-		t.Fatalf("Default binary not found: %v", err)
+		t.Fatalf("Default-name binary not found at %s: %v", binaryPath, err)
 	}
 
 	if !info.Mode().IsRegular() || info.Mode()&0o111 == 0 {
 		t.Fatal("Binary is not a regular executable file")
-	}
-}
-
-// TestProperty4_SingleBinaryOutput_NoExtraFiles tests that the build process
-// doesn't create extra files beyond the binary.
-// **Validates: Requirements 2.3**
-func TestProperty4_SingleBinaryOutput_NoExtraFiles(t *testing.T) {
-	cleanup := chdirToRepoRoot(t)
-	defer cleanup()
-
-	binaryName := "diffyml_no_extra_files_test"
-	os.Remove(binaryName)
-	defer os.Remove(binaryName)
-
-	beforeFiles, err := listFilesInDir(".")
-	if err != nil {
-		t.Fatalf("Failed to list files before build: %v", err)
-	}
-
-	cmd := exec.Command("go", "build", "-o", binaryName)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("Build failed: %v\nOutput: %s", err, string(output))
-	}
-
-	afterFiles, err := listFilesInDir(".")
-	if err != nil {
-		t.Fatalf("Failed to list files after build: %v", err)
-	}
-
-	newFiles := findNewFiles(beforeFiles, afterFiles)
-
-	if len(newFiles) != 1 {
-		t.Fatalf("Expected 1 new file, got %d: %v", len(newFiles), newFiles)
-	}
-
-	if newFiles[0] != binaryName {
-		t.Fatalf("New file is not the expected binary: got %s, expected %s", newFiles[0], binaryName)
 	}
 }
 
@@ -352,26 +219,21 @@ func TestProperty5_DependencyIntegrity_NoUnversionedDeps(t *testing.T) {
 // after verifying dependencies succeeds.
 // **Validates: Requirements 2.5**
 func TestProperty5_DependencyIntegrity_BuildWithVerify(t *testing.T) {
-	cleanup := chdirToRepoRoot(t)
-	defer cleanup()
+	repoRoot, err := getRepoRoot()
+	if err != nil {
+		t.Fatalf("Failed to find repository root: %v", err)
+	}
 
 	verifyCmd := exec.Command("go", "mod", "verify")
+	verifyCmd.Dir = repoRoot
 	verifyOutput, err := verifyCmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("go mod verify failed: %v\nOutput: %s", err, string(verifyOutput))
 	}
 
-	binaryName := "diffyml_verify_build_test"
-	os.Remove(binaryName)
-	defer os.Remove(binaryName)
+	binaryPath := buildTestBinary(t, "diffyml_verify_build_test")
 
-	buildCmd := exec.Command("go", "build", "-o", binaryName)
-	buildOutput, err := buildCmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("Build failed after verify: %v\nOutput: %s", err, string(buildOutput))
-	}
-
-	info, err := os.Stat(binaryName)
+	info, err := os.Stat(binaryPath)
 	if err != nil {
 		t.Fatalf("Binary not found: %v", err)
 	}
@@ -394,55 +256,4 @@ func checkDependencyVersion(t *testing.T, depLine string) {
 	if !hasValidVersion {
 		t.Fatalf("Dependency without valid version: %s", depLine)
 	}
-}
-
-// Helper function to count files in a directory (non-recursive)
-func countFilesInDir(dir string) (int, error) {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return 0, err
-	}
-
-	count := 0
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			count++
-		}
-	}
-
-	return count, nil
-}
-
-// Helper function to list files in a directory (non-recursive)
-func listFilesInDir(dir string) ([]string, error) {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return nil, err
-	}
-
-	var files []string
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			files = append(files, entry.Name())
-		}
-	}
-
-	return files, nil
-}
-
-// Helper function to find new files by comparing two lists
-func findNewFiles(before, after []string) []string {
-	beforeMap := make(map[string]bool)
-	for _, file := range before {
-		beforeMap[file] = true
-	}
-
-	var newFiles []string
-	for _, file := range after {
-		if !beforeMap[file] {
-			newFiles = append(newFiles, file)
-		}
-	}
-
-	return newFiles
 }

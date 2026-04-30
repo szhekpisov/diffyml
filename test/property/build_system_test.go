@@ -48,8 +48,8 @@ func TestProperty2_BuildSystemSuccess_WithCleanEnvironment(t *testing.T) {
 		t.Fatalf("Failed to find repository root: %v", err)
 	}
 
-	if _, err := os.Stat(filepath.Join(repoRoot, "go.mod")); err != nil {
-		t.Fatalf("go.mod not found: %v", err)
+	if _, statErr := os.Stat(filepath.Join(repoRoot, "go.mod")); statErr != nil {
+		t.Fatalf("go.mod not found: %v", statErr)
 	}
 
 	binaryPath := filepath.Join(t.TempDir(), "diffyml_clean_build_test")
@@ -305,4 +305,3 @@ func checkDependencyVersion(t *testing.T, depLine string) {
 		t.Fatalf("Dependency without valid version: %s", depLine)
 	}
 }
-

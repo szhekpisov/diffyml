@@ -110,13 +110,7 @@ func NeatPatterns(opts NeatOptions) []NeatPattern {
 		{opts.ArgoCD, neatProfileArgoCD},
 		{opts.Flux, neatProfileFlux},
 	}
-	total := 0
-	for _, b := range bundles {
-		if b.on {
-			total += len(b.patterns)
-		}
-	}
-	out := make([]NeatPattern, 0, total)
+	var out []NeatPattern
 	for _, b := range bundles {
 		if b.on {
 			out = append(out, b.patterns...)

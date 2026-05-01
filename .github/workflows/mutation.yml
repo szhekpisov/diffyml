@@ -37,8 +37,8 @@ jobs:
         with:
           go-version: "1.26.2"
 
-      - name: Install gomutant
-        run: go install github.com/szhekpisov/gomutant@v0.1.0
+      - name: Install gomutants
+        run: go install github.com/szhekpisov/gomutants@v0.1.0
 
       # PRs: --changed-since limits work to touched lines; gate on
       # "no LIVED mutant in the diff".
@@ -47,7 +47,7 @@ jobs:
         env:
           BASE_REF: ${{ github.base_ref }}
         run: >-
-          gomutant unleash
+          gomutants unleash
           --workers 2
           --coverpkg="./pkg/diffyml/..."
           --changed-since="origin/${BASE_REF}"
@@ -59,7 +59,7 @@ jobs:
       - name: Run mutation testing (post-merge — full)
         if: github.event_name == 'push'
         run: >-
-          gomutant unleash
+          gomutants unleash
           --workers 2
           --coverpkg="./pkg/diffyml/..."
           --output=mutation-report.json
@@ -101,9 +101,9 @@ jobs:
             echo "::error::test_efficacy missing from mutation-report.json"
             exit 1
           fi
-          # Pinned to the local measurement at migration time (gomutant v0.1.0,
+          # Pinned to the local measurement at migration time (gomutants v0.1.0,
           # 2026-04-29): 85.66% efficacy on 2325 mutants (1666 killed, 279 lived,
-          # 324 not_viable, 34 not_covered, 22 timed_out). gomutant runs ~16
+          # 324 not_viable, 34 not_covered, 22 timed_out). gomutants runs ~16
           # mutators vs gremlins' 11, so the absolute number is lower than the
           # legacy 100% figure. Ratchet up as tests improve.
           THRESHOLD=85.65

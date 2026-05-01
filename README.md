@@ -534,7 +534,7 @@ See the [package documentation](https://pkg.go.dev/github.com/szhekpisov/diffyml
   [misspell](https://github.com/client9/misspell),
   [staticcheck](https://staticcheck.dev/) (all checks except style conventions)
 
-**Test quality.** 1,500+ tests (unit, e2e, fuzz, property-based), 99.4% code coverage, [mutation testing](https://github.com/szhekpisov/gomutant) gated per-PR (no LIVED mutant on changed lines) with an 85.65% post-merge efficacy floor. CI enforces a 99% coverage floor.
+**Test quality.** 1,500+ tests (unit, e2e, fuzz, property-based), 99.4% code coverage, [mutation testing](https://github.com/szhekpisov/gomutants) gated per-PR (no LIVED mutant on changed lines) with an 85.65% post-merge efficacy floor. CI enforces a 99% coverage floor.
 
 **Reporting vulnerabilities.** See [SECURITY.md](SECURITY.md) — preferred path is a [private GitHub Security Advisory](https://github.com/szhekpisov/diffyml/security/advisories/new).
 
@@ -571,14 +571,14 @@ make ci             # full CI pipeline locally (fmt + vet + test + coverage + se
 make bench          # run benchmarks
 make bench-compare  # compare against alternative tools (see doc/PERFORMANCE.md)
 make coverage       # generate HTML coverage report
-make mutation       # run mutation testing (requires gomutant)
+make mutation       # run mutation testing (requires gomutants)
 ```
 
 **CI pipelines** (run on every push and PR):
 - **Tests** — unit tests + coverage thresholds
 - **Security & Static Analysis** — govulncheck + golangci-lint (also runs weekly)
 - **Benchmark** — performance regression tracking
-- **Mutation Testing** — test quality validation via [gomutant](https://github.com/szhekpisov/gomutant)
+- **Mutation Testing** — test quality validation via [gomutants](https://github.com/szhekpisov/gomutants)
 
 </details>
 

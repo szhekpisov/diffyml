@@ -16,18 +16,18 @@ A surviving mutant means either the test suite has a gap, or the mutation is **e
 
 ## Tool
 
-[gomutant](https://github.com/szhekpisov/gomutant) v0.1.0
+[gomutants](https://github.com/szhekpisov/gomutants) v0.1.0
 
 ## CI Integration
 
 `.github/workflows/mutation.yml` runs in two modes:
 
-- **Pull requests** — `gomutant unleash --changed-since=origin/main` scopes mutation to lines touched by the PR. Gate: any LIVED mutant on changed lines fails the job. This makes mutation testing a per-PR quality bar rather than a periodic audit.
-- **Push to main** — full-tree run after merge. Gate: `test_efficacy ≥ 85.65%` (the calibrated floor at gomutant migration; ratchet up as tests improve). Catches coverage rot in code no PR happens to touch.
+- **Pull requests** — `gomutants unleash --changed-since=origin/main` scopes mutation to lines touched by the PR. Gate: any LIVED mutant on changed lines fails the job. This makes mutation testing a per-PR quality bar rather than a periodic audit.
+- **Push to main** — full-tree run after merge. Gate: `test_efficacy ≥ 85.65%` (the calibrated floor at gomutants migration; ratchet up as tests improve). Catches coverage rot in code no PR happens to touch.
 
 ## Report
 
-**Last full run:** 2026-04-29 — efficacy 85.66% on 2325 mutants (gomutant v0.1.0)
+**Last full run:** 2026-04-29 — efficacy 85.66% on 2325 mutants (gomutants v0.1.0)
 **Mutations coverage:** 98.54%
 
 | Status | Count |
@@ -40,7 +40,7 @@ A surviving mutant means either the test suite has a gap, or the mutation is **e
 | **Efficacy** | **85.66%** |
 | **Mutations coverage** | **98.54%** |
 
-The drop from the legacy 100% figure reflects gomutant's larger mutator set (~16 active mutators vs. gremlins' 11). New mutators — chiefly `STATEMENT_REMOVE`, `EXPRESSION_REMOVE`, `BRANCH_CASE`, and `INVERT_LOOP_CTRL` — probe locations the gremlins-era suite did not exercise. The 279 lived mutants represent a mix of real test gaps and equivalent mutants; the PR-scoped gate prevents new ones from sneaking in while the floor is ratcheted up.
+The drop from the legacy 100% figure reflects gomutants's larger mutator set (~16 active mutators vs. gremlins' 11). New mutators — chiefly `STATEMENT_REMOVE`, `EXPRESSION_REMOVE`, `BRANCH_CASE`, and `INVERT_LOOP_CTRL` — probe locations the gremlins-era suite did not exercise. The 279 lived mutants represent a mix of real test gaps and equivalent mutants; the PR-scoped gate prevents new ones from sneaking in while the floor is ratcheted up.
 
 ## Lived Mutants by File (top 10)
 
@@ -61,4 +61,4 @@ By mutator: `STATEMENT_REMOVE` (77), `EXPRESSION_REMOVE` (74), `BRANCH_IF` (61),
 
 ## Not Covered
 
-34 mutants are NOT COVERED — predominantly `ARITHMETIC_BASE` mutations on package-level constants. Go does not instrument constant declarations in `-coverprofile`, so gomutant cannot determine whether they are tested even when they are exercised by unit tests (e.g., `TestRemoteConstants`, `TestSummarize_Timeout`). These will always report as NOT COVERED regardless of test additions; full enumeration is in `mutation-report.json`.
+34 mutants are NOT COVERED — predominantly `ARITHMETIC_BASE` mutations on package-level constants. Go does not instrument constant declarations in `-coverprofile`, so gomutants cannot determine whether they are tested even when they are exercised by unit tests (e.g., `TestRemoteConstants`, `TestSummarize_Timeout`). These will always report as NOT COVERED regardless of test additions; full enumeration is in `mutation-report.json`.

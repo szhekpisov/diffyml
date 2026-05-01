@@ -130,7 +130,7 @@ func buildFilePairsFromMap(m map[string][2][]byte) []diffyml.FilePair {
 		contents := m[name]
 		var pair diffyml.FilePair
 		pair.Name = name
-		//nolint:gocritic // if-else kept intentionally: switch/case conditions fall outside Go coverage blocks, causing gomutant to misclassify mutations as NOT COVERED
+		//nolint:gocritic // if-else kept intentionally: switch/case conditions fall outside Go coverage blocks, causing gomutants to misclassify mutations as NOT COVERED
 		if contents[0] != nil && contents[1] != nil {
 			pair.Type = diffyml.FilePairBothExist
 		} else if contents[0] != nil {

@@ -1,0 +1,7 @@
+Found one difference
+
+spec.template.metadata  (apps/v1/Deployment/default/api)
+  + one map entry added:
+    annotations:
+      kubectl.kubernetes.io/restartedAt: 2026-04-30T10:00:00Z
+

@@ -110,6 +110,50 @@ func TestCLIConfig_Validate_InvalidExcludeRegexp(t *testing.T) {
 	}
 }
 
+func TestCLIConfig_Validate_NeatStripPath_RequiresNeat(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.FromFile = "from.yaml"
+	cfg.ToFile = "to.yaml"
+	cfg.NeatStripPath = []string{`^foo$`}
+	// cfg.Neat is false
+
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("expected error when --neat-strip-path is set without --neat")
+	}
+	if !containsSubstr(err.Error(), "--neat-strip-path") || !containsSubstr(err.Error(), "--neat") {
+		t.Errorf("error should name both flags, got: %v", err)
+	}
+}
+
+func TestCLIConfig_Validate_NeatStripPath_AllowedWithNeat(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.FromFile = "from.yaml"
+	cfg.ToFile = "to.yaml"
+	cfg.Neat = true
+	cfg.NeatStripPath = []string{`^foo$`}
+
+	if err := cfg.Validate(); err != nil {
+		t.Errorf("expected no error when --neat is set, got: %v", err)
+	}
+}
+
+func TestCLIConfig_Validate_InvalidNeatStripPath(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.FromFile = "from.yaml"
+	cfg.ToFile = "to.yaml"
+	cfg.Neat = true
+	cfg.NeatStripPath = []string{`(unclosed`}
+
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("expected error for invalid --neat-strip-path regex")
+	}
+	if !containsSubstr(err.Error(), "neat-strip-path") {
+		t.Errorf("error should mention neat-strip-path, got: %v", err)
+	}
+}
+
 func TestCLIConfig_Validate_MissingFromFile(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.ToFile = "to.yaml"

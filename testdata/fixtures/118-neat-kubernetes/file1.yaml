@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: default
+  generation: 12
+  resourceVersion: "9437184"
+  uid: 8a4f6b8c-1234-5678-9abc-def012345678
+  creationTimestamp: "2024-11-01T12:00:00Z"
+  labels:
+    app: nginx
+    helm.sh/chart: nginx-1.0.0
+    app.kubernetes.io/managed-by: Helm
+    argocd.argoproj.io/instance: nginx-prod
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"apps/v1","kind":"Deployment"}
+    deployment.kubernetes.io/revision: "3"
+    meta.helm.sh/release-name: nginx
+    meta.helm.sh/release-namespace: default
+    argocd.argoproj.io/tracking-id: nginx:apps/Deployment:default/nginx
+    kustomize.toolkit.fluxcd.io/checksum: abc123
+  managedFields:
+  - apiVersion: apps/v1
+    fieldsType: FieldsV1
+    manager: kube-controller-manager
+    operation: Update
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.20
+status:
+  observedGeneration: 12
+  replicas: 3
+  readyReplicas: 3

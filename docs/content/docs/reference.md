@@ -43,6 +43,18 @@ diffyml [flags] <from> <to>
 | `--exclude-regexp` | `list` | — | exclude reports using regular expressions (repeatable) |
 | `--additional-identifier` | `list` | — | use additional identifier in named entry lists (repeatable) |
 
+## Neat
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--neat` | `bool` | — | exclude well-known noisy K8s/Helm/ArgoCD/Flux paths |
+| `--no-neat-helm` | `bool` | — | with --neat: keep Helm-injected paths |
+| `--no-neat-argocd` | `bool` | — | with --neat: keep ArgoCD-injected paths |
+| `--no-neat-flux` | `bool` | — | with --neat: keep Flux-injected paths |
+| `--no-neat-status` | `bool` | — | with --neat: keep .status subtree and spec.nodeName |
+| `--neat-explain` | `bool` | — | print neat exclude regexes that fired (to stderr) |
+| `--neat-strip-path` | `list` | — | additional regex appended to the neat bundle (requires --neat; repeatable) |
+
 ## Masking
 
 | Flag | Type | Default | Description |

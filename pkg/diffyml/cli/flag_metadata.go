@@ -45,6 +45,15 @@ func FlagDocs() []FlagDoc {
 		{Long: "exclude-regexp", Type: "list", Category: "Filtering", Usage: "exclude reports using regular expressions (repeatable)"},
 		{Long: "additional-identifier", Type: "list", Category: "Filtering", Usage: "use additional identifier in named entry lists (repeatable)"},
 
+		// Neat
+		{Long: "neat", Type: "bool", Category: "Neat", Usage: "exclude well-known noisy K8s/Helm/ArgoCD/Flux paths"},
+		{Long: "no-neat-helm", Type: "bool", Category: "Neat", Usage: "with --neat: keep Helm-injected paths"},
+		{Long: "no-neat-argocd", Type: "bool", Category: "Neat", Usage: "with --neat: keep ArgoCD-injected paths"},
+		{Long: "no-neat-flux", Type: "bool", Category: "Neat", Usage: "with --neat: keep Flux-injected paths"},
+		{Long: "no-neat-status", Type: "bool", Category: "Neat", Usage: "with --neat: keep .status subtree and spec.nodeName"},
+		{Long: "neat-explain", Type: "bool", Category: "Neat", Usage: "print neat exclude regexes that fired (to stderr)"},
+		{Long: "neat-strip-path", Type: "list", Category: "Neat", Usage: "additional regex appended to the neat bundle (requires --neat; repeatable)"},
+
 		// Sensitive value masking
 		{Long: "mask-secrets", Type: "bool", Category: "Masking", Usage: "auto-mask data/stringData of Kubernetes Secret resources"},
 		{Long: "mask-path", Type: "list", Category: "Masking", Usage: "additional path to mask (dot-notation, prefix match; repeatable)"},

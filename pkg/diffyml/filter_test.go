@@ -820,3 +820,144 @@ func TestFilterDiffsRegex_CombinedExcludePathAndRegex(t *testing.T) {
 		t.Errorf("expected config.name, got %q", result[0].Path)
 	}
 }
+
+// k8sNoiseDiffs returns a synthetic set of differences covering each neat
+// profile plus paths that should survive (a real spec change).
+func k8sNoiseDiffs() []Difference {
+	return []Difference{
+		// K8s server noise
+		{Path: DiffPath{"metadata", "managedFields"}, Type: DiffModified, From: "a", To: "b"},
+		{Path: DiffPath{"metadata", "resourceVersion"}, Type: DiffModified, From: "1", To: "2"},
+		{Path: DiffPath{"metadata", "generation"}, Type: DiffModified, From: 1, To: 2},
+		// kubectl
+		{Path: DiffPath{"metadata", "annotations", "kubectl.kubernetes.io/last-applied-configuration"}, Type: DiffModified, From: "{}", To: "{...}"},
+		// Helm
+		{Path: DiffPath{"metadata", "labels", "helm.sh/chart"}, Type: DiffModified, From: "v1.0.0", To: "v1.0.1"},
+		{Path: DiffPath{"metadata", "annotations", "meta.helm.sh/release-name"}, Type: DiffModified, From: "old", To: "new"},
+		// ArgoCD
+		{Path: DiffPath{"metadata", "annotations", "argocd.argoproj.io/tracking-id"}, Type: DiffModified, From: "x", To: "y"},
+		{Path: DiffPath{"metadata", "labels", "argocd.argoproj.io/instance"}, Type: DiffModified, From: "app", To: "app2"},
+		// Flux
+		{Path: DiffPath{"metadata", "annotations", "kustomize.toolkit.fluxcd.io/checksum"}, Type: DiffModified, From: "abc", To: "def"},
+		// Status
+		{Path: DiffPath{"status", "replicas"}, Type: DiffModified, From: 2, To: 3},
+		// REAL changes that must survive
+		{Path: DiffPath{"spec", "replicas"}, Type: DiffModified, From: 3, To: 5},
+		{Path: DiffPath{"spec", "template", "spec", "containers", "[0]", "image"}, Type: DiffModified, From: "nginx:1.20", To: "nginx:1.21"},
+	}
+}
+
+// TestFilterDiffs_NeatExcludesNoise wires the curated neat bundle through the
+// existing regex filter and asserts only the real diffs survive.
+func TestFilterDiffs_NeatExcludesNoise(t *testing.T) {
+	diffs := k8sNoiseDiffs()
+	opts := &FilterOptions{
+		ExcludeRegexp: BuildNeatExcludeRegexp(DefaultNeatOptions()),
+	}
+	result, err := FilterDiffsWithRegexp(diffs, opts)
+	if err != nil {
+		t.Fatalf("FilterDiffsWithRegexp: %v", err)
+	}
+	survived := make([]string, len(result))
+	for i, d := range result {
+		survived[i] = d.Path.String()
+	}
+	if len(result) != 2 {
+		t.Fatalf("expected 2 diffs to survive (spec.replicas, spec.template…image), got %d: %v", len(result), survived)
+	}
+	for _, path := range survived {
+		if path != "spec.replicas" && path != "spec.template.spec.containers[0].image" {
+			t.Errorf("unexpected surviving diff: %q", path)
+		}
+	}
+}
+
+// TestFilterDiffs_NeatNoHelmKeepsHelmDiffs verifies that disabling the Helm
+// profile lets Helm-injected diffs survive while everything else is filtered.
+func TestFilterDiffs_NeatNoHelmKeepsHelmDiffs(t *testing.T) {
+	diffs := k8sNoiseDiffs()
+	opts := &FilterOptions{
+		ExcludeRegexp: BuildNeatExcludeRegexp(NeatOptions{
+			K8s: true, Status: true, ArgoCD: true, Flux: true, // Helm: false
+		}),
+	}
+	result, err := FilterDiffsWithRegexp(diffs, opts)
+	if err != nil {
+		t.Fatalf("FilterDiffsWithRegexp: %v", err)
+	}
+	helmFound := 0
+	survived := make([]string, len(result))
+	for i, d := range result {
+		survived[i] = d.Path.String()
+		if survived[i] == "metadata.labels[helm.sh/chart]" ||
+			survived[i] == "metadata.annotations[meta.helm.sh/release-name]" {
+			helmFound++
+		}
+	}
+	if helmFound != 2 {
+		t.Errorf("expected 2 Helm diffs to survive --no-neat-helm, got %d (full: %v)", helmFound, survived)
+	}
+}
+
+// TestFilterDiffsWithRegexpReport_Counts verifies the per-pattern hit counter
+// is populated correctly. Counts attribute each diff to the FIRST regex
+// matching it (scan order).
+func TestFilterDiffsWithRegexpReport_Counts(t *testing.T) {
+	diffs := k8sNoiseDiffs()
+	patterns := BuildNeatExcludeRegexp(DefaultNeatOptions())
+	opts := &FilterOptions{ExcludeRegexp: patterns}
+	report := &FilterReport{}
+	result, err := FilterDiffsWithRegexpReport(diffs, opts, report)
+	if err != nil {
+		t.Fatalf("FilterDiffsWithRegexpReport: %v", err)
+	}
+	if len(report.ExcludeHits) != len(patterns) {
+		t.Fatalf("ExcludeHits length: got %d, want %d", len(report.ExcludeHits), len(patterns))
+	}
+	totalHits := 0
+	for _, h := range report.ExcludeHits {
+		totalHits += h
+	}
+	excluded := len(diffs) - len(result)
+	if totalHits != excluded {
+		t.Errorf("sum of hits %d should equal excluded count %d", totalHits, excluded)
+	}
+}
+
+// TestFilterDiffsWithRegexpReport_NilReportSafe verifies passing a nil report
+// behaves identically to FilterDiffsWithRegexp.
+func TestFilterDiffsWithRegexpReport_NilReportSafe(t *testing.T) {
+	diffs := k8sNoiseDiffs()
+	opts := &FilterOptions{ExcludeRegexp: BuildNeatExcludeRegexp(DefaultNeatOptions())}
+	a, errA := FilterDiffsWithRegexp(diffs, opts)
+	b, errB := FilterDiffsWithRegexpReport(diffs, opts, nil)
+	if errA != nil || errB != nil {
+		t.Fatalf("errors: %v, %v", errA, errB)
+	}
+	if len(a) != len(b) {
+		t.Errorf("results differ: %d vs %d", len(a), len(b))
+	}
+}
+
+// TestFilterDiffsWithRegexpReport_PathExclusionNotCounted verifies that a
+// diff excluded by an ExcludePaths entry does NOT increment any regex
+// hit counter (path exclusions are not regex-attributed).
+func TestFilterDiffsWithRegexpReport_PathExclusionNotCounted(t *testing.T) {
+	diffs := []Difference{
+		{Path: DiffPath{"a", "b"}, Type: DiffModified, From: 1, To: 2},
+	}
+	opts := &FilterOptions{
+		ExcludePaths:  []string{"a.b"},
+		ExcludeRegexp: []string{`^a\.b$`}, // would also match
+	}
+	report := &FilterReport{}
+	_, err := FilterDiffsWithRegexpReport(diffs, opts, report)
+	if err != nil {
+		t.Fatalf("FilterDiffsWithRegexpReport: %v", err)
+	}
+	for i, h := range report.ExcludeHits {
+		if h != 0 {
+			t.Errorf("hit count[%d] should be 0 (path filter ran first), got %d", i, h)
+		}
+	}
+}

@@ -299,37 +299,6 @@ func compareByRootOrder(pathI, pathJ DiffPath, pathOrder map[string]int) (int, b
 	return cmp.Compare(rootI, rootJ), true
 }
 
-// compareByExactOrParentOrder compares two paths within the same root using exact or parent order.
-func compareByExactOrParentOrder(pathI, pathJ DiffPath, pathOrder map[string]int, findParentOrder func(DiffPath) (int, bool)) int {
-	// First try exact path match
-	orderI, okI := pathOrder[pathI.String()]
-	orderJ, okJ := pathOrder[pathJ.String()]
-	if okI && okJ {
-		return cmp.Compare(orderI, orderJ)
-	}
-	if okI && !okJ {
-		return -1
-	}
-	if !okI && okJ {
-		return 1
-	}
-
-	parentOrderI, okI := findParentOrder(pathI)
-	parentOrderJ, okJ := findParentOrder(pathJ)
-	if okI && okJ {
-		if c := cmp.Compare(parentOrderI, parentOrderJ); c != 0 {
-			return c
-		}
-	}
-
-	// Within same parent, sort by depth first
-	if c := cmp.Compare(pathI.Depth(), pathJ.Depth()); c != 0 {
-		return c
-	}
-
-	return cmp.Compare(pathI.String(), pathJ.String())
-}
-
 func sortDiffsWithOrder(diffs []Difference, pathOrder map[string]int) {
 	if len(diffs) == 0 {
 		return
@@ -376,7 +345,7 @@ func sortDiffsWithOrder(diffs []Difference, pathOrder map[string]int) {
 	copy(diffs, sorted)
 }
 
-// compareByExactOrParentOrderCached is like compareByExactOrParentOrder but uses pre-computed path strings.
+// compareByExactOrParentOrderCached compares two paths within the same root using exact or parent order, with pre-computed path strings.
 func compareByExactOrParentOrderCached(strI, strJ string, pathI, pathJ DiffPath, pathOrder map[string]int, findParentOrder func(DiffPath) (int, bool)) int {
 	orderI, okI := pathOrder[strI]
 	orderJ, okJ := pathOrder[strJ]

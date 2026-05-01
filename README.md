@@ -33,6 +33,7 @@ diffyml compares YAML files and shows meaningful, structured differences — not
   - [AI Summary](#ai-summary)
   - [Sensitive Value Masking](#sensitive-value-masking)
   - [Filtering](#filtering)
+  - [Neat Mode](#neat-mode)
   - [Configuration File](#configuration-file)
   - [Custom Colors](#custom-colors)
   - [All Flags](#all-flags)
@@ -369,6 +370,37 @@ diffyml --exclude 'metadata.annotations[argocd.argoproj.io/tracking-id]' old.yam
 # Regex filtering
 diffyml --filter-regexp 'spec\.containers\[.*\]\.image' old.yaml new.yaml
 ```
+
+### Neat Mode
+
+`--neat` excludes well-known noise paths injected by the Kubernetes API server, kubectl, Helm, ArgoCD, and Flux — `metadata.managedFields`, `metadata.resourceVersion`, the entire `status` subtree, `meta.helm.sh/release-name`, `helm.sh/chart`, `argocd.argoproj.io/tracking-id`, `kustomize.toolkit.fluxcd.io/*`, and similar paths. The full strip list lives in [`doc/neat.md`](doc/neat.md).
+
+```bash
+# Compare a kube-apiserver-rendered manifest against your source-of-truth
+# (using process substitution; diffyml reads files, not stdin)
+diffyml --neat <(kubectl get deployment nginx -o yaml) source.yaml
+
+# In a kubectl/helm/argocd diff workflow
+KUBECTL_EXTERNAL_DIFF="diffyml --neat" kubectl diff -f deployment.yaml
+
+# See what neat actually filtered
+diffyml --neat --neat-explain old.yaml new.yaml
+```
+
+Per-layer opt-outs let you keep one bundle while stripping the rest:
+
+```bash
+# Show Helm chart-version diffs but still strip ArgoCD/Flux/managedFields
+diffyml --neat --no-neat-helm old.yaml new.yaml
+```
+
+`--neat-strip-path` extends the bundle without rebuilding (requires `--neat`):
+
+```bash
+diffyml --neat --neat-strip-path '^metadata\.annotations\[my\.org/.*\]$' old.yaml new.yaml
+```
+
+`--neat` deliberately preserves `spec.template.metadata.annotations[kubectl.kubernetes.io/restartedAt]` (intentional rollout marker), `spec.replicas`, `data`/`stringData` (use `--mask-secrets` for those), and user-defined labels/annotations outside the canonical noise prefixes.
 
 ### Configuration File
 

@@ -1,0 +1,12 @@
+Found two differences
+
+spec.replicas  (apps/v1/Deployment/default/nginx)
+  ± value change
+    - 3
+    + 5
+
+spec.template.spec.containers.nginx.image  (apps/v1/Deployment/default/nginx)
+  ± value change
+    - nginx:1.20
+    + nginx:1.21
+

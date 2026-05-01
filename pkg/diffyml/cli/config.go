@@ -41,6 +41,9 @@ type FileConfig struct {
 	ExcludeRegexp         []string `yaml:"exclude-regexp"`
 	AdditionalIdentifiers []string `yaml:"additional-identifier"`
 
+	// Neat options (curated K8s/Helm/ArgoCD/Flux noise filter)
+	Neat *NeatFileConfig `yaml:"neat"`
+
 	// Sensitive value masking options
 	MaskSecrets     *bool    `yaml:"mask-secrets"`
 	MaskPaths       []string `yaml:"mask-path"`
@@ -76,6 +79,20 @@ type ColorOverrides struct {
 	Modified *string `yaml:"modified"`
 	Context  *string `yaml:"context"`
 	DocName  *string `yaml:"doc-name"`
+}
+
+// NeatFileConfig is the YAML representation of --neat options. Unlike the
+// CLI which uses opt-out flags (--no-neat-helm), the config file expresses
+// each profile as a positive truth-table for readability. The Enabled field
+// corresponds to --neat itself.
+type NeatFileConfig struct {
+	Enabled   *bool    `yaml:"enabled"`
+	Helm      *bool    `yaml:"helm"`
+	ArgoCD    *bool    `yaml:"argocd"`
+	Flux      *bool    `yaml:"flux"`
+	Status    *bool    `yaml:"status"`
+	StripPath []string `yaml:"strip-path"`
+	Explain   *bool    `yaml:"explain"`
 }
 
 // findConfigFile returns the config path: --config flag if given (must exist),
@@ -193,6 +210,29 @@ func (c *CLIConfig) applyFileConfig(fc *FileConfig, cliSet map[string]bool) {
 	}
 	if len(fc.AdditionalIdentifiers) > 0 && notSet("additional-identifier") {
 		c.AdditionalIdentifiers = fc.AdditionalIdentifiers
+	}
+
+	// Neat options. Config uses positive truth-table (helm: false ⇒ drop helm),
+	// CLI uses opt-out flags (--no-neat-helm), so polarity is inverted on apply.
+	if fc.Neat != nil {
+		applyInverted := func(name string, src *bool, dst *bool) {
+			if src != nil && notSet(name) {
+				*dst = !*src
+			}
+		}
+		if fc.Neat.Enabled != nil && notSet("neat") {
+			c.Neat = *fc.Neat.Enabled
+		}
+		applyInverted("no-neat-helm", fc.Neat.Helm, &c.NoNeatHelm)
+		applyInverted("no-neat-argocd", fc.Neat.ArgoCD, &c.NoNeatArgoCD)
+		applyInverted("no-neat-flux", fc.Neat.Flux, &c.NoNeatFlux)
+		applyInverted("no-neat-status", fc.Neat.Status, &c.NoNeatStatus)
+		if fc.Neat.Explain != nil && notSet("neat-explain") {
+			c.NeatExplain = *fc.Neat.Explain
+		}
+		if len(fc.Neat.StripPath) > 0 && notSet("neat-strip-path") {
+			c.NeatStripPath = fc.Neat.StripPath
+		}
 	}
 
 	// Sensitive value masking options

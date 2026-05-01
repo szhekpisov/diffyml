@@ -109,10 +109,6 @@ func parsePath(path string) ([]pathSegment, error) {
 	}
 
 	for _, part := range parts {
-		if part == "" {
-			continue
-		}
-
 		// Check for bracket notation: key[index]
 		if idx := strings.Index(part, "["); idx >= 0 {
 			if strings.Count(part, "[") != 1 || strings.Count(part, "]") != 1 || !strings.HasSuffix(part, "]") {

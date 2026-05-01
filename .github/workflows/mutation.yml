@@ -37,7 +37,13 @@ jobs:
         with:
           go-version: "1.26.2"
 
+      # Bypass proxy.golang.org + sum.golang.org so a force-retagged release
+      # is fetched fresh from GitHub. The Go ecosystem treats published
+      # versions as immutable; without this, an upstream retag is invisible.
       - name: Install gomutants
+        env:
+          GOPROXY: direct
+          GOSUMDB: "off"
         run: go install github.com/szhekpisov/gomutants@v0.1.0
 
       # PRs: --changed-since limits work to touched lines; gate on

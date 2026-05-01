@@ -132,6 +132,21 @@ func matchesAnyRegex(diffPath string, patterns []*regexp.Regexp) bool {
 	return false
 }
 
+// matchesAnyRegexWithNested checks if the diff path or any of its nested
+// key paths match any regex pattern. Used on the include path where only
+// a boolean answer is needed and no hit attribution is required.
+func matchesAnyRegexWithNested(diffPath string, nestedPaths []string, patterns []*regexp.Regexp) bool {
+	if matchesAnyRegex(diffPath, patterns) {
+		return true
+	}
+	for _, np := range nestedPaths {
+		if matchesAnyRegex(np, patterns) {
+			return true
+		}
+	}
+	return false
+}
+
 // nestedKeyPaths returns extended path strings for diffs that report
 // added/removed map entries at the parent path. For such diffs, the
 // actual key lives inside the From/To OrderedMap. Returns nil if the
@@ -218,8 +233,8 @@ func FilterDiffsWithRegexpReport(diffs []Difference, opts *FilterOptions, report
 
 		// Step 1: Apply include filters (path or regex)
 		if hasIncludeFilters {
-			_, includedByRegex := firstMatchingRegexWithNested(pathStr, nested, includeRegex)
-			included = matchesAnyPathWithNested(pathStr, nested, opts.IncludePaths) || includedByRegex
+			included = matchesAnyPathWithNested(pathStr, nested, opts.IncludePaths) ||
+				matchesAnyRegexWithNested(pathStr, nested, includeRegex)
 		}
 
 		if !included {

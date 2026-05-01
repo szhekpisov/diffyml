@@ -12,6 +12,8 @@ diffyml --neat --no-neat-helm old.yaml new.yaml # keep Helm-injected diffs
 diffyml --neat --neat-explain old.yaml new.yaml # report which patterns fired
 ```
 
+`--neat-explain` reports hits **only for patterns in the curated neat bundle**. Hits for `--neat-strip-path` entries and user-supplied `--exclude-regexp` patterns are intentionally **not** included in the report — if you need to audit those, run a separate pass with `--exclude-regexp` removed.
+
 ## Profile bundles
 
 `--neat` is the union of five profiles. Each can be opted out individually.
@@ -51,7 +53,7 @@ Disable with `--no-neat-status` when triaging HPA, Job completion, or Certificat
 | `metadata.labels[helm.sh/chart]` | Helm (cause of phantom diffs on chart bumps) |
 | `metadata.labels[app.kubernetes.io/managed-by]` | Helm convention |
 
-The `app.kubernetes.io/managed-by` label is stripped unconditionally even when its value isn't `Helm`. Disable with `--no-neat-helm` if your chart uses it for non-Helm semantics.
+The `app.kubernetes.io/managed-by` label is stripped unconditionally — `--neat` is a path-based filter and does not inspect values. Even if your resource sets `managed-by: Kustomize` or `managed-by: my-tool`, the diff on that label will be suppressed under `--neat`. If you rely on this label for non-Helm semantics, disable the bundle with `--no-neat-helm`.
 
 ### `argocd` — gated by `--no-neat-argocd`
 

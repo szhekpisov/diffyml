@@ -397,7 +397,7 @@ diffyml --neat --no-neat-helm old.yaml new.yaml
 `--neat-strip-path` extends the bundle without rebuilding (requires `--neat`):
 
 ```bash
-diffyml --neat --neat-strip-path '\.metadata\.creationTimestamp$' old.yaml new.yaml
+diffyml --neat --neat-strip-path '^metadata\.annotations\[my\.org/.*\]$' old.yaml new.yaml
 ```
 
 `--neat` deliberately preserves `spec.template.metadata.annotations[kubectl.kubernetes.io/restartedAt]` (intentional rollout marker), `spec.replicas`, `data`/`stringData` (use `--mask-secrets` for those), and user-defined labels/annotations outside the canonical noise prefixes.

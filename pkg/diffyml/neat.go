@@ -3,7 +3,12 @@
 // without quoting (e.g. metadata.annotations[meta.helm.sh/release-name]).
 package diffyml
 
-// NeatProfile names a single bundle of noise-filter patterns.
+// NeatProfile names a single bundle of noise-filter patterns. The string
+// values double as the user-facing labels printed in `--neat-explain` output
+// (e.g. "[helm] helm.sh/chart"). Renaming a constant therefore changes both
+// the internal discriminator and the report label — keep them aligned with
+// the YAML config keys (helm/argocd/flux/status) and the CLI flag suffixes
+// (--no-neat-helm, etc.) so users see one consistent vocabulary.
 type NeatProfile string
 
 const (

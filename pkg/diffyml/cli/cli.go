@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/szhekpisov/diffyml/pkg/diffyml"
@@ -366,11 +367,7 @@ func (c *CLIConfig) ToFilterOptions() *diffyml.FilterOptions {
 	excludeRegexp := c.ExcludeRegexp
 	if c.Neat {
 		neat := diffyml.BuildNeatExcludeRegexp(c.ToNeatOptions())
-		merged := make([]string, 0, len(neat)+len(c.NeatStripPath)+len(excludeRegexp))
-		merged = append(merged, neat...)
-		merged = append(merged, c.NeatStripPath...)
-		merged = append(merged, excludeRegexp...)
-		excludeRegexp = merged
+		excludeRegexp = slices.Concat(neat, c.NeatStripPath, excludeRegexp)
 	}
 	return &diffyml.FilterOptions{
 		IncludePaths:  c.Filter,
@@ -742,17 +739,12 @@ func loadContents(cfg *CLIConfig, rc *RunConfig) ([]byte, []byte, error) {
 }
 
 // writeNeatExplain prints which neat regexes fired and their hit counts to w.
-// Patterns with zero hits are suppressed. report.ExcludeHits is positionally
-// aligned with NeatPatterns(opts) because ToFilterOptions prepends the neat
-// bundle to FilterOptions.ExcludeRegexp; the length-check below is a guard
-// against future callers wiring up a mismatched FilterReport.
+// Patterns with zero hits are suppressed. report.ExcludeHits[0:len(patterns)]
+// is positionally aligned with NeatPatterns(opts) because ToFilterOptions
+// prepends the neat bundle to FilterOptions.ExcludeRegexp — and
+// FilterDiffsWithRegexpReport allocates ExcludeHits to match that length.
 func writeNeatExplain(w io.Writer, cfg *CLIConfig, report *diffyml.FilterReport) {
 	patterns := diffyml.NeatPatterns(cfg.ToNeatOptions())
-	if len(report.ExcludeHits) < len(patterns) {
-		fmt.Fprintf(w, "neat: explain unavailable (FilterReport has %d entries, expected at least %d)\n",
-			len(report.ExcludeHits), len(patterns))
-		return
-	}
 	type entry struct {
 		profile diffyml.NeatProfile
 		label   string

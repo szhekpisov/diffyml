@@ -7,7 +7,7 @@ import (
 
 // Tests for code paths that handle map[string]any values.
 // The parser always produces *OrderedMap, but these branches exist as
-// defensive handling for direct callers. We test them to kill gomutant mutants.
+// defensive handling for direct callers. We test them to kill gomutants mutants.
 
 // --- compareNodes with map[string]any ---
 

@@ -52,11 +52,9 @@ jobs:
           version: v0.1.0
           threshold-efficacy: "100"
           args: >-
-            unleash
             --workers 2
-            --coverpkg=./pkg/diffyml/...
-            --changed-since=origin/${{ github.base_ref }}
-            --output=mutation-report.json
+            --coverpkg ./pkg/diffyml/...
+            --changed-since origin/${{ github.base_ref }}
             ./pkg/diffyml/
 
       # Push to main: full-tree run; gate on the absolute test_efficacy
@@ -73,10 +71,8 @@ jobs:
           version: v0.1.0
           threshold-efficacy: "85.65"
           args: >-
-            unleash
             --workers 2
-            --coverpkg=./pkg/diffyml/...
-            --output=mutation-report.json
+            --coverpkg ./pkg/diffyml/...
             ./pkg/diffyml/
 
       - name: Clean build cache

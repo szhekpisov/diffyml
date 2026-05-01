@@ -111,11 +111,11 @@ fuzz-long:
 	done
 
 mutation:
-	gomutants unleash --workers 10 --coverpkg="./pkg/diffyml/..." --output=mutation-report.json ./pkg/diffyml/
+	gomutants --workers 10 --coverpkg ./pkg/diffyml/... ./pkg/diffyml/
 	go clean -cache
 
 mutation-dry:
-	gomutants unleash --dry-run --coverpkg="./pkg/diffyml/..." ./pkg/diffyml/
+	gomutants --dry-run --coverpkg ./pkg/diffyml/... ./pkg/diffyml/
 
 ci: fmt vet test check-coverage security docs-check
 

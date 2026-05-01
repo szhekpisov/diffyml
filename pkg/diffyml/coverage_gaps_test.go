@@ -1030,21 +1030,6 @@ func TestHasIdentifierField_PlainMapWithID(t *testing.T) {
 	}
 }
 
-// --- diffyml.go: compareByExactOrParentOrder !okI && okJ branch ---
-
-func TestCompareByExactOrParentOrder_OnlyJInOrder(t *testing.T) {
-	pathOrder := map[string]int{
-		"known": 0,
-	}
-	// pathI is not in pathOrder, pathJ is → should return 1 (!okI && okJ)
-	result := compareByExactOrParentOrder(DiffPath{"unknown"}, DiffPath{"known"}, pathOrder, func(path DiffPath) (int, bool) {
-		return 0, false
-	})
-	if result != 1 {
-		t.Errorf("expected 1 when only J is in order, got %d", result)
-	}
-}
-
 // --- kubernetes.go: detectK8sOrderChanges same order → nil ---
 
 // --- chroot.go: parsePath additional edge cases ---

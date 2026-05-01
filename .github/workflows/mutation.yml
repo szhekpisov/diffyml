@@ -14,16 +14,26 @@ on:
       - '**/*.go'
       - 'go.mod'
       - 'go.sum'
+      - '.github/workflows/mutation.yml'
   push:
     branches: [main]
     paths:
       - '**/*.go'
       - 'go.mod'
       - 'go.sum'
+      - '.github/workflows/mutation.yml'
 
 jobs:
   mutation:
     runs-on: ubuntu-latest
+    # Bypass proxy.golang.org + sum.golang.org so a force-retagged release
+    # is fetched fresh from GitHub. Set at job level so the gomutants action's
+    # internal `go install` step inherits it. Go's module proxy treats
+    # published versions as immutable; without this, an upstream retag is
+    # invisible to consumers.
+    env:
+      GOPROXY: direct
+      GOSUMDB: "off"
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
@@ -33,85 +43,37 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref }}
 
-      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
-        with:
-          go-version: "1.26.2"
-
-      - name: Install gomutant
-        run: go install github.com/szhekpisov/gomutant@v0.1.0
-
       # PRs: --changed-since limits work to touched lines; gate on
-      # "no LIVED mutant in the diff".
+      # "no LIVED mutant in the diff" via threshold-efficacy=100.
       - name: Run mutation testing (PR — diff only)
         if: github.event_name == 'pull_request'
-        env:
-          BASE_REF: ${{ github.base_ref }}
-        run: >-
-          gomutant unleash
-          --workers 2
-          --coverpkg="./pkg/diffyml/..."
-          --changed-since="origin/${BASE_REF}"
-          --output=mutation-report.json
-          ./pkg/diffyml/
+        uses: szhekpisov/gomutants@1ec68f111c32d4c60cb991fcb6537d117b6975b9 # v0.1.0
+        with:
+          version: v0.1.0
+          threshold-efficacy: "100"
+          args: >-
+            --workers 2
+            --coverpkg ./pkg/diffyml/...
+            --changed-since origin/${{ github.base_ref }}
+            ./pkg/diffyml/
 
       # Push to main: full-tree run; gate on the absolute test_efficacy
       # floor (catches coverage rot in code no PR happens to touch).
+      # Pinned to the local measurement at migration time (gomutants v0.1.0,
+      # 2026-04-29): 85.66% efficacy on 2325 mutants (1666 killed, 279 lived,
+      # 324 not_viable, 34 not_covered, 22 timed_out). gomutants runs ~16
+      # mutators vs gremlins' 11, so the absolute number is lower than the
+      # legacy 100% figure. Ratchet up as tests improve.
       - name: Run mutation testing (post-merge — full)
         if: github.event_name == 'push'
-        run: >-
-          gomutant unleash
-          --workers 2
-          --coverpkg="./pkg/diffyml/..."
-          --output=mutation-report.json
-          ./pkg/diffyml/
-
-      # On --changed-since runs the absolute test_efficacy floor isn't
-      # meaningful (subset varies per PR). Gate on "no LIVED mutant on
-      # changed lines": every mutation introduced by the PR must die.
-      - name: Gate on lived mutants (PR)
-        if: github.event_name == 'pull_request'
-        run: |
-          set -euo pipefail
-          if [ ! -s mutation-report.json ]; then
-            echo "::error::mutation-report.json missing or empty"
-            exit 1
-          fi
-          TOTAL=$(jq -r '.mutants_total // 0' mutation-report.json)
-          KILLED=$(jq -r '.mutants_killed // 0' mutation-report.json)
-          LIVED=$(jq -r '.mutants_lived // 0' mutation-report.json)
-          NOT_VIABLE=$(jq -r '.mutants_not_viable // 0' mutation-report.json)
-          NOT_COVERED=$(jq -r '.mutants_not_covered // 0' mutation-report.json)
-          TIMED_OUT=$(( TOTAL - KILLED - LIVED - NOT_VIABLE - NOT_COVERED ))
-          echo "Mutants on changed lines: total=${TOTAL} killed=${KILLED} lived=${LIVED} not_viable=${NOT_VIABLE} not_covered=${NOT_COVERED} timed_out=${TIMED_OUT}"
-          if [ "${LIVED}" -gt 0 ]; then
-            echo "::error::${LIVED} mutant(s) on changed lines survived — strengthen tests or revert"
-            exit 1
-          fi
-
-      - name: Check efficacy threshold (post-merge)
-        if: github.event_name == 'push'
-        run: |
-          set -euo pipefail
-          if [ ! -s mutation-report.json ]; then
-            echo "::error::mutation-report.json missing or empty"
-            exit 1
-          fi
-          EFFICACY=$(jq -r '.test_efficacy // empty' mutation-report.json)
-          if [ -z "${EFFICACY}" ]; then
-            echo "::error::test_efficacy missing from mutation-report.json"
-            exit 1
-          fi
-          # Pinned to the local measurement at migration time (gomutant v0.1.0,
-          # 2026-04-29): 85.66% efficacy on 2325 mutants (1666 killed, 279 lived,
-          # 324 not_viable, 34 not_covered, 22 timed_out). gomutant runs ~16
-          # mutators vs gremlins' 11, so the absolute number is lower than the
-          # legacy 100% figure. Ratchet up as tests improve.
-          THRESHOLD=85.65
-          echo "Test efficacy: ${EFFICACY}% (required: ${THRESHOLD}%)"
-          if [ "$(echo "${EFFICACY} < ${THRESHOLD}" | bc -l)" -eq 1 ]; then
-            echo "::error::Mutation test efficacy ${EFFICACY}% is below ${THRESHOLD}% threshold"
-            exit 1
-          fi
+        uses: szhekpisov/gomutants@1ec68f111c32d4c60cb991fcb6537d117b6975b9 # v0.1.0
+        with:
+          version: v0.1.0
+          threshold-efficacy: "85.65"
+          args: >-
+            --workers 2
+            --coverpkg ./pkg/diffyml/...
+            ./pkg/diffyml/
 
       - name: Clean build cache
         if: always()

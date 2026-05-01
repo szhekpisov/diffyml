@@ -377,7 +377,8 @@ diffyml --filter-regexp 'spec\.containers\[.*\]\.image' old.yaml new.yaml
 
 ```bash
 # Compare a kube-apiserver-rendered manifest against your source-of-truth
-kubectl get deployment nginx -o yaml | diffyml --neat - source.yaml
+# (using process substitution; diffyml reads files, not stdin)
+diffyml --neat <(kubectl get deployment nginx -o yaml) source.yaml
 
 # In a kubectl/helm/argocd diff workflow
 KUBECTL_EXTERNAL_DIFF="diffyml --neat" kubectl diff -f deployment.yaml

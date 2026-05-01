@@ -749,6 +749,8 @@ func loadContents(cfg *CLIConfig, rc *RunConfig) ([]byte, []byte, error) {
 func writeNeatExplain(w io.Writer, cfg *CLIConfig, report *diffyml.FilterReport) {
 	patterns := diffyml.NeatPatterns(cfg.ToNeatOptions())
 	if len(report.ExcludeHits) < len(patterns) {
+		fmt.Fprintf(w, "neat: explain unavailable (FilterReport has %d entries, expected at least %d)\n",
+			len(report.ExcludeHits), len(patterns))
 		return
 	}
 	type entry struct {

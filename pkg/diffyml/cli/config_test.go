@@ -1020,3 +1020,121 @@ func TestParseArgs_ConfigFileEmptyNoError(t *testing.T) {
 		t.Errorf("expected default Output='detailed', got %q", cfg.Output)
 	}
 }
+
+// --- Neat config tests ---
+
+func TestApplyFileConfig_Neat_EnabledTrueSetsCLINeat(t *testing.T) {
+	cfg := NewCLIConfig()
+	enabled := true
+	fc := &FileConfig{Neat: &NeatFileConfig{Enabled: &enabled}}
+	cfg.applyFileConfig(fc, map[string]bool{})
+
+	if !cfg.Neat {
+		t.Error("expected cfg.Neat=true after neat.enabled: true")
+	}
+}
+
+// TestApplyFileConfig_Neat_PolarityInversion verifies the positive truth-table
+// in the YAML config (helm: false ⇒ drop helm) maps to the opt-out CLI bool
+// (cfg.NoNeatHelm=true). This is the only place in the codebase where polarity
+// is intentionally inverted.
+func TestApplyFileConfig_Neat_PolarityInversion(t *testing.T) {
+	tests := []struct {
+		name      string
+		setConfig func(*NeatFileConfig)
+		check     func(*CLIConfig) bool
+		field     string
+	}{
+		{
+			"helm: false sets NoNeatHelm",
+			func(n *NeatFileConfig) { f := false; n.Helm = &f },
+			func(c *CLIConfig) bool { return c.NoNeatHelm },
+			"NoNeatHelm",
+		},
+		{
+			"argocd: false sets NoNeatArgoCD",
+			func(n *NeatFileConfig) { f := false; n.ArgoCD = &f },
+			func(c *CLIConfig) bool { return c.NoNeatArgoCD },
+			"NoNeatArgoCD",
+		},
+		{
+			"flux: false sets NoNeatFlux",
+			func(n *NeatFileConfig) { f := false; n.Flux = &f },
+			func(c *CLIConfig) bool { return c.NoNeatFlux },
+			"NoNeatFlux",
+		},
+		{
+			"status: false sets NoNeatStatus",
+			func(n *NeatFileConfig) { f := false; n.Status = &f },
+			func(c *CLIConfig) bool { return c.NoNeatStatus },
+			"NoNeatStatus",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := NewCLIConfig()
+			n := &NeatFileConfig{}
+			tt.setConfig(n)
+			fc := &FileConfig{Neat: n}
+			cfg.applyFileConfig(fc, map[string]bool{})
+
+			if !tt.check(cfg) {
+				t.Errorf("expected %s=true after polarity inversion", tt.field)
+			}
+		})
+	}
+}
+
+// TestApplyFileConfig_Neat_TrueLeavesNoFlagFalse verifies that the positive
+// case (helm: true) does not set NoNeatHelm (which would double-invert).
+func TestApplyFileConfig_Neat_TrueLeavesNoFlagFalse(t *testing.T) {
+	cfg := NewCLIConfig()
+	helm := true
+	fc := &FileConfig{Neat: &NeatFileConfig{Helm: &helm}}
+	cfg.applyFileConfig(fc, map[string]bool{})
+
+	if cfg.NoNeatHelm {
+		t.Error("expected NoNeatHelm=false when neat.helm: true (no inversion)")
+	}
+}
+
+func TestApplyFileConfig_Neat_StripPathAndExplain(t *testing.T) {
+	cfg := NewCLIConfig()
+	explain := true
+	fc := &FileConfig{Neat: &NeatFileConfig{
+		StripPath: []string{`^foo$`, `^bar$`},
+		Explain:   &explain,
+	}}
+	cfg.applyFileConfig(fc, map[string]bool{})
+
+	if len(cfg.NeatStripPath) != 2 {
+		t.Errorf("expected 2 strip-path entries from config, got %d", len(cfg.NeatStripPath))
+	}
+	if !cfg.NeatExplain {
+		t.Error("expected NeatExplain=true from config")
+	}
+}
+
+func TestApplyFileConfig_Neat_CLIOverridesConfig(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.NoNeatHelm = false // CLI: --no-neat-helm not set (or =false)
+
+	helm := false // config wants to drop helm (NoNeatHelm=true)
+	fc := &FileConfig{Neat: &NeatFileConfig{Helm: &helm}}
+	// "no-neat-helm" was explicitly set on CLI
+	cfg.applyFileConfig(fc, map[string]bool{"no-neat-helm": true})
+
+	if cfg.NoNeatHelm {
+		t.Error("CLI override should win: config tried to set NoNeatHelm but CLI was explicit")
+	}
+}
+
+func TestApplyFileConfig_Neat_NilLeavesDefaults(t *testing.T) {
+	cfg := NewCLIConfig()
+	fc := &FileConfig{} // no Neat block at all
+	cfg.applyFileConfig(fc, map[string]bool{})
+
+	if cfg.Neat || cfg.NoNeatHelm || cfg.NoNeatArgoCD || cfg.NoNeatFlux || cfg.NoNeatStatus || cfg.NeatExplain {
+		t.Error("expected all neat fields to remain default false when config has no neat block")
+	}
+}

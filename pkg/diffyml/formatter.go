@@ -89,7 +89,10 @@ func FormatterByName(name string) (Formatter, error) {
 	case "gitlab":
 		return &GitLabFormatter{}, nil
 	case "gitea":
-		return &GiteaFormatter{}, nil
+		// Gitea Actions accepts the GitHub Actions workflow command syntax
+		// (gitea/gitea#23722). It silently ignores annotations in the UI,
+		// but the output is parseable in raw build logs.
+		return &GitHubFormatter{}, nil
 	case "json":
 		return &JSONFormatter{}, nil
 	case "json-patch":
@@ -571,17 +574,6 @@ func (f *GitLabFormatter) FormatAll(groups []DiffGroup, _ *FormatOptions) string
 
 	sb.WriteString("]\n")
 	return sb.String()
-}
-
-// GiteaFormatter renders output compatible with Gitea CI/CD.
-// Uses GitHub Actions compatible format. Note: Gitea Actions silently ignores
-// workflow command annotations (see gitea/gitea#23722), so annotations may not
-// appear in the Gitea UI. The output is still valid for log parsing.
-//
-// Behaviour is inherited from GitHubFormatter via struct embedding;
-// FormatSingle, Format, and FormatAll are promoted methods.
-type GiteaFormatter struct {
-	GitHubFormatter
 }
 
 // JSONFormatter renders differences as machine-readable JSON.

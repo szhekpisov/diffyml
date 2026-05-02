@@ -620,4 +620,8 @@ This project is heavily inspired by [dyff](https://github.com/homeport/dyff), an
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+[MIT](LICENSE).
+
+---
+
+If you find this project useful, please consider giving it a ⭐ — it helps others discover it.

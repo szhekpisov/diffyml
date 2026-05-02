@@ -35,25 +35,34 @@ func TestParseColor_Hex3(t *testing.T) {
 }
 
 func TestParseColor_Invalid(t *testing.T) {
-	tests := []string{
-		"",
-		"red",
-		"blue",
-		"#gg0000",
-		"#00gg00",
-		"#0000gg",
-		"#12345",
-		"#1234567",
-		"invalid",
-		"#xyz",
-		"#0x0",
-		"#00x",
+	// errSubstr pins the specific error path so the empty / non-hex / bad-hex
+	// cases stay distinguishable from each other (mutation testing surfaced
+	// equivalent-error-message gaps when only `err != nil` was asserted).
+	tests := []struct {
+		input     string
+		errSubstr string
+	}{
+		{"", "empty color specification"},
+		{"red", "use hex"},
+		{"blue", "use hex"},
+		{"invalid", "use hex"},
+		{"#gg0000", "invalid hex color"},
+		{"#00gg00", "invalid hex color"},
+		{"#0000gg", "invalid hex color"},
+		{"#12345", "expected #rrggbb or #rgb"},
+		{"#1234567", "expected #rrggbb or #rgb"},
+		{"#xyz", "invalid hex color"},
+		{"#0x0", "invalid hex color"},
+		{"#00x", "invalid hex color"},
 	}
-	for _, s := range tests {
-		t.Run(s, func(t *testing.T) {
-			_, err := ParseColor(s)
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			_, err := ParseColor(tt.input)
 			if err == nil {
-				t.Errorf("expected error for %q", s)
+				t.Fatalf("expected error for %q", tt.input)
+			}
+			if !strings.Contains(err.Error(), tt.errSubstr) {
+				t.Errorf("ParseColor(%q) error = %q, want substring %q", tt.input, err.Error(), tt.errSubstr)
 			}
 		})
 	}
@@ -79,6 +88,22 @@ func TestParseColor_Hex3_Uppercase(t *testing.T) {
 	}
 	if !c.IsCustom {
 		t.Error("expected IsCustom=true")
+	}
+}
+
+// TestParseColor_Hex3_AllChannelsNonExtreme exercises the case-3 bit-extraction
+// (`int(val>>16)&0xFF, int(val>>8)&0xFF, int(val)&0xFF`) with values where
+// every channel is non-zero and below 0xFF. The earlier hex-3 tests use only
+// 0x00 / 0xFF channel values, which leaves bitwise mutants (& → |, >> → <<)
+// on the high byte indistinguishable from the original. With #abc → 0xAABBCC
+// each shift width and mask drop-out is observable.
+func TestParseColor_Hex3_AllChannelsNonExtreme(t *testing.T) {
+	c, err := ParseColor("#abc")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if c.R != 0xAA || c.G != 0xBB || c.B != 0xCC {
+		t.Errorf("got RGB(%d,%d,%d), want (170,187,204)", c.R, c.G, c.B)
 	}
 }
 

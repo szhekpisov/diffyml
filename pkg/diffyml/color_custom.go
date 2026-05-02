@@ -70,23 +70,12 @@ func (p *CustomColorPalette) colorForRole(role ColorRole) *CustomColor {
 }
 
 // ColorCode returns the ANSI escape string for a color role.
-// When the color is a default (not custom), returns the existing hardcoded value.
+// DefaultCustomColorPalette is constructed to mirror the built-in
+// DetailedColorCode / ContextColorCode / DocNameColorCode values exactly,
+// so for default roles we render straight from the palette's R/G/B/ANSICode
+// fields. TestCustomColorPalette_ColorCode_Default pins this equivalence.
 func (p *CustomColorPalette) ColorCode(role ColorRole, useTrueColor bool) string {
 	c := p.colorForRole(role)
-	if !c.IsCustom {
-		switch role {
-		case ColorRoleAdded:
-			return DetailedColorCode(DiffAdded, useTrueColor)
-		case ColorRoleRemoved:
-			return DetailedColorCode(DiffRemoved, useTrueColor)
-		case ColorRoleModified:
-			return DetailedColorCode(DiffModified, useTrueColor)
-		case ColorRoleContext:
-			return ContextColorCode(useTrueColor)
-		case ColorRoleDocName:
-			return DocNameColorCode(useTrueColor)
-		}
-	}
 	if useTrueColor {
 		return TrueColorCode(c.R, c.G, c.B)
 	}

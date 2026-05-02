@@ -377,6 +377,8 @@ func TestDetailedFormatter_FormatCount(t *testing.T) {
 		{12, "twelve"},
 		{13, "13"},
 		{100, "100"},
+		{-1, "-1"},
+		{-42, "-42"},
 	}
 	for _, tt := range tests {
 		result := formatCount(tt.n)
@@ -1773,6 +1775,29 @@ func TestFormatTimestamp(t *testing.T) {
 			t.Errorf("expected 2023-06-15T14:30:00Z, got %s", got)
 		}
 	})
+
+	// Each non-zero component on its own must defeat the date-only branch.
+	// These cases pin every conjunct of `Hour==0 && Minute==0 && Second==0
+	// && Nanosecond==0` so a single false term forces RFC3339 output.
+	componentCases := []struct {
+		name string
+		ts   time.Time
+		want string
+	}{
+		{"non-zero hour only", time.Date(2024, 1, 1, 5, 0, 0, 0, time.UTC), "2024-01-01T05:00:00Z"},
+		{"non-zero minute only", time.Date(2024, 1, 1, 0, 7, 0, 0, time.UTC), "2024-01-01T00:07:00Z"},
+		{"non-zero second only", time.Date(2024, 1, 1, 0, 0, 11, 0, time.UTC), "2024-01-01T00:00:11Z"},
+		// time.RFC3339 omits nanoseconds, but the mutant would route to
+		// the date-only branch ("2024-01-01"); both are still distinguishable.
+		{"non-zero nanosecond only", time.Date(2024, 1, 1, 0, 0, 0, 1, time.UTC), "2024-01-01T00:00:00Z"},
+	}
+	for _, tc := range componentCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := formatTimestamp(tc.ts); got != tc.want {
+				t.Errorf("expected %s, got %s", tc.want, got)
+			}
+		})
+	}
 }
 
 func TestFormatDetailedValue_Timestamp(t *testing.T) {

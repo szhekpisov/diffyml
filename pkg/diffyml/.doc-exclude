@@ -51,8 +51,6 @@ K8sResourceDisplayName
 # Parser internals (most users call Compare directly)
 DocumentParser
 NewDocumentParser
-NodeDocumentParser
-NewNodeDocumentParser
 ParseError
 
 # Constructors documented under their parent type

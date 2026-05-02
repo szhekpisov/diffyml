@@ -460,11 +460,9 @@ func formatCommaSeparated(val any) string {
 	return formatDetailedValue(val)
 }
 
-// formatDetailedValue formats a value for display, handling nil.
+// formatDetailedValue formats a value for display.
+// Nil values render as "<nil>" via fmt.Sprintf's default verb.
 func formatDetailedValue(val any) string {
-	if val == nil {
-		return "<nil>"
-	}
 	if t, ok := val.(time.Time); ok {
 		return formatTimestamp(t)
 	}

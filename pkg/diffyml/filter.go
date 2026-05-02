@@ -28,37 +28,19 @@ type FilterOptions struct {
 // FilterDiffs filters the list of differences based on the provided options.
 // If opts is nil or has no filters, returns the original diffs unchanged.
 // Include filters are applied before exclude filters.
+//
+// FilterDiffs intentionally ignores IncludeRegexp / ExcludeRegexp; callers
+// that need regex support must use FilterDiffsWithRegexp.
 func FilterDiffs(diffs []Difference, opts *FilterOptions) []Difference {
 	if opts == nil {
 		return diffs
 	}
-
-	// If no filters specified, return all diffs
-	if len(opts.IncludePaths) == 0 && len(opts.ExcludePaths) == 0 {
-		return diffs
+	pathOnly := &FilterOptions{
+		IncludePaths: opts.IncludePaths,
+		ExcludePaths: opts.ExcludePaths,
 	}
-
-	var result []Difference
-
-	for _, diff := range diffs {
-		pathStr := diff.Path.String()
-		nested := nestedKeyPaths(diff)
-
-		// Step 1: Apply include filter (if specified)
-		if len(opts.IncludePaths) > 0 {
-			if !matchesAnyPathWithNested(pathStr, nested, opts.IncludePaths) {
-				continue // Not included, skip
-			}
-		}
-
-		// Step 2: Apply exclude filter (if specified)
-		if matchesAnyPathWithNested(pathStr, nested, opts.ExcludePaths) {
-			continue // Excluded, skip
-		}
-
-		result = append(result, diff)
-	}
-
+	// FilterDiffsWithRegexp can only fail on invalid regex; pathOnly has none.
+	result, _ := FilterDiffsWithRegexp(diffs, pathOnly)
 	return result
 }
 

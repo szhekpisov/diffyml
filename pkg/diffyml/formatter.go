@@ -89,7 +89,10 @@ func FormatterByName(name string) (Formatter, error) {
 	case "gitlab":
 		return &GitLabFormatter{}, nil
 	case "gitea":
-		return &GiteaFormatter{}, nil
+		// Gitea Actions accepts the GitHub Actions workflow command syntax
+		// (gitea/gitea#23722). It silently ignores annotations in the UI,
+		// but the output is parseable in raw build logs.
+		return &GitHubFormatter{}, nil
 	case "json":
 		return &JSONFormatter{}, nil
 	case "json-patch":
@@ -571,32 +574,6 @@ func (f *GitLabFormatter) FormatAll(groups []DiffGroup, _ *FormatOptions) string
 
 	sb.WriteString("]\n")
 	return sb.String()
-}
-
-// GiteaFormatter renders output compatible with Gitea CI/CD.
-// Uses GitHub Actions compatible format. Note: Gitea Actions silently ignores
-// workflow command annotations (see gitea/gitea#23722), so annotations may not
-// appear in the Gitea UI. The output is still valid for log parsing.
-type GiteaFormatter struct{}
-
-// FormatSingle renders a single difference in Gitea CI format (GitHub Actions compatible).
-func (f *GiteaFormatter) FormatSingle(diff Difference, opts *FormatOptions) string {
-	// Gitea uses GitHub Actions compatible format
-	gh := &GitHubFormatter{}
-	return gh.FormatSingle(diff, opts)
-}
-
-// Format renders differences in Gitea CI format (GitHub Actions compatible).
-func (f *GiteaFormatter) Format(diffs []Difference, opts *FormatOptions) string {
-	// Gitea uses GitHub Actions compatible format
-	gh := &GitHubFormatter{}
-	return gh.Format(diffs, opts)
-}
-
-// FormatAll delegates to GitHubFormatter for directory mode support.
-func (f *GiteaFormatter) FormatAll(groups []DiffGroup, opts *FormatOptions) string {
-	gh := &GitHubFormatter{}
-	return gh.FormatAll(groups, opts)
 }
 
 // JSONFormatter renders differences as machine-readable JSON.

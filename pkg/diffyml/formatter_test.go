@@ -580,21 +580,43 @@ func TestGitLabFormatter_MultipleDiffs(t *testing.T) {
 	}
 }
 
-func TestGiteaFormatter_GitHubCompatible(t *testing.T) {
+func TestFormatterByName_GiteaIsGitHubCompatible(t *testing.T) {
 	giteaF, _ := FormatterByName("gitea")
 	githubF, _ := FormatterByName("github")
-	opts := DefaultFormatOptions()
 
+	if _, ok := giteaF.(*GitHubFormatter); !ok {
+		t.Errorf(`FormatterByName("gitea") should return *GitHubFormatter, got %T`, giteaF)
+	}
+	if _, ok := giteaF.(StructuredFormatter); !ok {
+		t.Fatal(`FormatterByName("gitea") should implement StructuredFormatter`)
+	}
+
+	opts := DefaultFormatOptions()
 	diffs := []Difference{
 		{Path: DiffPath{"config", "value"}, Type: DiffModified, From: "old", To: "new"},
 	}
+	if giteaF.Format(diffs, opts) != githubF.Format(diffs, opts) {
+		t.Error("gitea output should match github output")
+	}
 
-	giteaOutput := giteaF.Format(diffs, opts)
-	githubOutput := githubF.Format(diffs, opts)
-
-	// Gitea should produce GitHub-compatible output
-	if giteaOutput != githubOutput {
-		t.Errorf("Gitea output should match GitHub output\nGitea: %s\nGitHub: %s", giteaOutput, githubOutput)
+	groups := []DiffGroup{
+		{
+			FilePath: "deploy.yaml",
+			Diffs: []Difference{
+				{Path: DiffPath{"key"}, Type: DiffModified, From: "old", To: "new"},
+			},
+		},
+		{
+			FilePath: "service.yaml",
+			Diffs: []Difference{
+				{Path: DiffPath{"port"}, Type: DiffAdded, To: 8080},
+			},
+		},
+	}
+	giteaAll := giteaF.(StructuredFormatter).FormatAll(groups, opts)
+	githubAll := githubF.(StructuredFormatter).FormatAll(groups, opts)
+	if giteaAll != githubAll {
+		t.Errorf("gitea FormatAll should match github FormatAll\nGitea:  %s\nGitHub: %s", giteaAll, githubAll)
 	}
 }
 
@@ -1638,7 +1660,6 @@ func TestFormatSingle_AllFormatters(t *testing.T) {
 		"brief":   &BriefFormatter{},
 		"github":  &GitHubFormatter{},
 		"gitlab":  &GitLabFormatter{},
-		"gitea":   &GiteaFormatter{},
 	}
 
 	for name, f := range formatters {
@@ -1913,42 +1934,6 @@ func TestGitHubFormatter_FormatAll_AnnotationLimitsAcrossGroups(t *testing.T) {
 	}
 	if containsSubstr(lastLine, "file=") {
 		t.Errorf("summary annotation should not include file= parameter, got: %s", lastLine)
-	}
-}
-
-func TestGiteaFormatter_FormatAll(t *testing.T) {
-	giteaF := &GiteaFormatter{}
-	githubF := &GitHubFormatter{}
-	opts := DefaultFormatOptions()
-
-	groups := []DiffGroup{
-		{
-			FilePath: "deploy.yaml",
-			Diffs: []Difference{
-				{Path: DiffPath{"key"}, Type: DiffModified, From: "old", To: "new"},
-			},
-		},
-		{
-			FilePath: "service.yaml",
-			Diffs: []Difference{
-				{Path: DiffPath{"port"}, Type: DiffAdded, To: 8080},
-			},
-		},
-	}
-
-	giteaOutput := giteaF.FormatAll(groups, opts)
-	githubOutput := githubF.FormatAll(groups, opts)
-
-	if giteaOutput != githubOutput {
-		t.Errorf("Gitea FormatAll should match GitHub FormatAll\nGitea:  %s\nGitHub: %s", giteaOutput, githubOutput)
-	}
-}
-
-func TestGiteaFormatter_ImplementsStructuredFormatter(t *testing.T) {
-	var f Formatter = &GiteaFormatter{}
-	_, ok := f.(StructuredFormatter)
-	if !ok {
-		t.Fatal("GiteaFormatter should implement StructuredFormatter")
 	}
 }
 

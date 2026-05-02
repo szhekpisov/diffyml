@@ -32,14 +32,15 @@
 //
 // # Formatting output
 //
-// Eight built-in formatters render differences for different audiences:
+// Seven built-in formatters render differences for different audiences:
 //
 //   - [DetailedFormatter] — full human-readable output with inline diffs
 //   - [CompactFormatter] — one line per change
 //   - [BriefFormatter] — summary counts only
 //   - [GitHubFormatter] — GitHub Actions workflow annotations
+//     (also returned for the "gitea" name; Gitea Actions accepts the same
+//     workflow command syntax)
 //   - [GitLabFormatter] — GitLab CI Code Quality JSON
-//   - [GiteaFormatter] — Gitea CI (GitHub-compatible annotations)
 //   - [JSONFormatter] — machine-readable JSON with typed values
 //   - [JSONPatchFormatter] — RFC 6902 JSON Patch operations
 //

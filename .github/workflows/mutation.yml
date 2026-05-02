@@ -10,21 +10,36 @@ concurrency:
 on:
   pull_request:
     branches: [main]
-    paths:
-      - '**/*.go'
-      - 'go.mod'
-      - 'go.sum'
-      - '.github/workflows/mutation.yml'
   push:
     branches: [main]
-    paths:
-      - '**/*.go'
-      - 'go.mod'
-      - 'go.sum'
-      - '.github/workflows/mutation.yml'
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: filter
+        with:
+          filters: |
+            code:
+              - '**/*.go'
+              - 'go.mod'
+              - 'go.sum'
+              - '.github/workflows/mutation.yml'
+
   mutation:
+    needs: changes
+    # On push to main, always run (catches coverage rot in untouched code).
+    # On PRs, only run when Go source / module / workflow files changed —
+    # the gate emits a visible "skipped" status so branch protection can
+    # require this check.
+    if: github.event_name == 'push' || needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     # Bypass proxy.golang.org + sum.golang.org so a force-retagged release
     # is fetched fresh from GitHub. Set at job level so the gomutants action's

@@ -204,6 +204,7 @@ jobs:
         env:
           IMAGE: ${{ steps.manifest.outputs.image }}
           DIGEST: ${{ steps.manifest.outputs.digest }}
+          COSIGN_EXPERIMENTAL: "1"
         run: |
           cosign sign --yes --registry-referrers-mode=oci-1-1 "${IMAGE}@${DIGEST}"
 

@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-05-05
+
+### Added
+
+- Add GitHub Pages documentation site (#122) ([#122](https://github.com/szhekpisov/diffyml/pull/122))
+- Opt-in sensitive value masking (#127) ([#127](https://github.com/szhekpisov/diffyml/pull/127))
+- Migrate mutation testing from gremlins to gomutant (#128) ([#128](https://github.com/szhekpisov/diffyml/pull/128))
+- Add --neat flag for K8s/Helm/ArgoCD/Flux noise filtering (#131) ([#131](https://github.com/szhekpisov/diffyml/pull/131))
+
+### Fixed
+
+- Set COSIGN_EXPERIMENTAL=1 for OCI 1.1 referrers signing (#144) ([#144](https://github.com/szhekpisov/diffyml/pull/144))
+
+### Documentation
+
+- Document Docker image install option in README (#121) ([#121](https://github.com/szhekpisov/diffyml/pull/121))
+- Add custom site header with theme toggle (#126) ([#126](https://github.com/szhekpisov/diffyml/pull/126))
+- Simplify license line and add star CTA (#133) ([#133](https://github.com/szhekpisov/diffyml/pull/133))
+
 ## [1.5.25] - 2026-04-23
 
 ### Added
@@ -246,6 +265,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add GOPATH/bin PATH hint to Go Install section (#3) ([#3](https://github.com/szhekpisov/diffyml/pull/3))
 - Cleanup (#6) ([#6](https://github.com/szhekpisov/diffyml/pull/6))
 
+[1.6.0]: https://github.com/szhekpisov/diffyml/compare/v1.5.25...v1.6.0
 [1.5.25]: https://github.com/szhekpisov/diffyml/compare/v1.5.23...v1.5.25
 [1.5.23]: https://github.com/szhekpisov/diffyml/compare/v1.5.22...v1.5.23
 [1.5.22]: https://github.com/szhekpisov/diffyml/compare/v1.5.21...v1.5.22

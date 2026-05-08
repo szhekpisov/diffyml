@@ -51,12 +51,15 @@ main() {
         [ -n "$DIFFYML_VERSION" ] || err "could not determine latest version"
     fi
     DIFFYML_VERSION="${DIFFYML_VERSION#v}"
+    case "$DIFFYML_VERSION" in
+        ''|*[!0-9.]*|.*|*..*|*.) err "invalid DIFFYML_VERSION: $DIFFYML_VERSION (expected MAJOR.MINOR.PATCH)" ;;
+    esac
 
     archive="diffyml_${DIFFYML_VERSION}_${os}_${arch}.tar.gz"
     base_url="https://github.com/${REPO}/releases/download/v${DIFFYML_VERSION}"
 
     tmpdir=$(mktemp -d)
-    trap 'rm -rf "$tmpdir"' EXIT
+    trap cleanup EXIT INT HUP TERM
 
     info "downloading ${archive}..."
     curl -fsSL -o "${tmpdir}/${archive}" "${base_url}/${archive}" \
@@ -78,7 +81,7 @@ main() {
                     || err "could not fetch cosign bundle"
                 cosign verify-blob "${tmpdir}/checksums.txt" \
                     --bundle "${tmpdir}/checksums.txt.sigstore.json" \
-                    --certificate-identity-regexp "https://github.com/${REPO}/" \
+                    --certificate-identity-regexp "^https://github\\.com/${REPO}/\\.github/workflows/release\\.yml@refs/tags/v[0-9]+\\.[0-9]+\\.[0-9]+\$" \
                     --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
                     >/dev/null \
                     || err "cosign verification failed"
@@ -120,8 +123,12 @@ main() {
         *":${INSTALL_DIR}:"*) ;;
         *) info "note: ${INSTALL_DIR} is not in your PATH" ;;
     esac
+
+    cleanup
+    trap - EXIT INT HUP TERM
 }
 
+cleanup() { [ -n "${tmpdir:-}" ] && rm -rf "$tmpdir"; tmpdir=""; }
 err() { printf 'error: %s\n' "$1" >&2; exit 1; }
 info() { printf '%s\n' "$1"; }
 require() { command -v "$1" >/dev/null 2>&1 || err "$1 not found in PATH"; }

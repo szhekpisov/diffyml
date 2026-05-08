@@ -37,9 +37,32 @@ docker run --rm -v "$PWD:/work" -w /work ghcr.io/szhekpisov/diffyml:latest old.y
 
 Images are built from a [distroless](https://github.com/GoogleContainerTools/distroless) base and run as a non-root user. Use `:latest` or pin to a specific version (e.g. `:1.5.25`).
 
+## Install script (Linux / macOS)
+
+```bash
+curl -fsSL https://szhekpisov.github.io/diffyml/install.sh | sh
+```
+
+Detects your OS and architecture, downloads the matching release archive, verifies its SHA256 against the signed `checksums.txt`, and installs the binary to `/usr/local/bin/diffyml`.
+
+Environment variables:
+
+| Variable | Default | Notes |
+|---|---|---|
+| `DIFFYML_VERSION` | latest release | Pin a specific version, e.g. `1.6.0`. |
+| `INSTALL_DIR` | `/usr/local/bin` | Falls back to `sudo` if the directory isn't writable. |
+| `VERIFY` | `sha256` | Use `cosign` to verify the cosign signature on `checksums.txt` first (requires `cosign` in `PATH`), or `none` to skip verification. |
+
+Example pinning a version, installing into `~/bin`, and adding cosign verification:
+
+```bash
+DIFFYML_VERSION=1.6.0 INSTALL_DIR="$HOME/bin" VERIFY=cosign \
+  sh -c "$(curl -fsSL https://szhekpisov.github.io/diffyml/install.sh)"
+```
+
 ## Direct binary download
 
-Pre-built binaries for Linux and macOS (amd64 and arm64) are attached to every [release](https://github.com/szhekpisov/diffyml/releases). Download, extract, and move onto your `PATH`:
+If you'd rather not pipe a script to `sh`, the same archives are attached to every [release](https://github.com/szhekpisov/diffyml/releases) for Linux and macOS (amd64 and arm64). Download, extract, and move onto your `PATH`:
 
 ```bash
 VERSION=1.6.0  # check the releases page for the latest

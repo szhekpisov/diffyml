@@ -112,21 +112,6 @@ DIFFYML_VERSION=1.6.0 INSTALL_DIR="$HOME/bin" VERIFY=cosign \
   sh -c "$(curl -fsSL https://szhekpisov.github.io/diffyml/install.sh)"
 ```
 
-### Direct binary download
-
-If you'd rather not pipe a script to `sh`, the same archives are attached to every [release](https://github.com/szhekpisov/diffyml/releases) for Linux and macOS (amd64 and arm64):
-
-```bash
-VERSION=1.6.0  # check the releases page for the latest
-OS=$(uname -s | tr '[:upper:]' '[:lower:]')
-ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
-curl -L "https://github.com/szhekpisov/diffyml/releases/download/v${VERSION}/diffyml_${VERSION}_${OS}_${ARCH}.tar.gz" \
-  | tar -xz
-sudo mv diffyml /usr/local/bin/
-```
-
-See [Verifying Releases](#verifying-releases) below to check signatures and provenance before installing.
-
 ### Linux packages (`.deb` / `.rpm` / `.apk`)
 
 Native packages for Debian/Ubuntu, RHEL/Fedora, and Alpine (amd64 and arm64) are attached to every [release](https://github.com/szhekpisov/diffyml/releases):
@@ -146,6 +131,21 @@ sudo apk add --allow-untrusted diffyml_1.6.0_linux_amd64.apk
 ```
 
 The binary is installed to `/usr/bin/diffyml`.
+
+### Direct binary download
+
+If you'd rather not pipe a script to `sh`, the same archives are attached to every [release](https://github.com/szhekpisov/diffyml/releases) for Linux and macOS (amd64 and arm64):
+
+```bash
+VERSION=1.6.0  # check the releases page for the latest
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
+curl -L "https://github.com/szhekpisov/diffyml/releases/download/v${VERSION}/diffyml_${VERSION}_${OS}_${ARCH}.tar.gz" \
+  | tar -xz
+sudo mv diffyml /usr/local/bin/
+```
+
+See [Verifying Releases](#verifying-releases) below to check signatures and provenance before installing.
 
 ### Docker
 

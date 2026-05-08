@@ -27,11 +27,11 @@ nfpms:
     package_name: diffyml
     vendor: Sergei Zhekpisov
     homepage: https://github.com/szhekpisov/diffyml
-    maintainer: Sergei Zhekpisov <zhekpisov@gmail.com>
+    maintainer: Sergei Zhekpisov <87662520+szhekpisov@users.noreply.github.com>
     description: |-
       Structural diff tool for YAML files.
-      Compares YAML files semantically — understanding key ordering, list
-      identity, multi-document streams, and Kubernetes resources — with
+      Compares YAML files semantically (understanding key ordering, list
+      identity, multi-document streams, and Kubernetes resources) with
       multiple output formats for CI integration.
     license: MIT
     formats:
@@ -41,9 +41,10 @@ nfpms:
     bindir: /usr/bin
     section: utils
     priority: optional
+    mtime: "{{ .CommitDate }}"
     contents:
       - src: ./LICENSE
-        dst: /usr/share/doc/diffyml/LICENSE
+        dst: /usr/share/doc/diffyml/copyright
       - src: ./README.md
         dst: /usr/share/doc/diffyml/README.md
 

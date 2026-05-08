@@ -166,7 +166,7 @@ fixture: build
 packages-snapshot:
 	@command -v goreleaser >/dev/null 2>&1 || { echo "goreleaser not installed (brew install goreleaser)"; exit 1; }
 	@command -v docker >/dev/null 2>&1 || { echo "docker not installed or not running"; exit 1; }
-	goreleaser release --snapshot --clean --skip=sign,sbom
+	goreleaser release --snapshot --clean --skip=sign,sbom,docker
 	@echo ""
 	@echo "=== Package layout ==="
 	@echo "--- .deb (expect copyright at /usr/share/doc/) ---"

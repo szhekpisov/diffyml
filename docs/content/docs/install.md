@@ -37,9 +37,38 @@ docker run --rm -v "$PWD:/work" -w /work ghcr.io/szhekpisov/diffyml:latest old.y
 
 Images are built from a [distroless](https://github.com/GoogleContainerTools/distroless) base and run as a non-root user. Use `:latest` or pin to a specific version (e.g. `:1.5.25`).
 
-## Release binaries
+## Direct binary download
 
-Pre-built binaries for Linux, macOS, and Windows are published on the [releases page](https://github.com/szhekpisov/diffyml/releases). Download the archive matching your platform, extract, and place `diffyml` on your `PATH`.
+Pre-built binaries for Linux and macOS (amd64 and arm64) are attached to every [release](https://github.com/szhekpisov/diffyml/releases). Download, extract, and move onto your `PATH`:
+
+```bash
+VERSION=1.6.0  # check the releases page for the latest
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
+curl -L "https://github.com/szhekpisov/diffyml/releases/download/v${VERSION}/diffyml_${VERSION}_${OS}_${ARCH}.tar.gz" \
+  | tar -xz
+sudo mv diffyml /usr/local/bin/
+```
+
+Archives are named `diffyml_<VERSION>_<os>_<arch>.tar.gz`. See [Verifying releases](#verifying-releases) to check signatures and provenance before installing.
+
+## Linux packages
+
+Native `.deb`, `.rpm`, and `.apk` packages for amd64 and arm64 are attached to every [release](https://github.com/szhekpisov/diffyml/releases). The binary installs to `/usr/bin/diffyml`.
+
+```bash
+# Debian / Ubuntu
+curl -LO "https://github.com/szhekpisov/diffyml/releases/download/v1.6.0/diffyml_1.6.0_linux_amd64.deb"
+sudo dpkg -i diffyml_1.6.0_linux_amd64.deb
+
+# RHEL / Fedora / openSUSE
+curl -LO "https://github.com/szhekpisov/diffyml/releases/download/v1.6.0/diffyml_1.6.0_linux_amd64.rpm"
+sudo rpm -i diffyml_1.6.0_linux_amd64.rpm
+
+# Alpine
+curl -LO "https://github.com/szhekpisov/diffyml/releases/download/v1.6.0/diffyml_1.6.0_linux_amd64.apk"
+sudo apk add --allow-untrusted diffyml_1.6.0_linux_amd64.apk
+```
 
 ## From source
 

@@ -22,11 +22,41 @@ archives:
   - formats: [tar.gz]
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
+nfpms:
+  - id: packages
+    package_name: diffyml
+    vendor: Sergei Zhekpisov
+    homepage: https://github.com/szhekpisov/diffyml
+    maintainer: Sergei Zhekpisov <zhekpisov@gmail.com>
+    description: |-
+      Structural diff tool for YAML files.
+      Compares YAML files semantically — understanding key ordering, list
+      identity, multi-document streams, and Kubernetes resources — with
+      multiple output formats for CI integration.
+    license: MIT
+    formats:
+      - deb
+      - rpm
+      - apk
+    bindir: /usr/bin
+    section: utils
+    priority: optional
+    contents:
+      - src: ./LICENSE
+        dst: /usr/share/doc/diffyml/LICENSE
+      - src: ./README.md
+        dst: /usr/share/doc/diffyml/README.md
+
 checksum:
   name_template: checksums.txt
 
 sboms:
-  - artifacts: archive
+  - id: archive
+    artifacts: archive
+    documents:
+      - "${artifact}.spdx.json"
+  - id: package
+    artifacts: package
     documents:
       - "${artifact}.spdx.json"
 

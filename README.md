@@ -92,6 +92,41 @@ Make sure `$GOPATH/bin` is in your `PATH`:
 export PATH="$(go env GOPATH)/bin:$PATH"
 ```
 
+### Direct binary download
+
+Pre-built binaries for Linux and macOS (amd64 and arm64) are attached to every [release](https://github.com/szhekpisov/diffyml/releases). Download, extract, and move onto your `PATH`:
+
+```bash
+VERSION=1.6.0  # check the releases page for the latest
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
+curl -L "https://github.com/szhekpisov/diffyml/releases/download/v${VERSION}/diffyml_${VERSION}_${OS}_${ARCH}.tar.gz" \
+  | tar -xz
+sudo mv diffyml /usr/local/bin/
+```
+
+See [Verifying Releases](#verifying-releases) below to check signatures and provenance before installing.
+
+### Linux packages (`.deb` / `.rpm` / `.apk`)
+
+Native packages for Debian/Ubuntu, RHEL/Fedora, and Alpine (amd64 and arm64) are attached to every [release](https://github.com/szhekpisov/diffyml/releases):
+
+```bash
+# Debian / Ubuntu
+curl -LO "https://github.com/szhekpisov/diffyml/releases/download/v1.6.0/diffyml_1.6.0_linux_amd64.deb"
+sudo dpkg -i diffyml_1.6.0_linux_amd64.deb
+
+# RHEL / Fedora / openSUSE
+curl -LO "https://github.com/szhekpisov/diffyml/releases/download/v1.6.0/diffyml_1.6.0_linux_amd64.rpm"
+sudo rpm -i diffyml_1.6.0_linux_amd64.rpm
+
+# Alpine
+curl -LO "https://github.com/szhekpisov/diffyml/releases/download/v1.6.0/diffyml_1.6.0_linux_amd64.apk"
+sudo apk add --allow-untrusted diffyml_1.6.0_linux_amd64.apk
+```
+
+The binary is installed to `/usr/bin/diffyml`.
+
 ### Docker
 
 Multi-arch images (linux/amd64, linux/arm64) are published to GitHub Container Registry:

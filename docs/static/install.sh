@@ -5,7 +5,7 @@
 #   curl -fsSL https://szhekpisov.github.io/diffyml/install.sh | sh
 #
 # Environment variables:
-#   DIFFYML_VERSION  version to install, e.g. 1.6.0 (default: latest release)
+#   DIFFYML_VERSION  version to install, e.g. 1.6.1 (default: latest release)
 #   INSTALL_DIR      install directory (default: /usr/local/bin)
 #   VERIFY           verification mode: sha256 (default), cosign, none
 #   GITHUB_TOKEN     optional, used for the GitHub API call when resolving

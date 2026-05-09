@@ -37,9 +37,62 @@ docker run --rm -v "$PWD:/work" -w /work ghcr.io/szhekpisov/diffyml:latest old.y
 
 Images are built from a [distroless](https://github.com/GoogleContainerTools/distroless) base and run as a non-root user. Use `:latest` or pin to a specific version (e.g. `:1.5.25`).
 
-## Release binaries
+## Install script (Linux / macOS)
 
-Pre-built binaries for Linux, macOS, and Windows are published on the [releases page](https://github.com/szhekpisov/diffyml/releases). Download the archive matching your platform, extract, and place `diffyml` on your `PATH`.
+```bash
+curl -fsSL https://szhekpisov.github.io/diffyml/install.sh | sh
+```
+
+Detects your OS and architecture, downloads the matching release archive, verifies its SHA256 against the signed `checksums.txt`, and installs the binary to `/usr/local/bin/diffyml`.
+
+Environment variables:
+
+| Variable | Default | Notes |
+|---|---|---|
+| `DIFFYML_VERSION` | latest release | Pin a specific version, e.g. `1.6.1`. **Recommended in CI** — avoids the unauthenticated GitHub API call (60 req/hr per IP) used to resolve the latest tag. |
+| `INSTALL_DIR` | `/usr/local/bin` | Falls back to `sudo` if the directory isn't writable. |
+| `VERIFY` | `sha256` | Use `cosign` to verify the cosign signature on `checksums.txt` first (requires `cosign` in `PATH`), or `none` to skip verification. |
+| `GITHUB_TOKEN` | unset | If set, used to authenticate the GitHub API call when resolving the latest version. Useful on shared CI egress IPs. |
+
+Example pinning a version, installing into `~/bin`, and adding cosign verification:
+
+```bash
+DIFFYML_VERSION=1.6.1 INSTALL_DIR="$HOME/bin" VERIFY=cosign \
+  sh -c "$(curl -fsSL https://szhekpisov.github.io/diffyml/install.sh)"
+```
+
+## Linux packages
+
+Native `.deb`, `.rpm`, and `.apk` packages for amd64 and arm64 are attached to every [release](https://github.com/szhekpisov/diffyml/releases). The binary installs to `/usr/bin/diffyml`. All package archives are listed in the cosign-signed `checksums.txt`, so you can verify before installing — see [Verifying releases](#verifying-releases). The .apk uses `--allow-untrusted` because nfpm-built apks aren't GPG-signed; verify the SHA256 from `checksums.txt` instead.
+
+```bash
+# Debian / Ubuntu
+curl -fLO "https://github.com/szhekpisov/diffyml/releases/download/v1.6.1/diffyml_1.6.1_linux_amd64.deb"
+sudo dpkg -i diffyml_1.6.1_linux_amd64.deb
+
+# RHEL / Fedora / openSUSE
+curl -fLO "https://github.com/szhekpisov/diffyml/releases/download/v1.6.1/diffyml_1.6.1_linux_amd64.rpm"
+sudo rpm -i diffyml_1.6.1_linux_amd64.rpm
+
+# Alpine
+curl -fLO "https://github.com/szhekpisov/diffyml/releases/download/v1.6.1/diffyml_1.6.1_linux_amd64.apk"
+sudo apk add --allow-untrusted diffyml_1.6.1_linux_amd64.apk
+```
+
+## Direct binary download
+
+If you'd rather not pipe a script to `sh`, the same archives are attached to every [release](https://github.com/szhekpisov/diffyml/releases) for Linux and macOS (amd64 and arm64). Download, extract, and move onto your `PATH`:
+
+```bash
+VERSION=1.6.1  # check the releases page for the latest
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
+curl -fL "https://github.com/szhekpisov/diffyml/releases/download/v${VERSION}/diffyml_${VERSION}_${OS}_${ARCH}.tar.gz" \
+  | tar -xz
+sudo mv diffyml /usr/local/bin/
+```
+
+Archives are named `diffyml_<VERSION>_<os>_<arch>.tar.gz`. See [Verifying releases](#verifying-releases) to check signatures and provenance before installing.
 
 ## From source
 

@@ -1598,6 +1598,7 @@ func TestDetailedFormatter_RenderDocumentValue_TrueColor(t *testing.T) {
 	f, _ := FormatterByName("detailed")
 	opts := DefaultFormatOptions()
 	opts.OmitHeader = true
+	opts.Color = true
 	opts.TrueColor = true
 
 	om := NewOrderedMap()
@@ -1611,8 +1612,18 @@ func TestDetailedFormatter_RenderDocumentValue_TrueColor(t *testing.T) {
 	if !strings.Contains(output, "---") {
 		t.Errorf("expected '---' separator with TrueColor, got:\n%s", output)
 	}
-	if !strings.Contains(output, "apiVersion: v1") {
-		t.Errorf("expected 'apiVersion: v1' in output, got:\n%s", output)
+	if !strings.Contains(output, "apiVersion:") || !strings.Contains(output, "v1") {
+		t.Errorf("expected 'apiVersion:' and 'v1' in output, got:\n%s", output)
+	}
+	// The "---" separator must be rendered with the truecolor white code (255,255,255),
+	// not the basic colorWhite ANSI code. This pins the TrueColor branch in
+	// renderDocumentValue.
+	wantWhite := TrueColorCode(255, 255, 255)
+	if !strings.Contains(output, wantWhite+"    ---") {
+		t.Errorf("expected '---' to be wrapped in truecolor white %q, got:\n%s", wantWhite, output)
+	}
+	if strings.Contains(output, colorWhite+"    ---") {
+		t.Errorf("'---' should not use basic colorWhite under TrueColor, got:\n%s", output)
 	}
 }
 

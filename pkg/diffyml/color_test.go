@@ -110,6 +110,58 @@ func TestToFormatOptions_NilOpts(t *testing.T) {
 	cfg.ToFormatOptions(nil) // should not panic
 }
 
+func TestToFormatOptions_AppliesColorAndTrueColor(t *testing.T) {
+	// Pin the two assignments in ToFormatOptions: opts.Color must reflect
+	// ShouldUseColor and opts.TrueColor must reflect ShouldUseTrueColor.
+	cfg := NewColorConfig(ColorModeAlways, true)
+	opts := &FormatOptions{Color: false, TrueColor: false}
+	cfg.ToFormatOptions(opts)
+	if !opts.Color {
+		t.Error("expected opts.Color=true after ToFormatOptions with ColorModeAlways")
+	}
+	if !opts.TrueColor {
+		t.Error("expected opts.TrueColor=true after ToFormatOptions with trueColor=true")
+	}
+
+	// Inverse: never mode + no true color → both false
+	cfg2 := NewColorConfig(ColorModeNever, false)
+	opts2 := &FormatOptions{Color: true, TrueColor: true}
+	cfg2.ToFormatOptions(opts2)
+	if opts2.Color {
+		t.Error("expected opts.Color=false after ToFormatOptions with ColorModeNever")
+	}
+	if opts2.TrueColor {
+		t.Error("expected opts.TrueColor=false after ToFormatOptions with trueColor=false")
+	}
+}
+
+func TestIsTerminal_NonCharDevice(t *testing.T) {
+	// Mock stdoutStatFn to return a non-char-device mode (named pipe).
+	// Kills the INVERT_BITWISE mutant at color.go:69 (& → |): with `|`,
+	// (Mode | ModeCharDevice) is always non-zero, so the mutant returns
+	// true even for non-terminals.
+	orig := stdoutStatFn
+	t.Cleanup(func() { stdoutStatFn = orig })
+
+	stdoutStatFn = func() (os.FileInfo, error) {
+		return fakeFileInfo{mode: os.ModeNamedPipe}, nil
+	}
+
+	if IsTerminal(0) {
+		t.Error("IsTerminal should return false for a non-char-device (named pipe)")
+	}
+}
+
+func TestTrueColorCode_ClampsBlueAbove255(t *testing.T) {
+	// Pins the `b = clamp(b, 0, 255)` assignment in TrueColorCode at color.go:156.
+	// Without clamping, the formatted string would contain "300" for b.
+	got := TrueColorCode(0, 0, 300)
+	want := TrueColorCode(0, 0, 255)
+	if got != want {
+		t.Errorf("TrueColorCode blue=300 must clamp to 255: got %q want %q", got, want)
+	}
+}
+
 func TestDetailedColorCode_UnknownType(t *testing.T) {
 	// Exercise the fallback return "" for an unknown diff type in 8-color mode.
 	code := DetailedColorCode(DiffType(99), false)

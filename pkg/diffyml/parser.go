@@ -35,6 +35,7 @@ func NewDocumentParser(content []byte) *DocumentParser {
 // The returned document can be nil (for empty YAML documents).
 // After Next returns io.EOF, subsequent calls will also return io.EOF.
 func (p *DocumentParser) Next() (any, error) {
+	// gomutants:disable-next-line BRANCH_IF reason="defensive guard; yaml.Decoder.Decode returns io.EOF idempotently after exhaustion, so the same final return path is reached either way"
 	if p.done {
 		return nil, io.EOF
 	}

@@ -102,7 +102,7 @@ cd diffyml
 go build -o diffyml
 ```
 
-Requires Go 1.26.2 or later.
+Requires Go 1.26.3 or later.
 
 ## Verifying releases
 

@@ -111,3 +111,12 @@ func TestFormatSummaryOutput_NilOpts(t *testing.T) {
 		t.Errorf("expected summary text, got: %s", got)
 	}
 }
+
+func TestFormatSummaryOutput_ExactFormat(t *testing.T) {
+	opts := &FormatOptions{Color: false}
+	got := FormatSummaryOutput("Body text.", opts)
+	want := "\nAI Summary:\nBody text.\n"
+	if got != want {
+		t.Errorf("FormatSummaryOutput = %q, want %q", got, want)
+	}
+}

@@ -26,6 +26,7 @@ profile.cov
 
 # Mutation testing reports
 mutation-report.json
+.gomutants-cache.json
 
 # Dependency directories (remove the comment below to include it)
 # vendor/

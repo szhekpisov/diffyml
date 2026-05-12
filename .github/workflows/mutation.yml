@@ -62,9 +62,9 @@ jobs:
       # "no LIVED mutant in the diff" via threshold-efficacy=100.
       - name: Run mutation testing (PR — diff only)
         if: github.event_name == 'pull_request'
-        uses: szhekpisov/gomutants@1ec68f111c32d4c60cb991fcb6537d117b6975b9 # v0.1.0
+        uses: szhekpisov/gomutants@4281ef616b679c0b19d5ff39d8b673bb13ec0548 # v0.2.2
         with:
-          version: v0.1.0
+          version: v0.2.2
           threshold-efficacy: "100"
           args: >-
             --workers 2
@@ -81,14 +81,32 @@ jobs:
       # legacy 100% figure. Ratchet up as tests improve.
       - name: Run mutation testing (post-merge — full)
         if: github.event_name == 'push'
-        uses: szhekpisov/gomutants@1ec68f111c32d4c60cb991fcb6537d117b6975b9 # v0.1.0
+        uses: szhekpisov/gomutants@4281ef616b679c0b19d5ff39d8b673bb13ec0548 # v0.2.2
         with:
-          version: v0.1.0
+          version: v0.2.2
           threshold-efficacy: "85.65"
           args: >-
             --workers 2
             --coverpkg ./pkg/diffyml/...
+            --stryker-output stryker-report.json
             ./pkg/diffyml/
+
+      # Push the Stryker-format report to the public dashboard so the
+      # mutation-score badge in the README reflects the latest main. Only
+      # runs on push to main: the dashboard keys reports by branch/SHA,
+      # and PR-branch uploads from --changed-since runs are partial.
+      # `if: always()` is intentionally NOT used — a failed mutation run
+      # should not push a misleading score.
+      - name: Upload to Stryker Dashboard
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          STRYKER_DASHBOARD_KEY: ${{ secrets.STRYKER_DASHBOARD_KEY }}
+        run: |
+          curl -fSs -X PUT \
+            -H "X-Api-Key: $STRYKER_DASHBOARD_KEY" \
+            -H "Content-Type: application/json" \
+            --data @stryker-report.json \
+            "https://dashboard.stryker-mutator.io/api/reports/github.com/szhekpisov/diffyml/main"
 
       - name: Clean build cache
         if: always()
@@ -100,4 +118,12 @@ jobs:
         with:
           name: mutation-report
           path: mutation-report.json
+          retention-days: 30
+
+      - name: Upload Stryker report
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: stryker-report
+          path: stryker-report.json
           retention-days: 30

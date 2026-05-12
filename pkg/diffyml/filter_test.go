@@ -148,6 +148,11 @@ func TestFilterDiffs_NoFilters(t *testing.T) {
 	if len(result) != 2 {
 		t.Fatalf("expected 2 diffs with no filters, got %d", len(result))
 	}
+	// No-filter shortcut: must return the input slice itself (same backing array),
+	// not a freshly-built copy. Pins the early-return at line 205.
+	if &result[0] != &diffs[0] {
+		t.Error("expected no-filter FilterDiffs to return the input slice itself, got a copy")
+	}
 }
 
 func TestFilterDiffs_NilOptions(t *testing.T) {

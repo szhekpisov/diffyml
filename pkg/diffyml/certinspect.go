@@ -17,6 +17,7 @@ func IsPEMCertificate(s string) bool {
 		return false
 	}
 	block, rest := pem.Decode([]byte(trimmed))
+	// gomutants:disable-next-line EXPRESSION_REMOVE reason="line 16 prefix check guarantees Type=CERTIFICATE when block is non-nil; this is defensive"
 	if block == nil || block.Type != "CERTIFICATE" {
 		return false
 	}

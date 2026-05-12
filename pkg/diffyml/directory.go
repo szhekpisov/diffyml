@@ -50,6 +50,7 @@ func DiscoverFiles(dir string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	// gomutants:disable-next-line STATEMENT_REMOVE reason="redundant; filepath.WalkDir already visits entries in lexical order, so files is already sorted"
 	sort.Strings(files)
 	return files, nil
 }
@@ -121,6 +122,7 @@ func BuildFilePairPlan(fromDir, toDir string) ([]FilePair, error) {
 		pair.Name = name
 		switch {
 		case inFrom && inTo:
+			// gomutants:disable-next-line STATEMENT_REMOVE reason="FilePairBothExist == iota 0 is the zero value of FilePairType; explicit assignment is documentary, removing it leaves pair.Type at the same value"
 			pair.Type = FilePairBothExist
 			pair.FromPath = filepath.Join(fromDir, name)
 			pair.ToPath = filepath.Join(toDir, name)

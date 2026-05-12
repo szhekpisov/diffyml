@@ -148,8 +148,10 @@ func nestedKeyPaths(diff Difference) []string {
 	case DiffAdded:
 		om, _ = diff.To.(*OrderedMap)
 	default:
+		// gomutants:disable-next-line BRANCH_CASE reason="defensive; om stays nil → next guard returns nil too, same outcome"
 		return nil
 	}
+	// gomutants:disable-next-line EXPRESSION_REMOVE reason="empty Keys → make([],0) + zero-iter loop → returns []string{} vs nil; both are observed identically by all callers (range loops)"
 	if om == nil || len(om.Keys) == 0 {
 		return nil
 	}

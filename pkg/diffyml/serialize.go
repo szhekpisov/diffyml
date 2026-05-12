@@ -32,6 +32,7 @@ func marshalStructuredYAML(val any) (string, bool) {
 // structure that preserves key order.
 func orderedMapToGeneric(om *OrderedMap) *yaml.Node {
 	node := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+	// gomutants:disable-next-line STATEMENT_REMOVE reason="redundant; append(nil, x) yields equivalent slice, but keeps the intent explicit"
 	node.Content = make([]*yaml.Node, 0)
 	for _, key := range om.Keys {
 		keyNode := &yaml.Node{Kind: yaml.ScalarNode, Value: key, Tag: "!!str"}
@@ -50,6 +51,7 @@ func valueToYAMLNode(val any) *yaml.Node {
 		return orderedMapToGeneric(v)
 	case []any:
 		node := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
+		// gomutants:disable-next-line STATEMENT_REMOVE reason="redundant; append(nil, x) yields equivalent slice, but keeps the intent explicit"
 		node.Content = make([]*yaml.Node, 0, len(v))
 		for _, item := range v {
 			node.Content = append(node.Content, valueToYAMLNode(item))
@@ -57,6 +59,7 @@ func valueToYAMLNode(val any) *yaml.Node {
 		return node
 	case map[string]any:
 		node := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+		// gomutants:disable-next-line STATEMENT_REMOVE reason="redundant; append(nil, x) yields equivalent slice, but keeps the intent explicit"
 		node.Content = make([]*yaml.Node, 0)
 		for _, k := range sortedMapKeys(v) {
 			keyNode := &yaml.Node{Kind: yaml.ScalarNode, Value: k, Tag: "!!str"}

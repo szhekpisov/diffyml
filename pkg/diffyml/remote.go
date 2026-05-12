@@ -65,6 +65,7 @@ func fetchURL(url string) ([]byte, error) {
 	}
 	defer func() { _ = resp.Body.Close() }()
 
+	// gomutants:disable-next-line EXPRESSION_REMOVE reason="defensive lower bound; Go's net/http surfaces 1xx as protocol-internal events, so the < 200 branch is unreachable from a typical client.Get response"
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, fmt.Errorf("failed to fetch %s: HTTP %d", url, resp.StatusCode)
 	}

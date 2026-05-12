@@ -60,7 +60,13 @@ func TestLoadContent_LocalFile(t *testing.T) {
 func TestLoadContent_NonExistentFile(t *testing.T) {
 	_, err := LoadContent("/nonexistent/path/file.yaml")
 	if err == nil {
-		t.Error("LoadContent for non-existent file should return error")
+		t.Fatal("LoadContent for non-existent file should return error")
+	}
+	// The error must come from ValidateFileExists's IsNotExist branch ("file not found:"),
+	// not from os.ReadFile or the generic os.Stat wrap. Pins both the LoadContent
+	// guard and the os.IsNotExist branch in ValidateFileExists.
+	if !strings.Contains(err.Error(), "file not found:") {
+		t.Errorf("expected error to start with 'file not found:', got: %v", err)
 	}
 }
 

@@ -132,28 +132,38 @@ func TestBuildFilePairPlan_AlphabeticalSorting(t *testing.T) {
 	fromDir := t.TempDir()
 	toDir := t.TempDir()
 
-	createFile(t, fromDir, "z.yaml", "a: 1")
-	createFile(t, fromDir, "a.yaml", "b: 2")
-	createFile(t, fromDir, "m.yaml", "c: 3")
-	createFile(t, toDir, "z.yaml", "a: 1")
-	createFile(t, toDir, "a.yaml", "b: 2")
-	createFile(t, toDir, "m.yaml", "c: 3")
+	// Use enough files (12) that map-iteration order practically never lands
+	// on the sorted permutation by accident — pins the sort.Strings call in
+	// BuildFilePairPlan even after gomutants randomizes map iteration.
+	names := []string{"k", "c", "y", "a", "n", "g", "b", "f", "h", "d", "z", "m"}
+	for _, name := range names {
+		createFile(t, fromDir, name+".yaml", "a: 1")
+		createFile(t, toDir, name+".yaml", "a: 1")
+	}
 
 	pairs, err := BuildFilePairPlan(fromDir, toDir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if len(pairs) != 3 {
-		t.Fatalf("expected 3 pairs, got %d", len(pairs))
+	if len(pairs) != len(names) {
+		t.Fatalf("expected %d pairs, got %d", len(names), len(pairs))
 	}
 
-	expectedNames := []string{"a.yaml", "m.yaml", "z.yaml"}
-	for i, name := range expectedNames {
+	expected := []string{"a.yaml", "b.yaml", "c.yaml", "d.yaml", "f.yaml", "g.yaml", "h.yaml", "k.yaml", "m.yaml", "n.yaml", "y.yaml", "z.yaml"}
+	for i, name := range expected {
 		if pairs[i].Name != name {
-			t.Errorf("pairs[%d].Name = %q, want %q", i, pairs[i].Name, name)
+			t.Errorf("pairs[%d].Name = %q, want %q (full order: %v)", i, pairs[i].Name, name, pairsNames(pairs))
 		}
 	}
+}
+
+func pairsNames(pairs []FilePair) []string {
+	out := make([]string, len(pairs))
+	for i, p := range pairs {
+		out[i] = p.Name
+	}
+	return out
 }
 
 func TestBuildFilePairPlan_BothDirectoriesEmpty(t *testing.T) {

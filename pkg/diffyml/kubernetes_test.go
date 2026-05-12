@@ -1,6 +1,7 @@
 package diffyml
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -1481,5 +1482,469 @@ func TestK8sResourceDisplayName_WithoutNamespace(t *testing.T) {
 	want := "v1/Namespace/prod"
 	if got := K8sResourceDisplayName(doc); got != want {
 		t.Errorf("K8sResourceDisplayName() = %q, want %q", got, want)
+	}
+}
+
+// TestIsKubernetesResource_NameExplicitNil covers the path where metadata.name
+// exists as a key but holds an explicit nil — without the generateName fallback
+// the resource must be rejected. Kills the INVERT_LOGICAL mutant on the first
+// `||` in the (!hasName || metaName == nil) && (!hasGenName || metaGenName == nil)
+// guard: if `||` becomes `&&`, the left clause flips to false (hasName=true,
+// metaName=nil → false && true = false), the whole && is false, and the
+// document is wrongly accepted as a K8s resource.
+func TestIsKubernetesResource_NameExplicitNil(t *testing.T) {
+	doc := map[string]any{
+		"apiVersion": "v1",
+		"kind":       "ConfigMap",
+		"metadata":   map[string]any{"name": nil},
+	}
+	if IsKubernetesResource(doc) {
+		t.Error("expected explicit nil name to NOT be detected as K8s resource")
+	}
+}
+
+// TestIsKubernetesResource_GenerateNameExplicitNil mirrors the above for the
+// second `||` clause: when generateName is present but nil and there is no
+// name, the resource must be rejected.
+func TestIsKubernetesResource_GenerateNameExplicitNil(t *testing.T) {
+	doc := map[string]any{
+		"apiVersion": "v1",
+		"kind":       "ConfigMap",
+		"metadata":   map[string]any{"generateName": nil},
+	}
+	if IsKubernetesResource(doc) {
+		t.Error("expected explicit nil generateName to NOT be detected as K8s resource")
+	}
+}
+
+// TestCanMatchByIdentifierWithAdditional_OrderedMapWithoutIdContinuesLoop
+// places an OrderedMap with no identifier before a plain map that does have
+// one. The function must `continue` past the OM and inspect the map. Kills the
+// INVERT_LOOP_CTRL mutant that flips `continue` to `break` — with `break`, the
+// map is never inspected and hasIdentifier stays false.
+func TestCanMatchByIdentifierWithAdditional_OrderedMapWithoutIdContinuesLoop(t *testing.T) {
+	omWithoutId := NewOrderedMap()
+	omWithoutId.Keys = append(omWithoutId.Keys, "foo")
+	omWithoutId.Values["foo"] = "bar"
+
+	list := []any{
+		omWithoutId,
+		map[string]any{"name": "real"},
+	}
+	if !CanMatchByIdentifierWithAdditional(list, nil) {
+		t.Error("expected later plain map with name to make the list matchable")
+	}
+}
+
+// TestCanMatchByIdentifierWithAdditional_NonMapItemRejected ensures a non-map
+// element short-circuits to false even when a later element would otherwise
+// supply an identifier. Kills the BRANCH_IF mutant that removes the early
+// `return false` for non-map items — with the mutation, the non-map is
+// silently skipped and the trailing map's identifier wrongly makes the list
+// matchable.
+func TestCanMatchByIdentifierWithAdditional_NonMapItemRejected(t *testing.T) {
+	list := []any{
+		"not-a-map",
+		map[string]any{"name": "real"},
+	}
+	if CanMatchByIdentifierWithAdditional(list, nil) {
+		t.Error("expected list containing a non-map item to NOT be matchable")
+	}
+}
+
+// TestMatchK8sDocuments_NilOptsDoesNotPanic exercises the defensive `opts !=
+// nil` guard. Kills the EXPRESSION_REMOVE mutant that replaces `opts != nil`
+// with `true` — the mutated code then dereferences opts.IgnoreApiVersion and
+// panics.
+func TestMatchK8sDocuments_NilOptsDoesNotPanic(t *testing.T) {
+	doc := map[string]any{
+		"apiVersion": "v1",
+		"kind":       "ConfigMap",
+		"metadata":   map[string]any{"name": "x"},
+	}
+	matched, unmatchedFrom, unmatchedTo := matchK8sDocuments([]any{doc}, []any{doc}, nil)
+	if len(matched) != 1 || matched[0] != 0 {
+		t.Errorf("expected from[0] matched to to[0] with nil opts, got matched=%v", matched)
+	}
+	if len(unmatchedFrom) != 0 {
+		t.Errorf("expected 0 unmatched from, got %d", len(unmatchedFrom))
+	}
+	if len(unmatchedTo) != 0 {
+		t.Errorf("expected 0 unmatched to, got %d", len(unmatchedTo))
+	}
+}
+
+// TestDetectK8sOrderChanges_PositionalMatchingStaysNil runs detection many
+// times against a positional match (no real reorder) to overcome Go's
+// randomized map iteration. Kills the STATEMENT_REMOVE mutant on the
+// first slices.SortFunc — without sorting pairs by fromIdx, the subsequent
+// IsSortedFunc check inspects randomly-ordered pairs and almost always
+// reports a false order change.
+func TestDetectK8sOrderChanges_PositionalMatchingStaysNil(t *testing.T) {
+	mkDoc := func(name string) map[string]any {
+		return map[string]any{
+			"apiVersion": "v1",
+			"kind":       "ConfigMap",
+			"metadata":   map[string]any{"name": name},
+		}
+	}
+	from := []any{mkDoc("a"), mkDoc("b"), mkDoc("c"), mkDoc("d")}
+	matched := map[int]int{0: 0, 1: 1, 2: 2, 3: 3}
+	for i := range 200 {
+		if diff := detectK8sOrderChanges(matched, from, false); diff != nil {
+			t.Fatalf("iteration %d: positional matching must not report order change, got %+v", i, diff)
+		}
+	}
+}
+
+// TestDetectK8sOrderChanges_ToOrderInToSideOrder asserts that the toOrder
+// field of the produced Difference reflects the to-side ordering (i.e.,
+// pairs sorted by toIdx), distinct from fromOrder. Kills the
+// STATEMENT_REMOVE mutant on the second slices.SortFunc — without that
+// re-sort, toOrder is rendered in fromIdx order and ends up identical to
+// fromOrder.
+func TestDetectK8sOrderChanges_ToOrderInToSideOrder(t *testing.T) {
+	mkDoc := func(name string) map[string]any {
+		return map[string]any{
+			"apiVersion": "v1",
+			"kind":       "ConfigMap",
+			"metadata":   map[string]any{"name": name},
+		}
+	}
+	// from = [a, b]; to = [b, a]  => matched = {0:1, 1:0}
+	from := []any{mkDoc("a"), mkDoc("b")}
+	matched := map[int]int{0: 1, 1: 0}
+
+	diff := detectK8sOrderChanges(matched, from, false)
+	if diff == nil {
+		t.Fatal("expected order change for swapped pair")
+	}
+	wantFrom := []any{"v1:ConfigMap:a", "v1:ConfigMap:b"}
+	wantTo := []any{"v1:ConfigMap:b", "v1:ConfigMap:a"}
+	if !reflect.DeepEqual(diff.From, wantFrom) {
+		t.Errorf("fromOrder = %v, want %v", diff.From, wantFrom)
+	}
+	if !reflect.DeepEqual(diff.To, wantTo) {
+		t.Errorf("toOrder = %v, want %v", diff.To, wantTo)
+	}
+}
+
+// TestCompareMatchedK8sDocs_UseToIdxAffectsPath constructs a matched pair
+// where fromIdx (0) differs from toIdx (1) and calls compareMatchedK8sDocs
+// with useToIdx=true. The resulting diff's path prefix and DocumentIndex
+// must reflect toIdx=1. Kills the BRANCH_IF mutant on `if useToIdx` and the
+// STATEMENT_REMOVE mutant on `docIdx = toIdx`.
+func TestCompareMatchedK8sDocs_UseToIdxAffectsPath(t *testing.T) {
+	mkDoc := func(name, val string) map[string]any {
+		return map[string]any{
+			"apiVersion": "v1",
+			"kind":       "ConfigMap",
+			"metadata":   map[string]any{"name": name},
+			"data":       map[string]any{"k": val},
+		}
+	}
+	from := []any{mkDoc("cfg", "old"), mkDoc("other", "x")}
+	to := []any{mkDoc("other", "x"), mkDoc("cfg", "new")}
+	matched := map[int]int{0: 1}
+
+	diffs := compareMatchedK8sDocs(matched, from, to, &Options{DetectKubernetes: true}, true)
+
+	var mod *Difference
+	for i := range diffs {
+		if diffs[i].Type == DiffModified && diffs[i].From == "old" && diffs[i].To == "new" {
+			mod = &diffs[i]
+			break
+		}
+	}
+	if mod == nil {
+		t.Fatal("expected data.k modification diff")
+	}
+	if !strings.HasPrefix(mod.Path.String(), "[1]") {
+		t.Errorf("path = %q, want [1] prefix (toIdx)", mod.Path.String())
+	}
+	if mod.DocumentIndex != 1 {
+		t.Errorf("DocumentIndex = %d, want 1 (toIdx)", mod.DocumentIndex)
+	}
+}
+
+// TestCompareMatchedK8sDocs_PathPrefix_FromHasMore covers the asymmetric
+// case where the from side has multiple documents but the to side does
+// not. The pathPrefix must still be set (per the original
+// `len(from) > 1 || len(to) > 1` guard). Kills the EXPRESSION_REMOVE
+// mutant on `len(from) > 1` (→ false) and the INVERT_LOGICAL mutant on
+// the `||` (→ &&), both of which would drop the prefix in this shape.
+func TestCompareMatchedK8sDocs_PathPrefix_FromHasMore(t *testing.T) {
+	mkDoc := func(name, val string) map[string]any {
+		return map[string]any{
+			"apiVersion": "v1",
+			"kind":       "ConfigMap",
+			"metadata":   map[string]any{"name": name},
+			"data":       map[string]any{"k": val},
+		}
+	}
+	from := []any{mkDoc("cfg", "old"), mkDoc("extra", "x")}
+	to := []any{mkDoc("cfg", "new")}
+	matched := map[int]int{0: 0}
+
+	diffs := compareMatchedK8sDocs(matched, from, to, &Options{DetectKubernetes: true}, false)
+
+	var mod *Difference
+	for i := range diffs {
+		if diffs[i].Type == DiffModified && diffs[i].From == "old" && diffs[i].To == "new" {
+			mod = &diffs[i]
+			break
+		}
+	}
+	if mod == nil {
+		t.Fatal("expected data.k modification diff")
+	}
+	if !strings.HasPrefix(mod.Path.String(), "[0]") {
+		t.Errorf("path = %q, want [0] prefix when from has multiple docs", mod.Path.String())
+	}
+}
+
+// TestCompareMatchedK8sDocs_PathPrefix_ToHasMore mirrors the above for the
+// to side having multiple documents. Kills the EXPRESSION_REMOVE mutant on
+// `len(to) > 1` (→ false) and reinforces the INVERT_LOGICAL kill on the
+// `||`.
+func TestCompareMatchedK8sDocs_PathPrefix_ToHasMore(t *testing.T) {
+	mkDoc := func(name, val string) map[string]any {
+		return map[string]any{
+			"apiVersion": "v1",
+			"kind":       "ConfigMap",
+			"metadata":   map[string]any{"name": name},
+			"data":       map[string]any{"k": val},
+		}
+	}
+	from := []any{mkDoc("cfg", "old")}
+	to := []any{mkDoc("cfg", "new"), mkDoc("extra", "x")}
+	matched := map[int]int{0: 0}
+
+	diffs := compareMatchedK8sDocs(matched, from, to, &Options{DetectKubernetes: true}, false)
+
+	var mod *Difference
+	for i := range diffs {
+		if diffs[i].Type == DiffModified && diffs[i].From == "old" && diffs[i].To == "new" {
+			mod = &diffs[i]
+			break
+		}
+	}
+	if mod == nil {
+		t.Fatal("expected data.k modification diff")
+	}
+	if !strings.HasPrefix(mod.Path.String(), "[0]") {
+		t.Errorf("path = %q, want [0] prefix when to has multiple docs", mod.Path.String())
+	}
+}
+
+// TestCompareMatchedK8sDocs_SetsDocFields asserts that the document
+// metadata is populated on every diff returned from compareMatchedK8sDocs.
+// Kills the STATEMENT_REMOVE mutants on lines that:
+//   - extract docName/docKind from the to-side document (lines 345, 346),
+//   - assign DocumentIndex/Name/Kind onto each nodeDiff (lines 349-351).
+func TestCompareMatchedK8sDocs_SetsDocFields(t *testing.T) {
+	mkCfg := func(val string) map[string]any {
+		return map[string]any{
+			"apiVersion": "v1",
+			"kind":       "ConfigMap",
+			"metadata":   map[string]any{"name": "cfg"},
+			"data":       map[string]any{"k": val},
+		}
+	}
+	mkOther := func() map[string]any {
+		return map[string]any{
+			"apiVersion": "v1",
+			"kind":       "Service",
+			"metadata":   map[string]any{"name": "svc"},
+			"spec":       map[string]any{"port": 80},
+		}
+	}
+	from := []any{mkOther(), mkCfg("old")}
+	to := []any{mkOther(), mkCfg("new")}
+	matched := map[int]int{1: 1}
+
+	diffs := compareMatchedK8sDocs(matched, from, to, &Options{DetectKubernetes: true}, false)
+
+	var mod *Difference
+	for i := range diffs {
+		if diffs[i].Type == DiffModified && diffs[i].From == "old" && diffs[i].To == "new" {
+			mod = &diffs[i]
+			break
+		}
+	}
+	if mod == nil {
+		t.Fatal("expected data.k modification diff")
+	}
+	if mod.DocumentIndex != 1 {
+		t.Errorf("DocumentIndex = %d, want 1", mod.DocumentIndex)
+	}
+	if mod.DocumentName != "v1/ConfigMap/cfg" {
+		t.Errorf("DocumentName = %q, want %q", mod.DocumentName, "v1/ConfigMap/cfg")
+	}
+	if mod.DocumentKind != "ConfigMap" {
+		t.Errorf("DocumentKind = %q, want %q", mod.DocumentKind, "ConfigMap")
+	}
+}
+
+// TestCompareK8sDocs_OrderChange_FullIdentifiersWhenNotIgnoringApiVersion
+// is the dual of TestCompareK8sDocs_IgnoreApiVersion_OrderChangeIdentifiers:
+// with IgnoreApiVersion=false the order-change diff's identifiers must
+// include the apiVersion. Kills the EXPRESSION_REMOVE mutant on
+// `opts.IgnoreApiVersion` (→ true) inside compareK8sDocs, which would
+// strip the apiVersion from the rendered identifiers.
+func TestCompareK8sDocs_OrderChange_FullIdentifiersWhenNotIgnoringApiVersion(t *testing.T) {
+	mkDoc := func(name string) map[string]any {
+		return map[string]any{
+			"apiVersion": "apps/v1",
+			"kind":       "Deployment",
+			"metadata":   map[string]any{"name": name, "namespace": "default"},
+			"spec":       map[string]any{"replicas": 1},
+		}
+	}
+	from := []any{mkDoc("a"), mkDoc("b")}
+	to := []any{mkDoc("b"), mkDoc("a")}
+
+	diffs := compareK8sDocs(from, to, &Options{DetectKubernetes: true})
+
+	var orderDiff *Difference
+	for i := range diffs {
+		if diffs[i].Type == DiffOrderChanged {
+			orderDiff = &diffs[i]
+			break
+		}
+	}
+	if orderDiff == nil {
+		t.Fatal("expected DiffOrderChanged for reordered docs")
+	}
+	fromOrder, ok := orderDiff.From.([]any)
+	if !ok {
+		t.Fatalf("expected From to be []any, got %T", orderDiff.From)
+	}
+	for _, id := range fromOrder {
+		idStr, _ := id.(string)
+		if !strings.Contains(idStr, "apps/v1") {
+			t.Errorf("with IgnoreApiVersion=false, identifier must include apiVersion, got %q", idStr)
+		}
+	}
+}
+
+// TestCompareK8sDocs_RemovedSkipsNilThenReportsReal places a nil entry
+// before a real K8s document in the unmatched-from set. The real document
+// must still be reported as removed. Kills the INVERT_LOOP_CTRL mutant
+// that flips `continue` to `break` on the nil-skip — with `break`, the
+// loop exits after the nil and the real removal is never emitted.
+func TestCompareK8sDocs_RemovedSkipsNilThenReportsReal(t *testing.T) {
+	realDoc := map[string]any{
+		"apiVersion": "v1",
+		"kind":       "ConfigMap",
+		"metadata":   map[string]any{"name": "to-remove"},
+		"data":       map[string]any{"k": "v"},
+	}
+	from := []any{nil, realDoc}
+	to := []any{}
+
+	diffs := compareK8sDocs(from, to, &Options{DetectKubernetes: true})
+
+	found := false
+	for _, d := range diffs {
+		if d.Type == DiffRemoved && d.DocumentIndex == 1 {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected the real K8s doc at index 1 to be reported as removed even when index 0 is nil")
+	}
+}
+
+// TestCompareK8sDocs_AddedSkipsNilThenReportsReal is the to-side analog
+// of the test above. Kills the INVERT_LOOP_CTRL mutant on the added-docs
+// loop.
+func TestCompareK8sDocs_AddedSkipsNilThenReportsReal(t *testing.T) {
+	realDoc := map[string]any{
+		"apiVersion": "v1",
+		"kind":       "ConfigMap",
+		"metadata":   map[string]any{"name": "to-add"},
+		"data":       map[string]any{"k": "v"},
+	}
+	from := []any{}
+	to := []any{nil, realDoc}
+
+	diffs := compareK8sDocs(from, to, &Options{DetectKubernetes: true})
+
+	found := false
+	for _, d := range diffs {
+		if d.Type == DiffAdded && d.DocumentIndex == 1 {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected the real K8s doc at index 1 to be reported as added even when index 0 is nil")
+	}
+}
+
+// TestCompareK8sDocs_RemovedCarriesDocFields asserts that the removed-doc
+// branch populates DocumentName/DocumentKind from the from-side resource.
+// Kills the STATEMENT_REMOVE mutants on `docName = f.displayName()` and
+// `docKind = f.kind` in the removed branch.
+func TestCompareK8sDocs_RemovedCarriesDocFields(t *testing.T) {
+	removed := map[string]any{
+		"apiVersion": "v1",
+		"kind":       "Secret",
+		"metadata":   map[string]any{"name": "creds", "namespace": "prod"},
+		"data":       map[string]any{"k": "v"},
+	}
+	from := []any{removed}
+	to := []any{}
+
+	diffs := compareK8sDocs(from, to, &Options{DetectKubernetes: true})
+
+	var rem *Difference
+	for i := range diffs {
+		if diffs[i].Type == DiffRemoved {
+			rem = &diffs[i]
+			break
+		}
+	}
+	if rem == nil {
+		t.Fatal("expected removed diff")
+	}
+	if rem.DocumentName != "v1/Secret/prod/creds" {
+		t.Errorf("DocumentName = %q, want %q", rem.DocumentName, "v1/Secret/prod/creds")
+	}
+	if rem.DocumentKind != "Secret" {
+		t.Errorf("DocumentKind = %q, want %q", rem.DocumentKind, "Secret")
+	}
+}
+
+// TestCompareK8sDocs_AddedCarriesDocFields is the to-side analog. Kills
+// the STATEMENT_REMOVE mutants on `docName = f.displayName()` and
+// `docKind = f.kind` in the added branch.
+func TestCompareK8sDocs_AddedCarriesDocFields(t *testing.T) {
+	added := map[string]any{
+		"apiVersion": "v1",
+		"kind":       "Secret",
+		"metadata":   map[string]any{"name": "creds", "namespace": "prod"},
+		"data":       map[string]any{"k": "v"},
+	}
+	from := []any{}
+	to := []any{added}
+
+	diffs := compareK8sDocs(from, to, &Options{DetectKubernetes: true})
+
+	var add *Difference
+	for i := range diffs {
+		if diffs[i].Type == DiffAdded {
+			add = &diffs[i]
+			break
+		}
+	}
+	if add == nil {
+		t.Fatal("expected added diff")
+	}
+	if add.DocumentName != "v1/Secret/prod/creds" {
+		t.Errorf("DocumentName = %q, want %q", add.DocumentName, "v1/Secret/prod/creds")
+	}
+	if add.DocumentKind != "Secret" {
+		t.Errorf("DocumentKind = %q, want %q", add.DocumentKind, "Secret")
 	}
 }

@@ -35,6 +35,7 @@ func IsKubernetesResource(doc any) bool {
 
 	// Check for apiVersion
 	apiVersion, ok := getVal(doc, "apiVersion")
+	// gomutants:disable-next-line BRANCH_IF reason="equivalent: the subsequent !isStr check returns false for the nil zero-value too"
 	if !ok {
 		return false
 	}
@@ -44,6 +45,7 @@ func IsKubernetesResource(doc any) bool {
 
 	// Check for kind
 	kind, ok := getVal(doc, "kind")
+	// gomutants:disable-next-line BRANCH_IF reason="equivalent: the subsequent !isStr check returns false for the nil zero-value too"
 	if !ok {
 		return false
 	}
@@ -53,6 +55,7 @@ func IsKubernetesResource(doc any) bool {
 
 	// Check for metadata
 	metadata, ok := getVal(doc, "metadata")
+	// gomutants:disable-next-line BRANCH_IF reason="equivalent: getVal on nil metadata returns (nil,false) for name and generateName, so the next guard returns false"
 	if !ok {
 		return false
 	}
@@ -147,6 +150,7 @@ func K8sResourceDisplayName(doc any) string {
 // Returns empty string if the document is not a valid K8s resource.
 func K8sResourceKind(doc any) string {
 	f, ok := k8sExtractFields(doc)
+	// gomutants:disable-next-line BRANCH_IF reason="equivalent: f.kind on the zero-value k8sResourceFields is also \"\""
 	if !ok {
 		return ""
 	}
@@ -185,6 +189,7 @@ func IdentifierWithAdditional(m map[string]any, additionalIdentifiers []string) 
 // CanMatchByIdentifierWithAdditional checks if list items can be matched by identifier,
 // including additional identifier fields.
 func CanMatchByIdentifierWithAdditional(list []any, additionalIdentifiers []string) bool {
+	// gomutants:disable-next-line BRANCH_IF reason="equivalent: an empty range loop leaves hasIdentifier=false, yielding the same false return"
 	if len(list) == 0 {
 		return false
 	}
@@ -285,6 +290,7 @@ func matchK8sDocuments(from, to []any, opts *Options) (matched map[int]int, unma
 
 // detectK8sOrderChanges detects document order changes among matched K8s documents.
 func detectK8sOrderChanges(matched map[int]int, from []any, ignoreApiVersion bool) *Difference {
+	// gomutants:disable-next-line BRANCH_IF reason="equivalent: IsSortedFunc on a 0- or 1-element pairs slice is trivially true, so orderChanged stays false and the function returns nil"
 	if len(matched) < 2 {
 		return nil
 	}
@@ -360,7 +366,9 @@ func compareK8sDocs(from, to []any, opts *Options) []Difference {
 	var diffs []Difference
 
 	matched, unmatchedFrom, unmatchedTo := matchK8sDocuments(from, to, opts)
-	ignoreApiVersion := opts != nil && opts.IgnoreApiVersion
+	// opts is guaranteed non-nil by the caller (compareDocs gates on opts != nil),
+	// and we dereference opts.IgnoreOrderChanges immediately below.
+	ignoreApiVersion := opts.IgnoreApiVersion
 
 	// Detect document order changes
 	if !opts.IgnoreOrderChanges {

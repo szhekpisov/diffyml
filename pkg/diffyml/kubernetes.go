@@ -33,31 +33,22 @@ func IsKubernetesResource(doc any) bool {
 		}
 	}
 
-	// Check for apiVersion
-	apiVersion, ok := getVal(doc, "apiVersion")
-	if !ok {
+	// apiVersion and kind must be present as string values. A single type-
+	// assertion check covers both "missing key" (getVal returns nil) and
+	// "wrong type" — the redundant existence check was dead defensive code.
+	apiVersion, _ := getVal(doc, "apiVersion")
+	if _, ok := apiVersion.(string); !ok {
 		return false
 	}
-	if _, isStr := apiVersion.(string); !isStr {
-		return false
-	}
-
-	// Check for kind
-	kind, ok := getVal(doc, "kind")
-	if !ok {
-		return false
-	}
-	if _, isStr := kind.(string); !isStr {
+	kind, _ := getVal(doc, "kind")
+	if _, ok := kind.(string); !ok {
 		return false
 	}
 
-	// Check for metadata
-	metadata, ok := getVal(doc, "metadata")
-	if !ok {
-		return false
-	}
-
-	// Check for name or generateName in metadata
+	// metadata may be any value — getVal(nil/non-map, …) returns (nil, false)
+	// for name and generateName, so the guard below also catches missing
+	// metadata.
+	metadata, _ := getVal(doc, "metadata")
 	metaName, hasName := getVal(metadata, "name")
 	metaGenName, hasGenName := getVal(metadata, "generateName")
 	if (!hasName || metaName == nil) && (!hasGenName || metaGenName == nil) {
@@ -144,12 +135,10 @@ func K8sResourceDisplayName(doc any) string {
 }
 
 // K8sResourceKind returns the "kind" field of a Kubernetes resource document.
-// Returns empty string if the document is not a valid K8s resource.
+// Returns empty string if the document is not a valid K8s resource (the
+// zero-value k8sResourceFields has an empty kind, so no explicit guard).
 func K8sResourceKind(doc any) string {
-	f, ok := k8sExtractFields(doc)
-	if !ok {
-		return ""
-	}
+	f, _ := k8sExtractFields(doc)
 	return f.kind
 }
 
@@ -185,10 +174,6 @@ func IdentifierWithAdditional(m map[string]any, additionalIdentifiers []string) 
 // CanMatchByIdentifierWithAdditional checks if list items can be matched by identifier,
 // including additional identifier fields.
 func CanMatchByIdentifierWithAdditional(list []any, additionalIdentifiers []string) bool {
-	if len(list) == 0 {
-		return false
-	}
-
 	hasIdentifier := false
 	for _, item := range list {
 		// Check for OrderedMap
@@ -285,10 +270,9 @@ func matchK8sDocuments(from, to []any, opts *Options) (matched map[int]int, unma
 
 // detectK8sOrderChanges detects document order changes among matched K8s documents.
 func detectK8sOrderChanges(matched map[int]int, from []any, ignoreApiVersion bool) *Difference {
-	if len(matched) < 2 {
-		return nil
-	}
-
+	// No early-return for len(matched) < 2: the loop builds an empty/singleton
+	// pairs slice, IsSortedFunc is trivially true, orderChanged stays false,
+	// and the function returns nil naturally.
 	type idxPair struct{ fromIdx, toIdx int }
 	pairs := make([]idxPair, 0, len(matched))
 	for fromIdx, toIdx := range matched {
@@ -360,7 +344,9 @@ func compareK8sDocs(from, to []any, opts *Options) []Difference {
 	var diffs []Difference
 
 	matched, unmatchedFrom, unmatchedTo := matchK8sDocuments(from, to, opts)
-	ignoreApiVersion := opts != nil && opts.IgnoreApiVersion
+	// opts is guaranteed non-nil by the caller (compareDocs gates on opts != nil),
+	// and we dereference opts.IgnoreOrderChanges immediately below.
+	ignoreApiVersion := opts.IgnoreApiVersion
 
 	// Detect document order changes
 	if !opts.IgnoreOrderChanges {

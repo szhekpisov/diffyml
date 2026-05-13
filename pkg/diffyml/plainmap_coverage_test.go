@@ -15,7 +15,7 @@ func TestCompareNodes_PlainMaps_Equal(t *testing.T) {
 	from := map[string]any{"a": "1", "b": "2"}
 	to := map[string]any{"a": "1", "b": "2"}
 
-	diffs := compareNodes(DiffPath{"root"}, from, to, nil)
+	diffs := compareNodes(DiffPath{"root"}, from, to, &Options{})
 	if len(diffs) != 0 {
 		t.Errorf("expected no diffs for equal plain maps, got %d: %v", len(diffs), diffs)
 	}
@@ -25,7 +25,7 @@ func TestCompareNodes_PlainMaps_Modified(t *testing.T) {
 	from := map[string]any{"a": "1", "b": "2"}
 	to := map[string]any{"a": "1", "b": "changed"}
 
-	diffs := compareNodes(DiffPath{"root"}, from, to, nil)
+	diffs := compareNodes(DiffPath{"root"}, from, to, &Options{})
 	if len(diffs) != 1 {
 		t.Fatalf("expected 1 diff, got %d: %v", len(diffs), diffs)
 	}
@@ -41,7 +41,7 @@ func TestCompareNodes_PlainMaps_Added(t *testing.T) {
 	from := map[string]any{"a": "1"}
 	to := map[string]any{"a": "1", "b": "2"}
 
-	diffs := compareNodes(DiffPath{"root"}, from, to, nil)
+	diffs := compareNodes(DiffPath{"root"}, from, to, &Options{})
 	if len(diffs) != 1 {
 		t.Fatalf("expected 1 diff, got %d: %v", len(diffs), diffs)
 	}
@@ -54,7 +54,7 @@ func TestCompareNodes_PlainMaps_Removed(t *testing.T) {
 	from := map[string]any{"a": "1", "b": "2"}
 	to := map[string]any{"a": "1"}
 
-	diffs := compareNodes(DiffPath{"root"}, from, to, nil)
+	diffs := compareNodes(DiffPath{"root"}, from, to, &Options{})
 	if len(diffs) != 1 {
 		t.Fatalf("expected 1 diff, got %d: %v", len(diffs), diffs)
 	}
@@ -71,7 +71,7 @@ func TestCompareNodes_PlainMaps_Nested(t *testing.T) {
 		"parent": map[string]any{"child": "new"},
 	}
 
-	diffs := compareNodes(nil, from, to, nil)
+	diffs := compareNodes(nil, from, to, &Options{})
 	if len(diffs) != 1 {
 		t.Fatalf("expected 1 diff, got %d: %v", len(diffs), diffs)
 	}
@@ -86,7 +86,7 @@ func TestDeepEqual_PlainMaps_Equal(t *testing.T) {
 	a := map[string]any{"x": "1", "y": "2"}
 	b := map[string]any{"x": "1", "y": "2"}
 
-	if !deepEqual(a, b, nil) {
+	if !deepEqual(a, b, &Options{}) {
 		t.Error("expected equal plain maps to be deepEqual")
 	}
 }
@@ -95,7 +95,7 @@ func TestDeepEqual_PlainMaps_DifferentValues(t *testing.T) {
 	a := map[string]any{"x": "1"}
 	b := map[string]any{"x": "2"}
 
-	if deepEqual(a, b, nil) {
+	if deepEqual(a, b, &Options{}) {
 		t.Error("expected different plain maps to not be deepEqual")
 	}
 }
@@ -104,7 +104,7 @@ func TestDeepEqual_PlainMaps_DifferentKeys(t *testing.T) {
 	a := map[string]any{"x": "1"}
 	b := map[string]any{"y": "1"}
 
-	if deepEqual(a, b, nil) {
+	if deepEqual(a, b, &Options{}) {
 		t.Error("expected maps with different keys to not be deepEqual")
 	}
 }
@@ -113,7 +113,7 @@ func TestDeepEqual_PlainMaps_DifferentLengths(t *testing.T) {
 	a := map[string]any{"x": "1"}
 	b := map[string]any{"x": "1", "y": "2"}
 
-	if deepEqual(a, b, nil) {
+	if deepEqual(a, b, &Options{}) {
 		t.Error("expected maps with different lengths to not be deepEqual")
 	}
 }
@@ -122,7 +122,7 @@ func TestDeepEqual_PlainMaps_Nested(t *testing.T) {
 	a := map[string]any{"m": map[string]any{"k": "v"}}
 	b := map[string]any{"m": map[string]any{"k": "v"}}
 
-	if !deepEqual(a, b, nil) {
+	if !deepEqual(a, b, &Options{}) {
 		t.Error("expected nested equal plain maps to be deepEqual")
 	}
 }
@@ -131,7 +131,7 @@ func TestDeepEqual_PlainMaps_NestedDifferent(t *testing.T) {
 	a := map[string]any{"m": map[string]any{"k": "v1"}}
 	b := map[string]any{"m": map[string]any{"k": "v2"}}
 
-	if deepEqual(a, b, nil) {
+	if deepEqual(a, b, &Options{}) {
 		t.Error("expected nested different plain maps to not be deepEqual")
 	}
 }
@@ -142,7 +142,7 @@ func TestCompareListsPositional_ItemsAdded(t *testing.T) {
 	from := []any{"a"}
 	to := []any{"a", "b", "c"}
 
-	diffs := compareListsPositional(DiffPath{"list"}, from, to, nil)
+	diffs := compareListsPositional(DiffPath{"list"}, from, to, &Options{})
 
 	added := 0
 	for _, d := range diffs {
@@ -159,7 +159,7 @@ func TestCompareListsPositional_ItemsRemoved(t *testing.T) {
 	from := []any{"a", "b", "c"}
 	to := []any{"a"}
 
-	diffs := compareListsPositional(DiffPath{"list"}, from, to, nil)
+	diffs := compareListsPositional(DiffPath{"list"}, from, to, &Options{})
 
 	removed := 0
 	for _, d := range diffs {
@@ -176,7 +176,7 @@ func TestCompareListsPositional_BothAddedAndRemoved(t *testing.T) {
 	from := []any{"a", "b"}
 	to := []any{"x", "y", "z"}
 
-	diffs := compareListsPositional(DiffPath{"list"}, from, to, nil)
+	diffs := compareListsPositional(DiffPath{"list"}, from, to, &Options{})
 
 	var modified, added int
 	for _, d := range diffs {

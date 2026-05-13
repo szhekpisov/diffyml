@@ -17,9 +17,9 @@ import (
 )
 
 // compareDocs compares two slices of YAML documents and returns differences.
+// opts is non-nil — Compare normalizes it before calling.
 func compareDocs(from, to []any, opts *Options) []Difference {
-	// Check if Kubernetes detection is enabled and documents are K8s resources
-	if opts != nil && opts.DetectKubernetes && hasK8sDocuments(from, to) {
+	if opts.DetectKubernetes && hasK8sDocuments(from, to) {
 		return compareK8sDocs(from, to, opts)
 	}
 
@@ -71,8 +71,11 @@ func hasK8sDocuments(from, to []any) bool {
 }
 
 // compareNodeNils handles nil cases for compareNodes.
-// Returns diffs and true if an early return is appropriate.
-func compareNodeNils(path DiffPath, from, to any, opts *Options) ([]Difference, bool) {
+// Returns diffs and true if an early return is appropriate. The to==nil case
+// is intentionally not short-circuited here — the caller's type-switch and
+// type-mismatch fallthrough produce the same DiffModified output, so handling
+// it twice would be dead code.
+func compareNodeNils(path DiffPath, from, to any) ([]Difference, bool) {
 	if from == nil && to == nil {
 		return nil, true
 	}
@@ -84,23 +87,12 @@ func compareNodeNils(path DiffPath, from, to any, opts *Options) ([]Difference, 
 			To:   to,
 		}}, true
 	}
-	if to == nil {
-		if opts != nil && opts.IgnoreValueChanges {
-			return nil, true
-		}
-		return []Difference{{
-			Path: path,
-			Type: DiffModified,
-			From: from,
-			To:   nil,
-		}}, true
-	}
 	return nil, false
 }
 
-// compareNodes recursively compares two YAML nodes.
+// compareNodes recursively compares two YAML nodes. opts is non-nil.
 func compareNodes(path DiffPath, from, to any, opts *Options) []Difference {
-	if diffs, done := compareNodeNils(path, from, to, opts); done {
+	if diffs, done := compareNodeNils(path, from, to); done {
 		return diffs
 	}
 
@@ -122,7 +114,7 @@ func compareNodes(path DiffPath, from, to any, opts *Options) []Difference {
 		// Both are scalars — check if same concrete type
 		if sameScalarType(from, to) {
 			if !equalValues(from, to, opts) {
-				if opts != nil && opts.IgnoreValueChanges {
+				if opts.IgnoreValueChanges {
 					return nil
 				}
 				return []Difference{{
@@ -136,8 +128,8 @@ func compareNodes(path DiffPath, from, to any, opts *Options) []Difference {
 		}
 	}
 
-	// Type mismatch
-	if opts != nil && opts.IgnoreValueChanges {
+	// Type mismatch (includes to==nil after the nil-pair short-circuits)
+	if opts.IgnoreValueChanges {
 		return nil
 	}
 	return []Difference{{
@@ -272,7 +264,7 @@ func compareLists(path DiffPath, from, to []any, opts *Options) []Difference {
 	}
 
 	// If explicitly ignoring order, compare as sets
-	if opts != nil && opts.IgnoreOrderChanges {
+	if opts.IgnoreOrderChanges {
 		return compareListsUnordered(path, from, to, opts)
 	}
 
@@ -310,12 +302,10 @@ func areListItemsHeterogeneous(from, to []any) bool {
 	extractKeys(from)
 	extractKeys(to)
 
-	// If we don't have map items, not heterogeneous
-	if len(allKeys) == 0 {
-		return false
-	}
-
-	// Check if each map item uses a distinct set of keys (only one key per item)
+	// Check if each map item uses a distinct set of keys (only one key per item).
+	// When no map items are present, checkSingleDistinctKeys returns false on
+	// the non-map item (or true on an empty list), and the final `len(allKeys) > 1`
+	// guard returns false either way — no separate empty-allKeys short-circuit needed.
 	// This is a heuristic: items with single, different keys are likely heterogeneous
 	// (e.g., {namespaceSelector: ...} vs {ipBlock: ...})
 	checkSingleDistinctKeys := func(list []any) bool {
@@ -481,16 +471,14 @@ func detectListOrderChanges(path DiffPath, fromIDs []any, fromIndex, toIndex map
 		}
 	}
 
-	if len(commonFromOrder) < 2 {
-		return nil
-	}
-
-	// Build to-order for the common identifiers
+	// Build to-order for the common identifiers. With fewer than 2 common
+	// items the order can't differ; the orderChanged check below returns nil
+	// for that case, so no separate short-circuit is needed.
 	type idxID struct {
 		idx int
 		id  any
 	}
-	var toSorted []idxID
+	toSorted := make([]idxID, 0, len(commonFromOrder))
 	for _, id := range commonFromOrder {
 		toSorted = append(toSorted, idxID{toIndex[id], id})
 	}
@@ -498,15 +486,9 @@ func detectListOrderChanges(path DiffPath, fromIDs []any, fromIndex, toIndex map
 		return cmp.Compare(a.idx, b.idx)
 	})
 
-	// Check if from-order and to-order differ
-	orderChanged := false
-	for i, id := range commonFromOrder {
-		if id != toSorted[i].id {
-			orderChanged = true
-			break
-		}
-	}
-
+	orderChanged := !slices.EqualFunc(commonFromOrder, toSorted, func(a any, b idxID) bool {
+		return a == b.id
+	})
 	if !orderChanged {
 		return nil
 	}
@@ -612,7 +594,7 @@ func compareListsByIdentifier(path DiffPath, from, to []any, opts *Options) []Di
 	}
 
 	// Detect order changes among matched identifiers.
-	if opts == nil || !opts.IgnoreOrderChanges {
+	if !opts.IgnoreOrderChanges {
 		if orderDiff := detectListOrderChanges(path, fromIDs, fromIndex, toIndex, toIDCount); orderDiff != nil {
 			diffs = append(diffs, *orderDiff)
 		}
@@ -755,14 +737,13 @@ func deepEqualSlices(from, to []any, opts *Options) bool {
 }
 
 // deepEqual compares two values deeply with options.
+//
+// nil handling, type mismatches, and same-type scalar comparison are all
+// delegated to the type-switch + equalValues: a nil `to` makes each case's
+// `ok` assertion fail (returning false); a nil `from` lands in the default
+// branch where equalValues returns `from == to`, which is true for both-nil
+// and false for any mixed case or type mismatch.
 func deepEqual(from, to any, opts *Options) bool {
-	if from == nil && to == nil {
-		return true
-	}
-	if from == nil || to == nil {
-		return false
-	}
-
 	switch fromVal := from.(type) {
 	case *OrderedMap:
 		if toVal, ok := to.(*OrderedMap); ok {
@@ -780,9 +761,6 @@ func deepEqual(from, to any, opts *Options) bool {
 		}
 		return false
 	default:
-		if !sameScalarType(from, to) {
-			return false
-		}
 		return equalValues(from, to, opts)
 	}
 }

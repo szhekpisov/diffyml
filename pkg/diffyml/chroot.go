@@ -26,11 +26,6 @@ func (e *ChrootError) Error() string {
 // Path format: "level1.level2.key" or "items[0].name" for list access.
 // Returns the value at the path, or an error if path doesn't exist.
 func navigateToPath(doc any, path string) (any, error) {
-	if path == "" {
-		return doc, nil
-	}
-
-	// Parse and navigate path segments
 	segments, err := parsePath(path)
 	if err != nil {
 		return nil, &ChrootError{
@@ -98,11 +93,6 @@ type pathSegment struct {
 // Examples: "foo.bar", "items[0]", "data[0].name"
 func parsePath(path string) ([]pathSegment, error) {
 	var segments []pathSegment
-	if path == "" {
-		return segments, nil
-	}
-
-	// Split by dots, but handle bracket notation
 	parts, err := splitPath(path)
 	if err != nil {
 		return nil, err
@@ -111,12 +101,14 @@ func parsePath(path string) ([]pathSegment, error) {
 	for _, part := range parts {
 		// Check for bracket notation: key[index]
 		if idx := strings.Index(part, "["); idx >= 0 {
-			if strings.Count(part, "[") != 1 || strings.Count(part, "]") != 1 || !strings.HasSuffix(part, "]") {
+			key := part[:idx]
+			indexStr := part[idx+1 : len(part)-1]
+			// indexStr must be the only bracketed segment; reject extra
+			// brackets either inside (e.g. "key[0][1]") or trailing past ']'
+			// (e.g. "key[1]extra", where the trailing chars push ']' into indexStr).
+			if strings.ContainsAny(indexStr, "[]") {
 				return nil, fmt.Errorf("invalid list index syntax %q", part)
 			}
-			// Has index accessor
-			key := part[:idx]
-			indexStr := part[idx+1 : len(part)-1] // Remove [ and ]
 			if indexStr == "" {
 				return nil, fmt.Errorf("empty list index in %q", part)
 			}
@@ -207,10 +199,6 @@ func applyChroot(doc any, path string, listToDocuments bool) ([]any, error) {
 
 // applyChrootToDocs applies chroot to multiple documents.
 func applyChrootToDocs(docs []any, path string, listToDocuments bool) ([]any, error) {
-	if path == "" {
-		return docs, nil
-	}
-
 	var result []any
 	for _, doc := range docs {
 		chrootDocs, err := applyChroot(doc, path, listToDocuments)

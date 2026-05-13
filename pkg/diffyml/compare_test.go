@@ -2701,3 +2701,547 @@ func TestCompare_DuplicateListEntries(t *testing.T) {
 		t.Errorf("expected DiffAdded, got %v", diffs[0].Type)
 	}
 }
+
+// --- Mutation testing: comparator.go ---
+
+// hasK8sDocuments must short-circuit on the first K8s resource found in `from`,
+// even when `to` contains no K8s resources. Without the early return, the from
+// loop completes and the to loop returns false, taking the generic path and
+// producing key-level diffs instead of the K8s doc-level remove/add.
+func TestCompare_K8sDetection_OnlyFromHasResources(t *testing.T) {
+	from := yml(`apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-a
+data:
+  key: value`)
+	to := yml(`unrelated: scalar`)
+
+	diffs, err := compare(from, to, &diffyml.Options{DetectKubernetes: true})
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	// Only the K8s path stamps DocumentKind on resource-level diffs.
+	foundCMKind := false
+	for _, d := range diffs {
+		if d.DocumentKind == "ConfigMap" {
+			foundCMKind = true
+		}
+	}
+	if !foundCMKind {
+		t.Errorf("expected a diff carrying DocumentKind=ConfigMap (K8s compare path), got %+v", diffs)
+	}
+}
+
+// Both root documents parse to nil — compareNodeNils must short-circuit, not
+// fall through to the from==nil branch and emit a bogus DiffAdded.
+func TestCompare_BothNullDocuments_NoDiffs(t *testing.T) {
+	from := yml(`~`)
+	to := yml(`~`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if len(diffs) != 0 {
+		t.Fatalf("expected 0 diffs for null vs null, got %d: %+v", len(diffs), diffs)
+	}
+}
+
+// canMatchByIdentifier must return false on either side independently. With
+// `from` carrying name keys but `to` carrying none (both all-map lists),
+// taking the ID-matching path produces list-level Remove+Add at the parent
+// "items" path. Positional compare instead drills into a Modified at
+// "items.0.value", which is the assertion below.
+func TestCompare_IdentifierMatching_AsymmetricSides(t *testing.T) {
+	tests := []struct {
+		name string
+		from string
+		to   string
+	}{
+		{
+			name: "from has name, to does not",
+			from: `items:
+  - name: foo
+    value: 1`,
+			to: `items:
+  - other: bar
+    value: 2`,
+		},
+		{
+			name: "from has no name, to has name",
+			from: `items:
+  - other: bar
+    value: 1`,
+			to: `items:
+  - name: foo
+    value: 2`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			diffs, err := compare(yml(tt.from), yml(tt.to), nil)
+			if err != nil {
+				t.Fatalf("compare() failed: %v", err)
+			}
+			foundValuePath := false
+			for _, d := range diffs {
+				if strings.Contains(d.Path.String(), "value") {
+					foundValuePath = true
+				}
+			}
+			if !foundValuePath {
+				t.Errorf("expected positional Modified under '.value' path, got %+v", diffs)
+			}
+		})
+	}
+}
+
+// areListItemsHeterogeneous: OrderedMap items with multiple keys must NOT be
+// treated as heterogeneous (the single-key heuristic doesn't apply). Swapping
+// them should produce diffs under positional comparison; the mutated case
+// body would silently exact-match the swap under unordered comparison.
+func TestCompare_HeterogeneityCheck_MultiKeyOrderedMapIsHomogeneous(t *testing.T) {
+	from := yml(`rules:
+  - a: 1
+    b: 2
+  - c: 3
+    d: 4`)
+	to := yml(`rules:
+  - c: 3
+    d: 4
+  - a: 1
+    b: 2`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if len(diffs) == 0 {
+		t.Fatal("expected diffs from positional compare of swapped multi-key items, got 0")
+	}
+}
+
+// areListItemsHeterogeneous: a non-map (scalar) item must break the
+// single-key heuristic via the default case. With allKeys spanning multiple
+// distinct map keys, the original returns false (homogeneous → positional);
+// the mutated default returns true (heterogeneous → unordered) and matches
+// the swapped maps exactly, hiding the scalar Modified at index 0.
+func TestCompare_HeterogeneityCheck_ScalarItemBreaksHomogeneity(t *testing.T) {
+	from := yml(`items:
+  - 1
+  - a: 1
+  - b: 1`)
+	to := yml(`items:
+  - 2
+  - b: 1
+  - a: 1`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	// Positional compare yields a diff at items.1 (a:1 vs b:1) AND at items.2.
+	// Heterogeneous unordered would exact-match those swaps and only diff items.0.
+	foundIndex1Or2 := false
+	for _, d := range diffs {
+		p := d.Path.String()
+		if strings.HasPrefix(p, "items.1") || strings.HasPrefix(p, "items.2") {
+			foundIndex1Or2 = true
+		}
+	}
+	if !foundIndex1Or2 {
+		t.Errorf("expected positional diff under items.1 or items.2, got %+v", diffs)
+	}
+}
+
+// areListItemsHeterogeneous: checkSingleDistinctKeys(to) must veto the
+// heterogeneous classification when `to` carries a multi-key item. The
+// mutant forcing it to true would re-route to unordered comparison and
+// hide swap-induced diffs.
+func TestCompare_HeterogeneityCheck_AsymmetricSingleKeyShape(t *testing.T) {
+	from := yml(`items:
+  - a: 1
+  - b: 2
+  - c: 3`)
+	to := yml(`items:
+  - x: 1
+    y: 2
+  - a: 1
+  - b: 2`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	// Positional compare emits per-key Removed+Added at items.0 plus
+	// shape-changes at items.1, items.2. Unordered heterogeneous would
+	// exact-match {a:1} and {b:2} and only diff items.0 (or items.2).
+	pathSet := map[string]bool{}
+	for _, d := range diffs {
+		pathSet[d.Path.String()] = true
+	}
+	// Look for diffs at multiple item indexes to confirm positional path.
+	count := 0
+	for p := range pathSet {
+		if strings.HasPrefix(p, "items.0") || strings.HasPrefix(p, "items.1") || strings.HasPrefix(p, "items.2") {
+			count++
+		}
+	}
+	if count < 2 {
+		t.Errorf("expected diffs at multiple items.N paths (positional), got %+v", diffs)
+	}
+}
+
+// compareListsUnordered must skip already-matched to-items in the exact-match
+// scan. With duplicate "a" in `from` and a single "a" in `to`, the second
+// from-"a" must remain unmatched and surface as DiffRemoved.
+func TestCompare_IgnoreOrder_DuplicatesFromSide(t *testing.T) {
+	from := yml(`items: [a, a]`)
+	to := yml(`items: [a]`)
+
+	diffs, err := compare(from, to, &diffyml.Options{IgnoreOrderChanges: true})
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if !hasDiffType(diffs, diffyml.DiffRemoved) {
+		t.Errorf("expected DiffRemoved for the second duplicate, got %+v", diffs)
+	}
+}
+
+// compareListsUnordered must `break` after pairing fromItem[i] with one
+// toItem[j]. If `break` becomes `continue`, the same fromItem keeps matching
+// further toItems and hides the second-duplicate DiffAdded.
+func TestCompare_IgnoreOrder_DuplicatesToSide(t *testing.T) {
+	from := yml(`items: [a]`)
+	to := yml(`items: [a, a]`)
+
+	diffs, err := compare(from, to, &diffyml.Options{IgnoreOrderChanges: true})
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if !hasDiffType(diffs, diffyml.DiffAdded) {
+		t.Errorf("expected DiffAdded for the second duplicate, got %+v", diffs)
+	}
+}
+
+// compareListsUnordered trailing fi cleanup must `continue` past matched
+// indices, not `break`. With fromMatched=[F,T,F], breaking on index 1 would
+// drop the Removed for index 2 ("c").
+func TestCompare_IgnoreOrder_UnmatchedAfterMatchedFromIdx(t *testing.T) {
+	from := yml(`items: [a, b, c]`)
+	to := yml(`items: [b]`)
+
+	diffs, err := compare(from, to, &diffyml.Options{IgnoreOrderChanges: true})
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	removed := 0
+	for _, d := range diffs {
+		if d.Type == diffyml.DiffRemoved {
+			removed++
+		}
+	}
+	if removed != 2 {
+		t.Errorf("expected 2 DiffRemoved for unmatched a and c, got %d (%+v)", removed, diffs)
+	}
+}
+
+// Mirror of the previous test for the `to` cleanup loop.
+func TestCompare_IgnoreOrder_UnmatchedAfterMatchedToIdx(t *testing.T) {
+	from := yml(`items: [b]`)
+	to := yml(`items: [a, b, c]`)
+
+	diffs, err := compare(from, to, &diffyml.Options{IgnoreOrderChanges: true})
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	added := 0
+	for _, d := range diffs {
+		if d.Type == diffyml.DiffAdded {
+			added++
+		}
+	}
+	if added != 2 {
+		t.Errorf("expected 2 DiffAdded for unmatched a and c, got %d (%+v)", added, diffs)
+	}
+}
+
+// detectListOrderChanges must skip its order-change report when identifiers
+// are not unique on either side. Two from-items share name=a, so the
+// duplicate-detection guard `hasUniqueIDs` is false and no DiffOrderChanged
+// should be emitted (regardless of from/to ordering).
+func TestCompare_OrderChange_SkippedWhenDuplicateIdentifiers(t *testing.T) {
+	from := yml(`items:
+  - name: a
+    v: 1
+  - name: a
+    v: 2
+  - name: b
+    v: 3`)
+	to := yml(`items:
+  - name: b
+    v: 3
+  - name: a
+    v: 1
+  - name: a
+    v: 2`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	for _, d := range diffs {
+		if d.Type == diffyml.DiffOrderChanged {
+			t.Errorf("did not expect DiffOrderChanged with duplicate identifiers, got %+v", d)
+		}
+	}
+}
+
+// compareUnidentifiedItems must skip already-matched to-items in the
+// exact-match scan (mirror of the compareListsUnordered case). Reached via a
+// mixed-identifier list where {foo:1} entries fall into the unidentified
+// fallback.
+func TestCompare_MixedIdentifierList_DuplicateUnidentifiedItems(t *testing.T) {
+	from := yml(`items:
+  - name: keep
+    v: 1
+  - foo: 1
+  - foo: 1`)
+	to := yml(`items:
+  - name: keep
+    v: 1
+  - foo: 1`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if !hasDiffType(diffs, diffyml.DiffRemoved) {
+		t.Errorf("expected DiffRemoved for the second {foo:1}, got %+v", diffs)
+	}
+}
+
+// Mirror for the to-side cleanup loop in compareUnidentifiedItems.
+func TestCompare_MixedIdentifierList_ToSideHasExtraUnidentified(t *testing.T) {
+	from := yml(`items:
+  - name: keep
+    v: 1
+  - foo: 1`)
+	to := yml(`items:
+  - name: keep
+    v: 1
+  - foo: 1
+  - foo: 1`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if !hasDiffType(diffs, diffyml.DiffAdded) {
+		t.Errorf("expected DiffAdded for the extra {foo:1}, got %+v", diffs)
+	}
+}
+
+// Drives the fromNoIDMatched-skip in the compareUnidentifiedItems cleanup
+// loop: a matched unidentified item is sandwiched between two unmatched
+// ones, so `continue` (not `break`) is required to surface both.
+func TestCompare_MixedIdentifierList_UnmatchedAroundMatched(t *testing.T) {
+	from := yml(`items:
+  - name: keep
+    v: 1
+  - x: 1
+  - y: 2
+  - z: 3`)
+	to := yml(`items:
+  - name: keep
+    v: 1
+  - y: 2`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	removed := 0
+	for _, d := range diffs {
+		if d.Type == diffyml.DiffRemoved {
+			removed++
+		}
+	}
+	if removed < 2 {
+		t.Errorf("expected at least 2 DiffRemoved (x:1 and z:3), got %d (%+v)", removed, diffs)
+	}
+}
+
+// couldBeJSON must require a leading '{' or '[' — not just len>=2.
+// "123" and "123 " both unmarshal as JSON numbers and canonicalize equal;
+// with the start-char check mutated to `true`, they'd be reported equal
+// and the diff would disappear.
+func TestCompare_FormatStrings_NonJSONShapedStringsStillDiff(t *testing.T) {
+	from := yml(`data: "123"`)
+	to := yml(`data: "123 "`)
+
+	diffs, err := compare(from, to, &diffyml.Options{FormatStrings: true})
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if len(diffs) != 1 {
+		t.Fatalf("expected 1 diff for non-JSON-shaped strings, got %d: %+v", len(diffs), diffs)
+	}
+}
+
+// compareListsUnordered walk loop must `continue` past an already-matched
+// fromMatched[fi]. With break, a leading exact match would stop the
+// pair-walk entirely and convert the remaining "modified" item into a
+// spurious Remove+Add at the same path.
+func TestCompare_IgnoreOrder_WalkSkipsMatchedFromPrefix(t *testing.T) {
+	from := yml(`items: [a, b]`)
+	to := yml(`items: [a, c]`)
+
+	diffs, err := compare(from, to, &diffyml.Options{IgnoreOrderChanges: true})
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if len(diffs) != 1 {
+		t.Fatalf("expected 1 diff (b→c modified), got %d: %+v", len(diffs), diffs)
+	}
+	if diffs[0].Type != diffyml.DiffModified {
+		t.Errorf("expected DiffModified (walk should pair b and c), got %v", diffs[0].Type)
+	}
+}
+
+// compareUnidentifiedItems walk loop must `continue` past an already-matched
+// fromNoIDMatched[fi]. Same shape as the previous test but routed through
+// the mixed-identifier fallback.
+func TestCompare_MixedIdentifierList_WalkSkipsMatchedFromPrefix(t *testing.T) {
+	from := yml(`items:
+  - name: keep
+  - match: 1
+  - value: 1`)
+	to := yml(`items:
+  - name: keep
+  - match: 1
+  - value: 2`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	for _, d := range diffs {
+		if d.Type == diffyml.DiffRemoved || d.Type == diffyml.DiffAdded {
+			t.Errorf("expected pure DiffModified (walk should pair value:1 and value:2), got %v at %s", d.Type, d.Path)
+		}
+	}
+	if !hasDiffType(diffs, diffyml.DiffModified) {
+		t.Errorf("expected DiffModified at items.2.value, got %+v", diffs)
+	}
+}
+
+// compareUnidentifiedItems inner scan must `continue` past an already-matched
+// toNoIDMatched[tj], not `break`. Breaking would prevent a later fromItem
+// from finding its real match further down the toNoID slice.
+func TestCompare_MixedIdentifierList_InnerScanSkipsMatchedToPrefix(t *testing.T) {
+	from := yml(`items:
+  - name: keep
+  - a: 1
+  - b: 1
+  - c: 1`)
+	to := yml(`items:
+  - name: keep
+  - a: 1
+  - c: 1
+  - b: 1`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if len(diffs) != 0 {
+		t.Fatalf("expected 0 diffs (all items match exactly across order), got %d: %+v", len(diffs), diffs)
+	}
+}
+
+// detectListOrderChanges' hasUniqueIDs guard combines two checks with &&.
+// Asymmetric tests (one side has duplicate IDs, the other unique) prevent
+// either operand from being silently mutated to `true`, and prevent
+// `&&` → `||` from passing the guard.
+func TestCompare_OrderChange_DuplicateFromUniqueTo(t *testing.T) {
+	from := yml(`items:
+  - name: a
+  - name: a
+  - name: b`)
+	to := yml(`items:
+  - name: b
+  - name: a
+  - name: c`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	for _, d := range diffs {
+		if d.Type == diffyml.DiffOrderChanged {
+			t.Errorf("did not expect DiffOrderChanged when from has duplicate IDs, got %+v", d)
+		}
+	}
+}
+
+func TestCompare_OrderChange_UniqueFromDuplicateTo(t *testing.T) {
+	from := yml(`items:
+  - name: a
+  - name: b
+  - name: c`)
+	to := yml(`items:
+  - name: c
+  - name: a
+  - name: a`)
+
+	diffs, err := compare(from, to, nil)
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	for _, d := range diffs {
+		if d.Type == diffyml.DiffOrderChanged {
+			t.Errorf("did not expect DiffOrderChanged when to has duplicate IDs, got %+v", d)
+		}
+	}
+}
+
+// couldBeJSON's length guard must short-circuit before indexing s[0].
+// Mutating `len(s) >= 2` to `true` (or `&&` to `||`) would access s[0]
+// on an empty string and panic.
+func TestCompare_FormatStrings_EmptyStringNoPanic(t *testing.T) {
+	from := yml(`data: ""`)
+	to := yml(`data: "x"`)
+
+	diffs, err := compare(from, to, &diffyml.Options{FormatStrings: true})
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if len(diffs) != 1 {
+		t.Fatalf("expected 1 diff for empty vs 'x', got %d: %+v", len(diffs), diffs)
+	}
+}
+
+// deepEqualOrderedMaps must reject a size mismatch up front. With the length
+// guard removed, a subset map would be wrongly considered equal to a
+// superset in the exact-match scan of unordered list comparison.
+func TestCompare_IgnoreOrder_SupersetMapMustNotMatchExactly(t *testing.T) {
+	from := yml(`items:
+  - a: 1`)
+	to := yml(`items:
+  - a: 1
+    b: 2`)
+
+	diffs, err := compare(from, to, &diffyml.Options{IgnoreOrderChanges: true})
+	if err != nil {
+		t.Fatalf("compare() failed: %v", err)
+	}
+	if len(diffs) == 0 {
+		t.Fatal("expected at least 1 diff for the added key b, got 0")
+	}
+	if !hasDiffType(diffs, diffyml.DiffAdded) {
+		t.Errorf("expected DiffAdded for new key b, got %+v", diffs)
+	}
+}

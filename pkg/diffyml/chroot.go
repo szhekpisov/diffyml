@@ -26,6 +26,7 @@ func (e *ChrootError) Error() string {
 // Path format: "level1.level2.key" or "items[0].name" for list access.
 // Returns the value at the path, or an error if path doesn't exist.
 func navigateToPath(doc any, path string) (any, error) {
+	// gomutants:disable-next-line BRANCH_IF reason="equivalent; fallthrough path produces identical result — parsePath(\"\") returns nil segments, the loop is skipped, and current=doc is returned"
 	if path == "" {
 		return doc, nil
 	}
@@ -98,6 +99,7 @@ type pathSegment struct {
 // Examples: "foo.bar", "items[0]", "data[0].name"
 func parsePath(path string) ([]pathSegment, error) {
 	var segments []pathSegment
+	// gomutants:disable-next-line BRANCH_IF reason="equivalent; fallthrough produces identical result — splitPath(\"\") returns nil parts, the loop is skipped, and the same nil segments slice is returned"
 	if path == "" {
 		return segments, nil
 	}
@@ -111,7 +113,15 @@ func parsePath(path string) ([]pathSegment, error) {
 	for _, part := range parts {
 		// Check for bracket notation: key[index]
 		if idx := strings.Index(part, "["); idx >= 0 {
-			if strings.Count(part, "[") != 1 || strings.Count(part, "]") != 1 || !strings.HasSuffix(part, "]") {
+			// gomutants:disable-next-line BRANCH_IF reason="unreachable; splitPath rejects parts with a second '[' (line: nested bracket), so count[ is always 1 here"
+			if strings.Count(part, "[") != 1 {
+				return nil, fmt.Errorf("invalid list index syntax %q", part)
+			}
+			// gomutants:disable-next-line BRANCH_IF reason="unreachable; splitPath rejects ']' outside brackets and unterminated '[', so count] is always 1 here when count[ is 1"
+			if strings.Count(part, "]") != 1 {
+				return nil, fmt.Errorf("invalid list index syntax %q", part)
+			}
+			if !strings.HasSuffix(part, "]") {
 				return nil, fmt.Errorf("invalid list index syntax %q", part)
 			}
 			// Has index accessor
@@ -207,6 +217,7 @@ func applyChroot(doc any, path string, listToDocuments bool) ([]any, error) {
 
 // applyChrootToDocs applies chroot to multiple documents.
 func applyChrootToDocs(docs []any, path string, listToDocuments bool) ([]any, error) {
+	// gomutants:disable-next-line BRANCH_IF reason="equivalent; fallthrough calls applyChroot(doc, \"\", _) per doc, which itself early-returns []any{doc}, so result equals docs"
 	if path == "" {
 		return docs, nil
 	}

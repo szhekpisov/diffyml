@@ -1,6 +1,7 @@
 package diffyml
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -351,6 +352,78 @@ func TestSplitPath_SimpleKey(t *testing.T) {
 	}
 	if len(parts) > 0 && parts[0] != "key" {
 		t.Errorf("splitPath(\"key\")[0] = %q, want \"key\"", parts[0])
+	}
+}
+
+func TestNavigateToPath_IndexOnNonList_ErrorMessage(t *testing.T) {
+	doc := map[string]any{
+		"data": map[string]any{"key": "value"},
+	}
+	_, err := navigateToPath(doc, "data[0]")
+	if err == nil {
+		t.Fatal("expected error for index access into non-list")
+	}
+	if !strings.Contains(err.Error(), "expected list") {
+		t.Errorf("expected error mentioning \"expected list\", got: %v", err)
+	}
+}
+
+func TestNavigateToPath_NegativeIndex(t *testing.T) {
+	doc := map[string]any{
+		"items": []any{"a", "b", "c"},
+	}
+	_, err := navigateToPath(doc, "items[-1]")
+	if err == nil {
+		t.Fatal("expected error for negative list index, got nil")
+	}
+}
+
+func TestNavigateToPath_KeyThroughScalar_ErrorMessage(t *testing.T) {
+	doc := map[string]any{
+		"scalar": 42,
+	}
+	_, err := navigateToPath(doc, "scalar.field")
+	if err == nil {
+		t.Fatal("expected error for key access through scalar")
+	}
+	if !strings.Contains(err.Error(), "expected map") {
+		t.Errorf("expected error mentioning \"expected map\", got: %v", err)
+	}
+}
+
+func TestParsePath_ExtraAfterBracket(t *testing.T) {
+	if _, err := parsePath("key[1]extra"); err == nil {
+		t.Fatal("expected error for \"key[1]extra\", got nil")
+	}
+}
+
+func TestSplitPath_NestedOpenBracket(t *testing.T) {
+	if _, err := splitPath("a[[]"); err == nil {
+		t.Fatal("expected error for nested '[' in path, got nil")
+	}
+}
+
+func TestSplitPath_UnterminatedBracket(t *testing.T) {
+	if _, err := splitPath("a[1"); err == nil {
+		t.Fatal("expected error for unterminated '[', got nil")
+	}
+}
+
+func TestApplyChroot_EmptyPath_ListDoc_WrapsNotFlattens(t *testing.T) {
+	listDoc := []any{"a", "b", "c"}
+	result, err := applyChroot(listDoc, "", true)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) != 1 {
+		t.Fatalf("expected 1 doc (list wrapped, not flattened), got %d", len(result))
+	}
+	inner, ok := result[0].([]any)
+	if !ok {
+		t.Fatalf("expected list inside result[0], got %T", result[0])
+	}
+	if len(inner) != 3 {
+		t.Errorf("expected inner list of len 3, got %d", len(inner))
 	}
 }
 

@@ -323,7 +323,7 @@ func compareMatchedK8sDocs(matched map[int]int, from, to []any, opts *Options, u
 			pathPrefix = DiffPath{fmt.Sprintf("[%d]", docIdx)}
 		}
 
-		nodeDiffs := compareNodes(pathPrefix, fromDoc, toDoc, opts)
+		nodeDiffs := compareNodes(pathPrefix, fromDoc, toDoc, nodeLine(fromDoc), nodeLine(toDoc), opts)
 		var docName, docKind string
 		if f, ok := k8sExtractFields(toDoc); ok {
 			docName = f.displayName()

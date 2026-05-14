@@ -1,0 +1,21 @@
+Found four differences
+
+spec
+  - one map entry removed (L5):
+    removed_field: gone
+
+  + one map entry added (L5):
+    added_field: new
+
+spec.replicas
+  ± value change (L3)
+    - 2
+    + 3
+
+config
+  ± value change in multiline text (one insert, one deletion) (L6)
+      setting one
+    - setting two
+    + setting CHANGED
+      
+

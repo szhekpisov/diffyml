@@ -44,7 +44,7 @@ func compareDocs(from, to []any, opts *Options) []Difference {
 			pathPrefix = DiffPath{"[" + strconv.Itoa(i) + "]"}
 		}
 
-		nodeDiffs := compareNodes(pathPrefix, fromDoc, toDoc, opts)
+		nodeDiffs := compareNodes(pathPrefix, fromDoc, toDoc, nodeLine(fromDoc), nodeLine(toDoc), opts)
 		// Set DocumentIndex for all differences in this document
 		for j := range nodeDiffs {
 			nodeDiffs[j].DocumentIndex = i
@@ -72,16 +72,18 @@ func hasK8sDocuments(from, to []any) bool {
 
 // compareNodeNils handles nil cases for compareNodes.
 // Returns diffs and true if an early return is appropriate.
-func compareNodeNils(path DiffPath, from, to any, opts *Options) ([]Difference, bool) {
+// fromLine and toLine are the 1-based source lines of the current node (0 if unknown).
+func compareNodeNils(path DiffPath, from, to any, fromLine, toLine int, opts *Options) ([]Difference, bool) {
 	if from == nil && to == nil {
 		return nil, true
 	}
 	if from == nil {
 		return []Difference{{
-			Path: path,
-			Type: DiffAdded,
-			From: nil,
-			To:   to,
+			Path:   path,
+			Type:   DiffAdded,
+			From:   nil,
+			To:     to,
+			ToLine: toLine,
 		}}, true
 	}
 	if to == nil {
@@ -89,18 +91,20 @@ func compareNodeNils(path DiffPath, from, to any, opts *Options) ([]Difference, 
 			return nil, true
 		}
 		return []Difference{{
-			Path: path,
-			Type: DiffModified,
-			From: from,
-			To:   nil,
+			Path:     path,
+			Type:     DiffModified,
+			From:     from,
+			To:       nil,
+			FromLine: fromLine,
 		}}, true
 	}
 	return nil, false
 }
 
 // compareNodes recursively compares two YAML nodes.
-func compareNodes(path DiffPath, from, to any, opts *Options) []Difference {
-	if diffs, done := compareNodeNils(path, from, to, opts); done {
+// fromLine and toLine are the 1-based source lines of the current node (0 if unknown).
+func compareNodes(path DiffPath, from, to any, fromLine, toLine int, opts *Options) []Difference {
+	if diffs, done := compareNodeNils(path, from, to, fromLine, toLine, opts); done {
 		return diffs
 	}
 
@@ -126,10 +130,12 @@ func compareNodes(path DiffPath, from, to any, opts *Options) []Difference {
 					return nil
 				}
 				return []Difference{{
-					Path: path,
-					Type: DiffModified,
-					From: from,
-					To:   to,
+					Path:     path,
+					Type:     DiffModified,
+					From:     from,
+					To:       to,
+					FromLine: fromLine,
+					ToLine:   toLine,
 				}}
 			}
 			return nil
@@ -141,10 +147,12 @@ func compareNodes(path DiffPath, from, to any, opts *Options) []Difference {
 		return nil
 	}
 	return []Difference{{
-		Path: path,
-		Type: DiffModified,
-		From: from,
-		To:   to,
+		Path:     path,
+		Type:     DiffModified,
+		From:     from,
+		To:       to,
+		FromLine: fromLine,
+		ToLine:   toLine,
 	}}
 }
 
@@ -183,15 +191,16 @@ func compareOrderedMaps(path DiffPath, from, to *OrderedMap, opts *Options) []Di
 		if !toOk {
 			// Key was removed — report at parent path with key-value wrapped in OrderedMap
 			diffs = append(diffs, Difference{
-				Path: path,
-				Type: DiffRemoved,
-				From: &OrderedMap{Keys: []string{key}, Values: map[string]any{key: fromVal}},
-				To:   nil,
+				Path:     path,
+				Type:     DiffRemoved,
+				From:     &OrderedMap{Keys: []string{key}, Values: map[string]any{key: fromVal}},
+				To:       nil,
+				FromLine: from.lineFor(key),
 			})
 		} else {
 			// Key exists in both - recurse
 			childPath := path.Append(key)
-			diffs = append(diffs, compareNodes(childPath, fromVal, toVal, opts)...)
+			diffs = append(diffs, compareNodes(childPath, fromVal, toVal, from.lineFor(key), to.lineFor(key), opts)...)
 		}
 	}
 
@@ -201,10 +210,11 @@ func compareOrderedMaps(path DiffPath, from, to *OrderedMap, opts *Options) []Di
 		if _, inFrom := from.Values[key]; !inFrom {
 			// Key was added — report at parent path with key-value wrapped in OrderedMap
 			diffs = append(diffs, Difference{
-				Path: path,
-				Type: DiffAdded,
-				From: nil,
-				To:   &OrderedMap{Keys: []string{key}, Values: map[string]any{key: to.Values[key]}},
+				Path:   path,
+				Type:   DiffAdded,
+				From:   nil,
+				To:     &OrderedMap{Keys: []string{key}, Values: map[string]any{key: to.Values[key]}},
+				ToLine: to.lineFor(key),
 			})
 		}
 	}
@@ -255,9 +265,9 @@ func compareMaps(path DiffPath, from, to map[string]any, opts *Options) []Differ
 				To:   nil,
 			})
 		default:
-			// Key exists in both - recurse
+			// Key exists in both - recurse. Plain maps carry no line info.
 			childPath := path.Append(key)
-			diffs = append(diffs, compareNodes(childPath, fromVal, toVal, opts)...)
+			diffs = append(diffs, compareNodes(childPath, fromVal, toVal, 0, 0, opts)...)
 		}
 	}
 
@@ -354,24 +364,26 @@ func compareListsPositional(path DiffPath, from, to []any, opts *Options) []Diff
 	// Compare elements present in both lists
 	for i := range minLen {
 		childPath := path.Append(strconv.Itoa(i))
-		diffs = append(diffs, compareNodes(childPath, from[i], to[i], opts)...)
+		diffs = append(diffs, compareNodes(childPath, from[i], to[i], nodeLine(from[i]), nodeLine(to[i]), opts)...)
 	}
 	// Items added (present in 'to' but not 'from')
 	for i := minLen; i < len(to); i++ {
 		diffs = append(diffs, Difference{
-			Path: path.Append(strconv.Itoa(i)),
-			Type: DiffAdded,
-			From: nil,
-			To:   to[i],
+			Path:   path.Append(strconv.Itoa(i)),
+			Type:   DiffAdded,
+			From:   nil,
+			To:     to[i],
+			ToLine: nodeLine(to[i]),
 		})
 	}
 	// Items removed (present in 'from' but not 'to')
 	for i := minLen; i < len(from); i++ {
 		diffs = append(diffs, Difference{
-			Path: path.Append(strconv.Itoa(i)),
-			Type: DiffRemoved,
-			From: from[i],
-			To:   nil,
+			Path:     path.Append(strconv.Itoa(i)),
+			Type:     DiffRemoved,
+			From:     from[i],
+			To:       nil,
+			FromLine: nodeLine(from[i]),
 		})
 	}
 
@@ -412,7 +424,7 @@ func compareListsUnordered(path DiffPath, from, to []any, opts *Options) []Diffe
 			tj++
 			continue
 		}
-		diffs = append(diffs, compareNodes(path.Append(strconv.Itoa(fi)), from[fi], to[tj], opts)...)
+		diffs = append(diffs, compareNodes(path.Append(strconv.Itoa(fi)), from[fi], to[tj], nodeLine(from[fi]), nodeLine(to[tj]), opts)...)
 		fi++
 		tj++
 	}
@@ -421,9 +433,10 @@ func compareListsUnordered(path DiffPath, from, to []any, opts *Options) []Diffe
 			continue
 		}
 		diffs = append(diffs, Difference{
-			Path: path.Append(strconv.Itoa(fi)),
-			Type: DiffRemoved,
-			From: from[fi],
+			Path:     path.Append(strconv.Itoa(fi)),
+			Type:     DiffRemoved,
+			From:     from[fi],
+			FromLine: nodeLine(from[fi]),
 		})
 	}
 	for ; tj < len(to); tj++ {
@@ -431,9 +444,10 @@ func compareListsUnordered(path DiffPath, from, to []any, opts *Options) []Diffe
 			continue
 		}
 		diffs = append(diffs, Difference{
-			Path: path.Append(strconv.Itoa(tj)),
-			Type: DiffAdded,
-			To:   to[tj],
+			Path:   path.Append(strconv.Itoa(tj)),
+			Type:   DiffAdded,
+			To:     to[tj],
+			ToLine: nodeLine(to[tj]),
 		})
 	}
 
@@ -552,7 +566,7 @@ func compareUnidentifiedItems(path DiffPath, from, to []any, fromNoID, toNoID []
 			tj++
 			continue
 		}
-		diffs = append(diffs, compareNodes(path.Append(strconv.Itoa(fromNoID[fi])), from[fromNoID[fi]], to[toNoID[tj]], opts)...)
+		diffs = append(diffs, compareNodes(path.Append(strconv.Itoa(fromNoID[fi])), from[fromNoID[fi]], to[toNoID[tj]], nodeLine(from[fromNoID[fi]]), nodeLine(to[toNoID[tj]]), opts)...)
 		fi++
 		tj++
 	}
@@ -561,9 +575,10 @@ func compareUnidentifiedItems(path DiffPath, from, to []any, fromNoID, toNoID []
 			continue
 		}
 		diffs = append(diffs, Difference{
-			Path: path.Append(strconv.Itoa(fromNoID[fi])),
-			Type: DiffRemoved,
-			From: from[fromNoID[fi]],
+			Path:     path.Append(strconv.Itoa(fromNoID[fi])),
+			Type:     DiffRemoved,
+			From:     from[fromNoID[fi]],
+			FromLine: nodeLine(from[fromNoID[fi]]),
 		})
 	}
 	for ; tj < len(toNoID); tj++ {
@@ -571,9 +586,10 @@ func compareUnidentifiedItems(path DiffPath, from, to []any, fromNoID, toNoID []
 			continue
 		}
 		diffs = append(diffs, Difference{
-			Path: path.Append(strconv.Itoa(toNoID[tj])),
-			Type: DiffAdded,
-			To:   to[toNoID[tj]],
+			Path:   path.Append(strconv.Itoa(toNoID[tj])),
+			Type:   DiffAdded,
+			To:     to[toNoID[tj]],
+			ToLine: nodeLine(to[toNoID[tj]]),
 		})
 	}
 	return diffs
@@ -628,14 +644,15 @@ func compareListsByIdentifier(path DiffPath, from, to []any, opts *Options) []Di
 			// Use identifier value in path instead of index (dyff-style)
 			idStr := sprintIdentifier(id)
 			childPath := path.Append(idStr)
-			diffs = append(diffs, compareNodes(childPath, fromItem, toItem, opts)...)
+			diffs = append(diffs, compareNodes(childPath, fromItem, toItem, nodeLine(fromItem), nodeLine(toItem), opts)...)
 		} else {
 			// Item was removed - report at the list level (dyff-style)
 			diffs = append(diffs, Difference{
-				Path: path,
-				Type: DiffRemoved,
-				From: fromItem,
-				To:   nil,
+				Path:     path,
+				Type:     DiffRemoved,
+				From:     fromItem,
+				To:       nil,
+				FromLine: nodeLine(fromItem),
 			})
 		}
 	}
@@ -647,10 +664,11 @@ func compareListsByIdentifier(path DiffPath, from, to []any, opts *Options) []Di
 			if _, inFrom := fromIndex[id]; !inFrom {
 				// Item was added - report at the list level (dyff-style)
 				diffs = append(diffs, Difference{
-					Path: path,
-					Type: DiffAdded,
-					From: nil,
-					To:   toItem,
+					Path:   path,
+					Type:   DiffAdded,
+					From:   nil,
+					To:     toItem,
+					ToLine: nodeLine(toItem),
 				})
 			}
 		}

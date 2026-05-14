@@ -200,9 +200,17 @@ func (f *DetailedFormatter) formatEntryBatch(sb *strings.Builder, diffs []Differ
 		symbol = "-"
 	}
 
+	// When the batch holds a single entry, annotate the header with its
+	// source line. Multi-entry batches have heterogeneous lines, so the
+	// annotation is omitted to avoid implying a single location.
+	ann := ""
+	if opts.ShowLineNumbers && n == 1 {
+		ann = lineAnnotation(diffs[0])
+	}
+
 	sb.WriteString("  ")
 	sb.WriteString(colorStart(opts, f.colorModified(opts)))
-	fmt.Fprintf(sb, "%s %s %s %s:", symbol, countStr, noun, action)
+	fmt.Fprintf(sb, "%s %s %s %s%s:", symbol, countStr, noun, action, ann)
 	sb.WriteString(colorEnd(opts))
 	sb.WriteString("\n")
 
@@ -233,7 +241,11 @@ func (f *DetailedFormatter) formatChangeDescriptor(sb *strings.Builder, diff Dif
 	case DiffModified:
 		f.formatModified(sb, diff, opts)
 	case DiffOrderChanged:
-		f.writeDescriptorLine(sb, "  ⇆ order changed", f.colorModified, opts)
+		ann := ""
+		if opts.ShowLineNumbers {
+			ann = lineAnnotation(diff)
+		}
+		f.writeDescriptorLine(sb, "  ⇆ order changed"+ann, f.colorModified, opts)
 		if diff.From != nil {
 			f.writeColoredLine(sb, fmt.Sprintf("    - %s", formatCommaSeparated(diff.From)), f.colorRemoved(opts), opts)
 		}
@@ -249,14 +261,19 @@ func (f *DetailedFormatter) formatModified(sb *strings.Builder, diff Difference,
 	fromType := yamlTypeName(diff.From)
 	toType := yamlTypeName(diff.To)
 
+	ann := ""
+	if opts.ShowLineNumbers {
+		ann = lineAnnotation(diff)
+	}
+
 	// Type change detection
 	if fromType != toType {
 		if opts.Color {
-			f.writeDescriptorLine(sb, fmt.Sprintf("  ± type change from %s%s%s to %s%s%s",
+			f.writeDescriptorLine(sb, fmt.Sprintf("  ± type change from %s%s%s to %s%s%s%s",
 				styleItalic, fromType, styleItalicOff,
-				styleItalic, toType, styleItalicOff), f.colorModified, opts)
+				styleItalic, toType, styleItalicOff, ann), f.colorModified, opts)
 		} else {
-			f.writeDescriptorLine(sb, fmt.Sprintf("  ± type change from %s to %s", fromType, toType), f.colorModified, opts)
+			f.writeDescriptorLine(sb, fmt.Sprintf("  ± type change from %s to %s%s", fromType, toType, ann), f.colorModified, opts)
 		}
 		f.writeTypeChangeValue(sb, diff.From, "-", f.colorRemoved(opts), opts)
 		f.writeTypeChangeValue(sb, diff.To, "+", f.colorAdded(opts), opts)
@@ -279,13 +296,13 @@ func (f *DetailedFormatter) formatModified(sb *strings.Builder, diff Difference,
 		// strings get a readable line-by-line diff instead of a single
 		// unreadable line with ↵ markers)
 		if strings.Contains(fromStr, "\n") || strings.Contains(toStr, "\n") {
-			f.formatMultilineDiff(sb, fromStr, toStr, opts)
+			f.formatMultilineDiff(sb, fromStr, toStr, ann, opts)
 			return
 		}
 
 		// Whitespace-only change detection (single-line strings only)
 		if isWhitespaceOnlyChange(fromStr, toStr) {
-			f.writeDescriptorLine(sb, "  ± whitespace only change", f.colorModified, opts)
+			f.writeDescriptorLine(sb, "  ± whitespace only change"+ann, f.colorModified, opts)
 			f.writeColoredLine(sb, fmt.Sprintf("    - %s", visualizeWhitespace(fromStr)), f.colorRemoved(opts), opts)
 			f.writeColoredLine(sb, fmt.Sprintf("    + %s", visualizeWhitespace(toStr)), f.colorAdded(opts), opts)
 			sb.WriteString("\n")
@@ -293,12 +310,12 @@ func (f *DetailedFormatter) formatModified(sb *strings.Builder, diff Difference,
 		}
 
 		// Scalar string value change (may be cert-transformed)
-		f.writeValueChange(sb, fromStr, toStr, opts)
+		f.writeValueChange(sb, fromStr, toStr, ann, opts)
 		return
 	}
 
 	// Default: non-string scalar value change
-	f.writeValueChange(sb, formatDetailedValue(diff.From), formatDetailedValue(diff.To), opts)
+	f.writeValueChange(sb, formatDetailedValue(diff.From), formatDetailedValue(diff.To), ann, opts)
 }
 
 // detectMultiDoc checks if diffs span multiple documents by examining DocumentIndex values.
@@ -316,9 +333,9 @@ func (f *DetailedFormatter) detectMultiDoc(diffs []Difference) bool {
 
 // writeValueChange writes a "± value change" block with inline diff highlighting
 // when color is enabled and the values are similar enough, otherwise falls back
-// to plain colored lines.
-func (f *DetailedFormatter) writeValueChange(sb *strings.Builder, from, to string, opts *FormatOptions) {
-	f.writeDescriptorLine(sb, "  ± value change", f.colorModified, opts)
+// to plain colored lines. ann is an optional source-line suffix for the descriptor.
+func (f *DetailedFormatter) writeValueChange(sb *strings.Builder, from, to, ann string, opts *FormatOptions) {
+	f.writeDescriptorLine(sb, "  ± value change"+ann, f.colorModified, opts)
 	if opts.Color {
 		if fromSegs, toSegs := computeInlineDiff(from, to); fromSegs != nil {
 			f.writeInlineDiffLine(sb, "    - ", fromSegs, ColorRoleRemoved, opts)

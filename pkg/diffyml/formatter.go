@@ -42,6 +42,35 @@ type FormatOptions struct {
 	FilePath string
 	// Palette holds custom color overrides. Nil means use defaults.
 	Palette *CustomColorPalette
+	// ShowLineNumbers renders source line numbers for each difference when true.
+	ShowLineNumbers bool
+}
+
+// lineAnnotation returns a human-readable source-line suffix for a difference,
+// e.g. " (L3 → L5)", " (L3)", or "" when no line info is available.
+func lineAnnotation(diff Difference) string {
+	switch {
+	case diff.FromLine > 0 && diff.ToLine > 0:
+		if diff.FromLine == diff.ToLine {
+			return fmt.Sprintf(" (L%d)", diff.FromLine)
+		}
+		return fmt.Sprintf(" (L%d → L%d)", diff.FromLine, diff.ToLine)
+	case diff.ToLine > 0:
+		return fmt.Sprintf(" (L%d)", diff.ToLine)
+	case diff.FromLine > 0:
+		return fmt.Sprintf(" (L%d)", diff.FromLine)
+	default:
+		return ""
+	}
+}
+
+// diffLine returns the most relevant single source line for a difference
+// (the 'to' line preferred, falling back to 'from'), or 0 if unknown.
+func diffLine(diff Difference) int {
+	if diff.ToLine > 0 {
+		return diff.ToLine
+	}
+	return diff.FromLine
 }
 
 // DiffGroup pairs differences from a single file with its path.
@@ -205,6 +234,14 @@ func (f *CompactFormatter) formatDiff(sb *strings.Builder, diff Difference, opts
 		sb.WriteString(colorStart(opts, p.ColorCode(ColorRoleDocName, opts.TrueColor)))
 		fmt.Fprintf(sb, "(%s)", diff.DocumentName)
 		sb.WriteString(colorEnd(opts))
+	}
+
+	if opts.ShowLineNumbers {
+		if ann := lineAnnotation(diff); ann != "" {
+			sb.WriteString(colorStart(opts, p.ColorCode(ColorRoleContext, opts.TrueColor)))
+			sb.WriteString(ann)
+			sb.WriteString(colorEnd(opts))
+		}
 	}
 
 	f.formatValuesInline(sb, diff, opts)
@@ -399,7 +436,7 @@ func (f *GitHubFormatter) Format(diffs []Difference, opts *FormatOptions) string
 	for _, diff := range diffs {
 		cmd, title := gitHubCommand(diff.Type)
 		if counts[cmd] < gitHubAnnotationLimit {
-			gitHubWriteCommand(&sb, cmd, title, diffDescription(diff), filePath)
+			gitHubWriteCommand(&sb, cmd, title, diffDescription(diff), filePath, gitHubLine(diff, opts))
 			counts[cmd]++
 		} else {
 			omitted[cmd]++
@@ -410,11 +447,24 @@ func (f *GitHubFormatter) Format(diffs []Difference, opts *FormatOptions) string
 	return sb.String()
 }
 
+// gitHubLine returns the source line for a GitHub annotation, or 0 when line
+// numbers are disabled or unknown. The line= parameter is only meaningful
+// alongside file=, so callers omit it when no file path is set.
+func gitHubLine(diff Difference, opts *FormatOptions) int {
+	if opts != nil && opts.ShowLineNumbers {
+		return diffLine(diff)
+	}
+	return 0
+}
+
 // gitHubWriteCommand writes a single GitHub Actions workflow command to the builder.
-func gitHubWriteCommand(sb *strings.Builder, cmd, title, msg, filePath string) {
-	if filePath != "" {
+func gitHubWriteCommand(sb *strings.Builder, cmd, title, msg, filePath string, line int) {
+	switch {
+	case filePath != "" && line > 0:
+		fmt.Fprintf(sb, "::%s file=%s,line=%d,title=%s::%s\n", cmd, filePath, line, title, msg)
+	case filePath != "":
 		fmt.Fprintf(sb, "::%s file=%s,title=%s::%s\n", cmd, filePath, title, msg)
-	} else {
+	default:
 		fmt.Fprintf(sb, "::%s title=%s::%s\n", cmd, title, msg)
 	}
 }
@@ -443,7 +493,7 @@ func (f *GitHubFormatter) FormatAll(groups []DiffGroup, opts *FormatOptions) str
 		for _, diff := range group.Diffs {
 			cmd, title := gitHubCommand(diff.Type)
 			if counts[cmd] < gitHubAnnotationLimit {
-				gitHubWriteCommand(&sb, cmd, title, diffDescription(diff), group.FilePath)
+				gitHubWriteCommand(&sb, cmd, title, diffDescription(diff), group.FilePath, gitHubLine(diff, opts))
 				counts[cmd]++
 			} else {
 				omitted[cmd]++
@@ -486,6 +536,18 @@ func gitLabCheckName(dt DiffType) string {
 	}
 }
 
+// gitLabBeginLine returns the location.lines.begin value for a difference.
+// When line numbers are enabled and known, it uses the real source line;
+// otherwise it falls back to 1 (the GitLab Code Quality spec requires a value).
+func gitLabBeginLine(diff Difference, opts *FormatOptions) int {
+	if opts != nil && opts.ShowLineNumbers {
+		if line := diffLine(diff); line > 0 {
+			return line
+		}
+	}
+	return 1
+}
+
 // gitLabFingerprint returns a unique SHA-256 fingerprint.
 // When filePath is non-empty, hashes filePath + ":" + description.
 // When filePath is empty, hashes only description (backward compat).
@@ -502,8 +564,9 @@ func gitLabFingerprint(filePath, description string) string {
 func (f *GitLabFormatter) FormatSingle(diff Difference, opts *FormatOptions) string {
 	desc := diffDescription(diff)
 	return fmt.Sprintf(
-		`{"description": %q, "check_name": %q, "fingerprint": %q, "severity": %q, "location": {"path": %q, "lines": {"begin": 1}}}`+"\n",
-		desc, gitLabCheckName(diff.Type), gitLabFingerprint("", desc), gitLabSeverity(diff.Type), diff.Path)
+		`{"description": %q, "check_name": %q, "fingerprint": %q, "severity": %q, "location": {"path": %q, "lines": {"begin": %d}}}`+"\n",
+		desc, gitLabCheckName(diff.Type), gitLabFingerprint("", desc), gitLabSeverity(diff.Type), diff.Path, gitLabBeginLine(diff, opts),
+	)
 }
 
 // Format renders differences in GitLab CI format.
@@ -526,8 +589,8 @@ func (f *GitLabFormatter) Format(diffs []Difference, opts *FormatOptions) string
 			locationPath = diff.Path.String()
 		}
 		fmt.Fprintf(&sb,
-			`  {"description": %q, "check_name": %q, "fingerprint": %q, "severity": %q, "location": {"path": %q, "lines": {"begin": 1}}}`,
-			desc, gitLabCheckName(diff.Type), gitLabFingerprint(opts.FilePath, desc), gitLabSeverity(diff.Type), locationPath)
+			`  {"description": %q, "check_name": %q, "fingerprint": %q, "severity": %q, "location": {"path": %q, "lines": {"begin": %d}}}`,
+			desc, gitLabCheckName(diff.Type), gitLabFingerprint(opts.FilePath, desc), gitLabSeverity(diff.Type), locationPath, gitLabBeginLine(diff, opts))
 
 		if i < len(diffs)-1 {
 			sb.WriteString(",")
@@ -541,7 +604,7 @@ func (f *GitLabFormatter) Format(diffs []Difference, opts *FormatOptions) string
 
 // FormatAll renders all diff groups as a single JSON array for directory mode.
 // Implements StructuredFormatter interface.
-func (f *GitLabFormatter) FormatAll(groups []DiffGroup, _ *FormatOptions) string {
+func (f *GitLabFormatter) FormatAll(groups []DiffGroup, opts *FormatOptions) string {
 	// Count total diffs for comma handling
 	total := 0
 	for _, g := range groups {
@@ -561,8 +624,8 @@ func (f *GitLabFormatter) FormatAll(groups []DiffGroup, _ *FormatOptions) string
 			baseDesc := diffDescription(diff)
 			displayDesc := fmt.Sprintf("[%s] %s", group.FilePath, baseDesc)
 			fmt.Fprintf(&sb,
-				`  {"description": %q, "check_name": %q, "fingerprint": %q, "severity": %q, "location": {"path": %q, "lines": {"begin": 1}}}`,
-				displayDesc, gitLabCheckName(diff.Type), gitLabFingerprint(group.FilePath, baseDesc), gitLabSeverity(diff.Type), group.FilePath)
+				`  {"description": %q, "check_name": %q, "fingerprint": %q, "severity": %q, "location": {"path": %q, "lines": {"begin": %d}}}`,
+				displayDesc, gitLabCheckName(diff.Type), gitLabFingerprint(group.FilePath, baseDesc), gitLabSeverity(diff.Type), group.FilePath, gitLabBeginLine(diff, opts))
 
 			if idx < total-1 {
 				sb.WriteString(",")
@@ -588,6 +651,8 @@ type jsonDiff struct {
 	To            any    `json:"to"`
 	DocumentIndex int    `json:"document_index"`
 	DocumentName  string `json:"document_name,omitempty"`
+	FromLine      int    `json:"from_line,omitempty"`
+	ToLine        int    `json:"to_line,omitempty"`
 }
 
 // jsonDirDiff extends jsonDiff with a file path for directory mode.
@@ -657,7 +722,7 @@ func buildJSONDiff(diff Difference, opts *FormatOptions) jsonDiff {
 	if opts.UseGoPatchStyle {
 		path = diff.Path.GoPatchString()
 	}
-	return jsonDiff{
+	d := jsonDiff{
 		Path:          path,
 		Type:          jsonDiffTypeName(diff.Type),
 		From:          jsonPrepareValue(diff.From),
@@ -665,6 +730,11 @@ func buildJSONDiff(diff Difference, opts *FormatOptions) jsonDiff {
 		DocumentIndex: diff.DocumentIndex,
 		DocumentName:  diff.DocumentName,
 	}
+	if opts.ShowLineNumbers {
+		d.FromLine = diff.FromLine
+		d.ToLine = diff.ToLine
+	}
+	return d
 }
 
 // FormatSingle renders a single difference as a JSON object (without array wrapper).

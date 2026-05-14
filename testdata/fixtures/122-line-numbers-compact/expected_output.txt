@@ -1,0 +1,10 @@
+Found 4 difference(s) (1 removed, 1 added, 2 modified)
+
+- spec (L5) : removed_field: gone
++ spec (L5) : added_field: new
+± spec.replicas (L3) : 2 → 3
+± config (L6) : setting one
+setting two
+ → setting one
+setting CHANGED
+

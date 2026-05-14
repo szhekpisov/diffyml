@@ -37,6 +37,7 @@ additional-identifier:
   - "id"
 omit-header: true
 use-go-patch-style: true
+line-numbers: true
 multi-line-context-lines: 8
 chroot: "data"
 chroot-of-from: "from-root"
@@ -127,6 +128,9 @@ colors:
 	}
 	if fc.UseGoPatchStyle == nil || !*fc.UseGoPatchStyle {
 		t.Error("expected UseGoPatchStyle=true")
+	}
+	if fc.LineNumbers == nil || !*fc.LineNumbers {
+		t.Error("expected LineNumbers=true")
 	}
 	if fc.MultiLineContextLines == nil || *fc.MultiLineContextLines != 8 {
 		t.Errorf("expected MultiLineContextLines=8, got %v", fc.MultiLineContextLines)
@@ -462,6 +466,28 @@ func TestApplyFileConfig_BoolFields(t *testing.T) {
 	}
 	if !cfg.Swap {
 		t.Error("expected Swap=true")
+	}
+}
+
+func TestApplyFileConfig_LineNumbers(t *testing.T) {
+	cfg := NewCLIConfig()
+	lineNumbers := true
+	fc := &FileConfig{LineNumbers: &lineNumbers}
+	cfg.applyFileConfig(fc, map[string]bool{})
+	if !cfg.LineNumbers {
+		t.Error("expected LineNumbers=true from config")
+	}
+}
+
+func TestApplyFileConfig_LineNumbers_CLIOverrides(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.LineNumbers = false
+	lineNumbers := true
+	fc := &FileConfig{LineNumbers: &lineNumbers}
+	// CLI explicitly set --line-numbers=false, so config must not override.
+	cfg.applyFileConfig(fc, map[string]bool{"line-numbers": true})
+	if cfg.LineNumbers {
+		t.Error("expected CLI to override config: LineNumbers should stay false")
 	}
 }
 

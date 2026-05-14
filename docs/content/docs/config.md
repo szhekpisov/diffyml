@@ -55,6 +55,7 @@ additional-identifier: []
 # Display
 omit-header: false
 use-go-patch-style: false
+line-numbers: false
 multi-line-context-lines: 4
 
 # Chroot

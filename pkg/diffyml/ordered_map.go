@@ -20,6 +20,12 @@ import (
 type OrderedMap struct {
 	Keys   []string
 	Values map[string]any
+	// Line is the 1-based source line of the mapping node, or 0 if unknown
+	// (e.g. for OrderedMaps synthesized by the comparator rather than parsed).
+	Line int
+	// KeyLines maps each key to the 1-based source line where that key appears.
+	// Nil for synthesized OrderedMaps.
+	KeyLines map[string]int
 }
 
 // NewOrderedMap creates an empty OrderedMap.
@@ -28,6 +34,24 @@ func NewOrderedMap() *OrderedMap {
 		Keys:   nil,
 		Values: make(map[string]any),
 	}
+}
+
+// lineFor returns the 1-based source line of the given key, or 0 if unknown.
+// A nil KeyLines map is fine: indexing it yields the zero value.
+func (om *OrderedMap) lineFor(key string) int {
+	if om == nil {
+		return 0
+	}
+	return om.KeyLines[key]
+}
+
+// nodeLine returns the 1-based source line of a parsed value, or 0 if unknown.
+// Only *OrderedMap carries line information; scalars and sequences return 0.
+func nodeLine(val any) int {
+	if om, ok := val.(*OrderedMap); ok {
+		return om.Line
+	}
+	return 0
 }
 
 // ParseWithOrder parses YAML content into documents using OrderedMap for mappings
@@ -78,8 +102,10 @@ func nodeToInterfaceImpl(node *yaml.Node, seen map[*yaml.Node]bool) any {
 	case yaml.MappingNode:
 		nKeys := len(node.Content) / 2
 		om := &OrderedMap{
-			Keys:   make([]string, 0, nKeys),
-			Values: make(map[string]any, nKeys),
+			Keys:     make([]string, 0, nKeys),
+			Values:   make(map[string]any, nKeys),
+			Line:     node.Line,
+			KeyLines: make(map[string]int, nKeys),
 		}
 		for i := 0; i+1 < len(node.Content); i += 2 {
 			key := node.Content[i].Value
@@ -91,6 +117,7 @@ func nodeToInterfaceImpl(node *yaml.Node, seen map[*yaml.Node]bool) any {
 						if _, exists := om.Values[mk]; !exists {
 							om.Keys = append(om.Keys, mk)
 							om.Values[mk] = mergedMap.Values[mk]
+							om.KeyLines[mk] = mergedMap.lineFor(mk)
 						}
 					}
 				}
@@ -99,6 +126,7 @@ func nodeToInterfaceImpl(node *yaml.Node, seen map[*yaml.Node]bool) any {
 			val := nodeToInterfaceImpl(node.Content[i+1], seen)
 			om.Keys = append(om.Keys, key)
 			om.Values[key] = val
+			om.KeyLines[key] = node.Content[i].Line
 		}
 		return om
 

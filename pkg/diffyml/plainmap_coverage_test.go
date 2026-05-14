@@ -15,7 +15,7 @@ func TestCompareNodes_PlainMaps_Equal(t *testing.T) {
 	from := map[string]any{"a": "1", "b": "2"}
 	to := map[string]any{"a": "1", "b": "2"}
 
-	diffs := compareNodes(DiffPath{"root"}, from, to, nil)
+	diffs := compareNodes(DiffPath{"root"}, from, to, 0, 0, nil)
 	if len(diffs) != 0 {
 		t.Errorf("expected no diffs for equal plain maps, got %d: %v", len(diffs), diffs)
 	}
@@ -25,7 +25,7 @@ func TestCompareNodes_PlainMaps_Modified(t *testing.T) {
 	from := map[string]any{"a": "1", "b": "2"}
 	to := map[string]any{"a": "1", "b": "changed"}
 
-	diffs := compareNodes(DiffPath{"root"}, from, to, nil)
+	diffs := compareNodes(DiffPath{"root"}, from, to, 0, 0, nil)
 	if len(diffs) != 1 {
 		t.Fatalf("expected 1 diff, got %d: %v", len(diffs), diffs)
 	}
@@ -41,7 +41,7 @@ func TestCompareNodes_PlainMaps_Added(t *testing.T) {
 	from := map[string]any{"a": "1"}
 	to := map[string]any{"a": "1", "b": "2"}
 
-	diffs := compareNodes(DiffPath{"root"}, from, to, nil)
+	diffs := compareNodes(DiffPath{"root"}, from, to, 0, 0, nil)
 	if len(diffs) != 1 {
 		t.Fatalf("expected 1 diff, got %d: %v", len(diffs), diffs)
 	}
@@ -54,7 +54,7 @@ func TestCompareNodes_PlainMaps_Removed(t *testing.T) {
 	from := map[string]any{"a": "1", "b": "2"}
 	to := map[string]any{"a": "1"}
 
-	diffs := compareNodes(DiffPath{"root"}, from, to, nil)
+	diffs := compareNodes(DiffPath{"root"}, from, to, 0, 0, nil)
 	if len(diffs) != 1 {
 		t.Fatalf("expected 1 diff, got %d: %v", len(diffs), diffs)
 	}
@@ -71,7 +71,7 @@ func TestCompareNodes_PlainMaps_Nested(t *testing.T) {
 		"parent": map[string]any{"child": "new"},
 	}
 
-	diffs := compareNodes(nil, from, to, nil)
+	diffs := compareNodes(nil, from, to, 0, 0, nil)
 	if len(diffs) != 1 {
 		t.Fatalf("expected 1 diff, got %d: %v", len(diffs), diffs)
 	}

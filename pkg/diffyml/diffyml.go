@@ -42,6 +42,12 @@ type Difference struct {
 	// masking to identify Secret resources without parsing DocumentName, since apiVersion
 	// can itself contain "/" (e.g., "apps/v1").
 	DocumentKind string
+	// FromLine is the 1-based source line of the changed value in the 'from' file,
+	// or 0 if unknown (scalar list items, list containers, synthesized values).
+	FromLine int
+	// ToLine is the 1-based source line of the changed value in the 'to' file,
+	// or 0 if unknown.
+	ToLine int
 }
 
 // Options configures the comparison behavior.

@@ -1,0 +1,8 @@
+name: myapp
+spec:
+  replicas: 2
+  image: nginx:1.0
+  removed_field: gone
+config: |
+  setting one
+  setting two

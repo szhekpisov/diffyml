@@ -69,16 +69,17 @@ func (f *DetailedFormatter) renderLineDiffOps(sb *strings.Builder, ops []editOp,
 }
 
 // formatMultilineDiff renders an inline line-by-line diff for multiline strings.
-func (f *DetailedFormatter) formatMultilineDiff(sb *strings.Builder, from, to string, opts *FormatOptions) {
+// ann is an optional source-line suffix appended to the descriptor.
+func (f *DetailedFormatter) formatMultilineDiff(sb *strings.Builder, from, to, ann string, opts *FormatOptions) {
 	fromLines := strings.Split(from, "\n")
 	toLines := strings.Split(to, "\n")
 	ops := computeLineDiff(fromLines, toLines)
 
 	additions, deletions := countEditOps(ops)
 
-	descriptor := fmt.Sprintf("  ± value change in multiline text (%s %s, %s %s)",
+	descriptor := fmt.Sprintf("  ± value change in multiline text (%s %s, %s %s)%s",
 		formatCount(additions), pluralize(additions, "insert", "inserts"),
-		formatCount(deletions), pluralize(deletions, "deletion", "deletions"))
+		formatCount(deletions), pluralize(deletions, "deletion", "deletions"), ann)
 	f.writeDescriptorLine(sb, descriptor, f.colorModified, opts)
 
 	// Apply context collapsing

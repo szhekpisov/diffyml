@@ -1,0 +1,40 @@
+[
+  {
+    "path": "spec",
+    "type": "removed",
+    "from": {
+      "removed_field": "gone"
+    },
+    "to": null,
+    "document_index": 0,
+    "from_line": 5
+  },
+  {
+    "path": "spec",
+    "type": "added",
+    "from": null,
+    "to": {
+      "added_field": "new"
+    },
+    "document_index": 0,
+    "to_line": 5
+  },
+  {
+    "path": "spec.replicas",
+    "type": "modified",
+    "from": 2,
+    "to": 3,
+    "document_index": 0,
+    "from_line": 3,
+    "to_line": 3
+  },
+  {
+    "path": "config",
+    "type": "modified",
+    "from": "setting one\nsetting two\n",
+    "to": "setting one\nsetting CHANGED\n",
+    "document_index": 0,
+    "from_line": 6,
+    "to_line": 6
+  }
+]

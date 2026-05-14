@@ -75,6 +75,29 @@ func TestCLIConfig_ToFormatOptions(t *testing.T) {
 	}
 }
 
+func TestCLIConfig_ToFormatOptions_LineNumbers(t *testing.T) {
+	cfg := NewCLIConfig()
+	if cfg.ToFormatOptions().ShowLineNumbers {
+		t.Error("expected ShowLineNumbers=false by default")
+	}
+	cfg.LineNumbers = true
+	if !cfg.ToFormatOptions().ShowLineNumbers {
+		t.Error("expected ShowLineNumbers=true when LineNumbers is set")
+	}
+}
+
+func TestCLIConfig_ParseArgs_LineNumbers(t *testing.T) {
+	for _, flag := range []string{"--line-numbers", "-l"} {
+		cfg := NewCLIConfig()
+		if err := cfg.ParseArgs([]string{flag, "from.yaml", "to.yaml"}); err != nil {
+			t.Fatalf("ParseArgs(%s): %v", flag, err)
+		}
+		if !cfg.LineNumbers {
+			t.Errorf("expected LineNumbers=true after %s", flag)
+		}
+	}
+}
+
 func TestCLIConfig_ToFormatOptions_NoCertInspection(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.NoCertInspection = true

@@ -70,6 +70,7 @@ diffyml [flags] <from> <to>
 |------|------|---------|-------------|
 | `-b`, `--omit-header` | `bool` | — | omit the diffyml summary header |
 | `-g`, `--use-go-patch-style` | `bool` | — | use Go-Patch style paths in outputs |
+| `-l`, `--line-numbers` | `bool` | — | show source line numbers for each difference |
 | `--multi-line-context-lines` | `int` | `4` | context lines for multi-line strings |
 
 ## Chroot

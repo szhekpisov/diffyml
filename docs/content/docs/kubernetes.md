@@ -41,6 +41,10 @@ diffyml --detect-kubernetes=false file1.yaml file2.yaml
 
 `--mask-secrets` redacts the `data` / `stringData` fields of `Secret` resources before any output is produced — useful when diffs land in CI logs or PR comments. See [Sensitive Value Masking]({{< relref "/docs/masking" >}}).
 
+## Suppressing controller noise
+
+`--neat` drops paths injected by the API server, kubectl, Helm, ArgoCD, and Flux — the noise that dominates `kubectl diff` and `helm diff upgrade` output. See [Neat Mode]({{< relref "/docs/neat" >}}).
+
 ## kubectl external diff
 
 See [CI Integration → kubectl external diff]({{< relref "/docs/ci#kubectl-external-diff" >}}) for the full setup.

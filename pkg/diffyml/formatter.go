@@ -47,8 +47,11 @@ type FormatOptions struct {
 }
 
 // lineAnnotation returns a human-readable source-line suffix for a difference,
-// e.g. " (L3 → L5)", " (L3)", or "" when no line info is available.
-func lineAnnotation(diff Difference) string {
+// e.g. " (L3 → L5)", " (L3)", or "" when line numbers are disabled or unknown.
+func lineAnnotation(diff Difference, opts *FormatOptions) string {
+	if opts == nil || !opts.ShowLineNumbers {
+		return ""
+	}
 	switch {
 	case diff.FromLine > 0 && diff.ToLine > 0:
 		if diff.FromLine == diff.ToLine {
@@ -236,12 +239,10 @@ func (f *CompactFormatter) formatDiff(sb *strings.Builder, diff Difference, opts
 		sb.WriteString(colorEnd(opts))
 	}
 
-	if opts.ShowLineNumbers {
-		if ann := lineAnnotation(diff); ann != "" {
-			sb.WriteString(colorStart(opts, p.ColorCode(ColorRoleContext, opts.TrueColor)))
-			sb.WriteString(ann)
-			sb.WriteString(colorEnd(opts))
-		}
+	if ann := lineAnnotation(diff, opts); ann != "" {
+		sb.WriteString(colorStart(opts, p.ColorCode(ColorRoleContext, opts.TrueColor)))
+		sb.WriteString(ann)
+		sb.WriteString(colorEnd(opts))
 	}
 
 	f.formatValuesInline(sb, diff, opts)

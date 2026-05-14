@@ -204,8 +204,8 @@ func (f *DetailedFormatter) formatEntryBatch(sb *strings.Builder, diffs []Differ
 	// source line. Multi-entry batches have heterogeneous lines, so the
 	// annotation is omitted to avoid implying a single location.
 	ann := ""
-	if opts.ShowLineNumbers && n == 1 {
-		ann = lineAnnotation(diffs[0])
+	if n == 1 {
+		ann = lineAnnotation(diffs[0], opts)
 	}
 
 	sb.WriteString("  ")
@@ -241,11 +241,7 @@ func (f *DetailedFormatter) formatChangeDescriptor(sb *strings.Builder, diff Dif
 	case DiffModified:
 		f.formatModified(sb, diff, opts)
 	case DiffOrderChanged:
-		ann := ""
-		if opts.ShowLineNumbers {
-			ann = lineAnnotation(diff)
-		}
-		f.writeDescriptorLine(sb, "  ⇆ order changed"+ann, f.colorModified, opts)
+		f.writeDescriptorLine(sb, "  ⇆ order changed"+lineAnnotation(diff, opts), f.colorModified, opts)
 		if diff.From != nil {
 			f.writeColoredLine(sb, fmt.Sprintf("    - %s", formatCommaSeparated(diff.From)), f.colorRemoved(opts), opts)
 		}
@@ -261,10 +257,7 @@ func (f *DetailedFormatter) formatModified(sb *strings.Builder, diff Difference,
 	fromType := yamlTypeName(diff.From)
 	toType := yamlTypeName(diff.To)
 
-	ann := ""
-	if opts.ShowLineNumbers {
-		ann = lineAnnotation(diff)
-	}
+	ann := lineAnnotation(diff, opts)
 
 	// Type change detection
 	if fromType != toType {

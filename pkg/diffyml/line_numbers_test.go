@@ -239,6 +239,7 @@ func TestCompare_LineNumbersSurviveChroot(t *testing.T) {
 // --- formatter helpers ---
 
 func TestLineAnnotation(t *testing.T) {
+	on := &FormatOptions{ShowLineNumbers: true}
 	cases := []struct {
 		name string
 		diff Difference
@@ -252,10 +253,20 @@ func TestLineAnnotation(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := lineAnnotation(tc.diff); got != tc.want {
+			if got := lineAnnotation(tc.diff, on); got != tc.want {
 				t.Errorf("lineAnnotation = %q, want %q", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestLineAnnotation_DisabledOrNil(t *testing.T) {
+	diff := Difference{FromLine: 3, ToLine: 3}
+	if got := lineAnnotation(diff, &FormatOptions{ShowLineNumbers: false}); got != "" {
+		t.Errorf("lineAnnotation disabled = %q, want empty", got)
+	}
+	if got := lineAnnotation(diff, nil); got != "" {
+		t.Errorf("lineAnnotation nil opts = %q, want empty", got)
 	}
 }
 

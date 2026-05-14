@@ -17,7 +17,7 @@ import (
 func TestDeepEqual_OrderedMaps_DifferentLengths(t *testing.T) {
 	a := &OrderedMap{Values: map[string]any{"x": 1, "y": 2}}
 	b := &OrderedMap{Values: map[string]any{"x": 1}}
-	if deepEqual(a, b, nil) {
+	if deepEqual(a, b, &Options{}) {
 		t.Error("expected OrderedMaps with different lengths to not be deepEqual")
 	}
 }
@@ -27,7 +27,7 @@ func TestDeepEqual_OrderedMaps_DifferentLengths(t *testing.T) {
 func TestDeepEqual_Slices_Equal(t *testing.T) {
 	a := []any{"x", "y", "z"}
 	b := []any{"x", "y", "z"}
-	if !deepEqual(a, b, nil) {
+	if !deepEqual(a, b, &Options{}) {
 		t.Error("expected equal slices to be deepEqual")
 	}
 }
@@ -35,7 +35,7 @@ func TestDeepEqual_Slices_Equal(t *testing.T) {
 func TestDeepEqual_Slices_DifferentValues(t *testing.T) {
 	a := []any{"x", "y"}
 	b := []any{"x", "z"}
-	if deepEqual(a, b, nil) {
+	if deepEqual(a, b, &Options{}) {
 		t.Error("expected slices with different values to not be deepEqual")
 	}
 }
@@ -43,7 +43,7 @@ func TestDeepEqual_Slices_DifferentValues(t *testing.T) {
 func TestDeepEqual_Slices_DifferentLengths(t *testing.T) {
 	a := []any{"x"}
 	b := []any{"x", "y"}
-	if deepEqual(a, b, nil) {
+	if deepEqual(a, b, &Options{}) {
 		t.Error("expected slices with different lengths to not be deepEqual")
 	}
 }
@@ -51,7 +51,7 @@ func TestDeepEqual_Slices_DifferentLengths(t *testing.T) {
 func TestDeepEqual_Slices_Nested(t *testing.T) {
 	a := []any{[]any{"a", "b"}}
 	b := []any{[]any{"a", "b"}}
-	if !deepEqual(a, b, nil) {
+	if !deepEqual(a, b, &Options{}) {
 		t.Error("expected nested equal slices to be deepEqual")
 	}
 }
@@ -225,7 +225,7 @@ func TestCompareListsByIdentifier_NoIDFallback(t *testing.T) {
 		"shared-scalar",
 	}
 
-	diffs := compareListsByIdentifier(DiffPath{"items"}, from, to, nil)
+	diffs := compareListsByIdentifier(DiffPath{"items"}, from, to, &Options{})
 
 	// "a" matched by name → modified value (1 → 2)
 	// "shared-scalar" matched by deepEqual in fallback → no diff
@@ -497,7 +497,7 @@ func TestComputeLineDiff_IdenticalLines(t *testing.T) {
 func TestCompareListsPositional_ToLonger(t *testing.T) {
 	from := []any{"a", "b"}
 	to := []any{"a", "b", "c", "d"}
-	diffs := compareListsPositional(DiffPath{"list"}, from, to, nil)
+	diffs := compareListsPositional(DiffPath{"list"}, from, to, &Options{})
 
 	added := 0
 	for _, d := range diffs {
@@ -513,7 +513,7 @@ func TestCompareListsPositional_ToLonger(t *testing.T) {
 func TestCompareListsPositional_FromLonger(t *testing.T) {
 	from := []any{"a", "b", "c"}
 	to := []any{"a"}
-	diffs := compareListsPositional(DiffPath{"list"}, from, to, nil)
+	diffs := compareListsPositional(DiffPath{"list"}, from, to, &Options{})
 
 	removed := 0
 	for _, d := range diffs {
@@ -614,13 +614,13 @@ func TestGetIdentifier_PlainMap(t *testing.T) {
 }
 
 func TestDeepEqual_BothNil(t *testing.T) {
-	if !deepEqual(nil, nil, nil) {
-		t.Error("deepEqual(nil, nil) should be true")
+	if !deepEqual(nil, nil, &Options{}) {
+		t.Error("deepEqual(nil, &Options{}) should be true")
 	}
 }
 
 func TestDeepEqual_TypeMismatch(t *testing.T) {
-	if deepEqual("str", 42, nil) {
+	if deepEqual("str", 42, &Options{}) {
 		t.Error("deepEqual with different types should be false")
 	}
 }
@@ -646,7 +646,7 @@ func TestCompareListsByIdentifier_NoIDMatchedSkip(t *testing.T) {
 		"shared-b",
 	}
 
-	diffs := compareListsByIdentifier(DiffPath{"items"}, from, to, nil)
+	diffs := compareListsByIdentifier(DiffPath{"items"}, from, to, &Options{})
 	for _, d := range diffs {
 		if d.Type == DiffRemoved || d.Type == DiffAdded {
 			t.Errorf("unexpected diff: %+v", d)
@@ -673,7 +673,7 @@ func TestCompareListsByIdentifier_NoIDExcessAdded(t *testing.T) {
 		"new-b",
 	}
 
-	diffs := compareListsByIdentifier(DiffPath{"items"}, from, to, nil)
+	diffs := compareListsByIdentifier(DiffPath{"items"}, from, to, &Options{})
 
 	// "only-in-from" vs "new-a" → positional modification
 	// "new-b" has no counterpart → added
@@ -715,7 +715,7 @@ func TestCompareUnidentifiedItems_CursorSkipMatchedTo(t *testing.T) {
 		"only-to",
 	}
 
-	diffs := compareListsByIdentifier(DiffPath{"items"}, from, to, nil)
+	diffs := compareListsByIdentifier(DiffPath{"items"}, from, to, &Options{})
 
 	// "shared" matches exactly. Remaining: "only-from" vs "only-to" → modification.
 	var modified int
@@ -750,7 +750,7 @@ func TestCompareUnidentifiedItems_ExcessFromWithMatchedSkip(t *testing.T) {
 		"shared",
 	}
 
-	diffs := compareListsByIdentifier(DiffPath{"items"}, from, to, nil)
+	diffs := compareListsByIdentifier(DiffPath{"items"}, from, to, &Options{})
 
 	// "shared" matches exactly. Remaining from: ["removed-a", "removed-b"] vs to: [].
 	// Both are excess → 2 modifications? No — no to items left, so "removed-a" has
@@ -1103,30 +1103,30 @@ func TestDeepEqual_TypeMismatch_OrderedMapVsString(t *testing.T) {
 	om := NewOrderedMap()
 	om.Keys = append(om.Keys, "k")
 	om.Values["k"] = "v"
-	if deepEqual(om, "not-a-map", nil) {
+	if deepEqual(om, "not-a-map", &Options{}) {
 		t.Error("expected false for *OrderedMap vs string")
 	}
 }
 
 func TestDeepEqual_TypeMismatch_MapVsString(t *testing.T) {
 	m := map[string]any{"k": "v"}
-	if deepEqual(m, "not-a-map", nil) {
+	if deepEqual(m, "not-a-map", &Options{}) {
 		t.Error("expected false for map vs string")
 	}
 }
 
 func TestDeepEqual_TypeMismatch_SliceVsString(t *testing.T) {
 	s := []any{"a", "b"}
-	if deepEqual(s, "not-a-slice", nil) {
+	if deepEqual(s, "not-a-slice", &Options{}) {
 		t.Error("expected false for slice vs string")
 	}
 }
 
 func TestDeepEqual_TypeMismatch_ScalarTypes(t *testing.T) {
-	if deepEqual("hello", 42, nil) {
+	if deepEqual("hello", 42, &Options{}) {
 		t.Error("expected false for string vs int")
 	}
-	if deepEqual(3.14, true, nil) {
+	if deepEqual(3.14, true, &Options{}) {
 		t.Error("expected false for float64 vs bool")
 	}
 }

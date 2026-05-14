@@ -445,7 +445,7 @@ func BenchmarkCompareOrderedMaps(b *testing.B) {
 			b.ReportAllocs()
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				compareOrderedMaps(DiffPath{"root"}, from, to, nil)
+				compareOrderedMaps(DiffPath{"root"}, from, to, &Options{})
 			}
 		})
 	}
@@ -465,7 +465,7 @@ func BenchmarkCompareLists_ByIdentifier(b *testing.B) {
 			b.ReportAllocs()
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				compareListsByIdentifier(DiffPath{"services"}, from, to, nil)
+				compareListsByIdentifier(DiffPath{"services"}, from, to, &Options{})
 			}
 		})
 	}
@@ -481,7 +481,7 @@ func BenchmarkCompareLists_Unordered(b *testing.B) {
 			b.ReportAllocs()
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				compareListsUnordered(DiffPath{"items"}, from, to, nil)
+				compareListsUnordered(DiffPath{"items"}, from, to, &Options{})
 			}
 		})
 	}
@@ -521,7 +521,7 @@ func BenchmarkDeepEqual(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			deepEqual(om, om, nil)
+			deepEqual(om, om, &Options{})
 		}
 	})
 
@@ -531,7 +531,7 @@ func BenchmarkDeepEqual(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			deepEqual(om1, om2, nil)
+			deepEqual(om1, om2, &Options{})
 		}
 	})
 
@@ -541,7 +541,7 @@ func BenchmarkDeepEqual(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			deepEqual(nested1, nested2, nil)
+			deepEqual(nested1, nested2, &Options{})
 		}
 	})
 }

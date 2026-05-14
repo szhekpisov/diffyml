@@ -45,8 +45,6 @@ diffyml [flags] <from> <to>
 
 ## Neat
 
-See [Neat Mode]({{< relref "/docs/neat" >}}) for the full pattern bundles and behavior.
-
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `--neat` | `bool` | — | exclude well-known noisy K8s/Helm/ArgoCD/Flux paths |

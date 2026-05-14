@@ -241,7 +241,9 @@ func (f *DetailedFormatter) formatChangeDescriptor(sb *strings.Builder, diff Dif
 	case DiffModified:
 		f.formatModified(sb, diff, opts)
 	case DiffOrderChanged:
-		f.writeDescriptorLine(sb, "  ⇆ order changed"+lineAnnotation(diff, opts), f.colorModified, opts)
+		// Order-changed diffs span the whole list, so they carry no single
+		// source line — no annotation here even when line numbers are on.
+		f.writeDescriptorLine(sb, "  ⇆ order changed", f.colorModified, opts)
 		if diff.From != nil {
 			f.writeColoredLine(sb, fmt.Sprintf("    - %s", formatCommaSeparated(diff.From)), f.colorRemoved(opts), opts)
 		}

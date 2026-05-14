@@ -392,13 +392,18 @@ func TestDetailedFormatter_LineNumbers_EntryBatch(t *testing.T) {
 }
 
 func TestDetailedFormatter_LineNumbers_OrderChanged(t *testing.T) {
+	// Order-changed diffs span the whole list and carry no single source
+	// line, so the descriptor is never annotated — even if line fields are set.
 	diffs := []Difference{
 		{Path: DiffPath{"l"}, Type: DiffOrderChanged, From: []any{"a", "b"}, To: []any{"b", "a"}, FromLine: 2, ToLine: 2},
 	}
 	f := &DetailedFormatter{}
 	out := f.Format(diffs, &FormatOptions{ShowLineNumbers: true})
-	if !strings.Contains(out, "order changed (L2)") {
-		t.Errorf("expected order changed descriptor with line, got:\n%s", out)
+	if !strings.Contains(out, "order changed") {
+		t.Errorf("expected order changed descriptor, got:\n%s", out)
+	}
+	if strings.Contains(out, "(L2)") {
+		t.Errorf("order changed descriptor should not be annotated with a line, got:\n%s", out)
 	}
 }
 

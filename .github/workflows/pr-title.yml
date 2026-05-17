@@ -1,7 +1,5 @@
 name: PR Title
 
-permissions: read-all
-
 on:
   pull_request:
     types: [opened, edited, synchronize]
@@ -9,6 +7,8 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Check PR title convention
         env:

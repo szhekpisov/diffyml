@@ -1,16 +1,16 @@
 # diffyml
 
-A fast, structural YAML diff tool with built-in Kubernetes intelligence. One dependency, minimal attack surface, native CI annotations for GitHub, GitLab, and Gitea.
-
+[![Release](https://img.shields.io/github/v/release/szhekpisov/diffyml)](https://github.com/szhekpisov/diffyml/releases/latest)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/szhekpisov/diffyml/badge)](https://scorecard.dev/viewer/?uri=github.com/szhekpisov/diffyml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/szhekpisov/diffyml)](https://goreportcard.com/report/github.com/szhekpisov/diffyml)
 [![codecov](https://codecov.io/gh/szhekpisov/diffyml/branch/main/graph/badge.svg)](https://codecov.io/gh/szhekpisov/diffyml)
 [![Mutation testing badge](https://img.shields.io/endpoint?style=flat&url=https%3A%2F%2Fbadge-api.stryker-mutator.io%2Fgithub.com%2Fszhekpisov%2Fdiffyml%2Fmain)](https://dashboard.stryker-mutator.io/reports/github.com/szhekpisov/diffyml/main)
-[![Release](https://img.shields.io/github/v/release/szhekpisov/diffyml)](https://github.com/szhekpisov/diffyml/releases/latest)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=szhekpisov_diffyml&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=szhekpisov_diffyml)
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fszhekpisov%2Fdiffyml.svg?type=shield&issueType=security)](https://app.fossa.com/projects/git%2Bgithub.com%2Fszhekpisov%2Fdiffyml?ref=badge_shield&issueType=security)
 [![Go Reference](https://pkg.go.dev/badge/github.com/szhekpisov/diffyml.svg)](https://pkg.go.dev/github.com/szhekpisov/diffyml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+A fast, structural YAML diff tool with built-in Kubernetes intelligence. One dependency, minimal attack surface, native CI annotations for GitHub, GitLab, and Gitea.
 
 <img src="doc/demo.png" alt="diffyml output" width="800">
 

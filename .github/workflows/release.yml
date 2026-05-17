@@ -5,12 +5,11 @@ on:
     tags:
       - "v*.*.*"
 
-permissions:
-  contents: read
-
 jobs:
   verify:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Validate semver tag
         run: |

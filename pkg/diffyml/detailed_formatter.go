@@ -361,9 +361,10 @@ func advanceLine(line int) int {
 // sits where a value begins (e.g. "    - 8: key: value").
 func insertLineNumber(line string, num int) string {
 	i := 0
-	if strings.HasPrefix(line[i:], "\x1b[") {
-		if m := strings.IndexByte(line[i:], 'm'); m >= 0 {
-			i += m + 1
+	if strings.HasPrefix(line, "\x1b[") {
+		// gomutants:disable-next-line CONDITIONALS_BOUNDARY reason="after the ESC '[' prefix, the SGR terminator 'm' is always at index >= 2, never 0, so >=0 and >0 are equivalent"
+		if m := strings.IndexByte(line, 'm'); m >= 0 {
+			i = m + 1
 		}
 	}
 	for i < len(line) && line[i] == ' ' {
@@ -382,11 +383,8 @@ func (f *DetailedFormatter) writeEntryWithLineNumber(sb *strings.Builder, block 
 		sb.WriteString(block)
 		return
 	}
-	if nl := strings.IndexByte(block, '\n'); nl >= 0 {
-		sb.WriteString(insertLineNumber(block[:nl], line))
-		sb.WriteString(block[nl:])
-		return
-	}
+	// insertLineNumber only rewrites up to the first line's leading marker, so it
+	// naturally affects just the first line of a multi-line block.
 	sb.WriteString(insertLineNumber(block, line))
 }
 

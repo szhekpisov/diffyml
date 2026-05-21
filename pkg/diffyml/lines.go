@@ -34,9 +34,10 @@ func (w *lineMapWalker) pop() {
 }
 
 // register records the current path at line, first-occurrence-wins (matching
-// pathWalker.register). Empty paths (document root) and unknown lines are skipped.
+// pathWalker.register). The empty document-root path is skipped. line always
+// comes from a parsed yaml.Node (1-based), so it is never <= 0 here.
 func (w *lineMapWalker) register(line int) {
-	if len(w.buf) == 0 || line <= 0 {
+	if len(w.buf) == 0 {
 		return
 	}
 	key := string(w.buf)
@@ -64,6 +65,7 @@ func (w *lineMapWalker) walk(node *yaml.Node, line int) {
 
 	switch node.Kind {
 	case yaml.MappingNode:
+		// gomutants:disable-next-line CONDITIONALS_BOUNDARY reason="MappingNode.Content always holds key/value pairs (even length), so i+1<len and i+1<=len iterate identically"
 		for i := 0; i+1 < len(node.Content); i += 2 {
 			keyNode := node.Content[i]
 			if keyNode.Value == "<<" {
@@ -139,6 +141,7 @@ func resolveAddRemoveLine(m map[string]int, path DiffPath, val any, opts *Option
 			return line
 		}
 	}
+	// gomutants:disable-next-line EXPRESSION_REMOVE reason="map add/remove wrappers always carry exactly one key; multi-key list items are resolved by the identifier branch above or share the item's source line"
 	if om, ok := val.(*OrderedMap); ok && len(om.Keys) == 1 {
 		if line := m[appendKey(base, om.Keys[0])]; line != 0 {
 			return line

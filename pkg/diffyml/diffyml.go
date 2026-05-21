@@ -89,6 +89,13 @@ type Options struct {
 	CaptureLineNumbers bool
 }
 
+// shouldCaptureLines reports whether source line numbers should be captured for
+// this comparison. Disabled under any chroot, which reshapes paths to be relative
+// to the chroot root and breaks the absolute path->line lookup.
+func (o *Options) shouldCaptureLines() bool {
+	return o.CaptureLineNumbers && o.Chroot == "" && o.ChrootFrom == "" && o.ChrootTo == ""
+}
+
 // Compare compares two YAML documents and returns the differences.
 // The from and to parameters should contain valid YAML content.
 // If opts is nil, default options are used.
@@ -96,13 +103,14 @@ func Compare(from, to []byte, opts *Options) ([]Difference, error) {
 	if opts == nil {
 		opts = &Options{}
 	}
+	capture := opts.shouldCaptureLines()
 
 	// Parse both YAML documents. When capturing line numbers, also retain the
 	// yaml.Node trees (which carry source line info) for later annotation.
 	var err error
 	var fromDocs, toDocs []any
 	var fromNodes, toNodes []*yaml.Node
-	if opts.CaptureLineNumbers {
+	if capture {
 		fromDocs, fromNodes, err = parseWithNodes(from)
 		if err != nil {
 			return nil, err
@@ -157,9 +165,8 @@ func Compare(from, to []byte, opts *Options) ([]Difference, error) {
 	pathOrder := extractPathOrder(fromDocs, toDocs, opts)
 	diffs := compareDocs(fromDocs, toDocs, opts)
 
-	// Annotate source line numbers. Skipped under chroot, which reshapes paths to
-	// be relative to the chroot root and breaks absolute line-map lookups.
-	if opts.CaptureLineNumbers && opts.Chroot == "" && opts.ChrootFrom == "" && opts.ChrootTo == "" {
+	// Annotate source line numbers (when enabled and not chrooted — see shouldCaptureLines).
+	if capture {
 		maxLen := max(len(fromNodes), len(toNodes))
 		fromLineMap := buildLineMap(fromNodes, maxLen, opts)
 		toLineMap := buildLineMap(toNodes, maxLen, opts)

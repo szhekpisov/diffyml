@@ -88,7 +88,7 @@ e2e: build
 	go test -race -v -timeout 120s ./test/e2e/
 
 fmt:
-	go run mvdan.cc/gofumpt@latest -l -w .
+	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest fmt ./...
 
 lint: golangci-lint
 

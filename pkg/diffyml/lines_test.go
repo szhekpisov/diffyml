@@ -1,6 +1,19 @@
 package diffyml
 
-import "testing"
+import (
+	"testing"
+
+	"go.yaml.in/yaml/v3"
+)
+
+// TestBuildLineMap_EmptyDocumentNode covers the empty-document guard in walk:
+// a DocumentNode with no content yields no line entries (and must not panic).
+func TestBuildLineMap_EmptyDocumentNode(t *testing.T) {
+	nodes := []*yaml.Node{{Kind: yaml.DocumentNode}}
+	if m := buildLineMap(nodes, 1, &Options{}); len(m) != 0 {
+		t.Errorf("expected empty line map for empty document, got %v", m)
+	}
+}
 
 // findDiff returns the first diff whose path string matches, or fails.
 func findDiff(t *testing.T, diffs []Difference, path string) Difference {

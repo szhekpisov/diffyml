@@ -50,6 +50,8 @@ func (f *DetailedFormatter) renderLineDiffOps(sb *strings.Builder, ops []editOp,
 		if op.Type != editKeep || nearChange[i] {
 			switch op.Type {
 			case editKeep:
+				// Context lines exist in both files; we label them with the to-file
+				// number since the rendered block represents the new file's content.
 				f.writeColoredLine(sb, fmt.Sprintf("      %s%s", linePrefix(opts, toCur), op.Line), f.colorContext(opts), opts)
 				fromCur, toCur = advanceLine(fromCur), advanceLine(toCur)
 			case editInsert:

@@ -33,22 +33,8 @@ func NewOrderedMap() *OrderedMap {
 // ParseWithOrder parses YAML content into documents using OrderedMap for mappings
 // so that field order from the source document is preserved.
 func ParseWithOrder(content []byte) ([]any, error) {
-	decoder := yaml.NewDecoder(bytes.NewReader(content))
-	var docs []any
-
-	for {
-		var node yaml.Node
-		err := decoder.Decode(&node)
-		if errors.Is(err, io.EOF) {
-			break
-		}
-		if err != nil {
-			return nil, wrapParseError(err)
-		}
-		docs = append(docs, nodeToInterface(&node))
-	}
-
-	return docs, nil
+	docs, _, err := parseWithOrderAndNodes(content)
+	return docs, err
 }
 
 // parseWithOrderAndNodes parses YAML content like ParseWithOrder but also returns

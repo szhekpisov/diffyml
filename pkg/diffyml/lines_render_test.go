@@ -38,6 +38,7 @@ func TestInsertLineNumber(t *testing.T) {
 		{"plain", "    key: value", 8, "    8: key: value"},
 		{"list marker", "    - item", 3, "    - 3: item"},
 		{"ansi escape", "\x1b[32m    key: value", 8, "\x1b[32m    8: key: value"},
+		{"stacked ansi", "\x1b[1m\x1b[32m    key: value", 8, "\x1b[1m\x1b[32m    8: key: value"},
 		{"no indent", "key: value", 1, "1: key: value"},
 		{"all spaces", "    ", 5, "    5: "}, // space-skip loop must stop at len, not overrun
 	}

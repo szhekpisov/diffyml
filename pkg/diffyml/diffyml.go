@@ -6,6 +6,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"go.yaml.in/yaml/v3"
 )
 
 // DiffType represents the kind of difference detected between YAML documents.
@@ -42,6 +44,12 @@ type Difference struct {
 	// masking to identify Secret resources without parsing DocumentName, since apiVersion
 	// can itself contain "/" (e.g., "apps/v1").
 	DocumentKind string
+	// LineFrom is the 1-based source line of the value in the 'from' file (0 = unknown,
+	// e.g. for an added entry). Only populated when Options.CaptureLineNumbers is set.
+	LineFrom int
+	// LineTo is the 1-based source line of the value in the 'to' file (0 = unknown,
+	// e.g. for a removed entry). Only populated when Options.CaptureLineNumbers is set.
+	LineTo int
 }
 
 // Options configures the comparison behavior.
@@ -75,6 +83,10 @@ type Options struct {
 	ChrootTo string
 	// ChrootListToDocuments treats list items as separate documents when chroot points to a list.
 	ChrootListToDocuments bool
+	// CaptureLineNumbers populates Difference.LineFrom/LineTo with source line numbers.
+	// Off by default; enabled via the --line-numbers CLI flag. Skipped when any chroot
+	// option is active (chroot reshapes paths, breaking absolute line lookup).
+	CaptureLineNumbers bool
 }
 
 // Compare compares two YAML documents and returns the differences.
@@ -85,19 +97,35 @@ func Compare(from, to []byte, opts *Options) ([]Difference, error) {
 		opts = &Options{}
 	}
 
-	// Parse both YAML documents
-	fromDocs, err := parse(from)
-	if err != nil {
-		return nil, err
-	}
-	toDocs, err := parse(to)
-	if err != nil {
-		return nil, err
+	// Parse both YAML documents. When capturing line numbers, also retain the
+	// yaml.Node trees (which carry source line info) for later annotation.
+	var err error
+	var fromDocs, toDocs []any
+	var fromNodes, toNodes []*yaml.Node
+	if opts.CaptureLineNumbers {
+		fromDocs, fromNodes, err = parseWithNodes(from)
+		if err != nil {
+			return nil, err
+		}
+		toDocs, toNodes, err = parseWithNodes(to)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		fromDocs, err = parse(from)
+		if err != nil {
+			return nil, err
+		}
+		toDocs, err = parse(to)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Apply swap if requested
 	if opts.Swap {
 		fromDocs, toDocs = toDocs, fromDocs
+		fromNodes, toNodes = toNodes, fromNodes
 	}
 
 	// Apply chroot if specified
@@ -128,6 +156,16 @@ func Compare(from, to []byte, opts *Options) ([]Difference, error) {
 	// Compare documents and sort results
 	pathOrder := extractPathOrder(fromDocs, toDocs, opts)
 	diffs := compareDocs(fromDocs, toDocs, opts)
+
+	// Annotate source line numbers. Skipped under chroot, which reshapes paths to
+	// be relative to the chroot root and breaks absolute line-map lookups.
+	if opts.CaptureLineNumbers && opts.Chroot == "" && opts.ChrootFrom == "" && opts.ChrootTo == "" {
+		maxLen := max(len(fromNodes), len(toNodes))
+		fromLineMap := buildLineMap(fromNodes, maxLen, opts)
+		toLineMap := buildLineMap(toNodes, maxLen, opts)
+		annotateLines(diffs, fromLineMap, toLineMap, opts)
+	}
+
 	sortDiffsWithOrder(diffs, pathOrder)
 
 	return diffs, nil
@@ -149,17 +187,25 @@ type pathWalker struct {
 // push appends a segment to the running path buffer.
 func (w *pathWalker) push(seg string) {
 	w.lengths = append(w.lengths, len(w.buf))
+	w.buf = appendPathSegment(w.buf, seg)
+}
+
+// appendPathSegment appends a path segment to buf using the same formatting as
+// DiffPath.String(): dotted keys are bracket-quoted, document-index segments like
+// "[0]" are written without a leading dot, and other segments are dot-joined.
+func appendPathSegment(buf []byte, seg string) []byte {
 	switch {
 	case strings.Contains(seg, "."):
-		w.buf = append(w.buf, '[')
-		w.buf = append(w.buf, seg...)
-		w.buf = append(w.buf, ']')
-	case len(w.buf) > 0 && (len(seg) == 0 || seg[0] != '['):
-		w.buf = append(w.buf, '.')
-		w.buf = append(w.buf, seg...)
+		buf = append(buf, '[')
+		buf = append(buf, seg...)
+		buf = append(buf, ']')
+	case len(buf) > 0 && (len(seg) == 0 || seg[0] != '['):
+		buf = append(buf, '.')
+		buf = append(buf, seg...)
 	default:
-		w.buf = append(w.buf, seg...)
+		buf = append(buf, seg...)
 	}
+	return buf
 }
 
 // pop restores the path buffer to the state before the last push.

@@ -186,6 +186,18 @@ func TestCLIConfig_ParseArgs_Swap(t *testing.T) {
 	}
 }
 
+func TestCLIConfig_ParseArgs_LineNumbers(t *testing.T) {
+	for _, flag := range []string{"--line-numbers", "-n"} {
+		cfg := NewCLIConfig()
+		if err := cfg.ParseArgs([]string{flag, "from.yaml", "to.yaml"}); err != nil {
+			t.Fatalf("%s: unexpected error: %v", flag, err)
+		}
+		if !cfg.LineNumbers {
+			t.Errorf("%s: expected LineNumbers=true", flag)
+		}
+	}
+}
+
 func TestCLIConfig_ParseArgs_FlagsAfterPositionalArgs(t *testing.T) {
 	cfg := NewCLIConfig()
 	// Simulates kubectl's KUBECTL_EXTERNAL_DIFF arg order: dirs first, flags after

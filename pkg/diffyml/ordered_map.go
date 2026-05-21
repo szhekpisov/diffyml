@@ -51,6 +51,30 @@ func ParseWithOrder(content []byte) ([]any, error) {
 	return docs, nil
 }
 
+// parseWithOrderAndNodes parses YAML content like ParseWithOrder but also returns
+// the raw document yaml.Node trees, which retain source line/column information.
+// Used by line-number capture; the hot conversion path (nodeToInterface) is unchanged.
+func parseWithOrderAndNodes(content []byte) ([]any, []*yaml.Node, error) {
+	decoder := yaml.NewDecoder(bytes.NewReader(content))
+	var docs []any
+	var nodes []*yaml.Node
+
+	for {
+		node := new(yaml.Node)
+		err := decoder.Decode(node)
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			return nil, nil, wrapParseError(err)
+		}
+		docs = append(docs, nodeToInterface(node))
+		nodes = append(nodes, node)
+	}
+
+	return docs, nodes, nil
+}
+
 // nodeToInterface converts a yaml.Node tree into Go values,
 // using *OrderedMap for mapping nodes to preserve key order.
 func nodeToInterface(node *yaml.Node) any {

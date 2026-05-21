@@ -64,6 +64,7 @@ func FlagDocs() []FlagDoc {
 		{Long: "omit-header", Short: "b", Type: "bool", Category: "Display", Usage: "omit the diffyml summary header"},
 		{Long: "use-go-patch-style", Short: "g", Type: "bool", Category: "Display", Usage: "use Go-Patch style paths in outputs"},
 		{Long: "multi-line-context-lines", Type: "int", Default: "4", Category: "Display", Usage: "context lines for multi-line strings"},
+		{Long: "line-numbers", Short: "n", Type: "bool", Category: "Display", Usage: "show source line numbers in detailed output"},
 
 		// Chroot
 		{Long: "chroot", Type: "string", Category: "Chroot", Usage: "change the root level of the input file"},

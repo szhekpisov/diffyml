@@ -1,0 +1,7 @@
+kind: First
+spec:
+  replicas: 1
+---
+kind: Second
+spec:
+  port: 80

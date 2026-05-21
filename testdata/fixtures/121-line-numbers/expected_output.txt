@@ -1,0 +1,29 @@
+Found five differences
+
+name
+  ± value change
+    - 1: alice
+    + 1: bob
+
+config
+  ± value change in multiline text (one insert, one deletion)
+      4: line one
+    - 5: line two
+    + 5: CHANGED two
+      6: line three
+      7: 
+
+nested
+  + one map entry added:
+    9: added: true
+
+nested.inner
+  ± value change
+    - 8: 5
+    + 8: 6
+
+items.y.val
+  ± value change
+    - 13: 2
+    + 14: 99
+

@@ -16,7 +16,7 @@ A surviving mutant means either the test suite has a gap, or the mutation is **e
 
 ## Tool
 
-[gomutants](https://github.com/szhekpisov/gomutants) v0.2.3
+[gomutants](https://github.com/szhekpisov/gomutants) v0.3.0
 
 ## CI Integration
 

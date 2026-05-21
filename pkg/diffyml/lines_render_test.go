@@ -63,6 +63,13 @@ func TestWriteEntryWithLineNumber(t *testing.T) {
 		t.Errorf("disabled: got %q", sb.String())
 	}
 
+	// Nil opts: block written unchanged, no nil-deref panic.
+	sb.Reset()
+	f.writeEntryWithLineNumber(&sb, "    a: 1\n", 5, nil)
+	if sb.String() != "    a: 1\n" {
+		t.Errorf("nil opts: got %q", sb.String())
+	}
+
 	// Unknown line: unchanged.
 	sb.Reset()
 	f.writeEntryWithLineNumber(&sb, "    a: 1\n", 0, on)

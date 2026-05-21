@@ -62,9 +62,9 @@ jobs:
       # "no LIVED mutant in the diff" via threshold-efficacy=100.
       - name: Run mutation testing (PR — diff only)
         if: github.event_name == 'pull_request'
-        uses: szhekpisov/gomutants@564651b902e1c9a9bf5da154126532e276e4cee5 # v0.2.3
+        uses: szhekpisov/gomutants@66cfd6c00236cf3e9fc5aca500370237c7abecd8 # v0.3.0
         with:
-          version: v0.2.3
+          version: v0.3.0
           threshold-efficacy: "100"
           args: >-
             --workers 2
@@ -81,9 +81,9 @@ jobs:
       # legacy 100% figure. Ratchet up as tests improve.
       - name: Run mutation testing (post-merge — full)
         if: github.event_name == 'push'
-        uses: szhekpisov/gomutants@564651b902e1c9a9bf5da154126532e276e4cee5 # v0.2.3
+        uses: szhekpisov/gomutants@66cfd6c00236cf3e9fc5aca500370237c7abecd8 # v0.3.0
         with:
-          version: v0.2.3
+          version: v0.3.0
           threshold-efficacy: "85.65"
           args: >-
             --workers 2

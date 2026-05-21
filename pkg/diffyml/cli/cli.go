@@ -34,6 +34,7 @@ type CLIConfig struct {
 	OmitHeader            bool
 	UseGoPatchStyle       bool
 	MultiLineContextLines int
+	LineNumbers           bool
 
 	// Comparison options
 	IgnoreOrderChanges      bool
@@ -130,6 +131,8 @@ func (c *CLIConfig) initFlags() {
 	c.fs.BoolVar(&c.UseGoPatchStyle, "g", c.UseGoPatchStyle, "")
 	c.fs.BoolVar(&c.UseGoPatchStyle, "use-go-patch-style", c.UseGoPatchStyle, "use Go-Patch style paths in outputs")
 	c.fs.IntVar(&c.MultiLineContextLines, "multi-line-context-lines", c.MultiLineContextLines, "multi-line context lines")
+	c.fs.BoolVar(&c.LineNumbers, "n", c.LineNumbers, "")
+	c.fs.BoolVar(&c.LineNumbers, "line-numbers", c.LineNumbers, "show source line numbers in detailed output")
 
 	// Comparison options
 	c.fs.BoolVar(&c.IgnoreOrderChanges, "i", c.IgnoreOrderChanges, "")
@@ -355,6 +358,7 @@ func (c *CLIConfig) ToCompareOptions() *diffyml.Options {
 		ChrootFrom:              c.ChrootFrom,
 		ChrootTo:                c.ChrootTo,
 		ChrootListToDocuments:   c.ChrootListToDocuments,
+		CaptureLineNumbers:      c.LineNumbers,
 	}
 }
 
@@ -407,6 +411,7 @@ func (c *CLIConfig) ToFormatOptions() *diffyml.FormatOptions {
 		ContextLines:     c.MultiLineContextLines,
 		NoCertInspection: c.NoCertInspection,
 		Palette:          c.Palette,
+		LineNumbers:      c.LineNumbers,
 	}
 }
 
@@ -466,6 +471,7 @@ func (c *CLIConfig) Usage() string {
 	sb.WriteString("  -b, --omit-header                   omit the diffyml summary header\n")
 	sb.WriteString("  -g, --use-go-patch-style            use Go-Patch style paths in outputs\n")
 	sb.WriteString("      --multi-line-context-lines int  multi-line context lines (default 4)\n")
+	sb.WriteString("  -n, --line-numbers                  show source line numbers in detailed output\n")
 	sb.WriteString("\n")
 
 	// Chroot options

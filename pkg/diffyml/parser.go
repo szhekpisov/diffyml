@@ -125,3 +125,21 @@ func parse(content []byte) ([]any, error) {
 
 	return docs, nil
 }
+
+// parseWithNodes parses YAML content into documents and also returns the raw
+// yaml.Node trees (which carry source line/column info) for line-number capture.
+// When no documents are parsed, a single nil document is returned with a nil node
+// (no source position), mirroring parse().
+func parseWithNodes(content []byte) ([]any, []*yaml.Node, error) {
+	docs, nodes, err := parseWithOrderAndNodes(content)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if len(docs) == 0 {
+		docs = append(docs, nil)
+		nodes = append(nodes, nil)
+	}
+
+	return docs, nodes, nil
+}

@@ -1,0 +1,13 @@
+name: alice
+age: 30
+config: |
+  line one
+  line two
+  line three
+nested:
+  inner: 5
+items:
+- name: x
+  val: 1
+- name: y
+  val: 2

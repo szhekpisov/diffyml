@@ -26,6 +26,35 @@ Human-readable terminal output with colors, paths, and surrounding context. Best
 diffyml old.yaml new.yaml
 ```
 
+### Line numbers
+
+Pass `--line-numbers` (`-n`), or set `line-numbers: true` in the config file, to prefix
+each changed value with its 1-based source line in the old and new files. Multiline
+(block scalar) changes are numbered line by line — useful for pinpointing which line of a
+large embedded script or config moved:
+
+```bash
+diffyml -n old.yaml new.yaml
+```
+
+```text
+metadata.annotations.config
+  ± value change
+    - 12: old-value
+    + 15: new-value
+```
+
+Line numbers are only shown by the `detailed` format; other formats ignore the flag.
+
+Limitations:
+
+- **Chroot:** when combined with `--chroot`, `--chroot-of-from`, or `--chroot-of-to`,
+  line numbers are not emitted. Chrooting reshapes paths relative to the new root, which
+  cannot be mapped back to absolute source lines.
+- **Renamed Kubernetes resources:** for a resource matched across a rename (with
+  `--detect-kubernetes`), the old-file line (`-`) may be omitted; the new-file line is
+  still shown.
+
 ## compact
 
 One-line-per-change format. Good when you want a quick scan and don't need surrounding YAML context.

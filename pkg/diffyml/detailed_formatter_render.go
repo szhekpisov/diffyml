@@ -172,13 +172,18 @@ func (f *DetailedFormatter) renderMultilineValue(sb *strings.Builder, prefix, va
 // writeTypeChangeValue renders a value for type-change display.
 // For structured values (maps, lists), renders as indented YAML lines.
 // For scalars, renders as a single line.
-func (f *DetailedFormatter) writeTypeChangeValue(sb *strings.Builder, val any, symbol string, colorCode string, opts *FormatOptions) {
+func (f *DetailedFormatter) writeTypeChangeValue(sb *strings.Builder, val any, symbol string, lineNum int, colorCode string, opts *FormatOptions) {
+	prefix := linePrefix(opts, lineNum)
 	if isStructured(val) {
-		for _, line := range formatValueAsYAMLLines(val) {
-			f.writeColoredLine(sb, fmt.Sprintf("    %s %s", symbol, line), colorCode, opts)
+		for i, line := range formatValueAsYAMLLines(val) {
+			p := ""
+			if i == 0 {
+				p = prefix
+			}
+			f.writeColoredLine(sb, fmt.Sprintf("    %s %s%s", symbol, p, line), colorCode, opts)
 		}
 	} else {
-		f.writeColoredLine(sb, fmt.Sprintf("    %s %v", symbol, formatDetailedValue(val)), colorCode, opts)
+		f.writeColoredLine(sb, fmt.Sprintf("    %s %s%v", symbol, prefix, formatDetailedValue(val)), colorCode, opts)
 	}
 }
 

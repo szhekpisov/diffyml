@@ -39,9 +39,7 @@ func countEditOps(ops []editOp) (additions, deletions int) {
 }
 
 // renderLineDiffOps renders edit operations with context collapsing.
-// fromCur/toCur are the 1-based source line of the next from/to content line (0 =
-// unknown). Deletes consume a from line, inserts a to line, and kept lines both.
-func (f *DetailedFormatter) renderLineDiffOps(sb *strings.Builder, ops []editOp, nearChange []bool, fromCur, toCur int, opts *FormatOptions) {
+func (f *DetailedFormatter) renderLineDiffOps(sb *strings.Builder, ops []editOp, nearChange []bool, opts *FormatOptions) {
 	skipUntil := 0
 	for i, op := range ops {
 		if i < skipUntil {
@@ -50,16 +48,11 @@ func (f *DetailedFormatter) renderLineDiffOps(sb *strings.Builder, ops []editOp,
 		if op.Type != editKeep || nearChange[i] {
 			switch op.Type {
 			case editKeep:
-				// Context lines exist in both files; we label them with the to-file
-				// number since the rendered block represents the new file's content.
-				f.writeColoredLine(sb, fmt.Sprintf("      %s%s", linePrefix(opts, toCur), op.Line), f.colorContext(opts), opts)
-				fromCur, toCur = advanceLine(fromCur), advanceLine(toCur)
+				f.writeColoredLine(sb, fmt.Sprintf("      %s", op.Line), f.colorContext(opts), opts)
 			case editInsert:
-				f.writeColoredLine(sb, fmt.Sprintf("    + %s%s", linePrefix(opts, toCur), op.Line), f.colorAdded(opts), opts)
-				toCur = advanceLine(toCur)
+				f.writeColoredLine(sb, fmt.Sprintf("    + %s", op.Line), f.colorAdded(opts), opts)
 			case editDelete:
-				f.writeColoredLine(sb, fmt.Sprintf("    - %s%s", linePrefix(opts, fromCur), op.Line), f.colorRemoved(opts), opts)
-				fromCur = advanceLine(fromCur)
+				f.writeColoredLine(sb, fmt.Sprintf("    - %s", op.Line), f.colorRemoved(opts), opts)
 			}
 		} else {
 			collapsed := 0
@@ -71,18 +64,12 @@ func (f *DetailedFormatter) renderLineDiffOps(sb *strings.Builder, ops []editOp,
 			}
 			skipUntil = i + collapsed
 			f.writeColoredLine(sb, fmt.Sprintf("    [%d %s unchanged]", collapsed, pluralize(collapsed, "line", "lines")), f.colorContext(opts), opts)
-			// Collapsed lines are kept in both files; advance both cursors past them.
-			for k := 0; k < collapsed; k++ {
-				fromCur, toCur = advanceLine(fromCur), advanceLine(toCur)
-			}
 		}
 	}
 }
 
 // formatMultilineDiff renders an inline line-by-line diff for multiline strings.
-// fromLine/toLine are the source line of the value (the block-scalar key/indicator
-// line for "|"/">" values); content begins on the following line.
-func (f *DetailedFormatter) formatMultilineDiff(sb *strings.Builder, from, to string, fromLine, toLine int, opts *FormatOptions) {
+func (f *DetailedFormatter) formatMultilineDiff(sb *strings.Builder, from, to string, opts *FormatOptions) {
 	fromLines := strings.Split(from, "\n")
 	toLines := strings.Split(to, "\n")
 	ops := computeLineDiff(fromLines, toLines)
@@ -110,7 +97,7 @@ func (f *DetailedFormatter) formatMultilineDiff(sb *strings.Builder, from, to st
 		}
 	}
 
-	f.renderLineDiffOps(sb, ops, nearChange, advanceLine(fromLine), advanceLine(toLine), opts)
+	f.renderLineDiffOps(sb, ops, nearChange, opts)
 	sb.WriteString("\n")
 }
 

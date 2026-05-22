@@ -1344,6 +1344,21 @@ func TestPathWalkerPush_BracketSegment(t *testing.T) {
 	}
 }
 
+func TestPathWalkerPush_BracketAfterKey(t *testing.T) {
+	// A bracket segment following a non-empty buffer must concatenate
+	// without a "." separator (foo[0], not foo.[0]). This exercises the
+	// seg[0] != '[' guard in the second push case.
+	w := pathWalker{
+		buf:     make([]byte, 0, 64),
+		lengths: make([]int, 0, 4),
+	}
+	w.push("foo")
+	w.push("[0]")
+	if got := string(w.buf); got != "foo[0]" {
+		t.Errorf("push bracket after key = %q, want %q", got, "foo[0]")
+	}
+}
+
 func TestPathWalkerPush_PopRoundtrip(t *testing.T) {
 	w := pathWalker{
 		buf:     make([]byte, 0, 64),

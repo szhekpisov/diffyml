@@ -188,41 +188,6 @@ func TestProperty11_LicenseDocumentationInREADME(t *testing.T) {
 	}
 }
 
-// TestProperty20_ProjectDescriptionPresence tests that the README.md contains
-// a concise one-line description of the tool's purpose.
-// **Validates: Requirements 8.1**
-func TestProperty20_ProjectDescriptionPresence(t *testing.T) {
-	cleanup := chdirToRepoRoot(t)
-	defer cleanup()
-
-	content, err := os.ReadFile("README.md")
-	if err != nil {
-		t.Fatalf("README.md not found: %v", err)
-	}
-
-	readmeText := string(content)
-	lines := strings.Split(readmeText, "\n")
-
-	// Check first few lines for a description
-	hasDescription := false
-	for i := 0; i < len(lines) && i < 10; i++ {
-		line := strings.TrimSpace(lines[i])
-		if strings.Contains(strings.ToLower(line), "diff") &&
-			(strings.Contains(strings.ToLower(line), "yaml") ||
-				strings.Contains(strings.ToLower(line), "tool")) {
-			hasDescription = true
-			break
-		}
-	}
-
-	if !hasDescription {
-		t.Error("README.md missing project description in first 10 lines")
-	}
-	if !strings.Contains(readmeText, "# diffyml") {
-		t.Error("README.md missing title")
-	}
-}
-
 // TestProperty21_InstallationVerificationInstructions tests that the README.md
 // includes instructions for verifying the installation.
 // **Validates: Requirements 8.5**

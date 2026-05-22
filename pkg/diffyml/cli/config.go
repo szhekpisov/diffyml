@@ -54,7 +54,6 @@ type FileConfig struct {
 	OmitHeader            *bool `yaml:"omit-header"`
 	UseGoPatchStyle       *bool `yaml:"use-go-patch-style"`
 	MultiLineContextLines *int  `yaml:"multi-line-context-lines"`
-	LineNumbers           *bool `yaml:"line-numbers"`
 
 	// Chroot options
 	Chroot                *string `yaml:"chroot"`
@@ -259,9 +258,6 @@ func (c *CLIConfig) applyFileConfig(fc *FileConfig, cliSet map[string]bool) {
 	}
 	if fc.MultiLineContextLines != nil && notSet("multi-line-context-lines") {
 		c.MultiLineContextLines = *fc.MultiLineContextLines
-	}
-	if fc.LineNumbers != nil && notSet("line-numbers", "n") {
-		c.LineNumbers = *fc.LineNumbers
 	}
 
 	// Chroot options

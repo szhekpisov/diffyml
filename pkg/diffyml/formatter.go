@@ -42,9 +42,6 @@ type FormatOptions struct {
 	FilePath string
 	// Palette holds custom color overrides. Nil means use defaults.
 	Palette *CustomColorPalette
-	// LineNumbers prefixes detailed-output value lines with their source line number.
-	// Populated from the --line-numbers CLI flag. Only the detailed formatter reads it.
-	LineNumbers bool
 }
 
 // DiffGroup pairs differences from a single file with its path.
@@ -506,8 +503,7 @@ func (f *GitLabFormatter) FormatSingle(diff Difference, opts *FormatOptions) str
 	desc := diffDescription(diff)
 	return fmt.Sprintf(
 		`{"description": %q, "check_name": %q, "fingerprint": %q, "severity": %q, "location": {"path": %q, "lines": {"begin": 1}}}`+"\n",
-		desc, gitLabCheckName(diff.Type), gitLabFingerprint("", desc), gitLabSeverity(diff.Type), diff.Path,
-	)
+		desc, gitLabCheckName(diff.Type), gitLabFingerprint("", desc), gitLabSeverity(diff.Type), diff.Path)
 }
 
 // Format renders differences in GitLab CI format.

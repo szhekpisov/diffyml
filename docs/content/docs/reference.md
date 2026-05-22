@@ -71,7 +71,6 @@ diffyml [flags] <from> <to>
 | `-b`, `--omit-header` | `bool` | — | omit the diffyml summary header |
 | `-g`, `--use-go-patch-style` | `bool` | — | use Go-Patch style paths in outputs |
 | `--multi-line-context-lines` | `int` | `4` | context lines for multi-line strings |
-| `-n`, `--line-numbers` | `bool` | — | show source line numbers in detailed output |
 
 ## Chroot
 

@@ -1,7 +1,0 @@
-kind: First
-spec:
-  replicas: 3
----
-kind: Second
-spec:
-  port: 8080

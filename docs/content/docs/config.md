@@ -56,7 +56,6 @@ additional-identifier: []
 omit-header: false
 use-go-patch-style: false
 multi-line-context-lines: 4
-line-numbers: false
 
 # Chroot
 chroot: ""

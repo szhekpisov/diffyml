@@ -11,7 +11,6 @@ package diffyml
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -209,27 +208,21 @@ func (f *DetailedFormatter) formatEntryBatch(sb *strings.Builder, diffs []Differ
 
 	for _, diff := range diffs {
 		var val any
-		anchor := diff.LineTo
 		if diff.To != nil {
 			val = diff.To
 		} else {
 			val = diff.From
-			anchor = diff.LineFrom
 		}
 		if !opts.NoCertInspection {
 			if s, ok := val.(string); ok && IsPEMCertificate(s) {
 				val = FormatCertificate(s)
 			}
 		}
-		// Render into a sub-builder so the entry's first line can be prefixed with
-		// its source line number; renderers themselves stay line-number-agnostic.
-		var eb strings.Builder
 		if isDocLevel {
-			f.renderDocumentValue(&eb, val, symbol, 4, opts)
+			f.renderDocumentValue(sb, val, symbol, 4, opts)
 		} else {
-			f.renderEntryValue(&eb, val, symbol, 4, diff.Path, isListEntry, opts)
+			f.renderEntryValue(sb, val, symbol, 4, diff.Path, isListEntry, opts)
 		}
-		f.writeEntryWithLineNumber(sb, eb.String(), anchor, opts)
 	}
 	sb.WriteString("\n")
 }
@@ -265,8 +258,8 @@ func (f *DetailedFormatter) formatModified(sb *strings.Builder, diff Difference,
 		} else {
 			f.writeDescriptorLine(sb, fmt.Sprintf("  ± type change from %s to %s", fromType, toType), f.colorModified, opts)
 		}
-		f.writeTypeChangeValue(sb, diff.From, "-", diff.LineFrom, f.colorRemoved(opts), opts)
-		f.writeTypeChangeValue(sb, diff.To, "+", diff.LineTo, f.colorAdded(opts), opts)
+		f.writeTypeChangeValue(sb, diff.From, "-", f.colorRemoved(opts), opts)
+		f.writeTypeChangeValue(sb, diff.To, "+", f.colorAdded(opts), opts)
 		sb.WriteString("\n")
 		return
 	}
@@ -286,26 +279,26 @@ func (f *DetailedFormatter) formatModified(sb *strings.Builder, diff Difference,
 		// strings get a readable line-by-line diff instead of a single
 		// unreadable line with ↵ markers)
 		if strings.Contains(fromStr, "\n") || strings.Contains(toStr, "\n") {
-			f.formatMultilineDiff(sb, fromStr, toStr, diff.LineFrom, diff.LineTo, opts)
+			f.formatMultilineDiff(sb, fromStr, toStr, opts)
 			return
 		}
 
 		// Whitespace-only change detection (single-line strings only)
 		if isWhitespaceOnlyChange(fromStr, toStr) {
 			f.writeDescriptorLine(sb, "  ± whitespace only change", f.colorModified, opts)
-			f.writeColoredLine(sb, fmt.Sprintf("    - %s%s", linePrefix(opts, diff.LineFrom), visualizeWhitespace(fromStr)), f.colorRemoved(opts), opts)
-			f.writeColoredLine(sb, fmt.Sprintf("    + %s%s", linePrefix(opts, diff.LineTo), visualizeWhitespace(toStr)), f.colorAdded(opts), opts)
+			f.writeColoredLine(sb, fmt.Sprintf("    - %s", visualizeWhitespace(fromStr)), f.colorRemoved(opts), opts)
+			f.writeColoredLine(sb, fmt.Sprintf("    + %s", visualizeWhitespace(toStr)), f.colorAdded(opts), opts)
 			sb.WriteString("\n")
 			return
 		}
 
 		// Scalar string value change (may be cert-transformed)
-		f.writeValueChange(sb, fromStr, toStr, diff.LineFrom, diff.LineTo, opts)
+		f.writeValueChange(sb, fromStr, toStr, opts)
 		return
 	}
 
 	// Default: non-string scalar value change
-	f.writeValueChange(sb, formatDetailedValue(diff.From), formatDetailedValue(diff.To), diff.LineFrom, diff.LineTo, opts)
+	f.writeValueChange(sb, formatDetailedValue(diff.From), formatDetailedValue(diff.To), opts)
 }
 
 // detectMultiDoc checks if diffs span multiple documents by examining DocumentIndex values.
@@ -324,70 +317,19 @@ func (f *DetailedFormatter) detectMultiDoc(diffs []Difference) bool {
 // writeValueChange writes a "± value change" block with inline diff highlighting
 // when color is enabled and the values are similar enough, otherwise falls back
 // to plain colored lines.
-func (f *DetailedFormatter) writeValueChange(sb *strings.Builder, from, to string, fromLine, toLine int, opts *FormatOptions) {
+func (f *DetailedFormatter) writeValueChange(sb *strings.Builder, from, to string, opts *FormatOptions) {
 	f.writeDescriptorLine(sb, "  ± value change", f.colorModified, opts)
 	if opts.Color {
 		if fromSegs, toSegs := computeInlineDiff(from, to); fromSegs != nil {
-			f.writeInlineDiffLine(sb, "    - "+linePrefix(opts, fromLine), fromSegs, ColorRoleRemoved, opts)
-			f.writeInlineDiffLine(sb, "    + "+linePrefix(opts, toLine), toSegs, ColorRoleAdded, opts)
+			f.writeInlineDiffLine(sb, "    - ", fromSegs, ColorRoleRemoved, opts)
+			f.writeInlineDiffLine(sb, "    + ", toSegs, ColorRoleAdded, opts)
 			sb.WriteString("\n")
 			return
 		}
 	}
-	f.writeColoredLine(sb, fmt.Sprintf("    - %s%s", linePrefix(opts, fromLine), from), f.colorRemoved(opts), opts)
-	f.writeColoredLine(sb, fmt.Sprintf("    + %s%s", linePrefix(opts, toLine), to), f.colorAdded(opts), opts)
+	f.writeColoredLine(sb, fmt.Sprintf("    - %s", from), f.colorRemoved(opts), opts)
+	f.writeColoredLine(sb, fmt.Sprintf("    + %s", to), f.colorAdded(opts), opts)
 	sb.WriteString("\n")
-}
-
-// linePrefix returns "N: " when line numbers are enabled and line is known (>0),
-// otherwise "". Used to prefix detailed-output value lines with their source line.
-func linePrefix(opts *FormatOptions, line int) string {
-	if opts == nil || !opts.LineNumbers || line <= 0 {
-		return ""
-	}
-	return strconv.Itoa(line) + ": "
-}
-
-// advanceLine returns line+1 for a known line (>0), leaving 0 (unknown) unchanged.
-func advanceLine(line int) int {
-	if line > 0 {
-		return line + 1
-	}
-	return 0
-}
-
-// insertLineNumber injects "N: " into a rendered entry line, after any leading ANSI
-// color escape, indentation spaces, and an optional "- " list marker — so the number
-// sits where a value begins (e.g. "    - 8: key: value").
-func insertLineNumber(line string, num int) string {
-	i := 0
-	for strings.HasPrefix(line[i:], "\x1b[") {
-		m := strings.IndexByte(line[i:], 'm')
-		// gomutants:disable-next-line CONDITIONALS_BOUNDARY reason="after the ESC '[' prefix, the SGR terminator 'm' is always at relative index >= 2, never 0, so <0 and <=0 are equivalent"
-		if m < 0 {
-			break
-		}
-		i += m + 1
-	}
-	for i < len(line) && line[i] == ' ' {
-		i++
-	}
-	if strings.HasPrefix(line[i:], "- ") {
-		i += 2
-	}
-	return line[:i] + strconv.Itoa(num) + ": " + line[i:]
-}
-
-// writeEntryWithLineNumber writes a rendered entry block, prefixing its first line
-// with the source line number when enabled and known.
-func (f *DetailedFormatter) writeEntryWithLineNumber(sb *strings.Builder, block string, line int, opts *FormatOptions) {
-	if opts == nil || !opts.LineNumbers || line <= 0 {
-		sb.WriteString(block)
-		return
-	}
-	// insertLineNumber only rewrites up to the first line's leading marker, so it
-	// naturally affects just the first line of a multi-line block.
-	sb.WriteString(insertLineNumber(block, line))
 }
 
 // writeColoredLine writes a line with color code and newline.

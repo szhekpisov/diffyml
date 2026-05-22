@@ -33,32 +33,22 @@ func NewOrderedMap() *OrderedMap {
 // ParseWithOrder parses YAML content into documents using OrderedMap for mappings
 // so that field order from the source document is preserved.
 func ParseWithOrder(content []byte) ([]any, error) {
-	docs, _, err := parseWithOrderAndNodes(content)
-	return docs, err
-}
-
-// parseWithOrderAndNodes parses YAML content like ParseWithOrder but also returns
-// the raw document yaml.Node trees, which retain source line/column information.
-// Used by line-number capture; the hot conversion path (nodeToInterface) is unchanged.
-func parseWithOrderAndNodes(content []byte) ([]any, []*yaml.Node, error) {
 	decoder := yaml.NewDecoder(bytes.NewReader(content))
 	var docs []any
-	var nodes []*yaml.Node
 
 	for {
-		node := new(yaml.Node)
-		err := decoder.Decode(node)
+		var node yaml.Node
+		err := decoder.Decode(&node)
 		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
-			return nil, nil, wrapParseError(err)
+			return nil, wrapParseError(err)
 		}
-		docs = append(docs, nodeToInterface(node))
-		nodes = append(nodes, node)
+		docs = append(docs, nodeToInterface(&node))
 	}
 
-	return docs, nodes, nil
+	return docs, nil
 }
 
 // nodeToInterface converts a yaml.Node tree into Go values,

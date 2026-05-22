@@ -33,18 +33,6 @@ func TestCLIConfig_ToCompareOptions(t *testing.T) {
 	}
 }
 
-func TestCLIConfig_LineNumbersPropagation(t *testing.T) {
-	cfg := NewCLIConfig()
-	cfg.LineNumbers = true
-
-	if !cfg.ToCompareOptions().CaptureLineNumbers {
-		t.Error("expected CaptureLineNumbers=true in Options")
-	}
-	if !cfg.ToFormatOptions().LineNumbers {
-		t.Error("expected LineNumbers=true in FormatOptions")
-	}
-}
-
 func TestCLIConfig_ToFilterOptions(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.Filter = []string{"config"}

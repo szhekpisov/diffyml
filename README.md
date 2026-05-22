@@ -561,7 +561,6 @@ Available environment variables: `DIFFYML_COLOR_ADDED`, `DIFFYML_COLOR_REMOVED`,
 | `-b, --omit-header` | Omit summary header |
 | `-g, --use-go-patch-style` | Use Go-Patch style paths |
 | `--multi-line-context-lines <int>` | Context lines for multi-line strings (default `4`) |
-| `-n, --line-numbers` | Show source line numbers in detailed output |
 
 **Chroot**
 

@@ -120,12 +120,13 @@ func mapEntryWrapper(key string, val *yaml.Node) *OrderedMap {
 	}
 }
 
-// compareNodeNils handles nil cases for compareNodes. Returns diffs and true
-// if an early return is appropriate. The to==nil case is intentionally not
-// short-circuited here — the caller's Kind dispatch and Kind-mismatch
-// fallthrough produce the same DiffModified output, so handling it twice
-// would be dead code.
-func compareNodeNils(path DiffPath, fromN, toN *yaml.Node) ([]Difference, bool) {
+// compareNodeNils centralises every null/nil case for compareNodes and reports
+// (diffs, true) when it produces the final answer. The four short-circuits:
+// both null → nil; only from-side null → DiffAdded; only to-side null →
+// DiffModified (or nil under IgnoreValueChanges); neither null → fall through
+// to Kind dispatch in the caller. Handling the to-only-null case here keeps
+// the dispatch in compareNodes free of nil-toN checks.
+func compareNodeNils(path DiffPath, fromN, toN *yaml.Node, opts *Options) ([]Difference, bool) {
 	fromIsNull := isNullNode(fromN)
 	toIsNull := isNullNode(toN)
 	if fromIsNull && toIsNull {
@@ -139,26 +140,30 @@ func compareNodeNils(path DiffPath, fromN, toN *yaml.Node) ([]Difference, bool) 
 			To:   nodeToInterface(toN),
 		}}, true
 	}
+	if toIsNull {
+		if opts.IgnoreValueChanges {
+			return nil, true
+		}
+		return []Difference{{
+			Path: path,
+			Type: DiffModified,
+			From: nodeToInterface(fromN),
+			To:   nil,
+		}}, true
+	}
 	return nil, false
 }
 
 // compareNodes recursively compares two YAML node trees. opts is non-nil.
-// compareNodeNils handles the both-null and fromN-only-null cases up front
-// (emitting nil and DiffAdded respectively). The toN-only-null case falls
-// through here so we can emit DiffModified with the materialized fromN.
+// compareNodeNils handles every null/nil case (both-null, from-only-null,
+// to-only-null); on fall-through both fromN and toN resolve to non-nil
+// non-null nodes, so the Kind dispatch below can dereference safely.
 func compareNodes(path DiffPath, fromN, toN *yaml.Node, opts *Options) []Difference {
-	if diffs, done := compareNodeNils(path, fromN, toN); done {
+	if diffs, done := compareNodeNils(path, fromN, toN, opts); done {
 		return diffs
 	}
 	fromN = resolveNode(fromN)
 	toN = resolveNode(toN)
-
-	if toN == nil {
-		if opts.IgnoreValueChanges {
-			return nil
-		}
-		return []Difference{{Path: path, Type: DiffModified, From: nodeToInterface(fromN), To: nil}}
-	}
 
 	if fromN.Kind != toN.Kind {
 		if opts.IgnoreValueChanges {
@@ -321,19 +326,18 @@ func areSequenceItemsHeterogeneous(fromN, toN *yaml.Node) bool {
 
 // singleKeyMappingFirstKeys collects the first-key set across items. The
 // second return is true only when every item resolves to a single-key
-// MappingNode (Content of length 2); on false the (possibly partial) key
-// set still flows back so the caller can distinguish "shape violated" from
-// "list was simply empty". resolveNode handles DocumentNode/AliasNode
-// wrappers, including the cycle-collapse-to-nil case.
+// MappingNode (Content of length 2); on false the key map is nil because no
+// caller consumes a partial result. resolveNode handles DocumentNode/
+// AliasNode wrappers, including the cycle-collapse-to-nil case.
 func singleKeyMappingFirstKeys(items []*yaml.Node) (map[string]bool, bool) {
 	keys := make(map[string]bool, len(items))
 	for _, item := range items {
 		item = resolveNode(item)
 		if item == nil || item.Kind != yaml.MappingNode {
-			return keys, false
+			return nil, false
 		}
 		if len(item.Content) != 2 {
-			return keys, false
+			return nil, false
 		}
 		keys[item.Content[0].Value] = true
 	}
@@ -575,6 +579,10 @@ func compareSequenceNodesByIdentifier(path DiffPath, fromN, toN *yaml.Node, opts
 	}
 
 	toIndex := make(map[any]int, len(to))
+	// toIDs[i] caches the comparable identifier for to[i] when present (nil
+	// otherwise), so the addition loop below can preserve to-side source
+	// order without re-running getIdentifierNode on every item.
+	toIDs := make([]any, len(to))
 	var toNoID []int
 	toIDCount := 0
 	for i, item := range to {
@@ -582,6 +590,7 @@ func compareSequenceNodesByIdentifier(path DiffPath, fromN, toN *yaml.Node, opts
 		if isComparableIdentifier(id) {
 			toIDCount++
 			toIndex[id] = i
+			toIDs[i] = id
 			continue
 		}
 		toNoID = append(toNoID, i)
@@ -613,10 +622,13 @@ func compareSequenceNodesByIdentifier(path DiffPath, fromN, toN *yaml.Node, opts
 		diffs = append(diffs, compareNodes(childPath, fromItem, toItem, opts)...)
 	}
 
-	// Added items (unmatched identifier on the to side), preserving to-side order.
-	for _, toItem := range to {
-		id := getIdentifierNode(toItem, opts)
-		if !isComparableIdentifier(id) {
+	// Added items (unmatched identifier on the to side), preserving to-side
+	// order. Identifiers were cached in toIDs during the indexing pass; a nil
+	// entry means the item lacked a comparable identifier and was already
+	// routed to toNoID for the unidentified-fallback path.
+	for i, toItem := range to {
+		id := toIDs[i]
+		if id == nil {
 			continue
 		}
 		if _, inFrom := fromIndex[id]; !inFrom {

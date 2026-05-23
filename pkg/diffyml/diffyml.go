@@ -213,6 +213,9 @@ func (w *pathWalker) walk(n *yaml.Node) {
 		if target == nil {
 			return
 		}
+		// aliasSeen is allocated lazily on first alias encounter; a read on
+		// the nil map returns the zero value (false), so the cycle check runs
+		// unconditionally before allocation.
 		if w.aliasSeen[target] {
 			return
 		}

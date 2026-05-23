@@ -103,7 +103,11 @@ func nodeToInterfaceImpl(node *yaml.Node, seen map[*yaml.Node]bool) any {
 		for i := 0; i+1 < len(node.Content); i += 2 {
 			key := node.Content[i].Value
 			if key == "<<" {
-				// YAML merge key: merge the referenced map's entries
+				// YAML merge key fallback. The internal pipeline pre-resolves
+				// merges via resolveMergeKeys (node_merge.go) at parse time,
+				// so this branch is unreachable from parseNodes output. It
+				// remains for callers that hand-construct *yaml.Node trees
+				// and pass them to nodeToInterface / ParseWithOrder directly.
 				merged := nodeToInterfaceImpl(node.Content[i+1], seen)
 				if mergedMap, ok := merged.(*OrderedMap); ok {
 					for _, mk := range mergedMap.Keys {

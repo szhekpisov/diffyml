@@ -73,6 +73,8 @@ func hasK8sDocuments(from, to []*yaml.Node) bool {
 
 // resolveNode unwraps DocumentNode wrappers and dereferences AliasNodes. Stage-2
 // resolveMergeKeys removes "<<" so the comparator never sees merge keys.
+// resolveAlias safely no-ops on nil / non-alias inputs, so the post-DocumentNode
+// hand-off is unconditional.
 func resolveNode(n *yaml.Node) *yaml.Node {
 	if n == nil {
 		return nil
@@ -83,10 +85,7 @@ func resolveNode(n *yaml.Node) *yaml.Node {
 		}
 		n = n.Content[0]
 	}
-	if n != nil && n.Kind == yaml.AliasNode {
-		n = resolveAlias(n)
-	}
-	return n
+	return resolveAlias(n)
 }
 
 // isNullNode reports whether a node represents a YAML null (either a true nil
@@ -176,17 +175,14 @@ func compareNodes(path DiffPath, fromN, toN *yaml.Node, opts *Options) []Differe
 }
 
 // compareScalarNodes compares two ScalarNodes, materializing only the typed
-// values and delegating equality logic to the existing equalValues helper.
+// values and delegating equality logic to equalValues. equalValues correctly
+// reports unequal for values of different dynamic types (Go's == on `any`
+// requires both type and value match), so a type-mismatch fast path would be
+// behaviorally indistinguishable from this single equality check.
 func compareScalarNodes(path DiffPath, fromN, toN *yaml.Node, opts *Options) []Difference {
 	fromVal := resolveScalar(fromN)
 	toVal := resolveScalar(toN)
 
-	if !sameScalarType(fromVal, toVal) {
-		if opts.IgnoreValueChanges {
-			return nil
-		}
-		return []Difference{{Path: path, Type: DiffModified, From: fromVal, To: toVal}}
-	}
 	if equalValues(fromVal, toVal, opts) {
 		return nil
 	}
@@ -194,29 +190,6 @@ func compareScalarNodes(path DiffPath, fromN, toN *yaml.Node, opts *Options) []D
 		return nil
 	}
 	return []Difference{{Path: path, Type: DiffModified, From: fromVal, To: toVal}}
-}
-
-// sameScalarType returns true if both values have the same concrete type
-// without using reflect. Covers all types produced by YAML parsing.
-func sameScalarType(a, b any) bool {
-	switch a.(type) {
-	case string:
-		_, ok := b.(string)
-		return ok
-	case int:
-		_, ok := b.(int)
-		return ok
-	case float64:
-		_, ok := b.(float64)
-		return ok
-	case bool:
-		_, ok := b.(bool)
-		return ok
-	default:
-		// Fallback for rare types (int64, uint64, time.Time, etc.
-		// produced by the yaml.v3 decoder for values outside common ranges).
-		return fmt.Sprintf("%T", a) == fmt.Sprintf("%T", b)
-	}
 }
 
 // compareMappingNodes compares two MappingNodes preserving the from-side's
@@ -288,39 +261,46 @@ func compareSequenceNodes(path DiffPath, fromN, toN *yaml.Node, opts *Options) [
 // areSequenceItemsHeterogeneous mirrors areListItemsHeterogeneous on nodes:
 // single-key map items with distinct keys across the two lists indicate a
 // heterogeneous shape (e.g. {namespaceSelector: ...} vs {ipBlock: ...}).
+// Both lists must consist entirely of single-key MappingNodes; the union of
+// their first keys must exceed one entry for the shape to qualify as
+// heterogeneous.
 func areSequenceItemsHeterogeneous(fromN, toN *yaml.Node) bool {
-	allKeys := make(map[string]bool)
-	extractKeys := func(items []*yaml.Node) {
-		for _, item := range items {
-			item = resolveNode(item)
-			if item == nil || item.Kind != yaml.MappingNode {
-				continue
-			}
-			for i := 0; i+1 < len(item.Content); i += 2 {
-				allKeys[item.Content[i].Value] = true
-			}
-		}
+	fromKeys, ok := singleKeyMappingFirstKeys(fromN.Content)
+	if !ok {
+		return false
 	}
-	extractKeys(fromN.Content)
-	extractKeys(toN.Content)
+	toKeys, ok := singleKeyMappingFirstKeys(toN.Content)
+	if !ok {
+		return false
+	}
+	if len(fromKeys) == 0 || len(toKeys) == 0 {
+		return false
+	}
+	for k := range toKeys {
+		fromKeys[k] = true
+	}
+	return len(fromKeys) > 1
+}
 
-	checkSingleDistinctKeys := func(items []*yaml.Node) bool {
-		for _, item := range items {
-			item = resolveNode(item)
-			if item == nil || item.Kind != yaml.MappingNode {
-				return false
-			}
-			if len(item.Content) != 2 {
-				return false
-			}
+// singleKeyMappingFirstKeys collects the first-key set across items. The
+// second return is true only when every item resolves to a single-key
+// MappingNode (Content of length 2); on false the (possibly partial) key
+// set still flows back so the caller can distinguish "shape violated" from
+// "list was simply empty". resolveNode handles DocumentNode/AliasNode
+// wrappers, including the cycle-collapse-to-nil case.
+func singleKeyMappingFirstKeys(items []*yaml.Node) (map[string]bool, bool) {
+	keys := make(map[string]bool, len(items))
+	for _, item := range items {
+		item = resolveNode(item)
+		if item == nil || item.Kind != yaml.MappingNode {
+			return keys, false
 		}
-		return true
+		if len(item.Content) != 2 {
+			return keys, false
+		}
+		keys[item.Content[0].Value] = true
 	}
-
-	if checkSingleDistinctKeys(fromN.Content) && checkSingleDistinctKeys(toN.Content) && len(allKeys) > 1 {
-		return true
-	}
-	return false
+	return keys, true
 }
 
 // compareSequenceNodesPositional compares sequences by index.
@@ -429,6 +409,9 @@ func compareSequenceNodesUnordered(path DiffPath, fromN, toN *yaml.Node, opts *O
 
 // detectListOrderChanges detects order changes among matched list identifiers.
 // Kept on the identifier-any view since identifiers are scalar Go values.
+// The < 2 short-circuit is intentionally omitted: with 0 or 1 common entries
+// the to-order sort and the slices.Equal comparison both no-op into "no
+// change", so the dedicated guard would be a redundant fast path.
 func detectListOrderChanges(path DiffPath, fromIDs []any, fromIndex, toIndex map[any]int, toIDCount int) *Difference {
 	hasUniqueIDs := len(fromIDs) == len(fromIndex) && len(toIndex) == toIDCount
 	if !hasUniqueIDs {
@@ -441,9 +424,6 @@ func detectListOrderChanges(path DiffPath, fromIDs []any, fromIndex, toIndex map
 			commonFromOrder = append(commonFromOrder, id)
 		}
 	}
-	if len(commonFromOrder) < 2 {
-		return nil
-	}
 
 	commonToOrder := make([]any, len(commonFromOrder))
 	copy(commonToOrder, commonFromOrder)
@@ -451,14 +431,7 @@ func detectListOrderChanges(path DiffPath, fromIDs []any, fromIndex, toIndex map
 		return cmp.Compare(toIndex[a], toIndex[b])
 	})
 
-	orderChanged := false
-	for i := range commonFromOrder {
-		if commonFromOrder[i] != commonToOrder[i] {
-			orderChanged = true
-			break
-		}
-	}
-	if !orderChanged {
+	if slices.Equal(commonFromOrder, commonToOrder) {
 		return nil
 	}
 

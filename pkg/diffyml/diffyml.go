@@ -209,11 +209,12 @@ func (w *pathWalker) walk(n *yaml.Node) {
 	}
 	switch n.Kind {
 	case yaml.DocumentNode:
-		if len(n.Content) == 0 {
-			w.register()
-			return
+		// DocumentNodes only appear at the root, where w.buf is empty and
+		// w.register() is a no-op; skip the call and let the recursion guard
+		// on empty Content handle the no-content case.
+		if len(n.Content) > 0 {
+			w.walk(n.Content[0])
 		}
-		w.walk(n.Content[0])
 	case yaml.AliasNode:
 		target := n.Alias
 		if target == nil {

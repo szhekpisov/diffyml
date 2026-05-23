@@ -28,13 +28,15 @@ import (
 // /getIdentifierFromOrderedMap exactly. For duplicate keys within a mapping
 // (possible via the legacy explicit-key-after-merge quirk preserved by
 // resolveMergeKeys), the last source-order occurrence wins, matching
-// nodeToInterface's map-overwrite semantics.
+// nodeToInterface's map-overwrite semantics. resolveAlias handles nil/non-
+// alias inputs as no-ops; the nil guard below covers nil-input and
+// cycle-collapse-to-nil uniformly.
 func getIdentifierNode(n *yaml.Node, opts *Options) any {
+	n = resolveAlias(n)
 	if n == nil {
 		return nil
 	}
-	n = resolveAlias(n)
-	if n == nil || n.Kind != yaml.MappingNode {
+	if n.Kind != yaml.MappingNode {
 		return nil
 	}
 
@@ -59,12 +61,19 @@ func getIdentifierNode(n *yaml.Node, opts *Options) any {
 
 // canMatchByIdentifierNodes mirrors canMatchByIdentifier for a slice of nodes:
 // every item must be a MappingNode (or fail the check), and at least one item
-// must yield a usable comparable identifier.
+// must yield a usable comparable identifier. The nil and Kind guards are kept
+// independent so each is testable on its own — a folded `||` form would let
+// the Kind half hide behind getIdentifierNode's own kind check.
 func canMatchByIdentifierNodes(items []*yaml.Node, opts *Options) bool {
 	hasIdentifier := false
 	for _, item := range items {
 		item = resolveAlias(item)
-		if item == nil || item.Kind != yaml.MappingNode {
+		if item == nil {
+			// Cycle-collapsed alias (resolveAlias returns nil) disqualifies
+			// outright; nodeToInterface would render it as a nil entry.
+			return false
+		}
+		if item.Kind != yaml.MappingNode {
 			// Non-mapping item disqualifies identifier matching outright,
 			// matching CanMatchByIdentifierWithAdditional's behavior.
 			return false
@@ -92,16 +101,10 @@ func lookupMappingValueNode(n *yaml.Node, key string) *yaml.Node {
 }
 
 // materializeIdentifierValue converts an identifier value node into the Go-
-// typed value nodeToInterface would have produced. Scalars take the fast path
-// through resolveScalar; non-scalar identifier values (rare) defer to
-// nodeToInterface so deep-equality against the legacy materialized form holds.
+// typed value nodeToInterface would have produced. nodeToInterface already
+// follows AliasNode chains, breaks cycles, and dispatches ScalarNode through
+// resolveScalar internally, so a separate resolveAlias/scalar fast path here
+// would be behaviorally indistinguishable from a direct call.
 func materializeIdentifierValue(n *yaml.Node) any {
-	n = resolveAlias(n)
-	if n == nil {
-		return nil
-	}
-	if n.Kind == yaml.ScalarNode {
-		return resolveScalar(n)
-	}
 	return nodeToInterface(n)
 }

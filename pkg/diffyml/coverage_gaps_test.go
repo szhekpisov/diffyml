@@ -1019,20 +1019,6 @@ func TestDetectK8sOrderChanges_SameOrder(t *testing.T) {
 	}
 }
 
-// --- sameScalarType: default fallback for rare types ---
-
-func TestSameScalarType_DefaultFallback(t *testing.T) {
-	// time.Time is produced by yaml.v3 decoder for !!timestamp
-	a := time.Now()
-	b := time.Now()
-	if !sameScalarType(a, b) {
-		t.Error("expected same type for two time.Time values")
-	}
-	if sameScalarType(a, "string") {
-		t.Error("expected different type for time.Time vs string")
-	}
-}
-
 // --- deepEqual: type mismatch branches ---
 
 func TestDeepEqual_TypeMismatch_OrderedMapVsString(t *testing.T) {

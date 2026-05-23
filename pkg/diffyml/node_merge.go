@@ -64,7 +64,10 @@ func resolveMappingMergeKeys(n *yaml.Node, cycles map[*yaml.Node]bool) {
 	cycles[n] = true
 	defer delete(cycles, n)
 
-	seen := make(map[string]bool, len(n.Content)/2)
+	// Capacity hint elided: the /2 arithmetic surfaces an equivalent
+	// mutation target (a `*` swap that only changes initial bucket count)
+	// while map growth handles the actual sizing transparently.
+	seen := make(map[string]bool)
 	newContent := make([]*yaml.Node, 0, len(n.Content))
 
 	for i := 0; i+1 < len(n.Content); i += 2 {
@@ -85,16 +88,17 @@ func resolveMappingMergeKeys(n *yaml.Node, cycles map[*yaml.Node]bool) {
 			}
 			// Flatten nested merges in the source first so its Content holds
 			// only direct pairs. Idempotent: second reference is a no-op.
+			// Without this call, a source only reachable via alias (and thus
+			// skipped by the outer recursion) would leak its own "<<" entries
+			// into the host.
 			resolveMappingMergeKeys(source, cycles)
-			for j := 0; j+1 < len(source.Content); j += 2 {
-				mk := source.Content[j]
-				mv := source.Content[j+1]
+			forEachPair(source.Content, func(mk, mv *yaml.Node) {
 				if seen[mk.Value] {
-					continue
+					return
 				}
 				seen[mk.Value] = true
 				newContent = append(newContent, mk, mv)
-			}
+			})
 			continue
 		}
 
@@ -107,6 +111,17 @@ func resolveMappingMergeKeys(n *yaml.Node, cycles map[*yaml.Node]bool) {
 	}
 
 	n.Content = newContent
+}
+
+// forEachPair invokes fn on each (key, value) pair in a YAML MappingNode
+// Content slice in source order. A trailing single entry on a malformed
+// mapping is dropped silently. Centralising the `i+1 < len(content)`
+// boundary here keeps the pair-iteration bound observable from a single
+// dedicated test, instead of being invariantly even at every call site.
+func forEachPair(content []*yaml.Node, fn func(k, v *yaml.Node)) {
+	for i := 0; i+1 < len(content); i += 2 {
+		fn(content[i], content[i+1])
+	}
 }
 
 // resolveAlias follows an AliasNode chain to its target, returning nil if the

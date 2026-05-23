@@ -87,7 +87,9 @@ func navigateToPath(doc *yaml.Node, path string) (*yaml.Node, error) {
 
 // unwrapDocOrAlias strips a leading DocumentNode wrapper or follows an alias
 // chain to its target, so callers can hand any node shape to navigateToPath.
-// Cyclic alias chains resolve to nil via resolveAlias.
+// Cyclic alias chains resolve to nil via resolveAlias; resolveAlias also
+// handles nil and non-alias inputs as no-ops, so the post-DocumentNode hand-off
+// is unconditional.
 func unwrapDocOrAlias(n *yaml.Node) *yaml.Node {
 	if n == nil {
 		return nil
@@ -98,10 +100,7 @@ func unwrapDocOrAlias(n *yaml.Node) *yaml.Node {
 		}
 		n = n.Content[0]
 	}
-	if n != nil && n.Kind == yaml.AliasNode {
-		n = resolveAlias(n)
-	}
-	return n
+	return resolveAlias(n)
 }
 
 // pathSegment represents a single segment in a path.

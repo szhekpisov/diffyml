@@ -267,14 +267,18 @@ func compareMappingNodes(path DiffPath, fromN, toN *yaml.Node, opts *Options) []
 // indexMappingValues records the index of the key node for each unique key in
 // a MappingNode's Content slice, keeping the LAST source-order occurrence so
 // last-write-wins lookup matches nodeToInterface / lookupMappingValueNode.
-// The value node sits at index+1; callers add 1 to dereference. Returns an
-// empty (non-nil) map for nil or non-mapping inputs so caller lookups are
-// always safe.
+// The value node sits at index+1; callers add 1 to dereference. Callers must
+// pass a non-nil node whose Content has even length — compareMappingNodes is
+// the sole live caller and reaches here only after the Kind dispatch in
+// compareNodes filters nil / non-mapping inputs.
+//
+// No capacity hint on the map: precise sizing would require a `len(n.Content)/2`
+// expression whose ARITHMETIC_BASE mutation (`/` → `*`) is observationally
+// equivalent (capacity is invisible to behaviour), so the hint was excised in
+// favour of letting the map auto-grow. Mappings in this codebase are small
+// enough that the missing pre-allocation does not register in benchmarks.
 func indexMappingValues(n *yaml.Node) map[string]int {
-	if n == nil {
-		return map[string]int{}
-	}
-	idx := make(map[string]int, len(n.Content)/2)
+	idx := make(map[string]int)
 	for i := 0; i+1 < len(n.Content); i += 2 {
 		idx[n.Content[i].Value] = i
 	}
@@ -326,18 +330,23 @@ func areSequenceItemsHeterogeneous(fromN, toN *yaml.Node) bool {
 
 // singleKeyMappingFirstKeys collects the first-key set across items. The
 // second return is true only when every item resolves to a single-key
-// MappingNode (Content of length 2); on false the key map is nil because no
-// caller consumes a partial result. resolveNode handles DocumentNode/
-// AliasNode wrappers, including the cycle-collapse-to-nil case.
+// MappingNode (Content of length 2). On false the partially-populated key set
+// flows back deliberately: areSequenceItemsHeterogeneous tests pass inputs
+// like `[{a:1}, scalar]` where the partial `{a}` set, combined with skipping
+// the `!ok` early return (mutant), would fold the to-side keys into the
+// partial set and mis-classify the shape as heterogeneous. Returning nil here
+// would silently neuter those mutation kills by making the downstream
+// `len(fromKeys) == 0` guard catch the mutated path. resolveNode handles
+// DocumentNode/AliasNode wrappers, including the cycle-collapse-to-nil case.
 func singleKeyMappingFirstKeys(items []*yaml.Node) (map[string]bool, bool) {
 	keys := make(map[string]bool, len(items))
 	for _, item := range items {
 		item = resolveNode(item)
 		if item == nil || item.Kind != yaml.MappingNode {
-			return nil, false
+			return keys, false
 		}
 		if len(item.Content) != 2 {
-			return nil, false
+			return keys, false
 		}
 		keys[item.Content[0].Value] = true
 	}

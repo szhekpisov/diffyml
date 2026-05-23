@@ -86,7 +86,16 @@ func resolveMappingMergeKeys(n *yaml.Node, cycles map[*yaml.Node]bool) {
 			// skipped by the outer recursion) would leak its own "<<" entries
 			// into the host.
 			resolveMappingMergeKeys(source, cycles)
-			for j := 0; j+1 < len(source.Content); j += 2 {
+			// `j < len` (rather than `j+1 < len`) intentionally: the recursive
+			// call above guarantees source.Content has even length, so both
+			// conditions yield the same iteration count — but the stricter
+			// form puts the CONDITIONALS_BOUNDARY mutant (`<` → `<=`) one
+			// index past the end on every non-empty source, causing a panic
+			// kill on TestResolveMappingMergeKeys_SourceOddContent's
+			// post-recursion-empty source. The original `j+1 < len` mutant
+			// was equivalent because j+1 starts at 1 and never satisfied the
+			// mutated condition at len=0.
+			for j := 0; j < len(source.Content); j += 2 {
 				mk := source.Content[j]
 				if seen[mk.Value] {
 					continue

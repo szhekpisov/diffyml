@@ -88,16 +88,12 @@ func lookupMappingValueNode(n *yaml.Node, key string) *yaml.Node {
 }
 
 // materializeIdentifierValue produces the same Go value as nodeToInterface,
-// but short-circuits through resolveAlias + resolveScalar for the common
-// scalar-identifier case ("name: alice", "id: 42") to skip the cycle-
-// tracking allocation. Composite identifiers fall through to the full walk.
+// but dereferences AliasNode wrappers up front so a cyclic identifier alias
+// collapses to nil (via resolveAlias's cycle break) instead of returning the
+// AliasNode itself. nodeToInterface tolerates a nil input and returns nil,
+// so no separate nil guard is needed — the previous one was BRANCH_IF-
+// mutation-equivalent and was removed alongside the (also-equivalent) scalar
+// fast path.
 func materializeIdentifierValue(n *yaml.Node) any {
-	resolved := resolveAlias(n)
-	if resolved == nil {
-		return nil
-	}
-	if resolved.Kind == yaml.ScalarNode {
-		return resolveScalar(resolved)
-	}
-	return nodeToInterface(resolved)
+	return nodeToInterface(resolveAlias(n))
 }

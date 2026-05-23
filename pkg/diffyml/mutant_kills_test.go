@@ -94,6 +94,23 @@ func TestApplyChroot_CyclicAliasListToDocuments(t *testing.T) {
 
 // --- comparator.go ---
 
+// TestIndexMappingValues_OddContentIgnoresTrailingUnpaired pins the
+// `i+1 < len(n.Content)` boundary on indexMappingValues' pair iteration. A
+// MappingNode with odd Content (a synthetic shape — yaml.v3 never emits one)
+// holds a trailing key with no value; under `<=`, the loop would advance
+// once more and add the unpaired key to the index.
+// Kills CONDITIONALS_BOUNDARY at comparator.go:i+1<len in indexMappingValues.
+func TestIndexMappingValues_OddContentIgnoresTrailingUnpaired(t *testing.T) {
+	n := oddContentMapping("dangling")
+	idx := indexMappingValues(n)
+	if len(idx) != 0 {
+		t.Errorf("odd-Content mapping must skip the trailing unpaired key, got idx=%v", idx)
+	}
+	if _, has := idx["dangling"]; has {
+		t.Error("unpaired key 'dangling' must not appear in the index")
+	}
+}
+
 // TestResolveNode_DocumentScalar pins that a non-empty DocumentNode hands
 // back its single Content entry. Locks the `n = n.Content[0]` step against
 // STATEMENT_REMOVE / DocumentNode-branch BRANCH_IF mutations.

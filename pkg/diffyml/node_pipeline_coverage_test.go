@@ -2,6 +2,7 @@ package diffyml
 
 import (
 	"testing"
+	"time"
 
 	"go.yaml.in/yaml/v3"
 )
@@ -128,5 +129,101 @@ func TestMaterializeIdentifierValue_NonScalar(t *testing.T) {
 	}
 	if v, _ := om.Values["composite"].(bool); !v {
 		t.Errorf("expected composite=true, got %v", om.Values["composite"])
+	}
+}
+
+// TestMaterializeIdentifierValue_NilAlias covers the resolveAlias-returns-nil
+// branch when the identifier value is a self-referential AliasNode.
+func TestMaterializeIdentifierValue_NilAlias(t *testing.T) {
+	a := &yaml.Node{Kind: yaml.AliasNode}
+	a.Alias = a
+	if got := materializeIdentifierValue(a); got != nil {
+		t.Errorf("expected nil for cyclic AliasNode, got %v", got)
+	}
+}
+
+// TestPathWalker_EmptyDocumentNode covers the empty-DocumentNode short-circuit
+// (a parsed empty document or a synthetic node).
+func TestPathWalker_EmptyDocumentNode(t *testing.T) {
+	w := pathWalker{
+		pathOrder: make(map[string]int),
+		opts:      &Options{},
+		buf:       make([]byte, 0, 32),
+	}
+	w.walk(&yaml.Node{Kind: yaml.DocumentNode}) // Content empty
+	if len(w.pathOrder) != 0 {
+		t.Errorf("empty DocumentNode should register nothing, got %v", w.pathOrder)
+	}
+}
+
+// TestPathWalker_AliasNilTargetTerminates covers the n.Alias == nil guard.
+func TestPathWalker_AliasNilTargetTerminates(t *testing.T) {
+	w := pathWalker{
+		pathOrder: make(map[string]int),
+		opts:      &Options{},
+		buf:       make([]byte, 0, 32),
+	}
+	// AliasNode with nil Alias is degenerate but the walker must not crash.
+	w.walk(&yaml.Node{Kind: yaml.AliasNode})
+	if len(w.pathOrder) != 0 {
+		t.Errorf("nil-target alias should register nothing, got %v", w.pathOrder)
+	}
+}
+
+// TestPathWalker_AliasCycleTerminates covers the aliasSeen cycle break for
+// pathological self-referential anchors.
+func TestPathWalker_AliasCycleTerminates(t *testing.T) {
+	// A self-referential alias chain that points back to a mapping containing
+	// itself would otherwise loop forever.
+	mapping := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+	alias := &yaml.Node{Kind: yaml.AliasNode, Alias: mapping}
+	mapping.Content = []*yaml.Node{
+		{Kind: yaml.ScalarNode, Tag: "!!str", Value: "self"},
+		alias,
+	}
+	w := pathWalker{
+		pathOrder: make(map[string]int),
+		opts:      &Options{},
+		buf:       make([]byte, 0, 32),
+	}
+	done := make(chan struct{})
+	go func() {
+		w.walk(mapping)
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("pathWalker.walk on cyclic alias hung > 2s")
+	}
+}
+
+// TestResolveMappingMergeKeys_OuterCycleGuard exercises the cycles[n] check at
+// the top of resolveMappingMergeKeys — a belt-and-suspenders for callers that
+// might invoke the function with a mapping already mid-resolution.
+func TestResolveMappingMergeKeys_OuterCycleGuard(t *testing.T) {
+	host := &yaml.Node{
+		Kind: yaml.MappingNode, Tag: "!!map",
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "k"},
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "v"},
+		},
+	}
+	contentBefore := host.Content
+	cycles := map[*yaml.Node]bool{host: true}
+	resolveMappingMergeKeys(host, cycles) // must early-return, no-op
+	if &host.Content[0] != &contentBefore[0] {
+		t.Error("Content should be untouched when the outer cycles guard fires")
+	}
+}
+
+// TestGetIdentifier_NonMapReturnsNil covers the trailing nil-return when the
+// value is not a *OrderedMap or map[string]any.
+func TestGetIdentifier_NonMapReturnsNil(t *testing.T) {
+	if got := getIdentifier("not-a-map", nil); got != nil {
+		t.Errorf("expected nil for non-map input, got %v", got)
+	}
+	if got := getIdentifier(42, &Options{AdditionalIdentifiers: []string{"x"}}); got != nil {
+		t.Errorf("expected nil for int input, got %v", got)
 	}
 }

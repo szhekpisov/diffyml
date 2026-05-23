@@ -3,9 +3,10 @@ package diffyml
 import (
 	"cmp"
 	"slices"
-	"sort"
 	"strconv"
 	"strings"
+
+	"go.yaml.in/yaml/v3"
 )
 
 // DiffType represents the kind of difference detected between YAML documents.
@@ -85,49 +86,59 @@ func Compare(from, to []byte, opts *Options) ([]Difference, error) {
 		opts = &Options{}
 	}
 
-	// Parse both YAML documents
-	fromDocs, err := parse(from)
+	// Parse both YAML inputs into per-document *yaml.Node trees. The internal
+	// pipeline carries the node slices; downstream consumers (chroot,
+	// extractPathOrder, compareDocs) currently still operate on the any view
+	// materialized via materializeDocs. Later stages migrate each consumer
+	// onto nodes and the eager materialization here goes away.
+	fromNodes, err := parse(from)
 	if err != nil {
 		return nil, err
 	}
-	toDocs, err := parse(to)
+	toNodes, err := parse(to)
 	if err != nil {
 		return nil, err
 	}
 
-	// Apply swap if requested
+	// Apply swap if requested. Nodes are swapped alongside the any view so
+	// the two representations stay aligned for any consumer that later reads
+	// from the node slices.
 	if opts.Swap {
-		fromDocs, toDocs = toDocs, fromDocs
+		fromNodes, toNodes = toNodes, fromNodes
 	}
 
-	// Apply chroot if specified
+	// Apply chroot on the node trees so post-chroot output keeps source-line
+	// info and matches extractPathOrder's view exactly. Materialization for
+	// the still-any-based comparator happens after chroot resolves.
 	if opts.Chroot != "" {
-		fromDocs, err = applyChrootToDocs(fromDocs, opts.Chroot, opts.ChrootListToDocuments)
+		fromNodes, err = applyChrootToDocs(fromNodes, opts.Chroot, opts.ChrootListToDocuments)
 		if err != nil {
 			return nil, err
 		}
-		toDocs, err = applyChrootToDocs(toDocs, opts.Chroot, opts.ChrootListToDocuments)
+		toNodes, err = applyChrootToDocs(toNodes, opts.Chroot, opts.ChrootListToDocuments)
 		if err != nil {
 			return nil, err
 		}
 	} else {
 		if opts.ChrootFrom != "" {
-			fromDocs, err = applyChrootToDocs(fromDocs, opts.ChrootFrom, opts.ChrootListToDocuments)
+			fromNodes, err = applyChrootToDocs(fromNodes, opts.ChrootFrom, opts.ChrootListToDocuments)
 			if err != nil {
 				return nil, err
 			}
 		}
 		if opts.ChrootTo != "" {
-			toDocs, err = applyChrootToDocs(toDocs, opts.ChrootTo, opts.ChrootListToDocuments)
+			toNodes, err = applyChrootToDocs(toNodes, opts.ChrootTo, opts.ChrootListToDocuments)
 			if err != nil {
 				return nil, err
 			}
 		}
 	}
 
-	// Compare documents and sort results
-	pathOrder := extractPathOrder(fromDocs, toDocs, opts)
-	diffs := compareDocs(fromDocs, toDocs, opts)
+	// Compare documents and sort results. Both the path-order walker and the
+	// comparator consume nodes directly — nodeToInterface materialization is
+	// deferred to Difference.From/To emission sites.
+	pathOrder := extractPathOrder(fromNodes, toNodes, opts)
+	diffs := compareDocs(fromNodes, toNodes, opts)
 	sortDiffsWithOrder(diffs, pathOrder)
 
 	return diffs, nil
@@ -144,6 +155,10 @@ type pathWalker struct {
 	buf []byte
 	// lengths tracks buf length before each push for efficient pop.
 	lengths []int
+	// aliasSeen tracks alias targets currently being walked to break cycles
+	// (e.g. an anchor whose subtree contains an alias back to itself).
+	// Lazily initialised on first encounter.
+	aliasSeen map[*yaml.Node]bool
 }
 
 // push appends a segment to the running path buffer.
@@ -181,33 +196,50 @@ func (w *pathWalker) register() {
 	}
 }
 
-// walk recursively extracts path ordering from a parsed YAML value using an incremental path buffer.
-func (w *pathWalker) walk(val any) {
-	switch v := val.(type) {
-	case *OrderedMap:
+// walk recursively extracts path ordering from a *yaml.Node tree using the
+// incremental path buffer. After resolveMergeKeys runs at parse time, "<<" keys
+// are gone from MappingNode contents, so MappingNode iteration is straight
+// source-order. Aliases are dereferenced inline with a per-walk cycle break
+// (mirroring nodeToInterfaceImpl's seen-set), so a cyclic anchor terminates
+// instead of recursing forever.
+func (w *pathWalker) walk(n *yaml.Node) {
+	if n == nil {
 		w.register()
-		for _, key := range v.Keys {
-			w.push(key)
-			w.walk(v.Values[key])
+		return
+	}
+	switch n.Kind {
+	case yaml.DocumentNode:
+		if len(n.Content) == 0 {
+			w.register()
+			return
+		}
+		w.walk(n.Content[0])
+	case yaml.AliasNode:
+		target := n.Alias
+		if target == nil {
+			return
+		}
+		if w.aliasSeen[target] {
+			return
+		}
+		if w.aliasSeen == nil {
+			w.aliasSeen = make(map[*yaml.Node]bool)
+		}
+		w.aliasSeen[target] = true
+		w.walk(target)
+		delete(w.aliasSeen, target)
+	case yaml.MappingNode:
+		w.register()
+		for i := 0; i+1 < len(n.Content); i += 2 {
+			w.push(n.Content[i].Value)
+			w.walk(n.Content[i+1])
 			w.pop()
 		}
-	case map[string]any:
+	case yaml.SequenceNode:
 		w.register()
-		var keys []string
-		for key := range v {
-			keys = append(keys, key)
-		}
-		sort.Strings(keys)
-		for _, key := range keys {
-			w.push(key)
-			w.walk(v[key])
-			w.pop()
-		}
-	case []any:
-		w.register()
-		for i, item := range v {
+		for i, item := range n.Content {
 			var seg string
-			if id := getIdentifier(item, w.opts); isComparableIdentifier(id) {
+			if id := getIdentifierNode(item, w.opts); isComparableIdentifier(id) {
 				seg = sprintIdentifier(id)
 			} else {
 				seg = strconv.Itoa(i)
@@ -217,12 +249,14 @@ func (w *pathWalker) walk(val any) {
 			w.pop()
 		}
 	default:
+		// ScalarNode and any unknown kind: just register the current path.
 		w.register()
 	}
 }
 
-// extractPathOrder extracts the order of all paths from parsed documents.
-func extractPathOrder(fromDocs, toDocs []any, opts *Options) map[string]int {
+// extractPathOrder extracts the order of all paths from parsed documents
+// (per-document *yaml.Node trees, already merge-resolved by parseNodes).
+func extractPathOrder(fromNodes, toNodes []*yaml.Node, opts *Options) map[string]int {
 	w := pathWalker{
 		pathOrder: make(map[string]int),
 		opts:      opts,
@@ -230,11 +264,11 @@ func extractPathOrder(fromDocs, toDocs []any, opts *Options) map[string]int {
 		lengths:   make([]int, 0, 16),
 	}
 
-	for _, doc := range fromDocs {
-		w.walk(doc)
+	for _, n := range fromNodes {
+		w.walk(n)
 	}
-	for _, doc := range toDocs {
-		w.walk(doc)
+	for _, n := range toNodes {
+		w.walk(n)
 	}
 
 	return w.pathOrder

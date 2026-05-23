@@ -6,6 +6,18 @@ import (
 	"testing"
 )
 
+// parseAsAny runs the internal parse() and immediately materializes each node
+// to its any view. Tests in this file pre-date the node-pipeline refactor and
+// assert against the any representation; this helper preserves that contract
+// without expanding every call site.
+func parseAsAny(content []byte) ([]any, error) {
+	nodes, err := parse(content)
+	if err != nil {
+		return nil, err
+	}
+	return materializeDocs(nodes), nil
+}
+
 // getMapValue extracts a value from either *OrderedMap or map[string]any
 func getMapValue(doc any, key string) any {
 	switch m := doc.(type) {
@@ -33,7 +45,7 @@ func TestParse_SingleDocument(t *testing.T) {
 foo: bar
 baz: 123
 `)
-	docs, err := parse(content)
+	docs, err := parseAsAny(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -57,7 +69,7 @@ doc: two
 ---
 doc: three
 `)
-	docs, err := parse(content)
+	docs, err := parseAsAny(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -77,7 +89,7 @@ doc: three
 
 func TestParse_EmptyDocument(t *testing.T) {
 	content := []byte(``)
-	docs, err := parse(content)
+	docs, err := parseAsAny(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -93,7 +105,7 @@ func TestParse_ListAsRoot(t *testing.T) {
 - item2
 - item3
 `)
-	docs, err := parse(content)
+	docs, err := parseAsAny(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -118,7 +130,7 @@ float: 3.14
 boolean: true
 null_value: null
 `)
-	docs, err := parse(content)
+	docs, err := parseAsAny(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -148,7 +160,7 @@ level1:
     level3:
       value: deep
 `)
-	docs, err := parse(content)
+	docs, err := parseAsAny(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -199,7 +211,7 @@ first: doc
 ---
 third: doc
 `)
-	docs, err := parse(content)
+	docs, err := parseAsAny(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -211,7 +223,7 @@ third: doc
 
 func TestParse_JSONCompatibleYAML(t *testing.T) {
 	content := []byte(`{"foo": "bar", "baz": [1, 2, 3]}`)
-	docs, err := parse(content)
+	docs, err := parseAsAny(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -237,7 +249,7 @@ production:
   <<: *defaults
   host: prod.example.com
 `)
-	docs, err := parse(content)
+	docs, err := parseAsAny(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -282,7 +294,7 @@ second: 2
 ---
 third: 3
 `)
-	docs, err := parse(content)
+	docs, err := parseAsAny(content)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

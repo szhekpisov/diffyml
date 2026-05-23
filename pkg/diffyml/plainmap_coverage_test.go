@@ -6,79 +6,12 @@ import (
 )
 
 // Tests for code paths that handle map[string]any values.
-// The parser always produces *OrderedMap, but these branches exist as
-// defensive handling for direct callers. We test them to kill gomutants mutants.
-
-// --- compareNodes with map[string]any ---
-
-func TestCompareNodes_PlainMaps_Equal(t *testing.T) {
-	from := map[string]any{"a": "1", "b": "2"}
-	to := map[string]any{"a": "1", "b": "2"}
-
-	diffs := compareNodes(DiffPath{"root"}, from, to, &Options{})
-	if len(diffs) != 0 {
-		t.Errorf("expected no diffs for equal plain maps, got %d: %v", len(diffs), diffs)
-	}
-}
-
-func TestCompareNodes_PlainMaps_Modified(t *testing.T) {
-	from := map[string]any{"a": "1", "b": "2"}
-	to := map[string]any{"a": "1", "b": "changed"}
-
-	diffs := compareNodes(DiffPath{"root"}, from, to, &Options{})
-	if len(diffs) != 1 {
-		t.Fatalf("expected 1 diff, got %d: %v", len(diffs), diffs)
-	}
-	if diffs[0].Type != DiffModified {
-		t.Errorf("expected DiffModified, got %v", diffs[0].Type)
-	}
-	if diffs[0].Path.String() != "root.b" {
-		t.Errorf("expected path root.b, got %s", diffs[0].Path.String())
-	}
-}
-
-func TestCompareNodes_PlainMaps_Added(t *testing.T) {
-	from := map[string]any{"a": "1"}
-	to := map[string]any{"a": "1", "b": "2"}
-
-	diffs := compareNodes(DiffPath{"root"}, from, to, &Options{})
-	if len(diffs) != 1 {
-		t.Fatalf("expected 1 diff, got %d: %v", len(diffs), diffs)
-	}
-	if diffs[0].Type != DiffAdded {
-		t.Errorf("expected DiffAdded, got %v", diffs[0].Type)
-	}
-}
-
-func TestCompareNodes_PlainMaps_Removed(t *testing.T) {
-	from := map[string]any{"a": "1", "b": "2"}
-	to := map[string]any{"a": "1"}
-
-	diffs := compareNodes(DiffPath{"root"}, from, to, &Options{})
-	if len(diffs) != 1 {
-		t.Fatalf("expected 1 diff, got %d: %v", len(diffs), diffs)
-	}
-	if diffs[0].Type != DiffRemoved {
-		t.Errorf("expected DiffRemoved, got %v", diffs[0].Type)
-	}
-}
-
-func TestCompareNodes_PlainMaps_Nested(t *testing.T) {
-	from := map[string]any{
-		"parent": map[string]any{"child": "old"},
-	}
-	to := map[string]any{
-		"parent": map[string]any{"child": "new"},
-	}
-
-	diffs := compareNodes(nil, from, to, &Options{})
-	if len(diffs) != 1 {
-		t.Fatalf("expected 1 diff, got %d: %v", len(diffs), diffs)
-	}
-	if diffs[0].Path.String() != "parent.child" {
-		t.Errorf("expected path parent.child, got %s", diffs[0].Path.String())
-	}
-}
+//
+// After the node-pipeline refactor, the live comparator never sees plain maps
+// (yaml.Decode → *yaml.Node → nodeToInterface → *OrderedMap). The remaining
+// reachable plain-map paths are:
+//   - deepEqual (callable with any value type — library-facing utility)
+//   - the formatters' rendering of Difference.From/To (still typed any)
 
 // --- deepEqual with map[string]any ---
 
@@ -136,66 +69,7 @@ func TestDeepEqual_PlainMaps_NestedDifferent(t *testing.T) {
 	}
 }
 
-// --- compareListsPositional: added/removed items ---
-
-func TestCompareListsPositional_ItemsAdded(t *testing.T) {
-	from := []any{"a"}
-	to := []any{"a", "b", "c"}
-
-	diffs := compareListsPositional(DiffPath{"list"}, from, to, &Options{})
-
-	added := 0
-	for _, d := range diffs {
-		if d.Type == DiffAdded {
-			added++
-		}
-	}
-	if added != 2 {
-		t.Errorf("expected 2 added diffs, got %d", added)
-	}
-}
-
-func TestCompareListsPositional_ItemsRemoved(t *testing.T) {
-	from := []any{"a", "b", "c"}
-	to := []any{"a"}
-
-	diffs := compareListsPositional(DiffPath{"list"}, from, to, &Options{})
-
-	removed := 0
-	for _, d := range diffs {
-		if d.Type == DiffRemoved {
-			removed++
-		}
-	}
-	if removed != 2 {
-		t.Errorf("expected 2 removed diffs, got %d", removed)
-	}
-}
-
-func TestCompareListsPositional_BothAddedAndRemoved(t *testing.T) {
-	from := []any{"a", "b"}
-	to := []any{"x", "y", "z"}
-
-	diffs := compareListsPositional(DiffPath{"list"}, from, to, &Options{})
-
-	var modified, added int
-	for _, d := range diffs {
-		switch d.Type {
-		case DiffModified:
-			modified++
-		case DiffAdded:
-			added++
-		}
-	}
-	if modified != 2 {
-		t.Errorf("expected 2 modified, got %d", modified)
-	}
-	if added != 1 {
-		t.Errorf("expected 1 added, got %d", added)
-	}
-}
-
-// --- detailed_formatter with map[string]any ---
+// --- detailed_formatter with map[string]any From/To ---
 
 func TestDetailedFormatter_PlainMapValue(t *testing.T) {
 	diffs := []Difference{
@@ -217,7 +91,7 @@ func TestDetailedFormatter_PlainMapValue(t *testing.T) {
 }
 
 func TestDetailedFormatter_PlainMapNested(t *testing.T) {
-	// Exercises renderFirstKeyValueYAML with map[string]any val (line 291-295)
+	// Exercises renderFirstKeyValueYAML with map[string]any val.
 	diffs := []Difference{
 		{
 			Path: DiffPath{"items", "0"},
@@ -259,7 +133,6 @@ func TestDetailedFormatter_PlainMapRemoved(t *testing.T) {
 }
 
 func TestDetailedFormatter_PlainMapWithMultilineValue(t *testing.T) {
-	// Exercises renderFirstKeyValueYAML default case with multiline string (line 302-303)
 	diffs := []Difference{
 		{
 			Path: DiffPath{"items", "0"},

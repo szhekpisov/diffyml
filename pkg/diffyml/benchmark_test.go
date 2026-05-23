@@ -3,8 +3,11 @@ package diffyml
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
+
+	"go.yaml.in/yaml/v3"
 )
 
 // ---------------------------------------------------------------------------
@@ -263,6 +266,100 @@ func buildScalarList(n int) []any {
 	return list
 }
 
+// --- node-pipeline benchmark builders ---
+
+// buildMappingNode produces a flat MappingNode with n keys, mirroring
+// buildOrderedMap for the node-pipeline comparator benchmarks.
+func buildMappingNode(n int) *yaml.Node {
+	m := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+	m.Content = make([]*yaml.Node, 0, 2*n)
+	for i := 0; i < n; i++ {
+		m.Content = append(m.Content,
+			&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: fmt.Sprintf("key-%04d", i)},
+			&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: fmt.Sprintf("value-%d", i)},
+		)
+	}
+	return m
+}
+
+// buildMappingNodeModified mirrors buildOrderedMapModified.
+func buildMappingNodeModified(n int) *yaml.Node {
+	m := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+	m.Content = make([]*yaml.Node, 0, 2*n)
+	for i := 0; i < n; i++ {
+		val := fmt.Sprintf("value-%d", i)
+		if i%5 == 0 {
+			val = fmt.Sprintf("modified-value-%d", i)
+		}
+		m.Content = append(m.Content,
+			&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: fmt.Sprintf("key-%04d", i)},
+			&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: val},
+		)
+	}
+	return m
+}
+
+// serviceItemNode builds a MappingNode item with name/version/replicas.
+func serviceItemNode(name, version string, replicas int) *yaml.Node {
+	return &yaml.Node{
+		Kind: yaml.MappingNode, Tag: "!!map",
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "name"},
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: name},
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "version"},
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: version},
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "replicas"},
+			{Kind: yaml.ScalarNode, Tag: "!!int", Value: strconv.Itoa(replicas)},
+		},
+	}
+}
+
+// buildServiceSequenceNode mirrors buildServiceList for node benchmarks.
+func buildServiceSequenceNode(n int) *yaml.Node {
+	s := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
+	s.Content = make([]*yaml.Node, 0, n)
+	for i := 0; i < n; i++ {
+		s.Content = append(s.Content, serviceItemNode(
+			fmt.Sprintf("service-%03d", i),
+			fmt.Sprintf("1.0.%d", i%10),
+			1+(i%5),
+		))
+	}
+	return s
+}
+
+// buildServiceSequenceNodeModified mirrors buildServiceListModified.
+func buildServiceSequenceNodeModified(n int) *yaml.Node {
+	removed := 2
+	added := n / 10
+	if added < 1 {
+		added = 1
+	}
+	s := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
+	s.Content = make([]*yaml.Node, 0, n-removed+added)
+	for i := removed; i < n; i++ {
+		version := fmt.Sprintf("1.0.%d", i%10)
+		if i%5 == 0 {
+			version = fmt.Sprintf("2.0.%d", i%10)
+		}
+		s.Content = append(s.Content, serviceItemNode(fmt.Sprintf("service-%03d", i), version, 1+(i%5)))
+	}
+	for i := n; i < n+added; i++ {
+		s.Content = append(s.Content, serviceItemNode(fmt.Sprintf("service-%03d", i), fmt.Sprintf("1.0.%d", i%10), 1+(i%5)))
+	}
+	return s
+}
+
+// buildScalarSequenceNode mirrors buildScalarList for node benchmarks.
+func buildScalarSequenceNode(n int) *yaml.Node {
+	s := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
+	s.Content = make([]*yaml.Node, n)
+	for i := 0; i < n; i++ {
+		s.Content[i] = &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: fmt.Sprintf("item-%d", i)}
+	}
+	return s
+}
+
 // buildScalarListModified creates a modified scalar list for unordered comparison.
 func buildScalarListModified(n int) []any {
 	removed := 2
@@ -435,17 +532,17 @@ func BenchmarkCompare_WithOptions(b *testing.B) {
 // Benchmarks: Internal map comparison
 // ---------------------------------------------------------------------------
 
-func BenchmarkCompareOrderedMaps(b *testing.B) {
+func BenchmarkCompareMappingNodes(b *testing.B) {
 	sizes := []int{10, 100, 1000}
 
 	for _, n := range sizes {
-		from := buildOrderedMap(n)
-		to := buildOrderedMapModified(n)
+		from := buildMappingNode(n)
+		to := buildMappingNodeModified(n)
 		b.Run(fmt.Sprintf("%d", n), func(b *testing.B) {
 			b.ReportAllocs()
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				compareOrderedMaps(DiffPath{"root"}, from, to, &Options{})
+				compareMappingNodes(DiffPath{"root"}, from, to, &Options{})
 			}
 		})
 	}
@@ -455,33 +552,33 @@ func BenchmarkCompareOrderedMaps(b *testing.B) {
 // Benchmarks: List comparison strategies
 // ---------------------------------------------------------------------------
 
-func BenchmarkCompareLists_ByIdentifier(b *testing.B) {
+func BenchmarkCompareSequences_ByIdentifier(b *testing.B) {
 	sizes := []int{10, 50, 500}
 
 	for _, n := range sizes {
-		from := buildServiceList(n)
-		to := buildServiceListModified(n)
+		from := buildServiceSequenceNode(n)
+		to := buildServiceSequenceNodeModified(n)
 		b.Run(fmt.Sprintf("%d", n), func(b *testing.B) {
 			b.ReportAllocs()
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				compareListsByIdentifier(DiffPath{"services"}, from, to, &Options{})
+				compareSequenceNodesByIdentifier(DiffPath{"services"}, from, to, &Options{})
 			}
 		})
 	}
 }
 
-func BenchmarkCompareLists_Unordered(b *testing.B) {
+func BenchmarkCompareSequences_Unordered(b *testing.B) {
 	sizes := []int{10, 50, 200}
 
 	for _, n := range sizes {
-		from := buildScalarList(n)
-		to := buildScalarListModified(n)
+		from := buildScalarSequenceNode(n)
+		to := buildScalarSequenceNode(n) // identical scalars; benchmark the matching scan
 		b.Run(fmt.Sprintf("%d", n), func(b *testing.B) {
 			b.ReportAllocs()
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				compareListsUnordered(DiffPath{"items"}, from, to, &Options{})
+				compareSequenceNodesUnordered(DiffPath{"items"}, from, to, &Options{})
 			}
 		})
 	}
@@ -561,7 +658,7 @@ func BenchmarkExtractPathOrder(b *testing.B) {
 
 	for _, sz := range sizes {
 		data := generateServiceList(sz.n)
-		docs, err := ParseWithOrder(data)
+		nodes, err := parseNodes(data)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -569,7 +666,7 @@ func BenchmarkExtractPathOrder(b *testing.B) {
 			b.ReportAllocs()
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				extractPathOrder(docs, docs, nil)
+				extractPathOrder(nodes, nodes, nil)
 			}
 		})
 	}

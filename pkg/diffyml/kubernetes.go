@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
+
+	"go.yaml.in/yaml/v3"
 )
 
 // k8sDocumentPath is the diff path used for document-level changes (e.g. order).
@@ -227,17 +229,35 @@ func isComparableIdentifier(id any) bool {
 	return reflect.TypeOf(id).Comparable()
 }
 
-// matchK8sDocuments matches Kubernetes documents from two slices by their identifiers.
-// Returns a map from 'from' index to 'to' index, and lists of unmatched indices.
-func matchK8sDocuments(from, to []any, opts *Options) (matched map[int]int, unmatchedFrom, unmatchedTo []int) {
+// k8sDocs is the parallel ([]any) view of a []*yaml.Node slice, used by the
+// K8s match/rename path so the per-doc nodeToInterface materialization happens
+// at most once even when matchK8sDocuments and detectRenames both run.
+func materializeK8sDocs(nodes []*yaml.Node) []any {
+	docs := make([]any, len(nodes))
+	for i, n := range nodes {
+		docs[i] = nodeToInterface(n)
+	}
+	return docs
+}
+
+// matchK8sDocuments matches Kubernetes documents from two slices by their
+// identifiers. Operates on parsed node trees; the parallel materialized any
+// view is built once internally for K8sResourceIdentifier lookups.
+func matchK8sDocuments(from, to []*yaml.Node, opts *Options) (matched map[int]int, unmatchedFrom, unmatchedTo []int) {
+	fromDocs := materializeK8sDocs(from)
+	toDocs := materializeK8sDocs(to)
+	return matchK8sDocsValues(fromDocs, toDocs, opts)
+}
+
+// matchK8sDocsValues is the inner implementation used by both
+// matchK8sDocuments and compareK8sDocs (which already has the cached any view).
+func matchK8sDocsValues(fromDocs, toDocs []any, opts *Options) (matched map[int]int, unmatchedFrom, unmatchedTo []int) {
 	matched = make(map[int]int)
 	ignoreApiVersion := opts != nil && opts.IgnoreApiVersion
 
-	// Build index of 'to' documents by K8s identifier
 	toIndex := make(map[string]int)
-	toMatched := make([]bool, len(to))
-
-	for i, doc := range to {
+	toMatched := make([]bool, len(toDocs))
+	for i, doc := range toDocs {
 		if id := K8sResourceIdentifier(doc, ignoreApiVersion); id != "" {
 			if _, exists := toIndex[id]; !exists {
 				toIndex[id] = i
@@ -245,8 +265,7 @@ func matchK8sDocuments(from, to []any, opts *Options) (matched map[int]int, unma
 		}
 	}
 
-	// Match 'from' documents to 'to' documents
-	for i, doc := range from {
+	for i, doc := range fromDocs {
 		id := K8sResourceIdentifier(doc, ignoreApiVersion)
 		if id != "" {
 			if toIdx, ok := toIndex[id]; ok {
@@ -258,8 +277,7 @@ func matchK8sDocuments(from, to []any, opts *Options) (matched map[int]int, unma
 		unmatchedFrom = append(unmatchedFrom, i)
 	}
 
-	// Find unmatched 'to' documents
-	for i := range to {
+	for i := range toDocs {
 		if !toMatched[i] {
 			unmatchedTo = append(unmatchedTo, i)
 		}
@@ -268,7 +286,8 @@ func matchK8sDocuments(from, to []any, opts *Options) (matched map[int]int, unma
 	return matched, unmatchedFrom, unmatchedTo
 }
 
-// detectK8sOrderChanges detects document order changes among matched K8s documents.
+// detectK8sOrderChanges detects document order changes among matched K8s
+// documents. Operates on the already-materialized fromDocs any view.
 func detectK8sOrderChanges(matched map[int]int, from []any, ignoreApiVersion bool) *Difference {
 	// No early-return for len(matched) < 2: the loop builds an empty/singleton
 	// pairs slice, IsSortedFunc is trivially true, orderChanged stays false,
@@ -306,12 +325,15 @@ func detectK8sOrderChanges(matched map[int]int, from []any, ignoreApiVersion boo
 	}
 }
 
-// compareMatchedK8sDocs compares matched and rename-matched K8s document pairs.
-func compareMatchedK8sDocs(matched map[int]int, from, to []any, opts *Options, useToIdx bool) []Difference {
+// compareMatchedK8sDocs compares matched (and rename-matched) K8s document
+// pairs. Takes both the node slices (for descent into the comparator) and the
+// cached any view (for K8s metadata extraction).
+func compareMatchedK8sDocs(matched map[int]int, fromNodes, toNodes []*yaml.Node, fromDocs, toDocs []any, opts *Options, useToIdx bool) []Difference {
 	var diffs []Difference
 	for fromIdx, toIdx := range matched {
-		fromDoc := from[fromIdx]
-		toDoc := to[toIdx]
+		fromN := fromNodes[fromIdx]
+		toN := toNodes[toIdx]
+		toDoc := toDocs[toIdx]
 
 		docIdx := fromIdx
 		if useToIdx {
@@ -319,11 +341,11 @@ func compareMatchedK8sDocs(matched map[int]int, from, to []any, opts *Options, u
 		}
 
 		var pathPrefix DiffPath
-		if len(from) > 1 || len(to) > 1 {
+		if len(fromNodes) > 1 || len(toNodes) > 1 {
 			pathPrefix = DiffPath{fmt.Sprintf("[%d]", docIdx)}
 		}
 
-		nodeDiffs := compareNodes(pathPrefix, fromDoc, toDoc, opts)
+		nodeDiffs := compareNodes(pathPrefix, fromN, toN, opts)
 		var docName, docKind string
 		if f, ok := k8sExtractFields(toDoc); ok {
 			docName = f.displayName()
@@ -339,46 +361,48 @@ func compareMatchedK8sDocs(matched map[int]int, from, to []any, opts *Options, u
 	return diffs
 }
 
-// compareK8sDocs compares Kubernetes documents matching by resource identifier.
-func compareK8sDocs(from, to []any, opts *Options) []Difference {
+// compareK8sDocs compares Kubernetes document node trees by matching them on
+// their resource identifier (apiVersion + kind + namespace/name). The
+// materialized any view is built once and shared across matching, order
+// detection, rename detection, and add/remove emission.
+func compareK8sDocs(fromNodes, toNodes []*yaml.Node, opts *Options) []Difference {
 	var diffs []Difference
+	fromDocs := materializeK8sDocs(fromNodes)
+	toDocs := materializeK8sDocs(toNodes)
 
-	matched, unmatchedFrom, unmatchedTo := matchK8sDocuments(from, to, opts)
+	matched, unmatchedFrom, unmatchedTo := matchK8sDocsValues(fromDocs, toDocs, opts)
 	// opts is guaranteed non-nil by the caller (compareDocs gates on opts != nil),
 	// and we dereference opts.IgnoreOrderChanges immediately below.
 	ignoreApiVersion := opts.IgnoreApiVersion
 
-	// Detect document order changes
 	if !opts.IgnoreOrderChanges {
-		if orderDiff := detectK8sOrderChanges(matched, from, ignoreApiVersion); orderDiff != nil {
+		if orderDiff := detectK8sOrderChanges(matched, fromDocs, ignoreApiVersion); orderDiff != nil {
 			diffs = append(diffs, *orderDiff)
 		}
 	}
 
-	// Compare matched documents
-	diffs = append(diffs, compareMatchedK8sDocs(matched, from, to, opts, false)...)
+	diffs = append(diffs, compareMatchedK8sDocs(matched, fromNodes, toNodes, fromDocs, toDocs, opts, false)...)
 
-	// Detect renames among unmatched documents
-	renameMatched, remainingFrom, remainingTo := detectRenames(from, to, unmatchedFrom, unmatchedTo, opts)
+	// Rename detection consumes the any view (similarity scoring serializes
+	// each unmatched doc back to YAML bytes).
+	renameMatched, remainingFrom, remainingTo := detectRenames(fromDocs, toDocs, unmatchedFrom, unmatchedTo, opts)
 
-	// Compare rename-matched pairs using "to" index for path context
-	diffs = append(diffs, compareMatchedK8sDocs(renameMatched, from, to, opts, true)...)
+	diffs = append(diffs, compareMatchedK8sDocs(renameMatched, fromNodes, toNodes, fromDocs, toDocs, opts, true)...)
 
-	// Report removed documents
 	for _, fromIdx := range remainingFrom {
-		if from[fromIdx] == nil {
+		if fromDocs[fromIdx] == nil {
 			continue
 		}
 		pathPrefix := DiffPath{fmt.Sprintf("[%d]", fromIdx)}
 		var docName, docKind string
-		if f, ok := k8sExtractFields(from[fromIdx]); ok {
+		if f, ok := k8sExtractFields(fromDocs[fromIdx]); ok {
 			docName = f.displayName()
 			docKind = f.kind
 		}
 		diffs = append(diffs, Difference{
 			Path:          pathPrefix,
 			Type:          DiffRemoved,
-			From:          from[fromIdx],
+			From:          fromDocs[fromIdx],
 			To:            nil,
 			DocumentIndex: fromIdx,
 			DocumentName:  docName,
@@ -386,14 +410,13 @@ func compareK8sDocs(from, to []any, opts *Options) []Difference {
 		})
 	}
 
-	// Report added documents
 	for _, toIdx := range remainingTo {
-		if to[toIdx] == nil {
+		if toDocs[toIdx] == nil {
 			continue
 		}
 		pathPrefix := DiffPath{fmt.Sprintf("[%d]", toIdx)}
 		var docName, docKind string
-		if f, ok := k8sExtractFields(to[toIdx]); ok {
+		if f, ok := k8sExtractFields(toDocs[toIdx]); ok {
 			docName = f.displayName()
 			docKind = f.kind
 		}
@@ -401,7 +424,7 @@ func compareK8sDocs(from, to []any, opts *Options) []Difference {
 			Path:          pathPrefix,
 			Type:          DiffAdded,
 			From:          nil,
-			To:            to[toIdx],
+			To:            toDocs[toIdx],
 			DocumentIndex: toIdx,
 			DocumentName:  docName,
 			DocumentKind:  docKind,

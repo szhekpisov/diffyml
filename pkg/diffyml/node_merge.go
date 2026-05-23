@@ -28,25 +28,42 @@ import (
 
 // resolveMergeKeys walks a parsed yaml.Node tree (a DocumentNode or any
 // content) and rewrites every YAML merge key in-place. Safe to call on any
-// Kind; non-container nodes are no-ops.
+// Kind; non-container nodes are no-ops. The cycles-seen map breaks recursion
+// on pathological self-referential anchors like `&a {<<: *a, k: v}`.
 func resolveMergeKeys(n *yaml.Node) {
+	resolveMergeKeysWithCycles(n, make(map[*yaml.Node]bool))
+}
+
+func resolveMergeKeysWithCycles(n *yaml.Node, cycles map[*yaml.Node]bool) {
 	if n == nil {
 		return
 	}
 	switch n.Kind {
 	case yaml.DocumentNode, yaml.SequenceNode:
 		for _, c := range n.Content {
-			resolveMergeKeys(c)
+			resolveMergeKeysWithCycles(c, cycles)
 		}
 	case yaml.MappingNode:
-		resolveMappingMergeKeys(n)
+		resolveMappingMergeKeys(n, cycles)
 	}
 }
 
 // resolveMappingMergeKeys rewrites n.Content to inline any "<<: *anchor"
 // entries. seen-set membership is host-mapping-local (matching nodeToInterface
-// where the precedence check is against om.Values of the host).
-func resolveMappingMergeKeys(n *yaml.Node) {
+// where the precedence check is against om.Values of the host). cycles tracks
+// which MappingNode pointers are currently mid-resolution so a self-
+// referential anchor (`&a {<<: *a}`) terminates instead of recursing forever.
+func resolveMappingMergeKeys(n *yaml.Node, cycles map[*yaml.Node]bool) {
+	if cycles[n] {
+		// We are already resolving this mapping; a deeper "<<" pointing back
+		// to it must not recurse. Leaving the node as-is is consistent with
+		// nodeToInterfaceImpl's cycle break, which returns nil for the alias
+		// and so contributes no merged keys to the host.
+		return
+	}
+	cycles[n] = true
+	defer delete(cycles, n)
+
 	seen := make(map[string]bool, len(n.Content)/2)
 	newContent := make([]*yaml.Node, 0, len(n.Content))
 
@@ -62,9 +79,13 @@ func resolveMappingMergeKeys(n *yaml.Node) {
 			if source == nil || source.Kind != yaml.MappingNode {
 				continue
 			}
+			if cycles[source] {
+				// Self/back reference: skip the merge to terminate the cycle.
+				continue
+			}
 			// Flatten nested merges in the source first so its Content holds
 			// only direct pairs. Idempotent: second reference is a no-op.
-			resolveMappingMergeKeys(source)
+			resolveMappingMergeKeys(source, cycles)
 			for j := 0; j+1 < len(source.Content); j += 2 {
 				mk := source.Content[j]
 				mv := source.Content[j+1]
@@ -80,7 +101,7 @@ func resolveMappingMergeKeys(n *yaml.Node) {
 		// Explicit pair: recurse into the value to resolve any merges nested
 		// inside it (mapping values, sequence items containing merges, etc.),
 		// then preserve the pair in source order.
-		resolveMergeKeys(valNode)
+		resolveMergeKeysWithCycles(valNode, cycles)
 		seen[keyNode.Value] = true
 		newContent = append(newContent, keyNode, valNode)
 	}

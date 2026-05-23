@@ -10,7 +10,7 @@
 // can decide identifier-based matching without materializing every list item
 // up front. The contract pinned by TestGetIdentifierNode_EquivalenceCorpus:
 //
-//   getIdentifierNode(n, opts) == getIdentifier(nodeToInterface(n), opts)
+//	getIdentifierNode(n, opts) == getIdentifier(nodeToInterface(n), opts)
 //
 // for every MappingNode reachable from a parsed (post-resolveMergeKeys) tree.
 // canMatchByIdentifierNodes mirrors canMatchByIdentifier under the same

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"reflect"
 	"testing"
+	"time"
 
 	"go.yaml.in/yaml/v3"
 )
@@ -155,6 +156,23 @@ func TestResolveAlias_Cycle(t *testing.T) {
 	a.Alias = a
 	if got := resolveAlias(a); got != nil {
 		t.Errorf("self-aliasing chain must terminate at nil, got %v", got)
+	}
+}
+
+// TestResolveMergeKeys_CyclicAnchorTerminates pins the cycle break for a
+// self-referential merge anchor (regression from a fuzz-discovered hang).
+// `&a {<<: *a, k: v}` would otherwise recurse forever into the same mapping.
+func TestResolveMergeKeys_CyclicAnchorTerminates(t *testing.T) {
+	src := []byte("&self\n<<: *self\nk: v\n")
+	done := make(chan struct{})
+	go func() {
+		_, _ = Compare(src, src, nil)
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("Compare on self-referential merge hung > 2s")
 	}
 }
 

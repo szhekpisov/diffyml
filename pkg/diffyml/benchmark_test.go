@@ -211,61 +211,6 @@ func buildOrderedMapModified(n int) *OrderedMap {
 	return om
 }
 
-// buildServiceList creates a parsed []any list with n named items
-// for direct use in compareLists benchmarks.
-func buildServiceList(n int) []any {
-	list := make([]any, n)
-	for i := 0; i < n; i++ {
-		om := NewOrderedMap()
-		om.Keys = append(om.Keys, "name", "version", "replicas")
-		om.Values["name"] = fmt.Sprintf("service-%03d", i)
-		om.Values["version"] = fmt.Sprintf("1.0.%d", i%10)
-		om.Values["replicas"] = 1 + (i % 5)
-		list[i] = om
-	}
-	return list
-}
-
-// buildServiceListModified creates a modified list for compareLists benchmarks.
-func buildServiceListModified(n int) []any {
-	removed := 2
-	added := n / 10
-	if added < 1 {
-		added = 1
-	}
-	list := make([]any, 0, n-removed+added)
-	for i := removed; i < n; i++ {
-		om := NewOrderedMap()
-		om.Keys = append(om.Keys, "name", "version", "replicas")
-		om.Values["name"] = fmt.Sprintf("service-%03d", i)
-		if i%5 == 0 {
-			om.Values["version"] = fmt.Sprintf("2.0.%d", i%10)
-		} else {
-			om.Values["version"] = fmt.Sprintf("1.0.%d", i%10)
-		}
-		om.Values["replicas"] = 1 + (i % 5)
-		list = append(list, om)
-	}
-	for i := n; i < n+added; i++ {
-		om := NewOrderedMap()
-		om.Keys = append(om.Keys, "name", "version", "replicas")
-		om.Values["name"] = fmt.Sprintf("service-%03d", i)
-		om.Values["version"] = fmt.Sprintf("1.0.%d", i%10)
-		om.Values["replicas"] = 1 + (i % 5)
-		list = append(list, om)
-	}
-	return list
-}
-
-// buildScalarList creates a list of n scalar values (no identifiers).
-func buildScalarList(n int) []any {
-	list := make([]any, n)
-	for i := 0; i < n; i++ {
-		list[i] = fmt.Sprintf("item-%d", i)
-	}
-	return list
-}
-
 // --- node-pipeline benchmark builders ---
 
 // buildMappingNode produces a flat MappingNode with n keys, mirroring
@@ -358,23 +303,6 @@ func buildScalarSequenceNode(n int) *yaml.Node {
 		s.Content[i] = &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: fmt.Sprintf("item-%d", i)}
 	}
 	return s
-}
-
-// buildScalarListModified creates a modified scalar list for unordered comparison.
-func buildScalarListModified(n int) []any {
-	removed := 2
-	added := n / 10
-	if added < 1 {
-		added = 1
-	}
-	list := make([]any, 0, n-removed+added)
-	for i := removed; i < n; i++ {
-		list = append(list, fmt.Sprintf("item-%d", i))
-	}
-	for i := n; i < n+added; i++ {
-		list = append(list, fmt.Sprintf("item-%d", i))
-	}
-	return list
 }
 
 // buildNestedMap builds a deeply nested OrderedMap for deepEqual benchmarks.

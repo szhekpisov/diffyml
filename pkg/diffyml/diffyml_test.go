@@ -1,23 +1,41 @@
 package diffyml
 
 import (
+	"bytes"
 	"testing"
+
+	"go.yaml.in/yaml/v3"
 )
+
+// nodesFromYAMLT parses a YAML string into per-document *yaml.Node trees with
+// merge keys resolved, suitable for direct extractPathOrder / comparator-node
+// calls. Returns at least one document (a nil node for empty input).
+func nodesFromYAMLT(t *testing.T, src string) []*yaml.Node {
+	t.Helper()
+	decoder := yaml.NewDecoder(bytes.NewReader([]byte(src)))
+	var nodes []*yaml.Node
+	for {
+		n := new(yaml.Node)
+		if err := decoder.Decode(n); err != nil {
+			break
+		}
+		resolveMergeKeys(n)
+		nodes = append(nodes, n)
+	}
+	if len(nodes) == 0 {
+		nodes = append(nodes, nil)
+	}
+	return nodes
+}
 
 // --- Mutation testing: diffyml.go sorting/ordering ---
 
 func TestExtractPathOrder_EmptyPrefix(t *testing.T) {
-	// diffyml.go:136 — if `prefix != ""` is mutated to `prefix == ""`,
-	// then empty prefix gets registered instead of non-empty prefixes.
-	// We verify that keys at the top level get correct ordering indices.
-	om := NewOrderedMap()
-	om.Keys = []string{"beta", "alpha"}
-	om.Values["beta"] = "val1"
-	om.Values["alpha"] = "val2"
-
-	docs := []any{om}
-	opts := &Options{}
-	pathOrder := extractPathOrder(docs, nil, opts)
+	// Source-order keys "beta" then "alpha"; verifies that the empty document
+	// root is NOT registered and that the first-encountered top-level key gets
+	// the lowest index.
+	docs := nodesFromYAMLT(t, "beta: val1\nalpha: val2\n")
+	pathOrder := extractPathOrder(docs, nil, &Options{})
 
 	// "beta" should come before "alpha" because it appears first in the map
 	betaIdx, hasBeta := pathOrder["beta"]
@@ -36,17 +54,10 @@ func TestExtractPathOrder_EmptyPrefix(t *testing.T) {
 }
 
 func TestExtractPathOrder_IndexIncrement(t *testing.T) {
-	// diffyml.go:176 — if `index++` is mutated to `index--`, successive paths
-	// would get decreasing indices instead of increasing ones.
-	om := NewOrderedMap()
-	om.Keys = []string{"first", "second", "third"}
-	om.Values["first"] = "a"
-	om.Values["second"] = "b"
-	om.Values["third"] = "c"
-
-	docs := []any{om}
-	opts := &Options{}
-	pathOrder := extractPathOrder(docs, nil, opts)
+	// Flat mapping with three keys: kills any index-- mutation by asserting
+	// strictly increasing indices across successive top-level keys.
+	docs := nodesFromYAMLT(t, "first: a\nsecond: b\nthird: c\n")
+	pathOrder := extractPathOrder(docs, nil, &Options{})
 
 	firstIdx := pathOrder["first"]
 	secondIdx := pathOrder["second"]
@@ -62,21 +73,11 @@ func TestExtractPathOrder_IndexIncrement(t *testing.T) {
 }
 
 func TestExtractPathOrder_ListIndexIncrement(t *testing.T) {
-	// diffyml.go:176 — specifically for list items ([]any branch)
-	// If index-- instead of index++, the list prefix "items" gets index 0,
-	// then index becomes -1, making subsequent paths get negative indices.
-	// This causes the list prefix to sort AFTER its own items, breaking order.
-	//
-	// Test: "items" prefix should have a LOWER index than its first child "items.0"
-	list := []any{"item0", "item1"}
-
-	om := NewOrderedMap()
-	om.Keys = []string{"items"}
-	om.Values["items"] = list
-
-	docs := []any{om}
-	opts := &Options{}
-	pathOrder := extractPathOrder(docs, nil, opts)
+	// List-branch index increment: "items" prefix must register at a lower
+	// index than its first child "items.0". An index-- mutation would invert
+	// that, since the list prefix is registered before its items.
+	docs := nodesFromYAMLT(t, "items:\n  - item0\n  - item1\n")
+	pathOrder := extractPathOrder(docs, nil, &Options{})
 
 	itemsIdx, hasItems := pathOrder["items"]
 	idx0, has0 := pathOrder["items.0"]
@@ -206,30 +207,10 @@ func TestSortDiffsWithOrder_AlphabeticalFallback(t *testing.T) {
 }
 
 func TestExtractPathOrder_OrderedMapNestedIndexIncrement(t *testing.T) {
-	// Kills INCREMENT_DECREMENT at diffyml.go:141 (index++ → index--)
-	// The existing TestExtractPathOrder_IndexIncrement uses flat OrderedMap with
-	// scalar values — prefix is always "" so the code at line 138-141 is skipped.
-	// We need a NESTED OrderedMap so that recursion enters the OrderedMap branch
-	// with a non-empty prefix, hitting the index++ at line 141.
-	child1 := NewOrderedMap()
-	child1.Keys = []string{"x"}
-	child1.Values["x"] = "val"
-
-	child2 := NewOrderedMap()
-	child2.Keys = []string{"y"}
-	child2.Values["y"] = "val"
-
-	child3 := NewOrderedMap()
-	child3.Keys = []string{"z"}
-	child3.Values["z"] = "val"
-
-	root := NewOrderedMap()
-	root.Keys = []string{"first", "second", "third"}
-	root.Values["first"] = child1
-	root.Values["second"] = child2
-	root.Values["third"] = child3
-
-	docs := []any{root}
+	// Nested mappings exercise the index increment when the path prefix is
+	// non-empty (recursion into a child MappingNode). An index-- mutation
+	// would collapse all child path indices together.
+	docs := nodesFromYAMLT(t, "first:\n  x: val\nsecond:\n  y: val\nthird:\n  z: val\n")
 	pathOrder := extractPathOrder(docs, nil, &Options{})
 
 	// Each nested OrderedMap prefix must get a strictly increasing index.

@@ -1,9 +1,12 @@
 package diffyml
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
+
+	"go.yaml.in/yaml/v3"
 )
 
 // Tests for Kubernetes resource detection (Task 2.5)
@@ -470,14 +473,9 @@ data:
 }
 
 func TestMatchK8sDocuments_EmptyIdentifier(t *testing.T) {
-	// Non-K8s docs (no kind/apiVersion) should all end up unmatched
-	fromDocs := []any{
-		map[string]any{"foo": "bar"},
-		map[string]any{"baz": "qux"},
-	}
-	toDocs := []any{
-		map[string]any{"hello": "world"},
-	}
+	// Non-K8s docs (no kind/apiVersion) should all end up unmatched.
+	fromDocs := nodesFromYAMLT(t, "foo: bar\n---\nbaz: qux\n")
+	toDocs := nodesFromYAMLT(t, "hello: world\n")
 
 	matched, unmatchedFrom, unmatchedTo := matchK8sDocuments(fromDocs, toDocs, &Options{})
 
@@ -493,16 +491,12 @@ func TestMatchK8sDocuments_EmptyIdentifier(t *testing.T) {
 }
 
 func TestMatchK8sDocuments_PartialMatch(t *testing.T) {
-	mkDoc := func(name string) map[string]any {
-		return map[string]any{
-			"apiVersion": "v1",
-			"kind":       "ConfigMap",
-			"metadata":   map[string]any{"name": name},
-		}
+	mkDoc := func(name string) string {
+		return "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: " + name + "\n"
 	}
 
-	fromDocs := []any{mkDoc("shared"), mkDoc("only-from")}
-	toDocs := []any{mkDoc("only-to"), mkDoc("shared")}
+	fromDocs := nodesFromYAMLT(t, mkDoc("shared")+"---\n"+mkDoc("only-from"))
+	toDocs := nodesFromYAMLT(t, mkDoc("only-to")+"---\n"+mkDoc("shared"))
 
 	matched, unmatchedFrom, unmatchedTo := matchK8sDocuments(fromDocs, toDocs, &Options{})
 
@@ -628,16 +622,12 @@ func TestK8sResourceIdentifier_NameOverGenerateName(t *testing.T) {
 }
 
 func TestMatchK8sDocuments_GenerateName(t *testing.T) {
-	mkDoc := func(genName string) map[string]any {
-		return map[string]any{
-			"apiVersion": "batch/v1",
-			"kind":       "Job",
-			"metadata":   map[string]any{"generateName": genName},
-		}
+	mkDoc := func(genName string) string {
+		return "apiVersion: batch/v1\nkind: Job\nmetadata:\n  generateName: " + genName + "\n"
 	}
 
-	fromDocs := []any{mkDoc("job-a-"), mkDoc("job-b-")}
-	toDocs := []any{mkDoc("job-b-"), mkDoc("job-a-")}
+	fromDocs := nodesFromYAMLT(t, mkDoc("job-a-")+"---\n"+mkDoc("job-b-"))
+	toDocs := nodesFromYAMLT(t, mkDoc("job-b-")+"---\n"+mkDoc("job-a-"))
 
 	matched, unmatchedFrom, unmatchedTo := matchK8sDocuments(fromDocs, toDocs, &Options{})
 
@@ -661,19 +651,13 @@ func TestMatchK8sDocuments_GenerateName(t *testing.T) {
 }
 
 func TestMatchK8sDocuments_FirstOccurrenceWins(t *testing.T) {
-	// When two "to" documents produce the same identifier, the first one should be used
-	mkDoc := func(name, data string) map[string]any {
-		return map[string]any{
-			"apiVersion": "v1",
-			"kind":       "ConfigMap",
-			"metadata":   map[string]any{"name": name},
-			"data":       data,
-		}
+	// When two "to" documents produce the same identifier, the first one should be used.
+	mkDoc := func(name, data string) string {
+		return "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: " + name + "\ndata: " + data + "\n"
 	}
 
-	fromDocs := []any{mkDoc("dup", "from-data")}
-	// Two "to" documents with the same identifier
-	toDocs := []any{mkDoc("dup", "first"), mkDoc("dup", "second")}
+	fromDocs := nodesFromYAMLT(t, mkDoc("dup", "from-data"))
+	toDocs := nodesFromYAMLT(t, mkDoc("dup", "first")+"---\n"+mkDoc("dup", "second"))
 
 	matched, unmatchedFrom, unmatchedTo := matchK8sDocuments(fromDocs, toDocs, &Options{})
 
@@ -695,20 +679,24 @@ func TestMatchK8sDocuments_FirstOccurrenceWins(t *testing.T) {
 
 func TestMatchK8sDocuments_AgnosticMatching(t *testing.T) {
 	// Two documents with same kind/name but different apiVersions should match
-	// when IgnoreApiVersion=true
-	fromDoc := map[string]any{
-		"apiVersion": "apps/v1beta1",
-		"kind":       "Deployment",
-		"metadata":   map[string]any{"name": "my-app", "namespace": "default"},
-	}
-	toDoc := map[string]any{
-		"apiVersion": "apps/v1",
-		"kind":       "Deployment",
-		"metadata":   map[string]any{"name": "my-app", "namespace": "default"},
-	}
+	// when IgnoreApiVersion=true.
+	fromDocs := nodesFromYAMLT(t, `
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: my-app
+  namespace: default
+`)
+	toDocs := nodesFromYAMLT(t, `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+  namespace: default
+`)
 
 	matched, unmatchedFrom, unmatchedTo := matchK8sDocuments(
-		[]any{fromDoc}, []any{toDoc},
+		fromDocs, toDocs,
 		&Options{IgnoreApiVersion: true},
 	)
 
@@ -728,18 +716,14 @@ func TestMatchK8sDocuments_AgnosticMatching(t *testing.T) {
 
 func TestMatchK8sDocuments_AgnosticDuplicateFirstWins(t *testing.T) {
 	// When agnostic matching produces duplicate identifiers in "to",
-	// first-occurrence-wins
-	mkDoc := func(apiVer, name string) map[string]any {
-		return map[string]any{
-			"apiVersion": apiVer,
-			"kind":       "Deployment",
-			"metadata":   map[string]any{"name": name, "namespace": "default"},
-		}
+	// first-occurrence-wins.
+	mkDoc := func(apiVer, name string) string {
+		return "apiVersion: " + apiVer + "\nkind: Deployment\nmetadata:\n  name: " + name + "\n  namespace: default\n"
 	}
 
-	fromDocs := []any{mkDoc("apps/v1", "my-app")}
-	// Two "to" documents: same kind/name, different apiVersion → same agnostic identifier
-	toDocs := []any{mkDoc("apps/v1beta1", "my-app"), mkDoc("apps/v1", "my-app")}
+	fromDocs := nodesFromYAMLT(t, mkDoc("apps/v1", "my-app"))
+	// Two "to" documents: same kind/name, different apiVersion → same agnostic identifier.
+	toDocs := nodesFromYAMLT(t, mkDoc("apps/v1beta1", "my-app")+"---\n"+mkDoc("apps/v1", "my-app"))
 
 	matched, _, unmatchedTo := matchK8sDocuments(fromDocs, toDocs, &Options{IgnoreApiVersion: true})
 
@@ -757,20 +741,24 @@ func TestMatchK8sDocuments_AgnosticDuplicateFirstWins(t *testing.T) {
 
 func TestMatchK8sDocuments_DefaultNoAgnosticMatch(t *testing.T) {
 	// When IgnoreApiVersion=false (default), different apiVersions produce
-	// different identifiers → no match
-	fromDoc := map[string]any{
-		"apiVersion": "apps/v1beta1",
-		"kind":       "Deployment",
-		"metadata":   map[string]any{"name": "my-app", "namespace": "default"},
-	}
-	toDoc := map[string]any{
-		"apiVersion": "apps/v1",
-		"kind":       "Deployment",
-		"metadata":   map[string]any{"name": "my-app", "namespace": "default"},
-	}
+	// different identifiers → no match.
+	fromDocs := nodesFromYAMLT(t, `
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: my-app
+  namespace: default
+`)
+	toDocs := nodesFromYAMLT(t, `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+  namespace: default
+`)
 
 	matched, unmatchedFrom, unmatchedTo := matchK8sDocuments(
-		[]any{fromDoc}, []any{toDoc},
+		fromDocs, toDocs,
 		&Options{IgnoreApiVersion: false},
 	)
 
@@ -788,24 +776,30 @@ func TestMatchK8sDocuments_DefaultNoAgnosticMatch(t *testing.T) {
 func TestCompareK8sDocs_AgnosticMatch_ReportsApiVersionModified(t *testing.T) {
 	// Req 1.3: When agnostic matching pairs resources with different apiVersions,
 	// apiVersion should appear as a modified field
-	fromDoc := map[string]any{
-		"apiVersion": "apps/v1beta1",
-		"kind":       "Deployment",
-		"metadata":   map[string]any{"name": "my-app", "namespace": "default"},
-		"spec":       map[string]any{"replicas": 3},
-	}
-	toDoc := map[string]any{
-		"apiVersion": "apps/v1",
-		"kind":       "Deployment",
-		"metadata":   map[string]any{"name": "my-app", "namespace": "default"},
-		"spec":       map[string]any{"replicas": 5},
-	}
+	fromDocs := nodesFromYAMLT(t, `
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: my-app
+  namespace: default
+spec:
+  replicas: 3
+`)
+	toDocs := nodesFromYAMLT(t, `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+  namespace: default
+spec:
+  replicas: 5
+`)
 
 	opts := &Options{
 		DetectKubernetes: true,
 		IgnoreApiVersion: true,
 	}
-	diffs := compareK8sDocs([]any{fromDoc}, []any{toDoc}, opts)
+	diffs := compareK8sDocs(fromDocs, toDocs, opts)
 
 	hasApiVersionDiff := false
 	hasReplicasDiff := false
@@ -828,19 +822,14 @@ func TestCompareK8sDocs_AgnosticMatch_ReportsApiVersionModified(t *testing.T) {
 func TestCompareK8sDocs_AgnosticDuplicates_ReportedAsAddedRemoved(t *testing.T) {
 	// Req 3.2: When duplicate agnostic identifiers produce unmatched documents,
 	// they should be reported as added or removed
-	mkDoc := func(apiVer, name string, replicas int) map[string]any {
-		return map[string]any{
-			"apiVersion": apiVer,
-			"kind":       "Deployment",
-			"metadata":   map[string]any{"name": name, "namespace": "default"},
-			"spec":       map[string]any{"replicas": replicas},
-		}
+	mkDoc := func(apiVer, name string, replicas int) string {
+		return fmt.Sprintf("apiVersion: %s\nkind: Deployment\nmetadata:\n  name: %s\n  namespace: default\nspec:\n  replicas: %d\n", apiVer, name, replicas)
 	}
 
 	// "from" has one my-app, "to" has two my-app with different apiVersions
 	// → same agnostic identifier → first-occurrence-wins, second is unmatched (added)
-	fromDocs := []any{mkDoc("apps/v1", "my-app", 3)}
-	toDocs := []any{mkDoc("apps/v1", "my-app", 3), mkDoc("apps/v1beta1", "my-app", 1)}
+	fromDocs := nodesFromYAMLT(t, mkDoc("apps/v1", "my-app", 3))
+	toDocs := nodesFromYAMLT(t, mkDoc("apps/v1", "my-app", 3)+"---\n"+mkDoc("apps/v1beta1", "my-app", 1))
 
 	opts := &Options{
 		DetectKubernetes: true,
@@ -860,25 +849,29 @@ func TestCompareK8sDocs_AgnosticDuplicates_ReportedAsAddedRemoved(t *testing.T) 
 }
 
 func TestCompareK8sDocs_RenameDetection_SingleDoc(t *testing.T) {
-	// Single doc per side: rename-matched pair should have no path prefix
-	fromDoc := map[string]any{
-		"apiVersion": "v1",
-		"kind":       "ConfigMap",
-		"metadata":   map[string]any{"name": "app-config-abc123"},
-		"data":       map[string]any{"key": "value"},
-	}
-	toDoc := map[string]any{
-		"apiVersion": "v1",
-		"kind":       "ConfigMap",
-		"metadata":   map[string]any{"name": "app-config-def456"},
-		"data":       map[string]any{"key": "value"},
-	}
+	// Single doc per side: rename-matched pair should have no path prefix.
+	fromDocs := nodesFromYAMLT(t, `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config-abc123
+data:
+  key: value
+`)
+	toDocs := nodesFromYAMLT(t, `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config-def456
+data:
+  key: value
+`)
 
 	opts := &Options{
 		DetectKubernetes: true,
 		DetectRenames:    true,
 	}
-	diffs := compareK8sDocs([]any{fromDoc}, []any{toDoc}, opts)
+	diffs := compareK8sDocs(fromDocs, toDocs, opts)
 
 	// Should produce field-level diffs (rename matched), not bulk add/remove
 	hasNameChange := false
@@ -908,31 +901,37 @@ func TestCompareK8sDocs_RenameDetection_SingleDoc(t *testing.T) {
 }
 
 func TestCompareK8sDocs_RenameDetection_MultiDoc(t *testing.T) {
-	// Multi-doc: rename-matched pair should have path prefix [toIdx]
-	sharedDoc := map[string]any{
-		"apiVersion": "v1",
-		"kind":       "Service",
-		"metadata":   map[string]any{"name": "my-service"},
-		"spec":       map[string]any{"port": 80},
-	}
-	fromDoc := map[string]any{
-		"apiVersion": "v1",
-		"kind":       "ConfigMap",
-		"metadata":   map[string]any{"name": "app-config-abc123"},
-		"data":       map[string]any{"key": "value"},
-	}
-	toDoc := map[string]any{
-		"apiVersion": "v1",
-		"kind":       "ConfigMap",
-		"metadata":   map[string]any{"name": "app-config-def456"},
-		"data":       map[string]any{"key": "value"},
-	}
+	// Multi-doc: rename-matched pair should have path prefix [toIdx].
+	const sharedDoc = `
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service
+spec:
+  port: 80
+`
+	fromDocs := nodesFromYAMLT(t, sharedDoc+`---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config-abc123
+data:
+  key: value
+`)
+	toDocs := nodesFromYAMLT(t, sharedDoc+`---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config-def456
+data:
+  key: value
+`)
 
 	opts := &Options{
 		DetectKubernetes: true,
 		DetectRenames:    true,
 	}
-	diffs := compareK8sDocs([]any{sharedDoc, fromDoc}, []any{sharedDoc, toDoc}, opts)
+	diffs := compareK8sDocs(fromDocs, toDocs, opts)
 
 	// Renamed doc should have diffs with [1] prefix (toIdx)
 	hasNameChange := false
@@ -1365,17 +1364,12 @@ func TestCompareK8sDocs_IgnoreApiVersion_OrderChangeIdentifiers(t *testing.T) {
 	// flips it to false, identifiers include apiVersion (e.g. "apps/v1:Deployment:default/app-a").
 	//
 	// We need 2+ matched docs in swapped order to trigger order-change detection.
-	mkDoc := func(name string) map[string]any {
-		return map[string]any{
-			"apiVersion": "apps/v1",
-			"kind":       "Deployment",
-			"metadata":   map[string]any{"name": name, "namespace": "default"},
-			"spec":       map[string]any{"replicas": 1},
-		}
+	mkDoc := func(name string) string {
+		return "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: " + name + "\n  namespace: default\nspec:\n  replicas: 1\n"
 	}
 
-	fromDocs := []any{mkDoc("app-a"), mkDoc("app-b")}
-	toDocs := []any{mkDoc("app-b"), mkDoc("app-a")}
+	fromDocs := nodesFromYAMLT(t, mkDoc("app-a")+"---\n"+mkDoc("app-b"))
+	toDocs := nodesFromYAMLT(t, mkDoc("app-b")+"---\n"+mkDoc("app-a"))
 
 	opts := &Options{
 		DetectKubernetes: true,
@@ -1414,25 +1408,18 @@ func TestCompareK8sDocs_IgnoreApiVersion_OrderChangeIdentifiers(t *testing.T) {
 
 func TestCompareK8sDocs_NilDocuments(t *testing.T) {
 	// nil documents in from/to should be skipped (not reported as added/removed).
-	k8sDoc := func(name string) *OrderedMap {
-		return &OrderedMap{
-			Keys: []string{"apiVersion", "kind", "metadata"},
-			Values: map[string]any{
-				"apiVersion": "v1",
-				"kind":       "Service",
-				"metadata": &OrderedMap{
-					Keys:   []string{"name"},
-					Values: map[string]any{"name": name},
-				},
-			},
-		}
-	}
-
-	from := []any{k8sDoc("svc"), nil}
-	to := []any{k8sDoc("svc"), nil}
+	const svcDoc = `apiVersion: v1
+kind: Service
+metadata:
+  name: svc
+`
+	// Build a 2-doc slice with the second slot as a nil node, matching the
+	// parse() padding semantics for empty document positions.
+	fromDocs := append(nodesFromYAMLT(t, svcDoc), nil)
+	toDocs := append(nodesFromYAMLT(t, svcDoc), nil)
 	opts := &Options{DetectKubernetes: true}
 
-	diffs := compareK8sDocs(from, to, opts)
+	diffs := compareK8sDocs(fromDocs, toDocs, opts)
 	for _, d := range diffs {
 		if d.Type == DiffAdded || d.Type == DiffRemoved {
 			t.Errorf("unexpected diff for nil doc: %+v", d)
@@ -1557,12 +1544,8 @@ func TestCanMatchByIdentifierWithAdditional_NonMapItemRejected(t *testing.T) {
 // with `true` — the mutated code then dereferences opts.IgnoreApiVersion and
 // panics.
 func TestMatchK8sDocuments_NilOptsDoesNotPanic(t *testing.T) {
-	doc := map[string]any{
-		"apiVersion": "v1",
-		"kind":       "ConfigMap",
-		"metadata":   map[string]any{"name": "x"},
-	}
-	matched, unmatchedFrom, unmatchedTo := matchK8sDocuments([]any{doc}, []any{doc}, nil)
+	docs := nodesFromYAMLT(t, "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: x\n")
+	matched, unmatchedFrom, unmatchedTo := matchK8sDocuments(docs, docs, nil)
 	if len(matched) != 1 || matched[0] != 0 {
 		t.Errorf("expected from[0] matched to to[0] with nil opts, got matched=%v", matched)
 	}
@@ -1635,19 +1618,14 @@ func TestDetectK8sOrderChanges_ToOrderInToSideOrder(t *testing.T) {
 // must reflect toIdx=1. Kills the BRANCH_IF mutant on `if useToIdx` and the
 // STATEMENT_REMOVE mutant on `docIdx = toIdx`.
 func TestCompareMatchedK8sDocs_UseToIdxAffectsPath(t *testing.T) {
-	mkDoc := func(name, val string) map[string]any {
-		return map[string]any{
-			"apiVersion": "v1",
-			"kind":       "ConfigMap",
-			"metadata":   map[string]any{"name": name},
-			"data":       map[string]any{"k": val},
-		}
+	mkDoc := func(name, val string) string {
+		return "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: " + name + "\ndata:\n  k: " + val + "\n"
 	}
-	from := []any{mkDoc("cfg", "old"), mkDoc("other", "x")}
-	to := []any{mkDoc("other", "x"), mkDoc("cfg", "new")}
+	from := nodesFromYAMLT(t, mkDoc("cfg", "old")+"---\n"+mkDoc("other", "x"))
+	to := nodesFromYAMLT(t, mkDoc("other", "x")+"---\n"+mkDoc("cfg", "new"))
 	matched := map[int]int{0: 1}
 
-	diffs := compareMatchedK8sDocs(matched, from, to, &Options{DetectKubernetes: true}, true)
+	diffs := compareMatchedK8sDocs(matched, from, to, materializeK8sDocs(from), materializeK8sDocs(to), &Options{DetectKubernetes: true}, true)
 
 	var mod *Difference
 	for i := range diffs {
@@ -1674,19 +1652,14 @@ func TestCompareMatchedK8sDocs_UseToIdxAffectsPath(t *testing.T) {
 // mutant on `len(from) > 1` (→ false) and the INVERT_LOGICAL mutant on
 // the `||` (→ &&), both of which would drop the prefix in this shape.
 func TestCompareMatchedK8sDocs_PathPrefix_FromHasMore(t *testing.T) {
-	mkDoc := func(name, val string) map[string]any {
-		return map[string]any{
-			"apiVersion": "v1",
-			"kind":       "ConfigMap",
-			"metadata":   map[string]any{"name": name},
-			"data":       map[string]any{"k": val},
-		}
+	mkDoc := func(name, val string) string {
+		return "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: " + name + "\ndata:\n  k: " + val + "\n"
 	}
-	from := []any{mkDoc("cfg", "old"), mkDoc("extra", "x")}
-	to := []any{mkDoc("cfg", "new")}
+	from := nodesFromYAMLT(t, mkDoc("cfg", "old")+"---\n"+mkDoc("extra", "x"))
+	to := nodesFromYAMLT(t, mkDoc("cfg", "new"))
 	matched := map[int]int{0: 0}
 
-	diffs := compareMatchedK8sDocs(matched, from, to, &Options{DetectKubernetes: true}, false)
+	diffs := compareMatchedK8sDocs(matched, from, to, materializeK8sDocs(from), materializeK8sDocs(to), &Options{DetectKubernetes: true}, false)
 
 	var mod *Difference
 	for i := range diffs {
@@ -1708,19 +1681,14 @@ func TestCompareMatchedK8sDocs_PathPrefix_FromHasMore(t *testing.T) {
 // `len(to) > 1` (→ false) and reinforces the INVERT_LOGICAL kill on the
 // `||`.
 func TestCompareMatchedK8sDocs_PathPrefix_ToHasMore(t *testing.T) {
-	mkDoc := func(name, val string) map[string]any {
-		return map[string]any{
-			"apiVersion": "v1",
-			"kind":       "ConfigMap",
-			"metadata":   map[string]any{"name": name},
-			"data":       map[string]any{"k": val},
-		}
+	mkDoc := func(name, val string) string {
+		return "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: " + name + "\ndata:\n  k: " + val + "\n"
 	}
-	from := []any{mkDoc("cfg", "old")}
-	to := []any{mkDoc("cfg", "new"), mkDoc("extra", "x")}
+	from := nodesFromYAMLT(t, mkDoc("cfg", "old"))
+	to := nodesFromYAMLT(t, mkDoc("cfg", "new")+"---\n"+mkDoc("extra", "x"))
 	matched := map[int]int{0: 0}
 
-	diffs := compareMatchedK8sDocs(matched, from, to, &Options{DetectKubernetes: true}, false)
+	diffs := compareMatchedK8sDocs(matched, from, to, materializeK8sDocs(from), materializeK8sDocs(to), &Options{DetectKubernetes: true}, false)
 
 	var mod *Difference
 	for i := range diffs {
@@ -1743,27 +1711,15 @@ func TestCompareMatchedK8sDocs_PathPrefix_ToHasMore(t *testing.T) {
 //   - extract docName/docKind from the to-side document (lines 345, 346),
 //   - assign DocumentIndex/Name/Kind onto each nodeDiff (lines 349-351).
 func TestCompareMatchedK8sDocs_SetsDocFields(t *testing.T) {
-	mkCfg := func(val string) map[string]any {
-		return map[string]any{
-			"apiVersion": "v1",
-			"kind":       "ConfigMap",
-			"metadata":   map[string]any{"name": "cfg"},
-			"data":       map[string]any{"k": val},
-		}
+	mkCfg := func(val string) string {
+		return "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cfg\ndata:\n  k: " + val + "\n"
 	}
-	mkOther := func() map[string]any {
-		return map[string]any{
-			"apiVersion": "v1",
-			"kind":       "Service",
-			"metadata":   map[string]any{"name": "svc"},
-			"spec":       map[string]any{"port": 80},
-		}
-	}
-	from := []any{mkOther(), mkCfg("old")}
-	to := []any{mkOther(), mkCfg("new")}
+	const otherDoc = "apiVersion: v1\nkind: Service\nmetadata:\n  name: svc\nspec:\n  port: 80\n"
+	from := nodesFromYAMLT(t, otherDoc+"---\n"+mkCfg("old"))
+	to := nodesFromYAMLT(t, otherDoc+"---\n"+mkCfg("new"))
 	matched := map[int]int{1: 1}
 
-	diffs := compareMatchedK8sDocs(matched, from, to, &Options{DetectKubernetes: true}, false)
+	diffs := compareMatchedK8sDocs(matched, from, to, materializeK8sDocs(from), materializeK8sDocs(to), &Options{DetectKubernetes: true}, false)
 
 	var mod *Difference
 	for i := range diffs {
@@ -1793,16 +1749,11 @@ func TestCompareMatchedK8sDocs_SetsDocFields(t *testing.T) {
 // `opts.IgnoreApiVersion` (→ true) inside compareK8sDocs, which would
 // strip the apiVersion from the rendered identifiers.
 func TestCompareK8sDocs_OrderChange_FullIdentifiersWhenNotIgnoringApiVersion(t *testing.T) {
-	mkDoc := func(name string) map[string]any {
-		return map[string]any{
-			"apiVersion": "apps/v1",
-			"kind":       "Deployment",
-			"metadata":   map[string]any{"name": name, "namespace": "default"},
-			"spec":       map[string]any{"replicas": 1},
-		}
+	mkDoc := func(name string) string {
+		return "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: " + name + "\n  namespace: default\nspec:\n  replicas: 1\n"
 	}
-	from := []any{mkDoc("a"), mkDoc("b")}
-	to := []any{mkDoc("b"), mkDoc("a")}
+	from := nodesFromYAMLT(t, mkDoc("a")+"---\n"+mkDoc("b"))
+	to := nodesFromYAMLT(t, mkDoc("b")+"---\n"+mkDoc("a"))
 
 	diffs := compareK8sDocs(from, to, &Options{DetectKubernetes: true})
 
@@ -1834,14 +1785,17 @@ func TestCompareK8sDocs_OrderChange_FullIdentifiersWhenNotIgnoringApiVersion(t *
 // that flips `continue` to `break` on the nil-skip — with `break`, the
 // loop exits after the nil and the real removal is never emitted.
 func TestCompareK8sDocs_RemovedSkipsNilThenReportsReal(t *testing.T) {
-	realDoc := map[string]any{
-		"apiVersion": "v1",
-		"kind":       "ConfigMap",
-		"metadata":   map[string]any{"name": "to-remove"},
-		"data":       map[string]any{"k": "v"},
-	}
-	from := []any{nil, realDoc}
-	to := []any{}
+	realNodes := nodesFromYAMLT(t, `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: to-remove
+data:
+  k: v
+`)
+	// Prefix with a nil document slot, mirroring parse() padding semantics.
+	from := append([]*yaml.Node{nil}, realNodes...)
+	to := []*yaml.Node{}
 
 	diffs := compareK8sDocs(from, to, &Options{DetectKubernetes: true})
 
@@ -1860,14 +1814,16 @@ func TestCompareK8sDocs_RemovedSkipsNilThenReportsReal(t *testing.T) {
 // of the test above. Kills the INVERT_LOOP_CTRL mutant on the added-docs
 // loop.
 func TestCompareK8sDocs_AddedSkipsNilThenReportsReal(t *testing.T) {
-	realDoc := map[string]any{
-		"apiVersion": "v1",
-		"kind":       "ConfigMap",
-		"metadata":   map[string]any{"name": "to-add"},
-		"data":       map[string]any{"k": "v"},
-	}
-	from := []any{}
-	to := []any{nil, realDoc}
+	realNodes := nodesFromYAMLT(t, `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: to-add
+data:
+  k: v
+`)
+	from := []*yaml.Node{}
+	to := append([]*yaml.Node{nil}, realNodes...)
 
 	diffs := compareK8sDocs(from, to, &Options{DetectKubernetes: true})
 
@@ -1887,14 +1843,16 @@ func TestCompareK8sDocs_AddedSkipsNilThenReportsReal(t *testing.T) {
 // Kills the STATEMENT_REMOVE mutants on `docName = f.displayName()` and
 // `docKind = f.kind` in the removed branch.
 func TestCompareK8sDocs_RemovedCarriesDocFields(t *testing.T) {
-	removed := map[string]any{
-		"apiVersion": "v1",
-		"kind":       "Secret",
-		"metadata":   map[string]any{"name": "creds", "namespace": "prod"},
-		"data":       map[string]any{"k": "v"},
-	}
-	from := []any{removed}
-	to := []any{}
+	from := nodesFromYAMLT(t, `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: creds
+  namespace: prod
+data:
+  k: v
+`)
+	to := []*yaml.Node{}
 
 	diffs := compareK8sDocs(from, to, &Options{DetectKubernetes: true})
 
@@ -1920,14 +1878,16 @@ func TestCompareK8sDocs_RemovedCarriesDocFields(t *testing.T) {
 // the STATEMENT_REMOVE mutants on `docName = f.displayName()` and
 // `docKind = f.kind` in the added branch.
 func TestCompareK8sDocs_AddedCarriesDocFields(t *testing.T) {
-	added := map[string]any{
-		"apiVersion": "v1",
-		"kind":       "Secret",
-		"metadata":   map[string]any{"name": "creds", "namespace": "prod"},
-		"data":       map[string]any{"k": "v"},
-	}
-	from := []any{}
-	to := []any{added}
+	to := nodesFromYAMLT(t, `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: creds
+  namespace: prod
+data:
+  k: v
+`)
+	from := []*yaml.Node{}
 
 	diffs := compareK8sDocs(from, to, &Options{DetectKubernetes: true})
 

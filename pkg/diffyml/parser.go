@@ -106,22 +106,17 @@ func wrapParseError(err error) error {
 	return err
 }
 
-// parse parses YAML content into a slice of documents.
-// Each document is represented as any which can be:
-// - *OrderedMap for mappings (preserves field order)
-// - []any for sequences
-// - scalar values (string, int, float64, bool, nil)
-func parse(content []byte) ([]any, error) {
-	// Use ParseWithOrder to preserve field order
-	docs, err := ParseWithOrder(content)
+// parse parses YAML content into per-document *yaml.Node trees, padding the
+// slice with a single nil node when no documents were present so callers can
+// always assume at least one slot. Source line/column info is retained on
+// every node for downstream pipeline stages.
+func parse(content []byte) ([]*yaml.Node, error) {
+	nodes, err := parseNodes(content)
 	if err != nil {
 		return nil, err
 	}
-
-	// If no documents were parsed, return an empty document
-	if len(docs) == 0 {
-		docs = append(docs, nil)
+	if len(nodes) == 0 {
+		nodes = append(nodes, nil)
 	}
-
-	return docs, nil
+	return nodes, nil
 }

@@ -33,22 +33,41 @@ func NewOrderedMap() *OrderedMap {
 // ParseWithOrder parses YAML content into documents using OrderedMap for mappings
 // so that field order from the source document is preserved.
 func ParseWithOrder(content []byte) ([]any, error) {
-	decoder := yaml.NewDecoder(bytes.NewReader(content))
-	var docs []any
+	nodes, err := parseNodes(content)
+	if err != nil {
+		return nil, err
+	}
+	docs := make([]any, len(nodes))
+	for i, n := range nodes {
+		docs[i] = nodeToInterface(n)
+	}
+	return docs, nil
+}
 
+// parseNodes decodes YAML content into per-document *yaml.Node trees, preserving
+// source line/column information. Returns an empty slice for empty input; callers
+// that need a guaranteed single-document slot (the internal compare pipeline)
+// pad with a nil node themselves.
+//
+// YAML merge keys ("<<: *anchor") are resolved in-place by resolveMergeKeys so
+// every downstream walker sees a flat tree free of "<<" entries. See
+// node_merge.go for the precise semantics (legacy-equivalent).
+func parseNodes(content []byte) ([]*yaml.Node, error) {
+	decoder := yaml.NewDecoder(bytes.NewReader(content))
+	var nodes []*yaml.Node
 	for {
-		var node yaml.Node
-		err := decoder.Decode(&node)
+		node := new(yaml.Node)
+		err := decoder.Decode(node)
 		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
 			return nil, wrapParseError(err)
 		}
-		docs = append(docs, nodeToInterface(&node))
+		resolveMergeKeys(node)
+		nodes = append(nodes, node)
 	}
-
-	return docs, nil
+	return nodes, nil
 }
 
 // nodeToInterface converts a yaml.Node tree into Go values,
@@ -84,7 +103,11 @@ func nodeToInterfaceImpl(node *yaml.Node, seen map[*yaml.Node]bool) any {
 		for i := 0; i+1 < len(node.Content); i += 2 {
 			key := node.Content[i].Value
 			if key == "<<" {
-				// YAML merge key: merge the referenced map's entries
+				// YAML merge key fallback. The internal pipeline pre-resolves
+				// merges via resolveMergeKeys (node_merge.go) at parse time,
+				// so this branch is unreachable from parseNodes output. It
+				// remains for callers that hand-construct *yaml.Node trees
+				// and pass them to nodeToInterface / ParseWithOrder directly.
 				merged := nodeToInterfaceImpl(node.Content[i+1], seen)
 				if mergedMap, ok := merged.(*OrderedMap); ok {
 					for _, mk := range mergedMap.Keys {

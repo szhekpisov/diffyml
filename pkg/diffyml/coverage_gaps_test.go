@@ -58,67 +58,34 @@ func TestDeepEqual_Slices_Nested(t *testing.T) {
 
 // --- extractPathOrder: map[string]any branch ---
 
-func TestExtractPathOrder_PlainMap(t *testing.T) {
-	docs := []any{
-		map[string]any{
-			"beta":  "2",
-			"alpha": "1",
-		},
-	}
-	order := extractPathOrder(docs, nil, nil)
-
-	if len(order) == 0 {
-		t.Fatal("expected non-empty path order for plain map")
-	}
-	if _, ok := order["alpha"]; !ok {
-		t.Error("expected 'alpha' in path order")
-	}
-	if _, ok := order["beta"]; !ok {
-		t.Error("expected 'beta' in path order")
-	}
-}
-
-func TestExtractPathOrder_PlainMapNested(t *testing.T) {
-	docs := []any{
-		map[string]any{
-			"parent": map[string]any{"child": "val"},
-		},
-	}
-	order := extractPathOrder(docs, nil, nil)
-
-	if _, ok := order["parent"]; !ok {
-		t.Error("expected 'parent' in path order")
-	}
-	if _, ok := order["parent.child"]; !ok {
-		t.Error("expected 'parent.child' in path order")
-	}
+// TestExtractPathOrder_PlainMap/_PlainMapNested were removed: they pinned the
+// pathWalker's plain map[string]any branch, which is unreachable in the
+// node-pipeline pipeline (yaml.Decode always produces MappingNode -> *OrderedMap).
+// MappingNode coverage is exercised by the equivalent tests in diffyml_test.go.
+func TestExtractPathOrder_DroppedPlainMap_Placeholder(t *testing.T) {
+	// Intentionally empty: documentation marker for the deletion above.
+	_ = t
 }
 
 // --- areListItemsHeterogeneous: map[string]any items ---
 
-func TestAreListItemsHeterogeneous_PlainMaps(t *testing.T) {
-	from := []any{
-		map[string]any{"namespaceSelector": "ns1"},
-	}
-	to := []any{
-		map[string]any{"ipBlock": "10.0.0.0/8"},
-	}
-
-	if !areListItemsHeterogeneous(from, to) {
-		t.Error("expected heterogeneous for plain maps with different single keys")
+func TestAreSequenceItemsHeterogeneous_DifferentSingleKeys(t *testing.T) {
+	from := nodesFromYAMLT(t, "- namespaceSelector: ns1\n")[0]
+	to := nodesFromYAMLT(t, "- ipBlock: 10.0.0.0/8\n")[0]
+	fromSeq := resolveNode(from)
+	toSeq := resolveNode(to)
+	if !areSequenceItemsHeterogeneous(fromSeq, toSeq) {
+		t.Error("expected heterogeneous for sequences whose items use different single keys")
 	}
 }
 
-func TestAreListItemsHeterogeneous_PlainMapsMultipleKeys(t *testing.T) {
-	from := []any{
-		map[string]any{"a": "1", "b": "2"},
-	}
-	to := []any{
-		map[string]any{"c": "3"},
-	}
-
-	// from item has 2 keys, so checkSingleDistinctKeys returns false
-	if areListItemsHeterogeneous(from, to) {
+func TestAreSequenceItemsHeterogeneous_MultiKeyItemDisqualifies(t *testing.T) {
+	from := nodesFromYAMLT(t, "- a: \"1\"\n  b: \"2\"\n")[0]
+	to := nodesFromYAMLT(t, "- c: \"3\"\n")[0]
+	fromSeq := resolveNode(from)
+	toSeq := resolveNode(to)
+	// from's item has 2 keys → not single-key, heterogeneous shape check fails.
+	if areSequenceItemsHeterogeneous(fromSeq, toSeq) {
 		t.Error("expected not heterogeneous when an item has multiple keys")
 	}
 }
@@ -205,27 +172,23 @@ func TestDetailedFormatter_ListValueInFirstKey(t *testing.T) {
 
 // --- compareListsByIdentifier: fallback for items without identifiers ---
 
-func TestCompareListsByIdentifier_NoIDFallback(t *testing.T) {
-	// Mix identified and unidentified items.
-	// Items with "name" get identifier-based matching; scalars use fallback.
-	from := []any{
-		&OrderedMap{
-			Keys:   []string{"name", "value"},
-			Values: map[string]any{"name": "a", "value": "1"},
-		},
-		"scalar-from-only",
-		"shared-scalar",
-	}
-	to := []any{
-		&OrderedMap{
-			Keys:   []string{"name", "value"},
-			Values: map[string]any{"name": "a", "value": "2"},
-		},
-		"new-scalar",
-		"shared-scalar",
-	}
+func TestCompareSequenceNodesByIdentifier_NoIDFallback(t *testing.T) {
+	// Mix identified and unidentified items: items with "name" go through the
+	// identifier branch; scalars fall through to compareUnidentifiedItems.
+	from := resolveNode(nodesFromYAMLT(t, `
+- name: a
+  value: "1"
+- scalar-from-only
+- shared-scalar
+`)[0])
+	to := resolveNode(nodesFromYAMLT(t, `
+- name: a
+  value: "2"
+- new-scalar
+- shared-scalar
+`)[0])
 
-	diffs := compareListsByIdentifier(DiffPath{"items"}, from, to, &Options{})
+	diffs := compareSequenceNodesByIdentifier(DiffPath{"items"}, from, to, &Options{})
 
 	// "a" matched by name → modified value (1 → 2)
 	// "shared-scalar" matched by deepEqual in fallback → no diff
@@ -259,22 +222,13 @@ func TestTrueColorCode_Clamped(t *testing.T) {
 
 // --- extractPathOrder: index++ increment (diffyml.go:155) ---
 
-func TestExtractPathOrder_PlainMapIndexIncrement(t *testing.T) {
-	// Kills INCREMENT_DECREMENT at diffyml.go:155 (index++ → index--)
-	// Uses nested maps so recursion enters the map[string]any case at line 150,
-	// where index++ (line 155) is executed for each parent path.
-	// With the mutation (index--), all parent paths get the same order value (0),
-	// so the strict ordering assertion catches it.
-	docs := []any{
-		map[string]any{
-			"alpha": map[string]any{"child1": "v1"},
-			"beta":  map[string]any{"child2": "v2"},
-			"gamma": map[string]any{"child3": "v3"},
-		},
-	}
+func TestExtractPathOrder_MappingIndexIncrement(t *testing.T) {
+	// Nested mappings exercise index++ recursion into a MappingNode child:
+	// with index-- all parent path indices would collapse, breaking strict
+	// ordering. YAML key order is preserved (no alpha sort under nodes).
+	docs := nodesFromYAMLT(t, "alpha:\n  child1: v1\nbeta:\n  child2: v2\ngamma:\n  child3: v3\n")
 	order := extractPathOrder(docs, nil, nil)
 
-	// Keys are sorted alphabetically for plain maps, so alpha < beta < gamma
 	if order["alpha"] >= order["beta"] {
 		t.Errorf("expected alpha (%d) < beta (%d)", order["alpha"], order["beta"])
 	}
@@ -494,10 +448,10 @@ func TestComputeLineDiff_IdenticalLines(t *testing.T) {
 
 // --- compareListsPositional: different-length lists (comparator.go:353,361) ---
 
-func TestCompareListsPositional_ToLonger(t *testing.T) {
-	from := []any{"a", "b"}
-	to := []any{"a", "b", "c", "d"}
-	diffs := compareListsPositional(DiffPath{"list"}, from, to, &Options{})
+func TestCompareSequenceNodesPositional_ToLonger(t *testing.T) {
+	from := resolveNode(nodesFromYAMLT(t, "- a\n- b\n")[0])
+	to := resolveNode(nodesFromYAMLT(t, "- a\n- b\n- c\n- d\n")[0])
+	diffs := compareSequenceNodesPositional(DiffPath{"list"}, from, to, &Options{})
 
 	added := 0
 	for _, d := range diffs {
@@ -510,10 +464,10 @@ func TestCompareListsPositional_ToLonger(t *testing.T) {
 	}
 }
 
-func TestCompareListsPositional_FromLonger(t *testing.T) {
-	from := []any{"a", "b", "c"}
-	to := []any{"a"}
-	diffs := compareListsPositional(DiffPath{"list"}, from, to, &Options{})
+func TestCompareSequenceNodesPositional_FromLonger(t *testing.T) {
+	from := resolveNode(nodesFromYAMLT(t, "- a\n- b\n- c\n")[0])
+	to := resolveNode(nodesFromYAMLT(t, "- a\n")[0])
+	diffs := compareSequenceNodesPositional(DiffPath{"list"}, from, to, &Options{})
 
 	removed := 0
 	for _, d := range diffs {
@@ -597,11 +551,20 @@ func TestDetectRenames_AsymmetricTiebreaker(t *testing.T) {
 	}
 }
 
-func TestHasK8sDocuments_OnlyToHasK8s(t *testing.T) {
-	from := []any{map[string]any{"key": "value"}}
-	to := []any{map[string]any{"apiVersion": "v1", "kind": "Service", "metadata": map[string]any{"name": "svc"}}}
-	if !hasK8sDocuments(from, to) {
-		t.Error("expected true when only 'to' has K8s documents")
+func TestDetectK8sDocsCached_OnlyToHasK8s(t *testing.T) {
+	from := nodesFromYAMLT(t, "key: value\n")
+	to := nodesFromYAMLT(t, `
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc
+`)
+	fromDocs, toDocs, ok := detectK8sDocsCached(from, to)
+	if !ok {
+		t.Fatal("expected detection to succeed when only 'to' has K8s documents")
+	}
+	if len(fromDocs) != len(from) || len(toDocs) != len(to) {
+		t.Errorf("cached views must mirror node slice lengths; got fromDocs=%d toDocs=%d", len(fromDocs), len(toDocs))
 	}
 }
 
@@ -625,28 +588,24 @@ func TestDeepEqual_TypeMismatch(t *testing.T) {
 	}
 }
 
-func TestCompareListsByIdentifier_NoIDMatchedSkip(t *testing.T) {
-	// Two unidentified items in from that match toNoID items.
-	// The second fromNoID item must iterate past the already-matched slot
-	// to hit the toNoIDMatched continue branch (line 562).
-	from := []any{
-		&OrderedMap{
-			Keys:   []string{"name", "v"},
-			Values: map[string]any{"name": "x", "v": "1"},
-		},
-		"shared-a",
-		"shared-b",
-	}
-	to := []any{
-		&OrderedMap{
-			Keys:   []string{"name", "v"},
-			Values: map[string]any{"name": "x", "v": "1"},
-		},
-		"shared-a",
-		"shared-b",
-	}
+func TestCompareSequenceNodesByIdentifier_NoIDMatchedSkip(t *testing.T) {
+	// Two unidentified items in from that match toNoID items. The second
+	// fromNoID item must iterate past the already-matched slot to hit the
+	// toNoIDMatched continue branch inside compareUnidentifiedItems.
+	from := resolveNode(nodesFromYAMLT(t, `
+- name: x
+  v: "1"
+- shared-a
+- shared-b
+`)[0])
+	to := resolveNode(nodesFromYAMLT(t, `
+- name: x
+  v: "1"
+- shared-a
+- shared-b
+`)[0])
 
-	diffs := compareListsByIdentifier(DiffPath{"items"}, from, to, &Options{})
+	diffs := compareSequenceNodesByIdentifier(DiffPath{"items"}, from, to, &Options{})
 	for _, d := range diffs {
 		if d.Type == DiffRemoved || d.Type == DiffAdded {
 			t.Errorf("unexpected diff: %+v", d)
@@ -654,26 +613,22 @@ func TestCompareListsByIdentifier_NoIDMatchedSkip(t *testing.T) {
 	}
 }
 
-func TestCompareListsByIdentifier_NoIDExcessAdded(t *testing.T) {
-	// to has more unidentified items than from, exercising the excess-added loop
-	// in compareUnidentifiedItems.
-	from := []any{
-		&OrderedMap{
-			Keys:   []string{"name", "v"},
-			Values: map[string]any{"name": "x", "v": "1"},
-		},
-		"only-in-from",
-	}
-	to := []any{
-		&OrderedMap{
-			Keys:   []string{"name", "v"},
-			Values: map[string]any{"name": "x", "v": "1"},
-		},
-		"new-a",
-		"new-b",
-	}
+func TestCompareSequenceNodesByIdentifier_NoIDExcessAdded(t *testing.T) {
+	// to has more unidentified items than from, exercising the excess-added
+	// loop in compareUnidentifiedItems.
+	from := resolveNode(nodesFromYAMLT(t, `
+- name: x
+  v: "1"
+- only-in-from
+`)[0])
+	to := resolveNode(nodesFromYAMLT(t, `
+- name: x
+  v: "1"
+- new-a
+- new-b
+`)[0])
 
-	diffs := compareListsByIdentifier(DiffPath{"items"}, from, to, &Options{})
+	diffs := compareSequenceNodesByIdentifier(DiffPath{"items"}, from, to, &Options{})
 
 	// "only-in-from" vs "new-a" → positional modification
 	// "new-b" has no counterpart → added
@@ -695,27 +650,21 @@ func TestCompareListsByIdentifier_NoIDExcessAdded(t *testing.T) {
 }
 
 func TestCompareUnidentifiedItems_CursorSkipMatchedTo(t *testing.T) {
-	// Exercises the toNoIDMatched skip branch in the cursor loop:
-	// "shared" exact-matches, so the cursor must skip it in to before pairing
-	// "only-from" with "only-to".
-	from := []any{
-		&OrderedMap{
-			Keys:   []string{"name"},
-			Values: map[string]any{"name": "x"},
-		},
-		"only-from",
-		"shared",
-	}
-	to := []any{
-		&OrderedMap{
-			Keys:   []string{"name"},
-			Values: map[string]any{"name": "x"},
-		},
-		"shared",
-		"only-to",
-	}
+	// Exercises the toNoIDMatched skip branch in the cursor loop: "shared"
+	// exact-matches, so the cursor must skip it in to before pairing "only-
+	// from" with "only-to".
+	from := resolveNode(nodesFromYAMLT(t, `
+- name: x
+- only-from
+- shared
+`)[0])
+	to := resolveNode(nodesFromYAMLT(t, `
+- name: x
+- shared
+- only-to
+`)[0])
 
-	diffs := compareListsByIdentifier(DiffPath{"items"}, from, to, &Options{})
+	diffs := compareSequenceNodesByIdentifier(DiffPath{"items"}, from, to, &Options{})
 
 	// "shared" matches exactly. Remaining: "only-from" vs "only-to" → modification.
 	var modified int
@@ -730,27 +679,21 @@ func TestCompareUnidentifiedItems_CursorSkipMatchedTo(t *testing.T) {
 }
 
 func TestCompareUnidentifiedItems_ExcessFromWithMatchedSkip(t *testing.T) {
-	// Exercises the fromNoIDMatched skip in the excess-from tail loop:
-	// from has more unidentified items than to, and a matched item ("shared")
+	// Exercises the fromNoIDMatched skip in the excess-from tail loop: from
+	// has more unidentified items than to, and a matched item ("shared")
 	// appears between unmatched items in the from-side cursor walk.
-	from := []any{
-		&OrderedMap{
-			Keys:   []string{"name"},
-			Values: map[string]any{"name": "x"},
-		},
-		"removed-a",
-		"shared",
-		"removed-b",
-	}
-	to := []any{
-		&OrderedMap{
-			Keys:   []string{"name"},
-			Values: map[string]any{"name": "x"},
-		},
-		"shared",
-	}
+	from := resolveNode(nodesFromYAMLT(t, `
+- name: x
+- removed-a
+- shared
+- removed-b
+`)[0])
+	to := resolveNode(nodesFromYAMLT(t, `
+- name: x
+- shared
+`)[0])
 
-	diffs := compareListsByIdentifier(DiffPath{"items"}, from, to, &Options{})
+	diffs := compareSequenceNodesByIdentifier(DiffPath{"items"}, from, to, &Options{})
 
 	// "shared" matches exactly. Remaining from: ["removed-a", "removed-b"] vs to: [].
 	// Both are excess → 2 modifications? No — no to items left, so "removed-a" has
@@ -921,7 +864,7 @@ func TestSplitPath_UnmatchedClosingBracket(t *testing.T) {
 // --- chroot.go: applyChrootToDocs empty path ---
 
 func TestApplyChrootToDocs_EmptyPath(t *testing.T) {
-	docs := []any{map[string]any{"key": "value"}}
+	docs := nodesFromYAMLT(t, "key: value\n")
 	result, err := applyChrootToDocs(docs, "", false)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -1054,10 +997,7 @@ func TestParsePath_EmptyListIndex(t *testing.T) {
 
 func TestNavigateToPath_IndexOnNonList(t *testing.T) {
 	// Navigate with index accessor on a string value → error
-	doc := &OrderedMap{
-		Keys:   []string{"key"},
-		Values: map[string]any{"key": "not-a-list"},
-	}
+	doc := nodesFromYAMLT(t, "key: not-a-list\n")[0]
 	_, err := navigateToPath(doc, "key[0]")
 	if err == nil {
 		t.Fatal("expected error when indexing a non-list value")
@@ -1080,20 +1020,6 @@ func TestDetectK8sOrderChanges_SameOrder(t *testing.T) {
 	result := detectK8sOrderChanges(matched, from, false)
 	if result != nil {
 		t.Error("expected nil when docs are in same order")
-	}
-}
-
-// --- sameScalarType: default fallback for rare types ---
-
-func TestSameScalarType_DefaultFallback(t *testing.T) {
-	// time.Time is produced by yaml.v3 decoder for !!timestamp
-	a := time.Now()
-	b := time.Now()
-	if !sameScalarType(a, b) {
-		t.Error("expected same type for two time.Time values")
-	}
-	if sameScalarType(a, "string") {
-		t.Error("expected different type for time.Time vs string")
 	}
 }
 

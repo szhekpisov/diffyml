@@ -287,7 +287,9 @@ func matchK8sDocsValues(fromDocs, toDocs []any, opts *Options) (matched map[int]
 }
 
 // detectK8sOrderChanges detects document order changes among matched K8s
-// documents. Operates on the already-materialized fromDocs any view.
+// documents. Operates on the already-materialized fromDocs any view; matched
+// pairs share an identifier by definition, so we never need the to-side view
+// for identifier rendering.
 func detectK8sOrderChanges(matched map[int]int, from []any, ignoreApiVersion bool) *Difference {
 	// No early-return for len(matched) < 2: the loop builds an empty/singleton
 	// pairs slice, IsSortedFunc is trivially true, orderChanged stays false,
@@ -299,16 +301,19 @@ func detectK8sOrderChanges(matched map[int]int, from []any, ignoreApiVersion boo
 	}
 	slices.SortFunc(pairs, func(a, b idxPair) int { return cmp.Compare(a.fromIdx, b.fromIdx) })
 
-	orderChanged := !slices.IsSortedFunc(pairs, func(a, b idxPair) int { return cmp.Compare(a.toIdx, b.toIdx) })
-
-	if !orderChanged {
+	if slices.IsSortedFunc(pairs, func(a, b idxPair) int { return cmp.Compare(a.toIdx, b.toIdx) }) {
 		return nil
 	}
 
+	// fromOrder: identifiers in from-document source order.
 	fromOrder := make([]any, len(pairs))
 	for i, p := range pairs {
 		fromOrder[i] = K8sResourceIdentifier(from[p.fromIdx], ignoreApiVersion)
 	}
+	// toOrder: same identifiers, re-sorted by their to-side position. Pulling
+	// from `from[p.fromIdx]` (not `to[p.toIdx]`) is intentional: matched pairs
+	// share an identifier under K8sResourceIdentifier, and using `from`
+	// avoids requiring the to-side any view in this helper.
 	slices.SortFunc(pairs, func(a, b idxPair) int { return cmp.Compare(a.toIdx, b.toIdx) })
 	toOrder := make([]any, len(pairs))
 	for i, p := range pairs {
@@ -362,13 +367,17 @@ func compareMatchedK8sDocs(matched map[int]int, fromNodes, toNodes []*yaml.Node,
 }
 
 // compareK8sDocs compares Kubernetes document node trees by matching them on
-// their resource identifier (apiVersion + kind + namespace/name). The
-// materialized any view is built once and shared across matching, order
-// detection, rename detection, and add/remove emission.
+// their resource identifier. Materializes the any view itself; prefer
+// compareK8sDocsCached when the caller already has the materialized slices.
 func compareK8sDocs(fromNodes, toNodes []*yaml.Node, opts *Options) []Difference {
+	return compareK8sDocsCached(fromNodes, toNodes, materializeK8sDocs(fromNodes), materializeK8sDocs(toNodes), opts)
+}
+
+// compareK8sDocsCached is the cached-view variant of compareK8sDocs. It takes
+// the pre-materialized any slices produced by detectK8sDocsCached so the
+// detect-and-compare path walks each node exactly once.
+func compareK8sDocsCached(fromNodes, toNodes []*yaml.Node, fromDocs, toDocs []any, opts *Options) []Difference {
 	var diffs []Difference
-	fromDocs := materializeK8sDocs(fromNodes)
-	toDocs := materializeK8sDocs(toNodes)
 
 	matched, unmatchedFrom, unmatchedTo := matchK8sDocsValues(fromDocs, toDocs, opts)
 	// opts is guaranteed non-nil by the caller (compareDocs gates on opts != nil),

@@ -6,16 +6,22 @@ import (
 	"testing"
 )
 
-// parseAsAny runs the internal parse() and immediately materializes each node
-// to its any view. Tests in this file pre-date the node-pipeline refactor and
-// assert against the any representation; this helper preserves that contract
-// without expanding every call site.
+// parseAsAny runs the internal parse() and immediately materializes each
+// document node to its any view (*OrderedMap / []any / scalar / nil). Tests
+// in this file pre-date the node-pipeline refactor and assert against the
+// any representation; this helper preserves that contract without expanding
+// every call site. Test-only — the live pipeline carries *yaml.Node end to
+// end and materializes lazily at Difference.From/To emission sites.
 func parseAsAny(content []byte) ([]any, error) {
 	nodes, err := parse(content)
 	if err != nil {
 		return nil, err
 	}
-	return materializeDocs(nodes), nil
+	docs := make([]any, len(nodes))
+	for i, n := range nodes {
+		docs[i] = nodeToInterface(n)
+	}
+	return docs, nil
 }
 
 // getMapValue extracts a value from either *OrderedMap or map[string]any

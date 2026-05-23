@@ -120,15 +120,3 @@ func parse(content []byte) ([]*yaml.Node, error) {
 	}
 	return nodes, nil
 }
-
-// materializeDocs converts each parsed node to its any view (*OrderedMap /
-// []any / scalar / nil) via nodeToInterface. Stage-1 transitional helper: the
-// internal compare pipeline still operates on the any view; later stages move
-// each consumer onto nodes and the eager materialization here goes away.
-func materializeDocs(nodes []*yaml.Node) []any {
-	docs := make([]any, len(nodes))
-	for i, n := range nodes {
-		docs[i] = nodeToInterface(n)
-	}
-	return docs
-}

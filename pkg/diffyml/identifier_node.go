@@ -1,36 +1,24 @@
 // identifier_node.go - Node-based identifier extraction for list matching.
 //
-// The comparator matches list items by an identifier field ("name"/"id" by
-// default, configurable via Options.AdditionalIdentifiers) so that re-ordered
-// or partially-modified lists diff cleanly. The legacy any-based path goes
-// through getIdentifier -> getIdentifierFromOrderedMap / IdentifierWithAdditional
-// (which require materialized *OrderedMap or map[string]any).
-//
-// getIdentifierNode does the same job on a raw *yaml.Node, so the comparator
-// can decide identifier-based matching without materializing every list item
-// up front. The contract pinned by TestGetIdentifierNode_EquivalenceCorpus:
+// Mirrors the any-based getIdentifier / canMatchByIdentifier but on raw
+// *yaml.Node, so the comparator can decide identifier-based matching without
+// materialising every list item. The contract pinned by
+// TestGetIdentifierNode_EquivalenceCorpus is:
 //
 //	getIdentifierNode(n, opts) == getIdentifier(nodeToInterface(n), opts)
 //
 // for every MappingNode reachable from a parsed (post-resolveMergeKeys) tree.
-// canMatchByIdentifierNodes mirrors canMatchByIdentifier under the same
-// contract on []*yaml.Node.
 package diffyml
 
 import (
 	"go.yaml.in/yaml/v3"
 )
 
-// getIdentifierNode extracts the identifier value from a MappingNode. Returns
-// nil for non-mapping inputs (matching the any-based getIdentifier's
-// type-assertion-failure path). The lookup order — additional identifiers (in
-// configured order), then "name", then "id" — matches IdentifierWithAdditional
-// /getIdentifierFromOrderedMap exactly. For duplicate keys within a mapping
-// (possible via the legacy explicit-key-after-merge quirk preserved by
-// resolveMergeKeys), the last source-order occurrence wins, matching
-// nodeToInterface's map-overwrite semantics. resolveAlias handles nil/non-
-// alias inputs as no-ops; the nil guard below covers nil-input and
-// cycle-collapse-to-nil uniformly.
+// getIdentifierNode extracts the identifier value from a MappingNode, picking
+// the first matching field in order: AdditionalIdentifiers, then "name", then
+// "id". Returns nil for non-mapping inputs (matches the any-based path's
+// type-assertion-failure semantics). Duplicate keys resolve last-write-wins
+// to match nodeToInterface's map-overwrite behaviour.
 func getIdentifierNode(n *yaml.Node, opts *Options) any {
 	n = resolveAlias(n)
 	if n == nil {
@@ -59,11 +47,10 @@ func getIdentifierNode(n *yaml.Node, opts *Options) any {
 	return nil
 }
 
-// canMatchByIdentifierNodes mirrors canMatchByIdentifier for a slice of nodes:
-// every item must be a MappingNode (or fail the check), and at least one item
-// must yield a usable comparable identifier. The nil and Kind guards are kept
-// independent so each is testable on its own — a folded `||` form would let
-// the Kind half hide behind getIdentifierNode's own kind check.
+// canMatchByIdentifierNodes mirrors canMatchByIdentifier for a slice of
+// nodes: every item must be a MappingNode (or fail the check), and at least
+// one item must yield a usable comparable identifier. The nil and Kind guards
+// are kept independent so each mutation target is testable in isolation.
 func canMatchByIdentifierNodes(items []*yaml.Node, opts *Options) bool {
 	hasIdentifier := false
 	for _, item := range items {
@@ -87,9 +74,9 @@ func canMatchByIdentifierNodes(items []*yaml.Node, opts *Options) bool {
 }
 
 // lookupMappingValueNode returns the value node paired with the LAST source-
-// order occurrence of key in a MappingNode. Matching the last-write-wins of
-// nodeToInterface's Values map is important for inputs with duplicate keys
-// (e.g. an explicit "name" after a "<<:" merge that already introduced one).
+// order occurrence of key — last-write-wins, matching nodeToInterface's map
+// behaviour for inputs with duplicate keys (e.g. explicit "name" after a
+// merge anchor that already introduced one).
 func lookupMappingValueNode(n *yaml.Node, key string) *yaml.Node {
 	var found *yaml.Node
 	for i := 0; i+1 < len(n.Content); i += 2 {
@@ -100,11 +87,17 @@ func lookupMappingValueNode(n *yaml.Node, key string) *yaml.Node {
 	return found
 }
 
-// materializeIdentifierValue converts an identifier value node into the Go-
-// typed value nodeToInterface would have produced. nodeToInterface already
-// follows AliasNode chains, breaks cycles, and dispatches ScalarNode through
-// resolveScalar internally, so a separate resolveAlias/scalar fast path here
-// would be behaviorally indistinguishable from a direct call.
+// materializeIdentifierValue produces the same Go value as nodeToInterface,
+// but short-circuits through resolveAlias + resolveScalar for the common
+// scalar-identifier case ("name: alice", "id: 42") to skip the cycle-
+// tracking allocation. Composite identifiers fall through to the full walk.
 func materializeIdentifierValue(n *yaml.Node) any {
-	return nodeToInterface(n)
+	resolved := resolveAlias(n)
+	if resolved == nil {
+		return nil
+	}
+	if resolved.Kind == yaml.ScalarNode {
+		return resolveScalar(resolved)
+	}
+	return nodeToInterface(resolved)
 }

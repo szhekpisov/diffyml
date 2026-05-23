@@ -44,10 +44,10 @@ func navigateToPath(doc *yaml.Node, path string) (*yaml.Node, error) {
 			Message: err.Error(),
 		}
 	}
-	current := unwrapDocOrAlias(doc)
+	current := resolveNode(doc)
 
 	for _, seg := range segments {
-		current = unwrapDocOrAlias(current)
+		current = resolveNode(current)
 		if seg.isIndex {
 			if current == nil || current.Kind != yaml.SequenceNode {
 				return nil, &ChrootError{
@@ -83,24 +83,6 @@ func navigateToPath(doc *yaml.Node, path string) (*yaml.Node, error) {
 	}
 
 	return current, nil
-}
-
-// unwrapDocOrAlias strips a leading DocumentNode wrapper or follows an alias
-// chain to its target, so callers can hand any node shape to navigateToPath.
-// Cyclic alias chains resolve to nil via resolveAlias; resolveAlias also
-// handles nil and non-alias inputs as no-ops, so the post-DocumentNode hand-off
-// is unconditional.
-func unwrapDocOrAlias(n *yaml.Node) *yaml.Node {
-	if n == nil {
-		return nil
-	}
-	if n.Kind == yaml.DocumentNode {
-		if len(n.Content) == 0 {
-			return nil
-		}
-		n = n.Content[0]
-	}
-	return resolveAlias(n)
 }
 
 // pathSegment represents a single segment in a path.
@@ -211,7 +193,7 @@ func applyChroot(doc *yaml.Node, path string, listToDocuments bool) ([]*yaml.Nod
 	}
 
 	if listToDocuments {
-		target := unwrapDocOrAlias(result)
+		target := resolveNode(result)
 		if target != nil && target.Kind == yaml.SequenceNode {
 			expanded := make([]*yaml.Node, len(target.Content))
 			copy(expanded, target.Content)

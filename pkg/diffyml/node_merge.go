@@ -26,10 +26,9 @@ import (
 	"go.yaml.in/yaml/v3"
 )
 
-// resolveMergeKeys walks a parsed yaml.Node tree (a DocumentNode or any
-// content) and rewrites every YAML merge key in-place. Safe to call on any
-// Kind; non-container nodes are no-ops. The cycles-seen map breaks recursion
-// on pathological self-referential anchors like `&a {<<: *a, k: v}`.
+// resolveMergeKeys rewrites every YAML merge key under n in-place. Safe to
+// call on any Kind (non-containers are no-ops). The cycle-seen map breaks
+// recursion on pathological self-referential anchors like `&a {<<: *a}`.
 func resolveMergeKeys(n *yaml.Node) {
 	resolveMergeKeysWithCycles(n, make(map[*yaml.Node]bool))
 }
@@ -49,24 +48,19 @@ func resolveMergeKeysWithCycles(n *yaml.Node, cycles map[*yaml.Node]bool) {
 }
 
 // resolveMappingMergeKeys rewrites n.Content to inline any "<<: *anchor"
-// entries. seen-set membership is host-mapping-local (matching nodeToInterface
-// where the precedence check is against om.Values of the host). cycles tracks
-// which MappingNode pointers are currently mid-resolution so a self-
-// referential anchor (`&a {<<: *a}`) terminates instead of recursing forever.
+// entries. seen-set membership is host-mapping-local (matching the host's
+// om.Values precedence). cycles tracks MappingNodes currently mid-resolution
+// so a self-referential anchor terminates instead of recursing forever.
 func resolveMappingMergeKeys(n *yaml.Node, cycles map[*yaml.Node]bool) {
 	if cycles[n] {
-		// We are already resolving this mapping; a deeper "<<" pointing back
-		// to it must not recurse. Leaving the node as-is is consistent with
-		// nodeToInterfaceImpl's cycle break, which returns nil for the alias
-		// and so contributes no merged keys to the host.
+		// Already resolving this mapping — a deeper "<<" pointing back to it
+		// must not recurse. Matches nodeToInterfaceImpl's cycle break which
+		// returns nil for the alias and contributes no merged keys.
 		return
 	}
 	cycles[n] = true
 	defer delete(cycles, n)
 
-	// Capacity hint elided: the /2 arithmetic surfaces an equivalent
-	// mutation target (a `*` swap that only changes initial bucket count)
-	// while map growth handles the actual sizing transparently.
 	seen := make(map[string]bool)
 	newContent := make([]*yaml.Node, 0, len(n.Content))
 
@@ -92,13 +86,14 @@ func resolveMappingMergeKeys(n *yaml.Node, cycles map[*yaml.Node]bool) {
 			// skipped by the outer recursion) would leak its own "<<" entries
 			// into the host.
 			resolveMappingMergeKeys(source, cycles)
-			forEachPair(source.Content, func(mk, mv *yaml.Node) {
+			for j := 0; j+1 < len(source.Content); j += 2 {
+				mk := source.Content[j]
 				if seen[mk.Value] {
-					return
+					continue
 				}
 				seen[mk.Value] = true
-				newContent = append(newContent, mk, mv)
-			})
+				newContent = append(newContent, mk, source.Content[j+1])
+			}
 			continue
 		}
 
@@ -111,17 +106,6 @@ func resolveMappingMergeKeys(n *yaml.Node, cycles map[*yaml.Node]bool) {
 	}
 
 	n.Content = newContent
-}
-
-// forEachPair invokes fn on each (key, value) pair in a YAML MappingNode
-// Content slice in source order. A trailing single entry on a malformed
-// mapping is dropped silently. Centralising the `i+1 < len(content)`
-// boundary here keeps the pair-iteration bound observable from a single
-// dedicated test, instead of being invariantly even at every call site.
-func forEachPair(content []*yaml.Node, fn func(k, v *yaml.Node)) {
-	for i := 0; i+1 < len(content); i += 2 {
-		fn(content[i], content[i+1])
-	}
 }
 
 // resolveAlias follows an AliasNode chain to its target, returning nil if the

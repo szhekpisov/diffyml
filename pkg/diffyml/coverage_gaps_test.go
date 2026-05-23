@@ -551,7 +551,7 @@ func TestDetectRenames_AsymmetricTiebreaker(t *testing.T) {
 	}
 }
 
-func TestHasK8sDocuments_OnlyToHasK8s(t *testing.T) {
+func TestDetectK8sDocsCached_OnlyToHasK8s(t *testing.T) {
 	from := nodesFromYAMLT(t, "key: value\n")
 	to := nodesFromYAMLT(t, `
 apiVersion: v1
@@ -559,8 +559,12 @@ kind: Service
 metadata:
   name: svc
 `)
-	if !hasK8sDocuments(from, to) {
-		t.Error("expected true when only 'to' has K8s documents")
+	fromDocs, toDocs, ok := detectK8sDocsCached(from, to)
+	if !ok {
+		t.Fatal("expected detection to succeed when only 'to' has K8s documents")
+	}
+	if len(fromDocs) != len(from) || len(toDocs) != len(to) {
+		t.Errorf("cached views must mirror node slice lengths; got fromDocs=%d toDocs=%d", len(fromDocs), len(toDocs))
 	}
 }
 

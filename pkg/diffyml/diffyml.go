@@ -86,11 +86,10 @@ func Compare(from, to []byte, opts *Options) ([]Difference, error) {
 		opts = &Options{}
 	}
 
-	// Parse both YAML inputs into per-document *yaml.Node trees. The internal
-	// pipeline carries the node slices; downstream consumers (chroot,
-	// extractPathOrder, compareDocs) currently still operate on the any view
-	// materialized via materializeDocs. Later stages migrate each consumer
-	// onto nodes and the eager materialization here goes away.
+	// Parse both YAML inputs into per-document *yaml.Node trees. Nodes flow
+	// end-to-end through chroot, extractPathOrder, and compareDocs;
+	// nodeToInterface materialization is deferred to Difference.From/To
+	// emission sites.
 	fromNodes, err := parse(from)
 	if err != nil {
 		return nil, err
@@ -100,16 +99,12 @@ func Compare(from, to []byte, opts *Options) ([]Difference, error) {
 		return nil, err
 	}
 
-	// Apply swap if requested. Nodes are swapped alongside the any view so
-	// the two representations stay aligned for any consumer that later reads
-	// from the node slices.
 	if opts.Swap {
 		fromNodes, toNodes = toNodes, fromNodes
 	}
 
 	// Apply chroot on the node trees so post-chroot output keeps source-line
-	// info and matches extractPathOrder's view exactly. Materialization for
-	// the still-any-based comparator happens after chroot resolves.
+	// info and matches extractPathOrder's view exactly.
 	if opts.Chroot != "" {
 		fromNodes, err = applyChrootToDocs(fromNodes, opts.Chroot, opts.ChrootListToDocuments)
 		if err != nil {
@@ -134,9 +129,7 @@ func Compare(from, to []byte, opts *Options) ([]Difference, error) {
 		}
 	}
 
-	// Compare documents and sort results. Both the path-order walker and the
-	// comparator consume nodes directly — nodeToInterface materialization is
-	// deferred to Difference.From/To emission sites.
+	// Compare documents and sort results.
 	pathOrder := extractPathOrder(fromNodes, toNodes, opts)
 	diffs := compareDocs(fromNodes, toNodes, opts)
 	sortDiffsWithOrder(diffs, pathOrder)

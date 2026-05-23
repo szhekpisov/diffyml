@@ -23,8 +23,10 @@ import (
 // compareDocs compares two slices of YAML document node trees and returns
 // differences. opts is non-nil — Compare normalizes it before calling.
 func compareDocs(from, to []*yaml.Node, opts *Options) []Difference {
-	if opts.DetectKubernetes && hasK8sDocuments(from, to) {
-		return compareK8sDocs(from, to, opts)
+	if opts.DetectKubernetes {
+		if fromDocs, toDocs, ok := detectK8sDocsCached(from, to); ok {
+			return compareK8sDocsCached(from, to, fromDocs, toDocs, opts)
+		}
 	}
 
 	var diffs []Difference
@@ -54,21 +56,28 @@ func compareDocs(from, to []*yaml.Node, opts *Options) []Difference {
 	return diffs
 }
 
-// hasK8sDocuments checks if any node-document is a Kubernetes resource.
-// Materializes each candidate via nodeToInterface once (cached implicitly per
-// call) and delegates to the public IsKubernetesResource.
-func hasK8sDocuments(from, to []*yaml.Node) bool {
-	for _, n := range from {
-		if IsKubernetesResource(nodeToInterface(n)) {
-			return true
+// detectK8sDocsCached materializes every from/to node to its any view exactly
+// once and reports whether at least one document looks like a K8s resource.
+// On a hit, the cached any slices are returned so compareK8sDocs can reuse
+// them without re-walking the trees. Cost trade-off: when DetectKubernetes is
+// enabled but no K8s docs are present, we still materialize the full slice;
+// the previous "early-bail on first match" version only saved work in the
+// rare "first doc is K8s" path because compareK8sDocs immediately
+// re-materialized everything anyway.
+func detectK8sDocsCached(from, to []*yaml.Node) (fromDocs, toDocs []any, ok bool) {
+	fromDocs = materializeK8sDocs(from)
+	toDocs = materializeK8sDocs(to)
+	for _, d := range fromDocs {
+		if IsKubernetesResource(d) {
+			return fromDocs, toDocs, true
 		}
 	}
-	for _, n := range to {
-		if IsKubernetesResource(nodeToInterface(n)) {
-			return true
+	for _, d := range toDocs {
+		if IsKubernetesResource(d) {
+			return fromDocs, toDocs, true
 		}
 	}
-	return false
+	return nil, nil, false
 }
 
 // resolveNode unwraps DocumentNode wrappers and dereferences AliasNodes. Stage-2
@@ -199,15 +208,22 @@ func compareScalarNodes(path DiffPath, fromN, toN *yaml.Node, opts *Options) []D
 // last-write-wins value lookup, matching the legacy *OrderedMap behavior
 // exactly: each occurrence in fromN.Content triggers one recursion using the
 // LAST value bound to that key in fromN.
+//
+// Both mappings are indexed once up front (last source-order position per
+// key) so the per-iteration value lookups are O(1) and overall cost stays
+// O(n+m) instead of the O(n*m) a naive double linear scan would produce.
 func compareMappingNodes(path DiffPath, fromN, toN *yaml.Node, opts *Options) []Difference {
+	fromIdx := indexMappingValues(fromN)
+	toIdx := indexMappingValues(toN)
+
 	var diffs []Difference
 
 	for i := 0; i+1 < len(fromN.Content); i += 2 {
 		key := fromN.Content[i].Value
-		fromVal := lookupMappingValueNode(fromN, key)
-		toVal := lookupMappingValueNode(toN, key)
+		fromVal := fromN.Content[fromIdx[key]+1]
+		toPos, inTo := toIdx[key]
 
-		if toVal == nil {
+		if !inTo {
 			diffs = append(diffs, Difference{
 				Path: path,
 				Type: DiffRemoved,
@@ -217,6 +233,7 @@ func compareMappingNodes(path DiffPath, fromN, toN *yaml.Node, opts *Options) []
 			continue
 		}
 
+		toVal := toN.Content[toPos+1]
 		childPath := path.Append(key)
 		diffs = append(diffs, compareNodes(childPath, fromVal, toVal, opts)...)
 	}
@@ -225,18 +242,38 @@ func compareMappingNodes(path DiffPath, fromN, toN *yaml.Node, opts *Options) []
 	// from fromN. Matches the legacy behavior of using to.Values map lookup.
 	for i := 0; i+1 < len(toN.Content); i += 2 {
 		key := toN.Content[i].Value
-		if lookupMappingValueNode(fromN, key) != nil {
+		if _, inFrom := fromIdx[key]; inFrom {
 			continue
 		}
+		// last-write-wins on duplicate to-side keys: pull the value from the
+		// recorded last position rather than the current i+1.
+		toVal := toN.Content[toIdx[key]+1]
 		diffs = append(diffs, Difference{
 			Path: path,
 			Type: DiffAdded,
 			From: nil,
-			To:   mapEntryWrapper(key, lookupMappingValueNode(toN, key)),
+			To:   mapEntryWrapper(key, toVal),
 		})
 	}
 
 	return diffs
+}
+
+// indexMappingValues records the index of the key node for each unique key in
+// a MappingNode's Content slice, keeping the LAST source-order occurrence so
+// last-write-wins lookup matches nodeToInterface / lookupMappingValueNode.
+// The value node sits at index+1; callers add 1 to dereference. Returns an
+// empty (non-nil) map for nil or non-mapping inputs so caller lookups are
+// always safe.
+func indexMappingValues(n *yaml.Node) map[string]int {
+	if n == nil {
+		return map[string]int{}
+	}
+	idx := make(map[string]int, len(n.Content)/2)
+	for i := 0; i+1 < len(n.Content); i += 2 {
+		idx[n.Content[i].Value] = i
+	}
+	return idx
 }
 
 // compareSequenceNodes compares two SequenceNodes. Dispatches to identifier-
@@ -345,7 +382,11 @@ func compareSequenceNodesUnordered(path DiffPath, fromN, toN *yaml.Node, opts *O
 	toMatched := make([]bool, len(to))
 
 	// Materialize once per item for the deepEqual scan — slight up-front cost
-	// but avoids repeated nodeToInterface walks inside the O(N*M) loop.
+	// but avoids repeated nodeToInterface walks inside the O(N*M) loop. The
+	// allocation is unbounded in the sequence length; a future node-level
+	// deepEqualNodes would let us skip materialization entirely for the
+	// common scalar-list case.
+	// TODO(node-pipeline): replace deepEqual(any,any) with deepEqualNodes here.
 	fromValues := make([]any, len(from))
 	for i := range from {
 		fromValues[i] = nodeToInterface(from[i])

@@ -15,30 +15,7 @@ func TestParseWithOrder_Error(t *testing.T) {
 	}
 }
 
-// TestUnwrapDocOrAlias covers the empty-DocumentNode and AliasNode branches
-// that real-world YAML rarely produces but the contract requires handling.
-func TestUnwrapDocOrAlias(t *testing.T) {
-	// Empty DocumentNode → nil (path is treated as the document root with no content).
-	emptyDoc := &yaml.Node{Kind: yaml.DocumentNode}
-	if got := unwrapDocOrAlias(emptyDoc); got != nil {
-		t.Errorf("empty DocumentNode should unwrap to nil, got %v", got)
-	}
-
-	// AliasNode → target (chain dereference).
-	target := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "hello"}
-	alias := &yaml.Node{Kind: yaml.AliasNode, Alias: target}
-	if got := unwrapDocOrAlias(alias); got != target {
-		t.Errorf("AliasNode should unwrap to its target, got %v", got)
-	}
-
-	// nil input → nil (no panic).
-	if got := unwrapDocOrAlias(nil); got != nil {
-		t.Errorf("nil input should return nil, got %v", got)
-	}
-}
-
-// TestResolveNode_Branches covers DocumentNode unwrap and AliasNode resolution
-// for the comparator-side helper.
+// TestResolveNode_Branches covers DocumentNode unwrap and AliasNode resolution.
 func TestResolveNode_Branches(t *testing.T) {
 	emptyDoc := &yaml.Node{Kind: yaml.DocumentNode}
 	if got := resolveNode(emptyDoc); got != nil {
@@ -56,26 +33,29 @@ func TestResolveNode_Branches(t *testing.T) {
 	}
 }
 
-// TestCompareNodes_KindMismatch_IgnoreValueChanges covers the early-return path
-// when types differ and the caller has IgnoreValueChanges set.
+// TestCompareNodes_KindMismatch_IgnoreValueChanges covers the early-return
+// path in compareNodes when from/to Kinds differ and the caller has
+// IgnoreValueChanges set. Driven directly against compareNodes (not through
+// Compare) so the kind-mismatch branch is exercised without K8s detection
+// or chroot in the path.
 func TestCompareNodes_KindMismatch_IgnoreValueChanges(t *testing.T) {
-	from := nodeFromYAML(t, "key: 1\n")
-	to := nodeFromYAML(t, "key: [a]\n") // value is a sequence, not scalar
+	fromVal := resolveNode(nodeFromYAML(t, "key: 1\n")).Content[1]
+	toVal := resolveNode(nodeFromYAML(t, "key: [a]\n")).Content[1]
+	if fromVal.Kind == toVal.Kind {
+		t.Fatalf("test setup: fromVal/toVal must have different Kinds; got %v / %v", fromVal.Kind, toVal.Kind)
+	}
 
 	opts := &Options{IgnoreValueChanges: true}
-	diffs, err := Compare(
-		[]byte("key: 1\n"),
-		[]byte("key: [a]\n"),
-		opts,
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
+	diffs := compareNodes(DiffPath{"key"}, fromVal, toVal, opts)
 	if len(diffs) != 0 {
 		t.Errorf("with IgnoreValueChanges the kind-mismatch must be suppressed, got %v", diffs)
 	}
-	_ = from
-	_ = to
+
+	// Sanity: without IgnoreValueChanges the same call emits a DiffModified.
+	diffs = compareNodes(DiffPath{"key"}, fromVal, toVal, &Options{})
+	if len(diffs) != 1 || diffs[0].Type != DiffModified {
+		t.Errorf("without IgnoreValueChanges expected one DiffModified, got %v", diffs)
+	}
 }
 
 // TestCompareNodes_ToNil_IgnoreValueChanges covers the to-is-null branch with

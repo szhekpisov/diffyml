@@ -12,11 +12,10 @@ import (
 
 // --- chroot.go ---
 
-// TestNavigateToPath_AliasMappingValue exercises the in-loop unwrap of
-// `current = unwrapDocOrAlias(current)` at chroot.go:50. lookupMappingValueNode
-// returns the AliasNode as-is, so without the loop-top unwrap the next segment
-// would see Kind=AliasNode and bail with "expected map".
-// Kills STATEMENT_REMOVE at chroot.go:50:3.
+// TestNavigateToPath_AliasMappingValue exercises the in-loop `resolveNode`
+// call in navigateToPath. lookupMappingValueNode returns the AliasNode as-is,
+// so without the loop-top resolve the next segment would see Kind=AliasNode
+// and bail with "expected map". Kills the loop-top STATEMENT_REMOVE mutant.
 func TestNavigateToPath_AliasMappingValue(t *testing.T) {
 	doc := nodeFromYAML(t, `
 defaults: &d
@@ -33,9 +32,9 @@ config: *d
 }
 
 // cyclicAliasMapping returns a synthetic DocumentNode whose top-level mapping
-// has one key `key` whose value is a self-referential AliasNode.
-// unwrapDocOrAlias will resolve that alias to nil via resolveAlias's cycle
-// guard, exercising the nil-current branches of navigateToPath.
+// has one key `key` whose value is a self-referential AliasNode. resolveNode
+// will resolve that alias to nil via resolveAlias's cycle guard, exercising
+// the nil-current branches of navigateToPath.
 func cyclicAliasMapping(key string) *yaml.Node {
 	cyclic := &yaml.Node{Kind: yaml.AliasNode}
 	cyclic.Alias = cyclic
@@ -79,9 +78,9 @@ func TestNavigateToPath_CyclicAliasBeforeKey(t *testing.T) {
 
 // TestApplyChroot_CyclicAliasListToDocuments covers the `target != nil` guard
 // in applyChroot's listToDocuments branch. With a chroot that lands on a
-// cyclic alias, unwrapDocOrAlias yields nil and the SequenceNode-expand path
+// cyclic alias, resolveNode yields nil and the SequenceNode-expand path
 // must be skipped — the function falls through to the single-doc wrap.
-// Kills EXPRESSION_REMOVE `target != nil → true` at chroot.go:216:6.
+// Kills the `target != nil → true` EXPRESSION_REMOVE mutant.
 func TestApplyChroot_CyclicAliasListToDocuments(t *testing.T) {
 	doc := cyclicAliasMapping("items")
 	result, err := applyChroot(doc, "items", true)
@@ -93,34 +92,11 @@ func TestApplyChroot_CyclicAliasListToDocuments(t *testing.T) {
 	}
 }
 
-// TestUnwrapDocOrAlias_DocumentWithNilContentEntry pins the post-unwrap
-// behaviour when a DocumentNode carries a single nil entry. After the
-// `n = n.Content[0]` step n is nil; resolveAlias handles nil safely and
-// returns nil, so the function must too.
-// Pins the refactored unwrapDocOrAlias's nil-content tolerance.
-func TestUnwrapDocOrAlias_DocumentWithNilContentEntry(t *testing.T) {
-	doc := &yaml.Node{Kind: yaml.DocumentNode, Content: []*yaml.Node{nil}}
-	if got := unwrapDocOrAlias(doc); got != nil {
-		t.Errorf("DocumentNode with nil Content[0] should unwrap to nil, got %v", got)
-	}
-}
-
-// TestUnwrapDocOrAlias_DocumentScalar pins that a non-empty DocumentNode
-// hands back its single Content entry. Locks the `n = n.Content[0]` step
-// against STATEMENT_REMOVE / DocumentNode-branch BRANCH_IF mutations.
-func TestUnwrapDocOrAlias_DocumentScalar(t *testing.T) {
-	scalar := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "hello"}
-	doc := &yaml.Node{Kind: yaml.DocumentNode, Content: []*yaml.Node{scalar}}
-	if got := unwrapDocOrAlias(doc); got != scalar {
-		t.Errorf("DocumentNode should unwrap to its single content entry, got %v", got)
-	}
-}
-
 // --- comparator.go ---
 
-// TestResolveNode_DocumentScalar mirrors TestUnwrapDocOrAlias_DocumentScalar
-// for the comparator-side helper, pinning the post-DocumentNode hand-off and
-// the resolveAlias dispatch.
+// TestResolveNode_DocumentScalar pins that a non-empty DocumentNode hands
+// back its single Content entry. Locks the `n = n.Content[0]` step against
+// STATEMENT_REMOVE / DocumentNode-branch BRANCH_IF mutations.
 func TestResolveNode_DocumentScalar(t *testing.T) {
 	scalar := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "x"}
 	doc := &yaml.Node{Kind: yaml.DocumentNode, Content: []*yaml.Node{scalar}}
@@ -799,47 +775,34 @@ func TestResolveAlias_NilInput(t *testing.T) {
 	}
 }
 
-// TestForEachPair_OddTailDropped pins the `i+1 < len(content)` boundary in
-// forEachPair. A trailing single entry on malformed Content must not be
-// surfaced as a (key, ?) pair — the boundary mutant `<=` would push the
-// loop past the end and panic on the implicit value access.
-// Kills CONDITIONALS_BOUNDARY at the centralised helper.
-func TestForEachPair_OddTailDropped(t *testing.T) {
-	content := []*yaml.Node{
-		{Kind: yaml.ScalarNode, Tag: "!!str", Value: "k"},
-		{Kind: yaml.ScalarNode, Tag: "!!str", Value: "v"},
+// TestResolveMappingMergeKeys_OddSourceTailDropped pins the `j+1 < len` pair
+// boundary inside resolveMappingMergeKeys's source-flatten loop. A merge
+// source with a malformed odd-length Content must drop the trailing dangling
+// entry without panicking — the boundary mutant `<=` would push the loop past
+// the end and panic on `source.Content[j+1]`. Also locks the (k, v) pairing
+// against any reshuffle of the appended entries.
+// Kills CONDITIONALS_BOUNDARY and STATEMENT_REMOVE at the inline pair loop.
+func TestResolveMappingMergeKeys_OddSourceTailDropped(t *testing.T) {
+	src := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map", Content: []*yaml.Node{
+		{Kind: yaml.ScalarNode, Tag: "!!str", Value: "a"},
+		{Kind: yaml.ScalarNode, Tag: "!!int", Value: "1"},
 		{Kind: yaml.ScalarNode, Tag: "!!str", Value: "dangling"},
-	}
-	pairs := 0
+	}}
+	host := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map", Content: []*yaml.Node{
+		{Kind: yaml.ScalarNode, Tag: "!!str", Value: "<<"},
+		{Kind: yaml.AliasNode, Alias: src},
+	}}
 	defer func() {
 		if r := recover(); r != nil {
-			t.Fatalf("forEachPair panicked on odd Content: %v", r)
+			t.Fatalf("resolveMergeKeys panicked on odd-Content merge source: %v", r)
 		}
 	}()
-	forEachPair(content, func(_, _ *yaml.Node) {
-		pairs++
-	})
-	if pairs != 1 {
-		t.Errorf("expected 1 pair (trailing dangling dropped), got %d", pairs)
+	resolveMergeKeys(host)
+	if len(host.Content) != 2 {
+		t.Fatalf("expected single merged pair after dropping dangling tail, got %d entries", len(host.Content))
 	}
-}
-
-// TestForEachPair_InvokedPerPair pins both invocation and the (k, v) pairing.
-// Locks the `fn(content[i], content[i+1])` call against STATEMENT_REMOVE and
-// the argument-pairing against any reshuffle.
-func TestForEachPair_InvokedPerPair(t *testing.T) {
-	content := []*yaml.Node{
-		{Kind: yaml.ScalarNode, Tag: "!!str", Value: "k1"},
-		{Kind: yaml.ScalarNode, Tag: "!!str", Value: "v1"},
-		{Kind: yaml.ScalarNode, Tag: "!!str", Value: "k2"},
-		{Kind: yaml.ScalarNode, Tag: "!!str", Value: "v2"},
-	}
-	var got []string
-	forEachPair(content, func(k, v *yaml.Node) {
-		got = append(got, k.Value+"="+v.Value)
-	})
-	if len(got) != 2 || got[0] != "k1=v1" || got[1] != "k2=v2" {
-		t.Errorf("expected [k1=v1 k2=v2], got %v", got)
+	if k, v := host.Content[0], host.Content[1]; k.Value != "a" || v.Value != "1" {
+		t.Errorf("expected merged pair a=1 in order, got %s=%s", k.Value, v.Value)
 	}
 }
 

@@ -16,14 +16,14 @@ A surviving mutant means either the test suite has a gap, or the mutation is **e
 
 ## Tool
 
-[gomutants](https://github.com/szhekpisov/gomutants) v0.3.0
+[gomutants](https://github.com/szhekpisov/gomutants) v0.4.0
 
 ## CI Integration
 
 `.github/workflows/mutation.yml` runs in two modes:
 
 - **Pull requests** — `gomutants --changed-since origin/main` scopes mutation to lines touched by the PR. Gate: any LIVED mutant on changed lines fails the job. This makes mutation testing a per-PR quality bar rather than a periodic audit.
-- **Push to main** — full-tree run after merge. Gate: `test_efficacy ≥ 85.65%` (the calibrated floor at gomutants migration; ratchet up as tests improve). Catches coverage rot in code no PR happens to touch.
+- **Push to main** — full-tree run after merge. Gate: `test_efficacy ≥ 85.0%` (recalibrated for gomutants v0.4.0, which adds integer mutators; ratchet up as tests improve). Catches coverage rot in code no PR happens to touch.
 
 ## Report
 

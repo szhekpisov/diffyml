@@ -717,6 +717,225 @@ func TestDetectRenames_SortTiebreaker_LargeInput(t *testing.T) {
 	}
 }
 
+func TestNewSimilarityIndex_WhitespaceOnlyLinesSkipped(t *testing.T) {
+	// Each line consists solely of whitespace and MUST be skipped (numLines == 0).
+	// Covers the three byte comparisons in the hasContent check (' ', '\t', '\r')
+	// and the two && operators joining them: any mutation that lets a space, tab,
+	// or carriage-return count as content makes numLines > 0.
+	cases := map[string]string{
+		"spaces only":      "   ",
+		"tabs only":        "\t\t",
+		"carriage returns": "\r\r",
+		"mixed whitespace": " \t\r",
+	}
+	for name, in := range cases {
+		t.Run(name, func(t *testing.T) {
+			idx := newSimilarityIndex([]byte(in))
+			if idx.numLines != 0 {
+				t.Errorf("whitespace-only line %q: numLines=%d, want 0", in, idx.numLines)
+			}
+		})
+	}
+}
+
+func TestNewSimilarityIndex_BlankLineBeforeContent(t *testing.T) {
+	// A whitespace-only line is skipped via `continue`, NOT `break`: scanning must
+	// proceed to the content lines that follow it. If `continue` becomes `break`,
+	// the scan aborts at the blank line and the trailing content is never indexed.
+	idx := newSimilarityIndex([]byte("   \nfoo\nbar"))
+	if idx.numLines != 2 {
+		t.Errorf("expected 2 content lines after a leading blank line, got %d", idx.numLines)
+	}
+}
+
+func TestDetectRenames_SizeRatioSkipThenMatch(t *testing.T) {
+	// In buildRenamePairs, a toIdx rejected by the size-ratio guard is skipped via
+	// `continue` so later candidates are still considered. to[0] is far too large
+	// to match from[0] (ratio < 60%) and is skipped; to[1] is identical and matches.
+	// If `continue` becomes `break`, the inner loop aborts at to[0] and to[1] is
+	// never reached, so no match is found.
+	from := []any{mkK8sConfigMap("cfg-a", []string{"k1"})}
+	to := []any{
+		mkK8sConfigMap("cfg-huge", []string{
+			"a", "b", "c", "d", "e", "f", "g", "h", "i", "j",
+			"k", "l", "m", "n", "o", "p", "q", "r", "s", "t",
+		}),
+		mkK8sConfigMap("cfg-a", []string{"k1"}),
+	}
+
+	opts := &Options{DetectRenames: true}
+	matched, _, _ := detectRenames(from, to, []int{0}, []int{0, 1}, opts)
+
+	if toIdx, ok := matched[0]; !ok || toIdx != 1 {
+		t.Errorf("expected from[0]→to[1] (to[0] skipped by size ratio), got matched[0]=%v ok=%v", toIdx, ok)
+	}
+}
+
+func TestDetectRenames_DisabledReturnsNonNilMap(t *testing.T) {
+	// The early-return paths return the map allocated at the top of detectRenames.
+	// If that allocation statement is removed, the function returns a nil map.
+	from := []any{mkK8sConfigMap("a", nil)}
+	to := []any{mkK8sConfigMap("b", nil)}
+
+	opts := &Options{DetectRenames: false}
+	matched, _, _ := detectRenames(from, to, []int{0}, []int{0}, opts)
+
+	if matched == nil {
+		t.Error("expected a non-nil (initialized) match map on the early-return path, got nil")
+	}
+}
+
+func TestDetectRenames_EmptyFromPreservesToOrder(t *testing.T) {
+	// With an empty unmatchedFrom, detectRenames must early-return immediately,
+	// handing back unmatchedTo unchanged. If the `len(unmatchedFrom) == 0` guard is
+	// disabled (removed, or its || turned into &&), the function instead proceeds
+	// into K8s filtering, which reorders the indices (non-K8s before K8s).
+	nonK8s := NewOrderedMap()
+	nonK8s.Keys = append(nonK8s.Keys, "someKey")
+	nonK8s.Values["someKey"] = "someValue"
+
+	to := []any{mkK8sConfigMap("k8s-cfg", []string{"k1"}), nonK8s} // index 0 = K8s, 1 = non-K8s
+
+	opts := &Options{DetectRenames: true}
+	_, _, remainTo := detectRenames([]any{}, to, []int{}, []int{0, 1}, opts)
+
+	if len(remainTo) != 2 || remainTo[0] != 0 || remainTo[1] != 1 {
+		t.Errorf("expected remainingTo to preserve input order [0 1], got %v", remainTo)
+	}
+}
+
+func TestDetectRenames_EmptyToPreservesFromOrder(t *testing.T) {
+	// Symmetric to the empty-from case: an empty unmatchedTo must early-return with
+	// unmatchedFrom unchanged. If the `len(unmatchedTo) == 0` guard is disabled, the
+	// function proceeds into K8s filtering and reorders the from indices.
+	nonK8s := NewOrderedMap()
+	nonK8s.Keys = append(nonK8s.Keys, "someKey")
+	nonK8s.Values["someKey"] = "someValue"
+
+	from := []any{mkK8sConfigMap("k8s-cfg", []string{"k1"}), nonK8s} // index 0 = K8s, 1 = non-K8s
+
+	opts := &Options{DetectRenames: true}
+	_, remainFrom, _ := detectRenames(from, []any{}, []int{0, 1}, []int{}, opts)
+
+	if len(remainFrom) != 2 || remainFrom[0] != 0 || remainFrom[1] != 1 {
+		t.Errorf("expected remainingFrom to preserve input order [0 1], got %v", remainFrom)
+	}
+}
+
+func TestNewSimilarityIndex_LeadingNewline(t *testing.T) {
+	// The scan loop starts at index 0, so a leading '\n' is recognized as an empty
+	// first line and skipped. If the loop instead starts at index 1, data[0]=='\n'
+	// is never detected and the first content line is hashed *with* the leading
+	// newline, changing its hash. A line "foo" preceded by a newline must hash
+	// identically to a bare "foo".
+	withLeading := newSimilarityIndex([]byte("\nfoo\n"))
+	plain := newSimilarityIndex([]byte("foo\n"))
+	if got := withLeading.score(plain); got != 100 {
+		t.Errorf("leading-newline line must hash identically to a plain line: score=%d, want 100", got)
+	}
+}
+
+// mkOrderedDoc builds an OrderedMap from ordered key/value string pairs.
+func mkOrderedDoc(kv ...[2]string) *OrderedMap {
+	d := NewOrderedMap()
+	for _, p := range kv {
+		d.Keys = append(d.Keys, p[0])
+		d.Values[p[0]] = p[1]
+	}
+	return d
+}
+
+func TestBuildRenamePairs_ScoreJustBelowThreshold(t *testing.T) {
+	// Two equally-sized docs sharing 13 of 22 lines score exactly 59 — one point
+	// below the 60 threshold. The byte-size ratio is 100, so the size-ratio guard
+	// is neutral and only the `s >= renameScoreThreshold` check decides. At
+	// threshold 60, score 59 yields no pair; if the threshold is decremented to
+	// 59, a spurious pair appears.
+	a := mkOrderedDoc()
+	b := mkOrderedDoc()
+	for i := 0; i < 13; i++ { // shared lines
+		k := fmt.Sprintf("shared%02d", i)
+		a.Keys = append(a.Keys, k)
+		a.Values[k] = "v"
+		b.Keys = append(b.Keys, k)
+		b.Values[k] = "v"
+	}
+	for i := 0; i < 9; i++ { // unique lines per side
+		ka, kb := fmt.Sprintf("aonly%02d", i), fmt.Sprintf("bonly%02d", i)
+		a.Keys = append(a.Keys, ka)
+		a.Values[ka] = "v"
+		b.Keys = append(b.Keys, kb)
+		b.Values[kb] = "v"
+	}
+
+	aData, bData := serializeDocument(a), serializeDocument(b)
+	score := newSimilarityIndex(aData).score(newSimilarityIndex(bData))
+	if score != renameScoreThreshold-1 {
+		t.Fatalf("precondition: score=%d, want %d (threshold-1)", score, renameScoreThreshold-1)
+	}
+	if ratio := min(len(aData), len(bData)) * 100 / max(len(aData), len(bData)); ratio < renameScoreThreshold {
+		t.Fatalf("precondition: size ratio=%d must be >= threshold so the size guard stays neutral", ratio)
+	}
+
+	pairs := buildRenamePairs([]any{a}, []any{b}, []int{0}, []int{0})
+	if len(pairs) != 0 {
+		t.Errorf("score %d is below threshold %d; expected no pair, got %d", score, renameScoreThreshold, len(pairs))
+	}
+}
+
+func TestBuildRenamePairs_SizeRatioMultiplierLower(t *testing.T) {
+	// Size-ratio guard: `minLen*100/maxLen < threshold`. Construct a pair whose
+	// byte ratio is exactly 60 (small=18B, large=30B). With the *100 multiplier
+	// the ratio is 60, so `60 < 60` is false and the pair is kept (similarity 75
+	// >= 60). If the multiplier drops to 99 the ratio becomes 59, `59 < 60` is
+	// true, and the pair is wrongly rejected.
+	small := mkOrderedDoc([2]string{"s0", "v"}, [2]string{"s1", "v"}, [2]string{"s2", "v"})
+	large := mkOrderedDoc([2]string{"s0", "v"}, [2]string{"s1", "v"}, [2]string{"s2", "v"},
+		[2]string{"p", strings.Repeat("x", 8)})
+
+	sData, lData := serializeDocument(small), serializeDocument(large)
+	minLen, maxLen := min(len(sData), len(lData)), max(len(sData), len(lData))
+	if minLen*100/maxLen != renameScoreThreshold || minLen*99/maxLen != renameScoreThreshold-1 {
+		t.Fatalf("precondition: want ratio*100=%d and ratio*99=%d, got *100=%d *99=%d",
+			renameScoreThreshold, renameScoreThreshold-1, minLen*100/maxLen, minLen*99/maxLen)
+	}
+	if sim := newSimilarityIndex(sData).score(newSimilarityIndex(lData)); sim < renameScoreThreshold {
+		t.Fatalf("precondition: similarity %d must be >= threshold so a pair forms when the guard passes", sim)
+	}
+
+	pairs := buildRenamePairs([]any{small}, []any{large}, []int{0}, []int{0})
+	if len(pairs) != 1 {
+		t.Errorf("byte ratio 60 passes the size guard (60 < 60 is false); expected 1 pair, got %d", len(pairs))
+	}
+}
+
+func TestBuildRenamePairs_SizeRatioMultiplierHigher(t *testing.T) {
+	// Size-ratio guard: `minLen*100/maxLen < threshold`. Construct a pair whose
+	// byte ratio is 59 (small=25B, large=42B). With the *100 multiplier the ratio
+	// is 59, `59 < 60` is true, and the pair is rejected. If the multiplier rises
+	// to 101 the ratio becomes 60, `60 < 60` is false, and a pair wrongly forms
+	// (similarity 80 >= 60).
+	small := mkOrderedDoc([2]string{"s0", "v"}, [2]string{"s1", "v"}, [2]string{"s2", "v"},
+		[2]string{"f", "y"})
+	large := mkOrderedDoc([2]string{"s0", "v"}, [2]string{"s1", "v"}, [2]string{"s2", "v"},
+		[2]string{"f", "y"}, [2]string{"p", strings.Repeat("x", 13)})
+
+	sData, lData := serializeDocument(small), serializeDocument(large)
+	minLen, maxLen := min(len(sData), len(lData)), max(len(sData), len(lData))
+	if minLen*100/maxLen != renameScoreThreshold-1 || minLen*101/maxLen < renameScoreThreshold {
+		t.Fatalf("precondition: want ratio*100=%d and ratio*101>=%d, got *100=%d *101=%d",
+			renameScoreThreshold-1, renameScoreThreshold, minLen*100/maxLen, minLen*101/maxLen)
+	}
+	if sim := newSimilarityIndex(sData).score(newSimilarityIndex(lData)); sim < renameScoreThreshold {
+		t.Fatalf("precondition: similarity %d must be >= threshold so a pair would form if the guard passed", sim)
+	}
+
+	pairs := buildRenamePairs([]any{small}, []any{large}, []int{0}, []int{0})
+	if len(pairs) != 0 {
+		t.Errorf("byte ratio 59 fails the size guard (59 < 60 is true); expected no pair, got %d", len(pairs))
+	}
+}
+
 func TestDetectRenames_SizeRatioBoundaryExact(t *testing.T) {
 	// Targets CONDITIONALS_BOUNDARY mutant at rename.go:152
 	// which changes `minLen*100/maxLen < threshold` to `<= threshold`.

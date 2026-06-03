@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.2] - 2026-06-03
+
+### Added
+
+- Add --line-numbers flag for source line numbers in detailed output (#161) ([#161](https://github.com/szhekpisov/diffyml/pull/161))
+
+### Documentation
+
+- Nest installation methods in README table of contents (#146) ([#146](https://github.com/szhekpisov/diffyml/pull/146))
+- Add Neat Mode page to docs site (#152) ([#152](https://github.com/szhekpisov/diffyml/pull/152))
+- Add SonarCloud Quality Gate badge to README (#156) ([#156](https://github.com/szhekpisov/diffyml/pull/156))
+- Move tagline below badge row in README (#157) ([#157](https://github.com/szhekpisov/diffyml/pull/157))
+
 ## [1.6.1] - 2026-05-09
 
 ### Added
@@ -271,6 +284,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add GOPATH/bin PATH hint to Go Install section (#3) ([#3](https://github.com/szhekpisov/diffyml/pull/3))
 - Cleanup (#6) ([#6](https://github.com/szhekpisov/diffyml/pull/6))
 
+[1.6.2]: https://github.com/szhekpisov/diffyml/compare/v1.6.1...v1.6.2
 [1.6.1]: https://github.com/szhekpisov/diffyml/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/szhekpisov/diffyml/compare/v1.5.25...v1.6.0
 [1.5.25]: https://github.com/szhekpisov/diffyml/compare/v1.5.23...v1.5.25

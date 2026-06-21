@@ -81,7 +81,7 @@ sudo apk add --allow-untrusted diffyml_1.6.1_linux_amd64.apk
 
 ## Direct binary download
 
-If you'd rather not pipe a script to `sh`, the same archives are attached to every [release](https://github.com/szhekpisov/diffyml/releases) for Linux and macOS (amd64 and arm64). Download, extract, and move onto your `PATH`:
+If you'd rather not pipe a script to `sh`, the same archives are attached to every [release](https://github.com/szhekpisov/diffyml/releases) for Linux, macOS, and Windows (amd64 and arm64). Linux/macOS ship as `.tar.gz`, Windows as `.zip`. Download, extract, and move onto your `PATH`:
 
 ```bash
 VERSION=1.6.1  # check the releases page for the latest
@@ -92,7 +92,17 @@ curl -fL "https://github.com/szhekpisov/diffyml/releases/download/v${VERSION}/di
 sudo mv diffyml /usr/local/bin/
 ```
 
-Archives are named `diffyml_<VERSION>_<os>_<arch>.tar.gz`. See [Verifying releases](#verifying-releases) to check signatures and provenance before installing.
+On Windows (PowerShell):
+
+```powershell
+$Version = "1.6.1"  # check the releases page for the latest
+$Arch = if ($Env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "arm64" } else { "amd64" }
+curl.exe -fLO "https://github.com/szhekpisov/diffyml/releases/download/v$Version/diffyml_${Version}_windows_$Arch.zip"
+Expand-Archive "diffyml_${Version}_windows_$Arch.zip" -DestinationPath .
+# move diffyml.exe somewhere on your PATH
+```
+
+Archives are named `diffyml_<VERSION>_<os>_<arch>.tar.gz` (`.zip` on Windows). See [Verifying releases](#verifying-releases) to check signatures and provenance before installing.
 
 ## From source
 

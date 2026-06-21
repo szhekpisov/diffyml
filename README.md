@@ -144,7 +144,7 @@ The binary is installed to `/usr/bin/diffyml`.
 
 ### Direct binary download
 
-If you'd rather not pipe a script to `sh`, the same archives are attached to every [release](https://github.com/szhekpisov/diffyml/releases) for Linux and macOS (amd64 and arm64):
+If you'd rather not pipe a script to `sh`, the same archives are attached to every [release](https://github.com/szhekpisov/diffyml/releases) for Linux, macOS, and Windows (amd64 and arm64). Linux/macOS ship as `.tar.gz`, Windows as `.zip`:
 
 ```bash
 VERSION=1.6.1  # check the releases page for the latest
@@ -153,6 +153,16 @@ ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
 curl -fL "https://github.com/szhekpisov/diffyml/releases/download/v${VERSION}/diffyml_${VERSION}_${OS}_${ARCH}.tar.gz" \
   | tar -xz
 sudo mv diffyml /usr/local/bin/
+```
+
+On Windows (PowerShell):
+
+```powershell
+$Version = "1.6.1"  # check the releases page for the latest
+$Arch = if ($Env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "arm64" } else { "amd64" }
+curl.exe -fLO "https://github.com/szhekpisov/diffyml/releases/download/v$Version/diffyml_${Version}_windows_$Arch.zip"
+Expand-Archive "diffyml_${Version}_windows_$Arch.zip" -DestinationPath .
+# move diffyml.exe somewhere on your PATH
 ```
 
 See [Verifying Releases](#verifying-releases) below to check signatures and provenance before installing.

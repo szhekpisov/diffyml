@@ -70,6 +70,38 @@ jobs:
       - name: Run tests
         run: go test -race ./...
 
+  windows-test:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: windows-latest
+    env:
+      CGO_ENABLED: "0"
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version: "1.26.4"
+
+      - name: Run tests
+        run: go test ./... # no -race: requires a C toolchain on Windows; logic-level race coverage runs on the ubuntu test job
+
+      - name: Smoke test binary
+        shell: pwsh
+        run: |
+          go build -o diffyml.exe .
+          ./diffyml.exe --version
+          "name: test`nvalue: 1" | Set-Content a.yaml
+          "name: test`nvalue: 2" | Set-Content b.yaml
+          ./diffyml.exe -s a.yaml b.yaml
+          if ($LASTEXITCODE -ne 1) { Write-Error "expected exit 1 for differing files, got $LASTEXITCODE"; exit 1 }
+          ./diffyml.exe -s a.yaml a.yaml
+          if ($LASTEXITCODE -ne 0) { Write-Error "expected exit 0 for identical files, got $LASTEXITCODE"; exit 1 }
+          Write-Host "Windows smoke test passed"
+          exit 0
+
   fuzz:
     needs: changes
     if: needs.changes.outputs.code == 'true'

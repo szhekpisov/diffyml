@@ -155,6 +155,21 @@ brews:
       output = shell_output("#{bin}/diffyml #{testpath}/file1.yaml #{testpath}/file2.yaml")
       assert_match "value", output
 
+scoops:
+  - repository:
+      owner: szhekpisov
+      name: scoop-diffyml
+      token: "{{ .Env.SCOOP_BUCKET_TOKEN }}"
+    commit_author:
+      name: github-actions[bot]
+      email: github-actions[bot]@users.noreply.github.com
+    directory: bucket
+    homepage: "https://github.com/szhekpisov/diffyml"
+    description: "Structural diff tool for YAML files"
+    license: "MIT"
+    skip_upload: auto
+    commit_msg_template: "Update diffyml to {{ .Version }}"
+
 changelog:
   sort: asc
   groups:

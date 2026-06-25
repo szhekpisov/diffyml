@@ -12,6 +12,13 @@ brew tap szhekpisov/diffyml
 brew install diffyml
 ```
 
+## Scoop (Windows)
+
+```powershell
+scoop bucket add diffyml https://github.com/szhekpisov/scoop-diffyml
+scoop install diffyml
+```
+
 ## Go install
 
 ```bash

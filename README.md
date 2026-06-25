@@ -24,6 +24,7 @@ diffyml compares YAML files and shows meaningful, structured differences — not
 - [How It Compares](#how-it-compares)
 - [Installation](#installation)
   - [Homebrew](#homebrew)
+  - [Scoop (Windows)](#scoop-windows)
   - [Go Install](#go-install)
   - [Install script (Linux / macOS)](#install-script-linux--macos)
   - [Linux packages (`.deb` / `.rpm` / `.apk`)](#linux-packages-deb--rpm--apk)
@@ -87,6 +88,13 @@ Comparison based on dyff v1.11.3 and diffyml v1.5.23. See [PERFORMANCE.md](doc/P
 ```bash
 brew tap szhekpisov/diffyml
 brew install diffyml
+```
+
+### Scoop (Windows)
+
+```powershell
+scoop bucket add diffyml https://github.com/szhekpisov/scoop-diffyml
+scoop install diffyml
 ```
 
 ### Go Install

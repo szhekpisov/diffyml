@@ -234,8 +234,8 @@ func TestBuildFilePairPlan_FullPaths(t *testing.T) {
 		t.Fatalf("expected 1 pair, got %d", len(pairs))
 	}
 
-	expectedFrom := fromDir + "/deploy.yaml"
-	expectedTo := toDir + "/deploy.yaml"
+	expectedFrom := filepath.Join(fromDir, "deploy.yaml")
+	expectedTo := filepath.Join(toDir, "deploy.yaml")
 	if pairs[0].FromPath != expectedFrom {
 		t.Errorf("FromPath = %q, want %q", pairs[0].FromPath, expectedFrom)
 	}

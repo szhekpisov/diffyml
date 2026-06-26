@@ -1,0 +1,4 @@
+# Golden-file fixtures are compared byte-for-byte against program output, which
+# always emits LF. Force LF on checkout so Windows' core.autocrlf doesn't turn
+# expected_output.txt into CRLF and break TestCLI_Fixtures.
+testdata/** text eol=lf

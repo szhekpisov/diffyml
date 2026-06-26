@@ -142,7 +142,7 @@ func TestDiffPath_DocIndex(t *testing.T) {
 		t.Error("DocIndex() on non-doc-index should return false")
 	}
 
-	_, ok = (DiffPath)(nil).DocIndex()
+	_, ok = DiffPath(nil).DocIndex()
 	if ok {
 		t.Error("DocIndex() on nil should return false")
 	}

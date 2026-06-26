@@ -1,0 +1,12 @@
+name: app
+replicas: 2
+image:
+  repo: nginx
+  tag: "2.0"
+labels:
+  app: web
+  env: dev
+ports:
+  - 80
+  - 8443
+onlyright: new

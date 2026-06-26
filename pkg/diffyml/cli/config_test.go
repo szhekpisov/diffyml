@@ -451,9 +451,11 @@ func TestApplyFileConfig_BoolFields(t *testing.T) {
 	cfg := NewCLIConfig()
 	ignoreOrder := true
 	swap := true
+	unchanged := true
 	fc := &FileConfig{
 		IgnoreOrderChanges: &ignoreOrder,
 		Swap:               &swap,
+		Unchanged:          &unchanged,
 	}
 	cfg.applyFileConfig(fc, map[string]bool{})
 
@@ -462,6 +464,9 @@ func TestApplyFileConfig_BoolFields(t *testing.T) {
 	}
 	if !cfg.Swap {
 		t.Error("expected Swap=true")
+	}
+	if !cfg.Unchanged {
+		t.Error("expected Unchanged=true")
 	}
 }
 

@@ -1,0 +1,236 @@
+// inverse.go - Inverse ("unchanged") diff collection.
+//
+// Implements the Options.Unchanged mode requested in issue #183: instead of
+// reporting how two YAML documents differ, report the keys/values that are
+// EQUAL between them. The normal comparator (comparator.go) discards equal
+// subtrees, so this is a dedicated parallel walk rather than a flag threaded
+// through the existing branches.
+//
+// Equal nodes collapse to the highest fully-equal node: a wholly-equal map or
+// list yields one DiffUnchanged entry; partially-equal maps/lists are descended
+// into so only the matching leaves/subtrees are reported. Keys present on only
+// one side, kind mismatches, and unequal scalars emit nothing — they are, by
+// definition, not "unchanged". Equality honors the same Options flags as the
+// normal compare via deepEqual/equalValues.
+//
+// Document and list pairing reuse the normal comparator's matching so reordered
+// or renamed counterparts are recognized: Kubernetes documents are matched by
+// resource identifier (and rename detection), and named list items are matched
+// by their name/id identifier — both falling back to positional pairing.
+package diffyml
+
+import (
+	"strconv"
+
+	"go.yaml.in/yaml/v3"
+)
+
+// collectUnchangedDocs mirrors compareDocs: Kubernetes documents are paired by
+// resource identifier (with rename detection) when detected; otherwise documents
+// are paired positionally. opts is non-nil — Compare normalizes it before calling.
+func collectUnchangedDocs(from, to []*yaml.Node, opts *Options) []Difference {
+	if opts.DetectKubernetes {
+		if fromDocs, toDocs, ok := detectK8sDocsCached(from, to); ok {
+			return collectUnchangedK8sDocs(from, to, fromDocs, toDocs, opts)
+		}
+	}
+
+	var diffs []Difference
+	maxLen := max(len(from), len(to))
+	for i := range maxLen {
+		var fromN, toN *yaml.Node
+		if i < len(from) {
+			fromN = from[i]
+		}
+		if i < len(to) {
+			toN = to[i]
+		}
+
+		// Build path prefix for multi-document files (matches compareDocs).
+		var pathPrefix DiffPath
+		if maxLen > 1 {
+			pathPrefix = DiffPath{"[" + strconv.Itoa(i) + "]"}
+		}
+
+		nodeDiffs := collectUnchanged(pathPrefix, fromN, toN, opts)
+		for j := range nodeDiffs {
+			nodeDiffs[j].DocumentIndex = i
+		}
+		diffs = append(diffs, nodeDiffs...)
+	}
+
+	return diffs
+}
+
+// collectUnchangedK8sDocs pairs Kubernetes documents by resource identifier
+// (and rename detection) and reports the equal values within each matched pair.
+// Mirrors compareK8sDocsCached's matching, but emits nothing for order changes
+// or for documents present on only one side (those are not "unchanged").
+func collectUnchangedK8sDocs(fromNodes, toNodes []*yaml.Node, fromDocs, toDocs []any, opts *Options) []Difference {
+	matched, unmatchedFrom, unmatchedTo := matchK8sDocsValues(fromDocs, toDocs, opts)
+
+	var diffs []Difference
+	diffs = append(diffs, collectMatchedK8sUnchanged(matched, fromNodes, toNodes, toDocs, opts, false)...)
+
+	renameMatched, _, _ := detectRenames(fromDocs, toDocs, unmatchedFrom, unmatchedTo, opts)
+	diffs = append(diffs, collectMatchedK8sUnchanged(renameMatched, fromNodes, toNodes, toDocs, opts, true)...)
+
+	return diffs
+}
+
+// collectMatchedK8sUnchanged runs collectUnchanged over each matched document
+// pair, stamping DocumentIndex/Name/Kind. Mirrors compareMatchedK8sDocs:
+// useToIdx selects the to-side document index for rename-matched pairs.
+func collectMatchedK8sUnchanged(matched map[int]int, fromNodes, toNodes []*yaml.Node, toDocs []any, opts *Options, useToIdx bool) []Difference {
+	var diffs []Difference
+	for fromIdx, toIdx := range matched {
+		docIdx := fromIdx
+		if useToIdx {
+			docIdx = toIdx
+		}
+
+		var pathPrefix DiffPath
+		if len(fromNodes) > 1 || len(toNodes) > 1 {
+			pathPrefix = DiffPath{"[" + strconv.Itoa(docIdx) + "]"}
+		}
+
+		nodeDiffs := collectUnchanged(pathPrefix, fromNodes[fromIdx], toNodes[toIdx], opts)
+		var docName, docKind string
+		if f, ok := k8sExtractFields(toDocs[toIdx]); ok {
+			docName = f.displayName()
+			docKind = f.kind
+		}
+		for i := range nodeDiffs {
+			nodeDiffs[i].DocumentIndex = docIdx
+			nodeDiffs[i].DocumentName = docName
+			nodeDiffs[i].DocumentKind = docKind
+		}
+		diffs = append(diffs, nodeDiffs...)
+	}
+
+	return diffs
+}
+
+// collectUnchanged recursively reports values equal between fromN and toN.
+// A side that is null/absent, a kind mismatch, or an unequal scalar yields
+// nothing; a fully-equal node yields a single collapsed entry; partially-equal
+// maps and sequences are descended into.
+func collectUnchanged(path DiffPath, fromN, toN *yaml.Node, opts *Options) []Difference {
+	// Only-one-side (or both-null) means "different" for inverse purposes.
+	if isNullNode(fromN) || isNullNode(toN) {
+		return nil
+	}
+	fromN = resolveNode(fromN)
+	toN = resolveNode(toN)
+
+	// Different kinds can never be equal.
+	if fromN.Kind != toN.Kind {
+		return nil
+	}
+
+	// Highest-equal-node collapse: if the whole subtree matches, emit one entry
+	// and stop descending.
+	fromVal := nodeToInterface(fromN)
+	toVal := nodeToInterface(toN)
+	if deepEqual(fromVal, toVal, opts) {
+		return []Difference{{Path: path, Type: DiffUnchanged, From: fromVal, To: toVal}}
+	}
+
+	// Partially-equal: descend into common children only.
+	switch fromN.Kind {
+	case yaml.MappingNode:
+		return collectUnchangedMapping(path, fromN, toN, opts)
+	case yaml.SequenceNode:
+		return collectUnchangedSequence(path, fromN, toN, opts)
+	}
+	// Unequal scalar: nothing is unchanged here.
+	return nil
+}
+
+// collectUnchangedMapping recurses on keys present in BOTH mappings, preserving
+// the from-side source order. Mirrors compareMappingNodes' last-write-wins index
+// lookup so duplicate keys resolve identically.
+func collectUnchangedMapping(path DiffPath, fromN, toN *yaml.Node, opts *Options) []Difference {
+	fromIdx := indexMappingValues(fromN)
+	toIdx := indexMappingValues(toN)
+
+	var diffs []Difference
+	for i := 0; i+1 < len(fromN.Content); i += 2 {
+		key := fromN.Content[i].Value
+		toPos, inTo := toIdx[key]
+		if !inTo {
+			continue
+		}
+		fromVal := fromN.Content[fromIdx[key]+1]
+		toVal := toN.Content[toPos+1]
+		diffs = append(diffs, collectUnchanged(path.Append(key), fromVal, toVal, opts)...)
+	}
+
+	return diffs
+}
+
+// collectUnchangedSequence matches list items by identifier (name/id) when both
+// sides qualify — so reordered named lists still pair correctly — otherwise pairs
+// positionally. Mirrors compareSequenceNodes' identifier-vs-positional dispatch.
+func collectUnchangedSequence(path DiffPath, fromN, toN *yaml.Node, opts *Options) []Difference {
+	if canMatchByIdentifierNodes(fromN.Content, opts) && canMatchByIdentifierNodes(toN.Content, opts) {
+		return collectUnchangedSequenceByIdentifier(path, fromN, toN, opts)
+	}
+
+	from := fromN.Content
+	to := toN.Content
+	minLen := min(len(from), len(to))
+
+	var diffs []Difference
+	for i := range minLen {
+		diffs = append(diffs, collectUnchanged(path.Append(strconv.Itoa(i)), from[i], to[i], opts)...)
+	}
+
+	return diffs
+}
+
+// collectUnchangedSequenceByIdentifier pairs items sharing an identifier
+// (mirroring compareSequenceNodesByIdentifier's indexing) and reports the equal
+// values within each pair at the identifier-keyed child path. Items whose
+// identifier exists on only one side emit nothing; items lacking a usable
+// identifier fall back to positional pairing among themselves.
+func collectUnchangedSequenceByIdentifier(path DiffPath, fromN, toN *yaml.Node, opts *Options) []Difference {
+	from := fromN.Content
+	to := toN.Content
+
+	toIndex := make(map[any]int, len(to))
+	var toNoID []int
+	for i, item := range to {
+		id := getIdentifierNode(item, opts)
+		if isComparableIdentifier(id) {
+			toIndex[id] = i // last-write-wins, matching the normal path
+			continue
+		}
+		toNoID = append(toNoID, i)
+	}
+
+	var diffs []Difference
+	var fromNoID []int
+	for i, item := range from {
+		id := getIdentifierNode(item, opts)
+		if !isComparableIdentifier(id) {
+			fromNoID = append(fromNoID, i)
+			continue
+		}
+		toIdx, ok := toIndex[id]
+		if !ok {
+			continue
+		}
+		diffs = append(diffs, collectUnchanged(path.Append(sprintIdentifier(id)), from[i], to[toIdx], opts)...)
+	}
+
+	// Positional fallback for items without a usable identifier, keyed by the
+	// from-side index (matches compareUnidentifiedItems' path convention).
+	noIDLen := min(len(fromNoID), len(toNoID))
+	for k := range noIDLen {
+		fromIdx := fromNoID[k]
+		diffs = append(diffs, collectUnchanged(path.Append(strconv.Itoa(fromIdx)), from[fromIdx], to[toNoID[k]], opts)...)
+	}
+
+	return diffs
+}

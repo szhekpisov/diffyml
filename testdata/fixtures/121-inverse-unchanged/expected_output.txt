@@ -1,0 +1,6 @@
+Found 4 unchanged value(s)
+
+= name : app
+= image.repo : nginx
+= labels.app : web
+= ports.0 : 80

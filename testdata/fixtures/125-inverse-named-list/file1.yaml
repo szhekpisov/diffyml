@@ -1,0 +1,8 @@
+containers:
+  - name: app
+    image: nginx:1.0
+  - name: sidecar
+    image: proxy:1.0
+    port: 8080
+  - name: old
+    image: legacy:1.0

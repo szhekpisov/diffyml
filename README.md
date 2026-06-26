@@ -552,6 +552,7 @@ Available environment variables: `DIFFYML_COLOR_ADDED`, `DIFFYML_COLOR_REMOVED`,
 | `--ignore-api-version` | Ignore `apiVersion` when matching Kubernetes resources |
 | `-x, --no-cert-inspection` | Disable x509 certificate inspection |
 | `--swap` | Swap from/to files |
+| `-u, --unchanged` | Inverse diff: report keys/values equal between both files instead of differences |
 
 **Filtering**
 

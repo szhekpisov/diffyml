@@ -45,12 +45,13 @@ func TestBuildPrompt_AllDiffTypes(t *testing.T) {
 				{Path: diffyml.DiffPath{"b"}, Type: diffyml.DiffRemoved, From: "old", To: nil},
 				{Path: diffyml.DiffPath{"c"}, Type: diffyml.DiffModified, From: "v1", To: "v2"},
 				{Path: diffyml.DiffPath{"d"}, Type: diffyml.DiffOrderChanged, From: nil, To: nil},
+				{Path: diffyml.DiffPath{"e"}, Type: diffyml.DiffUnchanged, From: "same", To: "same"},
 			},
 		},
 	}
 
 	got := buildPrompt(groups)
-	for _, label := range []string{"[ADDED]", "[REMOVED]", "[MODIFIED]", "[ORDER_CHANGED]"} {
+	for _, label := range []string{"[ADDED]", "[REMOVED]", "[MODIFIED]", "[ORDER_CHANGED]", "[UNCHANGED]"} {
 		if !strings.Contains(got, label) {
 			t.Errorf("buildPrompt missing %s label, got: %s", label, got)
 		}

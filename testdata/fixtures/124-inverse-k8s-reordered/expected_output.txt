@@ -1,0 +1,28 @@
+Found five unchanged values
+
+apiVersion  (apps/v1/Deployment/web)
+  = one map entry unchanged:
+    apiVersion: apps/v1
+
+kind  (apps/v1/Deployment/web)
+  = one map entry unchanged:
+    kind: Deployment
+
+metadata  (apps/v1/Deployment/web)
+  = one list entry unchanged:
+    - name: web
+
+spec.strategy  (apps/v1/Deployment/web)
+  = one map entry unchanged:
+    strategy: RollingUpdate
+
+(root level)  (v1/Service/web)
+  = one document unchanged:
+    ---
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: web
+    spec:
+      type: ClusterIP
+

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -216,6 +217,9 @@ func TestValidateFileExists_IsDirectory(t *testing.T) {
 }
 
 func TestValidateFileExists_PermissionError(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod 0o000 does not restrict access on Windows")
+	}
 	dir := t.TempDir()
 	nested := dir + "/noperm"
 	if err := os.Mkdir(nested, 0o000); err != nil {
@@ -233,6 +237,9 @@ func TestValidateFileExists_PermissionError(t *testing.T) {
 }
 
 func TestLoadContent_UnreadableFile(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod 0o000 does not restrict reads on Windows")
+	}
 	dir := t.TempDir()
 	path := dir + "/unreadable.yaml"
 	if err := os.WriteFile(path, []byte("data"), 0o000); err != nil {

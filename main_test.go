@@ -3,21 +3,33 @@ package main
 import (
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"testing"
 )
 
+// testBinaryName returns the build output name for the test binary, with the
+// .exe extension Windows requires to recognize and execute it.
+func testBinaryName() string {
+	name := "diffyml_test"
+	if runtime.GOOS == "windows" {
+		name += ".exe"
+	}
+	return name
+}
+
 // TestVersionFlag tests that the --version flag displays version information
 func TestVersionFlag(t *testing.T) {
 	// Build the binary for testing
-	cmd := exec.Command("go", "build", "-o", "diffyml_test")
+	bin := testBinaryName()
+	cmd := exec.Command("go", "build", "-o", bin)
 	if err := cmd.Run(); err != nil {
 		t.Fatalf("Failed to build test binary: %v", err)
 	}
-	defer os.Remove("diffyml_test")
+	defer os.Remove(bin)
 
 	// Test --version flag
-	cmd = exec.Command("./diffyml_test", "--version")
+	cmd = exec.Command("./"+bin, "--version")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("Failed to run --version: %v", err)
@@ -43,14 +55,15 @@ func TestVersionFlag(t *testing.T) {
 // TestVersionFlagShortForm tests that the -V flag displays version information
 func TestVersionFlagShortForm(t *testing.T) {
 	// Build the binary for testing
-	cmd := exec.Command("go", "build", "-o", "diffyml_test")
+	bin := testBinaryName()
+	cmd := exec.Command("go", "build", "-o", bin)
 	if err := cmd.Run(); err != nil {
 		t.Fatalf("Failed to build test binary: %v", err)
 	}
-	defer os.Remove("diffyml_test")
+	defer os.Remove(bin)
 
 	// Test -V flag
-	cmd = exec.Command("./diffyml_test", "-V")
+	cmd = exec.Command("./"+bin, "-V")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("Failed to run -V: %v", err)
@@ -65,16 +78,17 @@ func TestVersionFlagShortForm(t *testing.T) {
 // TestVersionFlagWithLdflags tests that version information can be injected via ldflags
 func TestVersionFlagWithLdflags(t *testing.T) {
 	// Build the binary with version injection
+	bin := testBinaryName()
 	cmd := exec.Command("go", "build",
 		"-ldflags", "-X main.version=1.2.3 -X main.commit=abc123def -X main.buildDate=2024-01-15",
-		"-o", "diffyml_test")
+		"-o", bin)
 	if err := cmd.Run(); err != nil {
 		t.Fatalf("Failed to build test binary with ldflags: %v", err)
 	}
-	defer os.Remove("diffyml_test")
+	defer os.Remove(bin)
 
 	// Test --version flag
-	cmd = exec.Command("./diffyml_test", "--version")
+	cmd = exec.Command("./"+bin, "--version")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("Failed to run --version: %v", err)

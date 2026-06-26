@@ -3,9 +3,12 @@ name: Mutation Testing
 permissions:
   contents: read
 
+# Only cancel superseded PR runs (fast, --changed-since). Post-merge runs on
+# main are full-tree (~95 min) and must run to completion — cancelling them
+# leaves gomutants gating on a partial, misleadingly-low efficacy number.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 on:
   pull_request:

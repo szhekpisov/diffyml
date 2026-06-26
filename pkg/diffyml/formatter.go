@@ -503,7 +503,8 @@ func (f *GitLabFormatter) FormatSingle(diff Difference, opts *FormatOptions) str
 	desc := diffDescription(diff)
 	return fmt.Sprintf(
 		`{"description": %q, "check_name": %q, "fingerprint": %q, "severity": %q, "location": {"path": %q, "lines": {"begin": 1}}}`+"\n",
-		desc, gitLabCheckName(diff.Type), gitLabFingerprint("", desc), gitLabSeverity(diff.Type), diff.Path)
+		desc, gitLabCheckName(diff.Type), gitLabFingerprint("", desc), gitLabSeverity(diff.Type), diff.Path,
+	)
 }
 
 // Format renders differences in GitLab CI format.

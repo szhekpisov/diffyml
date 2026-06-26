@@ -219,7 +219,8 @@ func buildMappingNode(n int) *yaml.Node {
 	m := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
 	m.Content = make([]*yaml.Node, 0, 2*n)
 	for i := 0; i < n; i++ {
-		m.Content = append(m.Content,
+		m.Content = append(
+			m.Content,
 			&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: fmt.Sprintf("key-%04d", i)},
 			&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: fmt.Sprintf("value-%d", i)},
 		)
@@ -236,7 +237,8 @@ func buildMappingNodeModified(n int) *yaml.Node {
 		if i%5 == 0 {
 			val = fmt.Sprintf("modified-value-%d", i)
 		}
-		m.Content = append(m.Content,
+		m.Content = append(
+			m.Content,
 			&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: fmt.Sprintf("key-%04d", i)},
 			&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: val},
 		)

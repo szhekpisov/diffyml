@@ -4,8 +4,18 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
+
+// skipOnWindows skips tests whose assertions rely on Unix executable-bit
+// semantics (Go's os.Stat reports no 0o111 bit for binaries on Windows).
+func skipOnWindows(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("executable-bit assertions are not meaningful on Windows")
+	}
+}
 
 // getRepoRoot returns the repository root directory by walking up from the
 // current working directory until it finds a go.mod file.
@@ -81,6 +91,10 @@ func buildTestBinary(t *testing.T, name string, extraArgs ...string) string {
 		t.Fatalf("Failed to find repository root: %v", err)
 	}
 
+	// Windows requires the .exe extension to recognize and execute the binary.
+	if runtime.GOOS == "windows" {
+		name += ".exe"
+	}
 	binaryPath := filepath.Join(t.TempDir(), name)
 	args := append([]string{"build"}, extraArgs...)
 	args = append(args, "-o", binaryPath)

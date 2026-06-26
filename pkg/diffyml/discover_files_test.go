@@ -3,6 +3,7 @@ package diffyml
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -192,6 +193,9 @@ func TestDiscoverFiles_MixedTopAndNestedFiles(t *testing.T) {
 }
 
 func TestDiscoverFiles_UnreadableSubdirectory(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod 0o000 does not restrict directory reads on Windows")
+	}
 	if os.Getuid() == 0 {
 		t.Skip("test requires non-root user")
 	}

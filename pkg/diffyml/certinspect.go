@@ -46,7 +46,8 @@ func FormatCertificate(s string) string {
 	cn := certName(cert.Subject.CommonName, cert.Subject.Organization, cert.DNSNames)
 	issuer := certName(cert.Issuer.CommonName, cert.Issuer.Organization, nil)
 
-	return fmt.Sprintf("Certificate(CN=%s, Issuer=%s, Valid=%s..%s, Serial=%s)",
+	return fmt.Sprintf(
+		"Certificate(CN=%s, Issuer=%s, Valid=%s..%s, Serial=%s)",
 		cn,
 		issuer,
 		cert.NotBefore.UTC().Format("2006-01-02"),

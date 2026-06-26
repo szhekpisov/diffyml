@@ -12,6 +12,7 @@ import (
 // successfully without errors and produces an executable binary.
 // **Validates: Requirements 2.1**
 func TestProperty2_BuildSystemSuccess(t *testing.T) {
+	skipOnWindows(t)
 	binaryPath := buildTestBinary(t, "diffyml_build_test")
 
 	info, err := os.Stat(binaryPath)
@@ -32,6 +33,7 @@ func TestProperty2_BuildSystemSuccess(t *testing.T) {
 // succeeds even in a clean environment without cached dependencies.
 // **Validates: Requirements 2.1**
 func TestProperty2_BuildSystemSuccess_WithCleanEnvironment(t *testing.T) {
+	skipOnWindows(t)
 	binaryPath := buildTestBinary(t, "diffyml_clean_build_test", "-v")
 
 	info, err := os.Stat(binaryPath)
@@ -48,6 +50,7 @@ func TestProperty2_BuildSystemSuccess_WithCleanEnvironment(t *testing.T) {
 // with version information injected via ldflags.
 // **Validates: Requirements 2.1**
 func TestProperty2_BuildSystemSuccess_WithLdflags(t *testing.T) {
+	skipOnWindows(t)
 	ldflags := "-X main.version=1.0.0 -X main.commit=test123 -X main.buildDate=2024-01-15"
 	binaryPath := buildTestBinary(t, "diffyml_ldflags_test", "-ldflags", ldflags)
 
@@ -79,6 +82,7 @@ func TestProperty2_BuildSystemSuccess_WithLdflags(t *testing.T) {
 // a binary named after the module path's last component (`diffyml`).
 // **Validates: Requirements 2.3**
 func TestProperty4_DefaultBinaryName(t *testing.T) {
+	skipOnWindows(t)
 	repoRoot, err := getRepoRoot()
 	if err != nil {
 		t.Fatalf("Failed to find repository root: %v", err)
@@ -219,6 +223,7 @@ func TestProperty5_DependencyIntegrity_NoUnversionedDeps(t *testing.T) {
 // after verifying dependencies succeeds.
 // **Validates: Requirements 2.5**
 func TestProperty5_DependencyIntegrity_BuildWithVerify(t *testing.T) {
+	skipOnWindows(t)
 	repoRoot, err := getRepoRoot()
 	if err != nil {
 		t.Fatalf("Failed to find repository root: %v", err)

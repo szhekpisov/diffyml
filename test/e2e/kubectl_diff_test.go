@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -127,6 +128,9 @@ func setupKindCluster(t *testing.T) (diffymlBin string, baseEnv []string) {
 }
 
 func TestKubectlDiffWithDiffyml(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("kind requires Linux containers, unavailable on the Windows runner's Docker")
+	}
 	skipIfNoDocker(t)
 	skipIfNoKind(t)
 	skipIfNoKubectl(t)

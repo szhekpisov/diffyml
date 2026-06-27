@@ -52,7 +52,9 @@ func collectUnchangedDocs(from, to []*yaml.Node, opts *Options) []Difference {
 			pathPrefix = DiffPath{"[" + strconv.Itoa(i) + "]"}
 		}
 
-		nodeDiffs := collectUnchanged(pathPrefix, fromN, toN, opts)
+		// Documents are not sequence elements; doc-level collapses are recognized
+		// by isListEntryDiff via IsBareDocIndex, so inList is false here.
+		nodeDiffs := collectUnchanged(pathPrefix, fromN, toN, opts, false)
 		for j := range nodeDiffs {
 			nodeDiffs[j].DocumentIndex = i
 		}
@@ -94,7 +96,8 @@ func collectMatchedK8sUnchanged(matched map[int]int, fromNodes, toNodes []*yaml.
 			pathPrefix = DiffPath{"[" + strconv.Itoa(docIdx) + "]"}
 		}
 
-		nodeDiffs := collectUnchanged(pathPrefix, fromNodes[fromIdx], toNodes[toIdx], opts)
+		// Document root is not a sequence element (inList false).
+		nodeDiffs := collectUnchanged(pathPrefix, fromNodes[fromIdx], toNodes[toIdx], opts, false)
 		var docName, docKind string
 		if f, ok := k8sExtractFields(toDocs[toIdx]); ok {
 			docName = f.displayName()
@@ -115,7 +118,11 @@ func collectMatchedK8sUnchanged(matched map[int]int, fromNodes, toNodes []*yaml.
 // A side that is null/absent, a kind mismatch, or an unequal scalar yields
 // nothing; a fully-equal node yields a single collapsed entry; partially-equal
 // maps and sequences are descended into.
-func collectUnchanged(path DiffPath, fromN, toN *yaml.Node, opts *Options) []Difference {
+//
+// inList reports whether the node being collected is a direct sequence element,
+// so a collapsed entry is tagged for isListEntryDiff to render it with the "- "
+// list prefix. Map children and document roots pass false.
+func collectUnchanged(path DiffPath, fromN, toN *yaml.Node, opts *Options, inList bool) []Difference {
 	// Only-one-side (or both-null) means "different" for inverse purposes.
 	if isNullNode(fromN) || isNullNode(toN) {
 		return nil
@@ -133,7 +140,7 @@ func collectUnchanged(path DiffPath, fromN, toN *yaml.Node, opts *Options) []Dif
 	fromVal := nodeToInterface(fromN)
 	toVal := nodeToInterface(toN)
 	if deepEqual(fromVal, toVal, opts) {
-		return []Difference{{Path: path, Type: DiffUnchanged, From: fromVal, To: toVal}}
+		return []Difference{{Path: path, Type: DiffUnchanged, From: fromVal, To: toVal, listEntry: inList}}
 	}
 
 	// Partially-equal: descend into common children only.
@@ -163,7 +170,8 @@ func collectUnchangedMapping(path DiffPath, fromN, toN *yaml.Node, opts *Options
 		}
 		fromVal := fromN.Content[fromIdx[key]+1]
 		toVal := toN.Content[toPos+1]
-		diffs = append(diffs, collectUnchanged(path.Append(key), fromVal, toVal, opts)...)
+		// Map child: a collapse here is a map entry, not a list item.
+		diffs = append(diffs, collectUnchanged(path.Append(key), fromVal, toVal, opts, false)...)
 	}
 
 	return diffs
@@ -183,7 +191,8 @@ func collectUnchangedSequence(path DiffPath, fromN, toN *yaml.Node, opts *Option
 
 	var diffs []Difference
 	for i := range minLen {
-		diffs = append(diffs, collectUnchanged(path.Append(strconv.Itoa(i)), from[i], to[i], opts)...)
+		// Sequence element: a collapse here is a list item.
+		diffs = append(diffs, collectUnchanged(path.Append(strconv.Itoa(i)), from[i], to[i], opts, true)...)
 	}
 
 	return diffs
@@ -221,7 +230,8 @@ func collectUnchangedSequenceByIdentifier(path DiffPath, fromN, toN *yaml.Node, 
 		if !ok {
 			continue
 		}
-		diffs = append(diffs, collectUnchanged(path.Append(sprintIdentifier(id)), from[i], to[toIdx], opts)...)
+		// Identifier-matched sequence element: a collapse here is a list item.
+		diffs = append(diffs, collectUnchanged(path.Append(sprintIdentifier(id)), from[i], to[toIdx], opts, true)...)
 	}
 
 	// Positional fallback for items without a usable identifier, keyed by the
@@ -229,7 +239,7 @@ func collectUnchangedSequenceByIdentifier(path DiffPath, fromN, toN *yaml.Node, 
 	noIDLen := min(len(fromNoID), len(toNoID))
 	for k := range noIDLen {
 		fromIdx := fromNoID[k]
-		diffs = append(diffs, collectUnchanged(path.Append(strconv.Itoa(fromIdx)), from[fromIdx], to[toNoID[k]], opts)...)
+		diffs = append(diffs, collectUnchanged(path.Append(strconv.Itoa(fromIdx)), from[fromIdx], to[toNoID[k]], opts, true)...)
 	}
 
 	return diffs

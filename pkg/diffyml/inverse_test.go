@@ -395,6 +395,39 @@ func TestInverse_SequenceUnidentifiedPositionalFallback(t *testing.T) {
 	}
 }
 
+// TestInverse_DetailedMapSubtreeWithNameNotList verifies the full inverse walk
+// tags a collapsed map subtree as a map entry even when its value carries a
+// top-level `name` key. Regression: the detailed formatter's hasIdentifierField
+// heuristic misfired on the raw collapsed value and rendered it as a list item.
+func TestInverse_DetailedMapSubtreeWithNameNotList(t *testing.T) {
+	from := "config:\n  name: foo\n  port: 8080\nother: 1\n"
+	to := "config:\n  name: foo\n  port: 8080\nother: 2\n"
+	diffs := mustCompareUnchanged(t, from, to, nil)
+	out := (&diffyml.DetailedFormatter{}).Format(diffs, diffyml.DefaultFormatOptions())
+	if strings.Contains(out, "list entry") {
+		t.Errorf("collapsed map subtree must not render as a list entry, got:\n%s", out)
+	}
+	if !strings.Contains(out, "one map entry unchanged") {
+		t.Errorf("expected a map entry batch, got:\n%s", out)
+	}
+}
+
+// TestInverse_DetailedIdentifierListItemIsList verifies a collapsed
+// identifier-matched list item keeps its "- " list rendering, so the
+// container-kind tracking does not regress genuine list items to map style.
+func TestInverse_DetailedIdentifierListItemIsList(t *testing.T) {
+	from := "containers:\n  - name: app\n    image: nginx:1.0\n  - name: side\n    image: a:1\n"
+	to := "containers:\n  - name: app\n    image: nginx:1.0\n  - name: side\n    image: b:2\n"
+	diffs := mustCompareUnchanged(t, from, to, nil)
+	out := (&diffyml.DetailedFormatter{}).Format(diffs, diffyml.DefaultFormatOptions())
+	if !strings.Contains(out, "one list entry unchanged") {
+		t.Errorf("collapsed identifier-matched list item must render as a list entry, got:\n%s", out)
+	}
+	if !strings.Contains(out, "- name: app") {
+		t.Errorf("expected '- name: app' list rendering, got:\n%s", out)
+	}
+}
+
 func keys(m map[string]diffyml.Difference) []string {
 	out := make([]string, 0, len(m))
 	for k := range m {

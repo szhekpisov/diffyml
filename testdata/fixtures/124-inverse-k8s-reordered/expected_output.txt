@@ -9,8 +9,8 @@ kind  (apps/v1/Deployment/web)
     kind: Deployment
 
 metadata  (apps/v1/Deployment/web)
-  = one list entry unchanged:
-    - name: web
+  = one map entry unchanged:
+    name: web
 
 spec.strategy  (apps/v1/Deployment/web)
   = one map entry unchanged:

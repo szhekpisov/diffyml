@@ -46,6 +46,12 @@ type Difference struct {
 	// masking to identify Secret resources without parsing DocumentName, since apiVersion
 	// can itself contain "/" (e.g., "apps/v1").
 	DocumentKind string
+	// listEntry marks a collapsed DiffUnchanged entry whose immediate container
+	// is a sequence (inverse mode only). The normal added/removed path infers
+	// list-vs-map from the value shape via hasIdentifierField, but inverse mode
+	// emits raw collapsed values, so the walk records the container kind directly
+	// for isListEntryDiff. Unexported: only the inverse walk sets it.
+	listEntry bool
 }
 
 // Options configures the comparison behavior.
@@ -315,6 +321,12 @@ func isListEntryDiff(diff Difference) bool {
 	// Check for bracket notation [0], [1], etc. (bare doc index)
 	if diff.Path.IsBareDocIndex() {
 		return true
+	}
+	// Inverse mode emits raw collapsed values, so the hasIdentifierField shape
+	// heuristic below would misfire on map subtrees whose value carries a
+	// name/id key. The inverse walk records the real container kind instead.
+	if diff.Type == DiffUnchanged {
+		return diff.listEntry
 	}
 	// Check if the value is a map with identifier fields
 	var val any

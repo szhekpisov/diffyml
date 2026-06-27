@@ -540,6 +540,21 @@ func TestApplyFileConfig_CLIOverridesBoolDefaultTrue(t *testing.T) {
 	}
 }
 
+// TestApplyFileConfig_CLIOverridesUnchanged pins the notSet("unchanged", "u")
+// guard: when the flag is set on the CLI, the file config must NOT apply.
+func TestApplyFileConfig_CLIOverridesUnchanged(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.Unchanged = false // CLI explicitly set --unchanged=false
+
+	unchanged := true // config wants true
+	fc := &FileConfig{Unchanged: &unchanged}
+	cfg.applyFileConfig(fc, map[string]bool{"unchanged": true})
+
+	if cfg.Unchanged {
+		t.Error("expected CLI to override file config (Unchanged stays false)")
+	}
+}
+
 func TestApplyFileConfig_SliceFields_ConfigOnly(t *testing.T) {
 	cfg := NewCLIConfig()
 	fc := &FileConfig{

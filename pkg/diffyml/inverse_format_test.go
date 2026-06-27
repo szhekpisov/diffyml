@@ -191,3 +191,27 @@ func TestInverseFormat_DetailedListEntry(t *testing.T) {
 		t.Errorf("expected '- 80', got:\n%s", out)
 	}
 }
+
+// TestIsListEntryDiff_UnchangedTrustsContainerKind pins the DiffUnchanged branch
+// in isListEntryDiff. Inverse mode emits raw collapsed values, so a map subtree
+// whose value carries a name/id key must NOT be treated as a list entry (the
+// hasIdentifierField heuristic would misfire), while a sequence-collapsed entry
+// at a non-numeric identifier path must be. Kills BRANCH_IF on the
+// `diff.Type == DiffUnchanged` guard and the boolean mutants on
+// `return diff.listEntry`.
+func TestIsListEntryDiff_UnchangedTrustsContainerKind(t *testing.T) {
+	// Value carries a top-level "name" key, which would trip hasIdentifierField.
+	withName := &OrderedMap{Keys: []string{"name"}, Values: map[string]any{"name": "foo"}}
+
+	// Map collapse (listEntry=false) at a non-numeric path: must be a map entry.
+	mapEntry := Difference{Path: DiffPath{"config"}, Type: DiffUnchanged, From: withName, To: withName, listEntry: false}
+	if isListEntryDiff(mapEntry) {
+		t.Error("collapsed map subtree (listEntry=false) must not be a list entry")
+	}
+
+	// Sequence collapse (listEntry=true) at an identifier path: must be a list.
+	listEntry := Difference{Path: DiffPath{"containers", "app"}, Type: DiffUnchanged, From: withName, To: withName, listEntry: true}
+	if !isListEntryDiff(listEntry) {
+		t.Error("collapsed sequence element (listEntry=true) must be a list entry")
+	}
+}

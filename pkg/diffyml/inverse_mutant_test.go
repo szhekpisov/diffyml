@@ -77,7 +77,7 @@ func TestCollectUnchangedDocs_UnevenPositional(t *testing.T) {
 func TestCollectUnchanged_KindMismatchReturnsNil(t *testing.T) {
 	from := mappingFromYAML(t, "a: b\n")   // mapping {a: b}
 	to := mappingFromYAML(t, "- a\n- b\n") // sequence [a, b]
-	diffs := collectUnchanged(DiffPath{}, from, to, &Options{})
+	diffs := collectUnchanged(DiffPath{}, from, to, &Options{}, false)
 	if len(diffs) != 0 {
 		t.Errorf("mapping vs sequence must yield no unchanged entries, got %+v", diffs)
 	}

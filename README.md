@@ -43,6 +43,7 @@ diffyml compares YAML files and shows meaningful, structured differences — not
   - [AI Summary](#ai-summary)
   - [Sensitive Value Masking](#sensitive-value-masking)
   - [Filtering](#filtering)
+  - [Inverse Diff](#inverse-diff)
   - [Neat Mode](#neat-mode)
   - [Configuration File](#configuration-file)
   - [Custom Colors](#custom-colors)
@@ -453,6 +454,17 @@ diffyml --exclude 'metadata.annotations[argocd.argoproj.io/tracking-id]' old.yam
 # Regex filtering
 diffyml --filter-regexp 'spec\.containers\[.*\]\.image' old.yaml new.yaml
 ```
+
+### Inverse Diff
+
+`-u, --unchanged` inverts the report: instead of the differences, it lists the keys/values that are **equal** between the two files. Equal subtrees collapse to a single entry at the highest fully-equal node, and it honors every output format, `--filter`/`--exclude`, and masking.
+
+```bash
+# Find values that already match the chart defaults (candidates to drop)
+diffyml --unchanged values.yaml chart-defaults.yaml
+```
+
+Comparison is at key/value granularity — map keys, list items (matched by identifier or position), and whole scalars. A multi-line (block) string is compared as a **single scalar**: if any line inside it differs, the whole value is "changed" and none of its lines are reported as unchanged. Inverse mode does not line-diff inside strings (unlike the normal diff, which shows a line-by-line diff for modified multi-line strings).
 
 ### Neat Mode
 

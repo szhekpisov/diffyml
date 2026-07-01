@@ -136,31 +136,54 @@ func collectUnchanged(path DiffPath, fromN, toN *yaml.Node, opts *Options, inLis
 	}
 
 	// Highest-equal-node collapse: if the whole subtree matches, emit one entry
-	// and stop descending. deepEqualNodes walks the nodes directly so the
-	// subtree is materialized (nodeToInterface) only here, on the collapse —
-	// never on the partial-match path that descends below.
-	if deepEqualNodes(fromN, toN, opts) {
-		return []Difference{{Path: path, Type: DiffUnchanged, From: nodeToInterface(fromN), To: nodeToInterface(toN), listEntry: inList}}
-	}
-
-	// Partially-equal: descend into common children only.
+	// and stop descending; otherwise descend into common children only. The
+	// equality check is dispatched per kind (rather than through the generic
+	// deepEqualNodes) so the mapping case can build its value indices once and
+	// share them with the descent instead of paying for a second index pass. The
+	// subtree is materialized (nodeToInterface) only on the collapse, never on
+	// the partial-match path below.
 	switch fromN.Kind {
 	case yaml.MappingNode:
-		return collectUnchangedMapping(path, fromN, toN, opts)
+		fromIdx := indexMappingValues(fromN)
+		toIdx := indexMappingValues(toN)
+		if mappingNodesEqualIdx(fromN, toN, opts, fromIdx, toIdx) {
+			return []Difference{unchangedEntry(path, fromN, toN, inList)}
+		}
+		return descendUnchangedMapping(path, fromN, toN, opts, fromIdx, toIdx)
 	case yaml.SequenceNode:
+		if deepEqualSequenceNodes(fromN, toN, opts) {
+			return []Difference{unchangedEntry(path, fromN, toN, inList)}
+		}
 		return collectUnchangedSequence(path, fromN, toN, opts)
+	default:
+		// Scalar: isNullNode already excluded !!null on both sides, so this
+		// mirrors deepEqualNodes' scalar fall-through to equalValues.
+		if equalValues(resolveScalar(fromN), resolveScalar(toN), opts) {
+			return []Difference{unchangedEntry(path, fromN, toN, inList)}
+		}
+		// Unequal scalar: nothing is unchanged here.
+		return nil
 	}
-	// Unequal scalar: nothing is unchanged here.
-	return nil
+}
+
+// unchangedEntry builds a collapsed DiffUnchanged entry for a fully-equal node,
+// materializing both sides once. inList tags a collapse whose container is a
+// sequence so isListEntryDiff renders it with the "- " list prefix.
+func unchangedEntry(path DiffPath, fromN, toN *yaml.Node, inList bool) Difference {
+	return Difference{Path: path, Type: DiffUnchanged, From: nodeToInterface(fromN), To: nodeToInterface(toN), listEntry: inList}
 }
 
 // collectUnchangedMapping recurses on keys present in BOTH mappings, preserving
 // the from-side source order. Mirrors compareMappingNodes' last-write-wins index
 // lookup so duplicate keys resolve identically.
 func collectUnchangedMapping(path DiffPath, fromN, toN *yaml.Node, opts *Options) []Difference {
-	fromIdx := indexMappingValues(fromN)
-	toIdx := indexMappingValues(toN)
+	return descendUnchangedMapping(path, fromN, toN, opts, indexMappingValues(fromN), indexMappingValues(toN))
+}
 
+// descendUnchangedMapping is collectUnchangedMapping with the value indices
+// supplied by the caller, letting collectUnchanged reuse the indices it built
+// for the whole-map equality check.
+func descendUnchangedMapping(path DiffPath, fromN, toN *yaml.Node, opts *Options, fromIdx, toIdx map[string]int) []Difference {
 	var diffs []Difference
 	for i := 0; i+1 < len(fromN.Content); i += 2 {
 		key := fromN.Content[i].Value

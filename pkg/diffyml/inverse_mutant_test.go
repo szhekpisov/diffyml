@@ -83,6 +83,37 @@ func TestCollectUnchanged_KindMismatchReturnsNil(t *testing.T) {
 	}
 }
 
+// --- collectUnchanged per-kind collapse branches ---
+
+// TestCollectUnchanged_ScalarBranch pins the default (scalar) branch of
+// collectUnchanged's per-kind equality dispatch, which replaced the generic
+// deepEqualNodes pre-check: equal scalars collapse to a single entry, unequal
+// scalars yield nothing.
+func TestCollectUnchanged_ScalarBranch(t *testing.T) {
+	equal := collectUnchanged(DiffPath{"k"}, scalarNode("v"), scalarNode("v"), &Options{}, false)
+	if len(equal) != 1 || equal[0].Type != DiffUnchanged || equal[0].To != "v" {
+		t.Fatalf("equal scalars must collapse to one unchanged entry, got %+v", equal)
+	}
+
+	if unequal := collectUnchanged(DiffPath{"k"}, scalarNode("v"), scalarNode("w"), &Options{}, false); len(unequal) != 0 {
+		t.Errorf("unequal scalars must yield nothing, got %+v", unequal)
+	}
+}
+
+// TestCollectUnchanged_SequenceCollapse pins the sequence whole-collapse branch:
+// a fully (positionally) equal sequence collapses to a single entry rather than
+// descending into its items. Since the per-kind dispatch replaced the generic
+// deepEqualNodes pre-check, this branch is what preserves the highest-equal-node
+// collapse for lists.
+func TestCollectUnchanged_SequenceCollapse(t *testing.T) {
+	from := resolveNode(nodeFromYAML(t, "- 1\n- 2\n"))
+	to := resolveNode(nodeFromYAML(t, "- 1\n- 2\n"))
+	diffs := collectUnchanged(DiffPath{"list"}, from, to, &Options{}, false)
+	if len(diffs) != 1 || diffs[0].Type != DiffUnchanged {
+		t.Fatalf("equal sequence must collapse to one unchanged entry, got %+v", diffs)
+	}
+}
+
 // --- collectUnchangedMapping pair-iteration loop ---
 
 // TestCollectUnchangedMapping_OddContentFrom pins the `i+1 < len(fromN.Content)`

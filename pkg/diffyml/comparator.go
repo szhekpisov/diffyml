@@ -838,8 +838,13 @@ func deepEqualNodes(fromN, toN *yaml.Node, opts *Options) bool {
 // count matches nodeToInterface) and every from key present in to with a
 // deeply-equal value.
 func deepEqualMappingNodes(fromN, toN *yaml.Node, opts *Options) bool {
-	fromIdx := indexMappingValues(fromN)
-	toIdx := indexMappingValues(toN)
+	return mappingNodesEqualIdx(fromN, toN, opts, indexMappingValues(fromN), indexMappingValues(toN))
+}
+
+// mappingNodesEqualIdx is deepEqualMappingNodes with the value indices supplied
+// by the caller, so a caller that already built them (e.g. the inverse walk,
+// which shares them with its descent) does not pay for a second index pass.
+func mappingNodesEqualIdx(fromN, toN *yaml.Node, opts *Options, fromIdx, toIdx map[string]int) bool {
 	if len(fromIdx) != len(toIdx) {
 		return false
 	}

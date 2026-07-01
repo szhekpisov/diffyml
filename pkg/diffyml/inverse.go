@@ -136,11 +136,11 @@ func collectUnchanged(path DiffPath, fromN, toN *yaml.Node, opts *Options, inLis
 	}
 
 	// Highest-equal-node collapse: if the whole subtree matches, emit one entry
-	// and stop descending.
-	fromVal := nodeToInterface(fromN)
-	toVal := nodeToInterface(toN)
-	if deepEqual(fromVal, toVal, opts) {
-		return []Difference{{Path: path, Type: DiffUnchanged, From: fromVal, To: toVal, listEntry: inList}}
+	// and stop descending. deepEqualNodes walks the nodes directly so the
+	// subtree is materialized (nodeToInterface) only here, on the collapse —
+	// never on the partial-match path that descends below.
+	if deepEqualNodes(fromN, toN, opts) {
+		return []Difference{{Path: path, Type: DiffUnchanged, From: nodeToInterface(fromN), To: nodeToInterface(toN), listEntry: inList}}
 	}
 
 	// Partially-equal: descend into common children only.
@@ -177,12 +177,18 @@ func collectUnchangedMapping(path DiffPath, fromN, toN *yaml.Node, opts *Options
 	return diffs
 }
 
-// collectUnchangedSequence matches list items by identifier (name/id) when both
-// sides qualify — so reordered named lists still pair correctly — otherwise pairs
-// positionally. Mirrors compareSequenceNodes' identifier-vs-positional dispatch.
+// collectUnchangedSequence mirrors compareSequenceNodes' full dispatch so the
+// inverse walk recognizes the same equalities the normal comparator does:
+// identifier-matched (reordered named lists), order-independent (under
+// --ignore-order-changes or for heterogeneous single-key-map lists), otherwise
+// positional.
 func collectUnchangedSequence(path DiffPath, fromN, toN *yaml.Node, opts *Options) []Difference {
 	if canMatchByIdentifierNodes(fromN.Content, opts) && canMatchByIdentifierNodes(toN.Content, opts) {
 		return collectUnchangedSequenceByIdentifier(path, fromN, toN, opts)
+	}
+
+	if opts.IgnoreOrderChanges || areSequenceItemsHeterogeneous(fromN, toN) {
+		return collectUnchangedSequenceUnordered(path, fromN, toN, opts)
 	}
 
 	from := fromN.Content
@@ -198,11 +204,83 @@ func collectUnchangedSequence(path DiffPath, fromN, toN *yaml.Node, opts *Option
 	return diffs
 }
 
+// collectUnchangedSequenceUnordered reports the unchanged values of a sequence
+// order-independently, mirroring compareSequenceNodesUnordered's matching. All
+// item indices participate; pairing is delegated to collectUnchangedUnorderedItems.
+func collectUnchangedSequenceUnordered(path DiffPath, fromN, toN *yaml.Node, opts *Options) []Difference {
+	fromIdxs := make([]int, len(fromN.Content))
+	for i := range fromIdxs {
+		fromIdxs[i] = i
+	}
+	toIdxs := make([]int, len(toN.Content))
+	for i := range toIdxs {
+		toIdxs[i] = i
+	}
+	return collectUnchangedUnorderedItems(path, fromN.Content, toN.Content, fromIdxs, toIdxs, opts)
+}
+
+// collectUnchangedUnorderedItems pairs the given from/to item indices order-
+// independently and reports the unchanged values within each pair. Mirrors the
+// two-phase matching of compareSequenceNodesUnordered / compareUnidentifiedItems:
+// exact (deepEqualNodes) matches across positions drop out first — here emitted
+// as collapsed unchanged list entries keyed by their from-side index — then the
+// remaining unmatched items are paired positionally and descended into so their
+// equal leaves are still reported. Items unmatched on only one side emit nothing
+// (they are, by definition, not unchanged).
+func collectUnchangedUnorderedItems(path DiffPath, from, to []*yaml.Node, fromIdxs, toIdxs []int, opts *Options) []Difference {
+	toMatched := make([]bool, len(toIdxs))
+
+	var diffs []Difference
+	var remFrom []int
+	for _, fromIdx := range fromIdxs {
+		matched := false
+		for b, toIdx := range toIdxs {
+			if toMatched[b] {
+				continue
+			}
+			if deepEqualNodes(from[fromIdx], to[toIdx], opts) {
+				toMatched[b] = true
+				// Whole item is equal: collapse as a list entry at the from index.
+				diffs = append(diffs, Difference{
+					Path:      path.Append(strconv.Itoa(fromIdx)),
+					Type:      DiffUnchanged,
+					From:      nodeToInterface(from[fromIdx]),
+					To:        nodeToInterface(to[toIdx]),
+					listEntry: true,
+				})
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			remFrom = append(remFrom, fromIdx)
+		}
+	}
+
+	// Collect the unmatched to-side indices in source order.
+	var remTo []int
+	for b, toIdx := range toIdxs {
+		if !toMatched[b] {
+			remTo = append(remTo, toIdx)
+		}
+	}
+
+	// Pair the leftovers positionally and descend so partial equality within an
+	// unmatched pair is still reported, keyed by the from-side index (matching
+	// compareUnidentifiedItems' path convention).
+	n := min(len(remFrom), len(remTo))
+	for k := range n {
+		diffs = append(diffs, collectUnchanged(path.Append(strconv.Itoa(remFrom[k])), from[remFrom[k]], to[remTo[k]], opts, true)...)
+	}
+
+	return diffs
+}
+
 // collectUnchangedSequenceByIdentifier pairs items sharing an identifier
 // (mirroring compareSequenceNodesByIdentifier's indexing) and reports the equal
 // values within each pair at the identifier-keyed child path. Items whose
 // identifier exists on only one side emit nothing; items lacking a usable
-// identifier fall back to positional pairing among themselves.
+// identifier fall back to order-independent pairing among themselves.
 func collectUnchangedSequenceByIdentifier(path DiffPath, fromN, toN *yaml.Node, opts *Options) []Difference {
 	from := fromN.Content
 	to := toN.Content
@@ -234,13 +312,9 @@ func collectUnchangedSequenceByIdentifier(path DiffPath, fromN, toN *yaml.Node, 
 		diffs = append(diffs, collectUnchanged(path.Append(sprintIdentifier(id)), from[i], to[toIdx], opts, true)...)
 	}
 
-	// Positional fallback for items without a usable identifier, keyed by the
-	// from-side index (matches compareUnidentifiedItems' path convention).
-	noIDLen := min(len(fromNoID), len(toNoID))
-	for k := range noIDLen {
-		fromIdx := fromNoID[k]
-		diffs = append(diffs, collectUnchanged(path.Append(strconv.Itoa(fromIdx)), from[fromIdx], to[toNoID[k]], opts, true)...)
-	}
+	// Order-independent fallback for items without a usable identifier, mirroring
+	// compareUnidentifiedItems (exact matches first, then positional remainder).
+	diffs = append(diffs, collectUnchangedUnorderedItems(path, from, to, fromNoID, toNoID, opts)...)
 
 	return diffs
 }

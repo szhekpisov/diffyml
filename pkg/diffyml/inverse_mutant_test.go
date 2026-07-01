@@ -317,3 +317,108 @@ func requireUnchanged(t *testing.T, diffs []Difference) Difference {
 	t.Fatalf("expected an unchanged entry, got %+v", diffs)
 	return Difference{}
 }
+
+// --- collectUnchangedUnorderedItems pairing (finding-2 unordered matcher) ---
+
+// allIdx returns the index slice [0, 1, ..., n-1].
+func allIdx(n int) []int {
+	idx := make([]int, n)
+	for i := range idx {
+		idx[i] = i
+	}
+	return idx
+}
+
+// TestCollectUnchangedUnorderedItems_NoToItemReuse pins the toMatched guard and
+// its assignment: an already-paired to item must not match a second from item.
+// from=[5,5], to=[5,9] has only one 5 on the to side, so exactly one item may
+// collapse — the reuse mutants would pair the second from 5 against to[0] again.
+// Kills BRANCH_IF on `if toMatched[b] { continue }` and STATEMENT_REMOVE on
+// `toMatched[b] = true`.
+func TestCollectUnchangedUnorderedItems_NoToItemReuse(t *testing.T) {
+	from := mappingSeq(t, "- 5\n- 5\n").Content
+	to := mappingSeq(t, "- 5\n- 9\n").Content
+	diffs := collectUnchangedUnorderedItems(DiffPath{}, from, to, allIdx(len(from)), allIdx(len(to)), &Options{})
+	if len(diffs) != 1 {
+		t.Fatalf("expected exactly one matched item, got %d: %+v", len(diffs), diffs)
+	}
+	if diffs[0].Path.String() != "0" {
+		t.Errorf("expected the match at index 0, got %q", diffs[0].Path.String())
+	}
+}
+
+// TestCollectUnchangedUnorderedItems_BreakAfterMatch pins the break after a
+// match: from=[5], to=[5,5] — without break the single from item would also pair
+// to[1]=5, emitting a duplicate collapse at index 0.
+// Kills the break removal in collectUnchangedUnorderedItems' phase-1 loop.
+func TestCollectUnchangedUnorderedItems_BreakAfterMatch(t *testing.T) {
+	from := mappingSeq(t, "- 5\n").Content
+	to := mappingSeq(t, "- 5\n- 5\n").Content
+	diffs := collectUnchangedUnorderedItems(DiffPath{}, from, to, allIdx(len(from)), allIdx(len(to)), &Options{})
+	if len(diffs) != 1 {
+		t.Fatalf("expected exactly one collapse (break stops after first match), got %d: %+v", len(diffs), diffs)
+	}
+}
+
+// TestCollectUnchangedUnorderedItems_RemainderPairsFromZero pins the `pa, pb :=
+// 0, 0` init and the `<` bound of the remainder loop. A partially-equal pair (no
+// exact match) must be paired positionally from index 0 and descended into; a
+// non-zero init would skip the pair and a `<=` bound would index past the slice.
+// Kills INTEGER mutants on the 0 inits and CONDITIONALS_BOUNDARY on the `<`.
+func TestCollectUnchangedUnorderedItems_RemainderPairsFromZero(t *testing.T) {
+	from := mappingSeq(t, "- x: 1\n  y: 2\n").Content
+	to := mappingSeq(t, "- x: 1\n  y: 9\n").Content
+	diffs := collectUnchangedUnorderedItems(DiffPath{}, from, to, allIdx(len(from)), allIdx(len(to)), &Options{})
+	if !hasPath(diffs, "0.x") {
+		t.Errorf("expected the equal leaf 0.x from the positional remainder, got %+v", diffs)
+	}
+}
+
+// TestCollectUnchangedUnorderedItems_RemainderTruncatesToMin pins the
+// `min(len(remFrom), len(remTo))` remainder bound: with more unmatched from
+// items than to items the loop must stop at the shorter side. A `max` would
+// index past the to remainder and panic.
+func TestCollectUnchangedUnorderedItems_RemainderTruncatesToMin(t *testing.T) {
+	from := mappingSeq(t, "- x: 1\n  y: 2\n- x: 1\n  y: 3\n").Content
+	to := mappingSeq(t, "- x: 1\n  y: 9\n").Content
+	diffs := collectUnchangedUnorderedItems(DiffPath{}, from, to, allIdx(len(from)), allIdx(len(to)), &Options{})
+	if !hasPath(diffs, "0.x") {
+		t.Errorf("expected 0.x from the single positional pair, got %+v", diffs)
+	}
+}
+
+// TestCollectUnchangedUnorderedItems_ContinueScansRemainingToItems pins that an
+// already-matched to item is SKIPPED (continue), not that the scan stops
+// (break). With reordered exact matches, skipping lets each from item find its
+// counterpart further along; continue→break would abandon the scan after the
+// first already-matched item and drop the later matches.
+// Kills INVERT_LOOP_CTRL (continue → break) on the `if toMatched[b]` guard.
+func TestCollectUnchangedUnorderedItems_ContinueScansRemainingToItems(t *testing.T) {
+	from := mappingSeq(t, "- 10\n- 20\n- 30\n").Content
+	to := mappingSeq(t, "- 10\n- 30\n- 20\n").Content
+	diffs := collectUnchangedUnorderedItems(DiffPath{}, from, to, allIdx(len(from)), allIdx(len(to)), &Options{})
+	for _, p := range []string{"0", "1", "2"} {
+		if !hasPath(diffs, p) {
+			t.Errorf("expected all reordered items matched (continue, not break); missing %q in %+v", p, diffs)
+		}
+	}
+}
+
+// TestCollectUnchangedUnorderedItems_MixedMatchAndRemainder pins the remainder
+// bookkeeping when phase 1 matches some items: the exact-matched to item must be
+// excluded from the remainder (the `if !toMatched[b]` collector) and the
+// unmatched from item must be carried into remFrom (the `if !matched` collector)
+// so its partial equality is still found. from=[{a:1,z:7},{m:1}],
+// to=[{m:1},{a:9,z:7}] matches the {m:1} pair across the reorder, then pairs the
+// leftover {a:*,z:7} items and reports their equal z.
+func TestCollectUnchangedUnorderedItems_MixedMatchAndRemainder(t *testing.T) {
+	from := mappingSeq(t, "- a: 1\n  z: 7\n- m: 1\n").Content
+	to := mappingSeq(t, "- m: 1\n- a: 9\n  z: 7\n").Content
+	diffs := collectUnchangedUnorderedItems(DiffPath{}, from, to, allIdx(len(from)), allIdx(len(to)), &Options{})
+	if !hasPath(diffs, "1") {
+		t.Errorf("expected the exact-matched item collapsed at index 1, got %+v", diffs)
+	}
+	if !hasPath(diffs, "0.z") {
+		t.Errorf("expected the leftover pair's equal leaf 0.z, got %+v", diffs)
+	}
+}

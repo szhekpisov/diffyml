@@ -464,7 +464,7 @@ diffyml --filter-regexp 'spec\.containers\[.*\]\.image' old.yaml new.yaml
 diffyml --unchanged values.yaml chart-defaults.yaml
 ```
 
-Comparison is at key/value granularity — map keys, list items (matched by identifier or position), and whole scalars. A multi-line (block) string is compared as a **single scalar**: if any line inside it differs, the whole value is "changed" and none of its lines are reported as unchanged. Inverse mode does not line-diff inside strings (unlike the normal diff, which shows a line-by-line diff for modified multi-line strings).
+Comparison is at key/value granularity — map keys, list items, and whole scalars. List items are matched the same way as in a normal diff: by identifier (`name`/`id`), order-independently under `--ignore-order-changes` or for heterogeneous lists, and otherwise positionally. A multi-line (block) string is compared as a **single scalar**: if any line inside it differs, the whole value is "changed" and none of its lines are reported as unchanged. Inverse mode does not line-diff inside strings (unlike the normal diff, which shows a line-by-line diff for modified multi-line strings).
 
 ### Neat Mode
 

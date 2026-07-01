@@ -428,6 +428,60 @@ func TestInverse_DetailedIdentifierListItemIsList(t *testing.T) {
 	}
 }
 
+func TestInverse_IgnoreOrderChangesPlainList(t *testing.T) {
+	// A reordered scalar list: without --ignore-order-changes only the
+	// position-aligned value (2 at index 1) is unchanged; with the flag every
+	// common value is matched order-independently. The differing 'other' sibling
+	// keeps the root from collapsing so the list is descended into.
+	from := "nums:\n  - 1\n  - 2\n  - 3\nother: 1\n"
+	to := "nums:\n  - 3\n  - 2\n  - 1\nother: 2\n"
+
+	plain := unchangedByPath(t, mustCompareUnchanged(t, from, to, nil))
+	if _, ok := plain["nums.1"]; !ok {
+		t.Errorf("positional: expected nums.1 unchanged, got %v", keys(plain))
+	}
+	if len(plain) != 1 {
+		t.Errorf("positional: expected only nums.1, got %v", keys(plain))
+	}
+
+	ordered := unchangedByPath(t, mustCompareUnchanged(t, from, to, &diffyml.Options{IgnoreOrderChanges: true}))
+	for _, p := range []string{"nums.0", "nums.1", "nums.2"} {
+		if _, ok := ordered[p]; !ok {
+			t.Errorf("ignore-order: expected %q unchanged, got %v", p, keys(ordered))
+		}
+	}
+}
+
+func TestInverse_HeterogeneousListReordered(t *testing.T) {
+	// Single-key maps with distinct keys are heterogeneous, so the normal
+	// comparator matches them unordered even without the flag — inverse mode
+	// must do the same instead of mis-pairing positionally.
+	from := "rules:\n  - a: 1\n  - b: 2\ndiffer: 1\n"
+	to := "rules:\n  - b: 2\n  - a: 1\ndiffer: 2\n"
+
+	got := unchangedByPath(t, mustCompareUnchanged(t, from, to, nil))
+	for _, p := range []string{"rules.0", "rules.1"} {
+		if _, ok := got[p]; !ok {
+			t.Errorf("expected heterogeneous item %q matched unordered, got %v", p, keys(got))
+		}
+	}
+}
+
+func TestInverse_KeylessItemsReorderedWithinIdentifiedList(t *testing.T) {
+	// An identifier-matched list whose keyless items are reordered: the keyless
+	// fallback must match them order-independently (parity with
+	// compareUnidentifiedItems), not pair them positionally.
+	from := "items:\n  - name: a\n    v: 1\n  - foo: x\n  - bar: y\n"
+	to := "items:\n  - name: a\n    v: 1\n  - bar: y\n  - foo: x\n"
+
+	got := unchangedByPath(t, mustCompareUnchanged(t, from, to, nil))
+	for _, p := range []string{"items.a", "items.1", "items.2"} {
+		if _, ok := got[p]; !ok {
+			t.Errorf("expected %q unchanged, got %v", p, keys(got))
+		}
+	}
+}
+
 func keys(m map[string]diffyml.Difference) []string {
 	out := make([]string, 0, len(m))
 	for k := range m {

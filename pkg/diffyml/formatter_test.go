@@ -445,6 +445,17 @@ func TestBriefFormatter_NoDifferences(t *testing.T) {
 	}
 }
 
+// TestBriefFormatter_NoDifferences_NilOpts pins the `opts != nil` guard in
+// emptyResultMessage. BriefFormatter.Format forwards opts straight through
+// without normalizing nil, so this is the call path where a nil opts reaches
+// the guard; mutating it to `true` would nil-deref on `opts.Unchanged`.
+func TestBriefFormatter_NoDifferences_NilOpts(t *testing.T) {
+	output := (&BriefFormatter{}).Format([]Difference{}, nil)
+	if output != "no differences\n" {
+		t.Errorf("expected \"no differences\\n\" for nil opts, got: %q", output)
+	}
+}
+
 // TestEmptyResultInverseWording verifies inverse mode (--unchanged) reports an
 // empty result as "no unchanged values" rather than the backwards-reading "no
 // differences", across every formatter that special-cases empty output.

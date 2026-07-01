@@ -200,8 +200,12 @@ func firstFieldAfterDocIndex(p DiffPath) (string, bool) {
 	return p[0], true
 }
 
-// isWholeDocDiff reports whether the path refers to a whole document
-// (e.g., "[0]") rather than a field within one.
+// isWholeDocDiff reports whether the path refers to a whole document rather
+// than a field within one. A bare "[N]" is a whole document in a multi-document
+// file; an empty path is the whole (only) document in a single-document file —
+// inverse mode (Options.Unchanged) collapses a fully-equal single document to a
+// single entry at the empty path. Both must be recognized so --mask-secrets
+// redacts a whole-document Secret's data/stringData subtrees in either case.
 func isWholeDocDiff(p DiffPath) bool {
-	return p.IsBareDocIndex()
+	return len(p) == 0 || p.IsBareDocIndex()
 }

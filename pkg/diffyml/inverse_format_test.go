@@ -10,9 +10,17 @@ func unchangedScalarDiff(path DiffPath, val any) Difference {
 	return Difference{Path: path, Type: DiffUnchanged, From: val, To: val}
 }
 
+// inverseFormatOptions returns the format options the CLI sets in inverse mode
+// (Options.Unchanged), which is what selects the "unchanged value(s)" wording.
+func inverseFormatOptions() *FormatOptions {
+	opts := DefaultFormatOptions()
+	opts.Unchanged = true
+	return opts
+}
+
 func TestInverseFormat_Compact(t *testing.T) {
 	diffs := []Difference{unchangedScalarDiff(DiffPath{"image", "repo"}, "nginx")}
-	out := (&CompactFormatter{}).Format(diffs, DefaultFormatOptions())
+	out := (&CompactFormatter{}).Format(diffs, inverseFormatOptions())
 
 	if !strings.Contains(out, "Found 1 unchanged value(s)") {
 		t.Errorf("missing inverse header, got:\n%s", out)
@@ -32,7 +40,7 @@ func TestInverseFormat_CompactHeaderUnchangedZeroUnaffected(t *testing.T) {
 }
 
 func TestInverseFormat_CompactColor(t *testing.T) {
-	opts := &FormatOptions{Color: true}
+	opts := &FormatOptions{Color: true, Unchanged: true}
 	ctx := resolvedPalette(opts).ColorCode(ColorRoleContext, false)
 	out := (&CompactFormatter{}).Format(
 		[]Difference{unchangedScalarDiff(DiffPath{"image", "repo"}, "nginx")}, opts,
@@ -124,7 +132,7 @@ func TestInverseFormat_JSONPatchSkips(t *testing.T) {
 
 func TestInverseFormat_DetailedHeaderAndBatch(t *testing.T) {
 	diffs := []Difference{unchangedScalarDiff(DiffPath{"image", "repo"}, "nginx")}
-	out := (&DetailedFormatter{}).Format(diffs, DefaultFormatOptions())
+	out := (&DetailedFormatter{}).Format(diffs, inverseFormatOptions())
 	if !strings.Contains(out, "Found one unchanged value") {
 		t.Errorf("missing inverse header, got:\n%s", out)
 	}
@@ -166,17 +174,6 @@ func TestInverseFormat_DiffTypeForSymbol(t *testing.T) {
 		if got := diffTypeForSymbol(sym); got != want {
 			t.Errorf("diffTypeForSymbol(%q) = %v, want %v", sym, got, want)
 		}
-	}
-}
-
-func TestInverseFormat_CountUnchanged(t *testing.T) {
-	diffs := []Difference{
-		unchangedScalarDiff(DiffPath{"a"}, 1),
-		{Path: DiffPath{"b"}, Type: DiffModified, From: 1, To: 2},
-		unchangedScalarDiff(DiffPath{"c"}, 3),
-	}
-	if got := countUnchanged(diffs); got != 2 {
-		t.Errorf("countUnchanged = %d, want 2", got)
 	}
 }
 

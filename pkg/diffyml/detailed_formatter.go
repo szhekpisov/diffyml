@@ -31,7 +31,7 @@ func (f *DetailedFormatter) Format(diffs []Difference, opts *FormatOptions) stri
 	}
 
 	if len(diffs) == 0 {
-		return "no differences found\n"
+		return emptyResultMessage(opts, " found")
 	}
 
 	var sb strings.Builder
@@ -55,10 +55,10 @@ func (f *DetailedFormatter) formatHeader(sb *strings.Builder, diffs []Difference
 	sb.WriteString(colorStart(opts, f.colorModified(opts)))
 	// Inverse mode (Options.Unchanged) emits only DiffUnchanged entries; use
 	// distinct wording. Normal mode is unaffected.
-	if n := countUnchanged(diffs); n == len(diffs) {
+	if opts.Unchanged {
 		fmt.Fprintf(sb, "Found %s %s",
-			formatCount(n),
-			pluralize(n, "unchanged value", "unchanged values"))
+			formatCount(len(diffs)),
+			pluralize(len(diffs), "unchanged value", "unchanged values"))
 	} else {
 		fmt.Fprintf(sb, "Found %s %s",
 			formatCount(len(diffs)),
@@ -66,17 +66,6 @@ func (f *DetailedFormatter) formatHeader(sb *strings.Builder, diffs []Difference
 	}
 	sb.WriteString(colorEnd(opts))
 	sb.WriteString("\n\n")
-}
-
-// countUnchanged returns how many diffs are DiffUnchanged entries.
-func countUnchanged(diffs []Difference) int {
-	n := 0
-	for _, d := range diffs {
-		if d.Type == DiffUnchanged {
-			n++
-		}
-	}
-	return n
 }
 
 // groupByPath groups diffs by their Path field, preserving order of first occurrence.

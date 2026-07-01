@@ -445,6 +445,25 @@ func TestBriefFormatter_NoDifferences(t *testing.T) {
 	}
 }
 
+// TestEmptyResultInverseWording verifies inverse mode (--unchanged) reports an
+// empty result as "no unchanged values" rather than the backwards-reading "no
+// differences", across every formatter that special-cases empty output.
+func TestEmptyResultInverseWording(t *testing.T) {
+	for _, name := range []string{"compact", "brief", "detailed"} {
+		f, _ := FormatterByName(name)
+		opts := DefaultFormatOptions()
+		opts.Unchanged = true
+
+		output := f.Format([]Difference{}, opts)
+		if !containsSubstr(output, "no unchanged values") {
+			t.Errorf("%s: expected 'no unchanged values', got: %q", name, output)
+		}
+		if containsSubstr(output, "no differences") {
+			t.Errorf("%s: inverse empty result must not say 'no differences', got: %q", name, output)
+		}
+	}
+}
+
 func TestGitHubFormatter_WorkflowCommandFormat(t *testing.T) {
 	f, _ := FormatterByName("github")
 	opts := DefaultFormatOptions()

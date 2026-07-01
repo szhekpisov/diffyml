@@ -36,6 +36,10 @@ type FormatOptions struct {
 	ContextLines int
 	// NoCertInspection disables x509 certificate inspection in output.
 	NoCertInspection bool
+	// Unchanged marks inverse mode (Options.Unchanged) so an empty report is
+	// worded "no unchanged values found" instead of "no differences found",
+	// which would read backwards when the user asked for equal values.
+	Unchanged bool
 	// FilePath is the source file path set by the CLI layer.
 	// Used by GitLabFormatter for location.path and fingerprint generation.
 	// Defaults to empty string (backward compatible).
@@ -67,6 +71,18 @@ func DefaultFormatOptions() *FormatOptions {
 		UseGoPatchStyle: false,
 		ContextLines:    4,
 	}
+}
+
+// emptyResultMessage returns the wording for an empty report. In inverse mode
+// (Options.Unchanged) it reports "no unchanged values" rather than "no
+// differences", which would read backwards when the user asked for equal
+// values. suffix is " found" for the compact/detailed formatters and "" for
+// the terse brief formatter.
+func emptyResultMessage(opts *FormatOptions, suffix string) string {
+	if opts != nil && opts.Unchanged {
+		return "no unchanged values" + suffix + "\n"
+	}
+	return "no differences" + suffix + "\n"
 }
 
 // validFormatterNames lists all supported formatter names.
@@ -127,7 +143,7 @@ func (f *CompactFormatter) Format(diffs []Difference, opts *FormatOptions) strin
 	}
 
 	if len(diffs) == 0 {
-		return "no differences found\n"
+		return emptyResultMessage(opts, " found")
 	}
 
 	var sb strings.Builder
@@ -145,7 +161,18 @@ func (f *CompactFormatter) Format(diffs []Difference, opts *FormatOptions) strin
 }
 
 func (f *CompactFormatter) formatHeader(sb *strings.Builder, diffs []Difference, opts *FormatOptions) {
-	var added, removed, modified, unchanged int
+	p := resolvedPalette(opts)
+	sb.WriteString(colorStart(opts, p.ColorCode(ColorRoleModified, opts.TrueColor)))
+	// Inverse mode (Options.Unchanged) only ever emits DiffUnchanged entries;
+	// use distinct wording. Normal mode keeps the original header byte-for-byte.
+	if opts.Unchanged {
+		fmt.Fprintf(sb, "Found %d unchanged value(s)", len(diffs))
+		sb.WriteString(colorEnd(opts))
+		sb.WriteString("\n\n")
+		return
+	}
+
+	var added, removed, modified int
 	for _, d := range diffs {
 		switch d.Type {
 		case DiffAdded:
@@ -154,20 +181,7 @@ func (f *CompactFormatter) formatHeader(sb *strings.Builder, diffs []Difference,
 			removed++
 		case DiffModified, DiffOrderChanged:
 			modified++
-		case DiffUnchanged:
-			unchanged++
 		}
-	}
-
-	p := resolvedPalette(opts)
-	sb.WriteString(colorStart(opts, p.ColorCode(ColorRoleModified, opts.TrueColor)))
-	// Inverse mode (Options.Unchanged) only ever emits DiffUnchanged entries;
-	// use distinct wording. Normal mode keeps the original header byte-for-byte.
-	if unchanged > 0 {
-		fmt.Fprintf(sb, "Found %d unchanged value(s)", unchanged)
-		sb.WriteString(colorEnd(opts))
-		sb.WriteString("\n\n")
-		return
 	}
 	fmt.Fprintf(sb, "Found %d difference(s)", len(diffs))
 	sb.WriteString(colorEnd(opts))
@@ -319,9 +333,9 @@ func (f *BriefFormatter) FormatSingle(diff Difference, opts *FormatOptions) stri
 }
 
 // Format renders a brief summary of differences.
-func (f *BriefFormatter) Format(diffs []Difference, _ *FormatOptions) string {
+func (f *BriefFormatter) Format(diffs []Difference, opts *FormatOptions) string {
 	if len(diffs) == 0 {
-		return "no differences\n"
+		return emptyResultMessage(opts, "")
 	}
 
 	var added, removed, modified, unchanged int

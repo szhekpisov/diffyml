@@ -410,6 +410,7 @@ func (c *CLIConfig) ToFormatOptions() *diffyml.FormatOptions {
 		UseGoPatchStyle:  c.UseGoPatchStyle,
 		ContextLines:     c.MultiLineContextLines,
 		NoCertInspection: c.NoCertInspection,
+		Unchanged:        c.Unchanged,
 		Palette:          c.Palette,
 	}
 }

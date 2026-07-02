@@ -526,6 +526,22 @@ func TestNestedKeyPaths_AddedOrderedMap(t *testing.T) {
 	}
 }
 
+func TestNestedKeyPaths_UnchangedOrderedMap(t *testing.T) {
+	// Inverse mode collapses a fully-equal subtree to a single DiffUnchanged
+	// carrying the whole OrderedMap. Its top-level keys must expand so
+	// --filter/--exclude on a nested key matches, like added/removed entries.
+	diff := Difference{
+		Path: DiffPath{"metadata"},
+		Type: DiffUnchanged,
+		From: &OrderedMap{Keys: []string{"namespace"}, Values: map[string]any{"namespace": "production"}},
+		To:   &OrderedMap{Keys: []string{"namespace"}, Values: map[string]any{"namespace": "production"}},
+	}
+	paths := nestedKeyPaths(diff)
+	if len(paths) != 1 || paths[0] != "metadata.namespace" {
+		t.Errorf("expected [metadata.namespace], got %v", paths)
+	}
+}
+
 func TestNestedKeyPaths_DottedKey(t *testing.T) {
 	diff := Difference{
 		Path: DiffPath{"metadata", "annotations"},

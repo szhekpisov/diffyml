@@ -36,6 +36,10 @@ type FormatOptions struct {
 	ContextLines int
 	// NoCertInspection disables x509 certificate inspection in output.
 	NoCertInspection bool
+	// Unchanged marks inverse mode (Options.Unchanged) so an empty report is
+	// worded "no unchanged values found" instead of "no differences found",
+	// which would read backwards when the user asked for equal values.
+	Unchanged bool
 	// FilePath is the source file path set by the CLI layer.
 	// Used by GitLabFormatter for location.path and fingerprint generation.
 	// Defaults to empty string (backward compatible).
@@ -67,6 +71,18 @@ func DefaultFormatOptions() *FormatOptions {
 		UseGoPatchStyle: false,
 		ContextLines:    4,
 	}
+}
+
+// emptyResultMessage returns the wording for an empty report. In inverse mode
+// (Options.Unchanged) it reports "no unchanged values" rather than "no
+// differences", which would read backwards when the user asked for equal
+// values. suffix is " found" for the compact/detailed formatters and "" for
+// the terse brief formatter.
+func emptyResultMessage(opts *FormatOptions, suffix string) string {
+	if opts != nil && opts.Unchanged {
+		return "no unchanged values" + suffix + "\n"
+	}
+	return "no differences" + suffix + "\n"
 }
 
 // validFormatterNames lists all supported formatter names.
@@ -127,7 +143,7 @@ func (f *CompactFormatter) Format(diffs []Difference, opts *FormatOptions) strin
 	}
 
 	if len(diffs) == 0 {
-		return "no differences found\n"
+		return emptyResultMessage(opts, " found")
 	}
 
 	var sb strings.Builder
@@ -145,6 +161,17 @@ func (f *CompactFormatter) Format(diffs []Difference, opts *FormatOptions) strin
 }
 
 func (f *CompactFormatter) formatHeader(sb *strings.Builder, diffs []Difference, opts *FormatOptions) {
+	p := resolvedPalette(opts)
+	sb.WriteString(colorStart(opts, p.ColorCode(ColorRoleModified, opts.TrueColor)))
+	// Inverse mode (Options.Unchanged) only ever emits DiffUnchanged entries;
+	// use distinct wording. Normal mode keeps the original header byte-for-byte.
+	if opts.Unchanged {
+		fmt.Fprintf(sb, "Found %d unchanged value(s)", len(diffs))
+		sb.WriteString(colorEnd(opts))
+		sb.WriteString("\n\n")
+		return
+	}
+
 	var added, removed, modified int
 	for _, d := range diffs {
 		switch d.Type {
@@ -156,9 +183,6 @@ func (f *CompactFormatter) formatHeader(sb *strings.Builder, diffs []Difference,
 			modified++
 		}
 	}
-
-	p := resolvedPalette(opts)
-	sb.WriteString(colorStart(opts, p.ColorCode(ColorRoleModified, opts.TrueColor)))
 	fmt.Fprintf(sb, "Found %d difference(s)", len(diffs))
 	sb.WriteString(colorEnd(opts))
 	fmt.Fprintf(sb, " (%d removed, %d added, %d modified)\n\n", removed, added, modified)
@@ -189,6 +213,9 @@ func (f *CompactFormatter) formatDiff(sb *strings.Builder, diff Difference, opts
 	case DiffOrderChanged:
 		indicator = "⇆"
 		colorCode = p.ColorCode(ColorRoleModified, opts.TrueColor)
+	case DiffUnchanged:
+		indicator = "="
+		colorCode = p.ColorCode(ColorRoleContext, opts.TrueColor)
 	}
 
 	// Apply color for the indicator
@@ -236,6 +263,12 @@ func (f *CompactFormatter) formatValuesInline(sb *strings.Builder, diff Differen
 		sb.WriteString(colorEnd(opts))
 	case DiffOrderChanged:
 		sb.WriteString(" (order changed)")
+	case DiffUnchanged:
+		toStr := formatValue(diff.To)
+		sb.WriteString(" : ")
+		sb.WriteString(colorStart(opts, p.ColorCode(ColorRoleContext, opts.TrueColor)))
+		sb.WriteString(toStr)
+		sb.WriteString(colorEnd(opts))
 	}
 }
 
@@ -292,18 +325,20 @@ func (f *BriefFormatter) FormatSingle(diff Difference, opts *FormatOptions) stri
 		return fmt.Sprintf("- %s\n", diff.Path)
 	case DiffModified:
 		return fmt.Sprintf("± %s\n", diff.Path)
+	case DiffUnchanged:
+		return fmt.Sprintf("= %s\n", diff.Path)
 	default: // DiffOrderChanged
 		return fmt.Sprintf("⇆ %s\n", diff.Path)
 	}
 }
 
 // Format renders a brief summary of differences.
-func (f *BriefFormatter) Format(diffs []Difference, _ *FormatOptions) string {
+func (f *BriefFormatter) Format(diffs []Difference, opts *FormatOptions) string {
 	if len(diffs) == 0 {
-		return "no differences\n"
+		return emptyResultMessage(opts, "")
 	}
 
-	var added, removed, modified int
+	var added, removed, modified, unchanged int
 	for _, diff := range diffs {
 		switch diff.Type {
 		case DiffAdded:
@@ -312,6 +347,8 @@ func (f *BriefFormatter) Format(diffs []Difference, _ *FormatOptions) string {
 			removed++
 		case DiffModified, DiffOrderChanged:
 			modified++
+		case DiffUnchanged:
+			unchanged++
 		}
 	}
 
@@ -324,6 +361,9 @@ func (f *BriefFormatter) Format(diffs []Difference, _ *FormatOptions) string {
 	}
 	if modified > 0 {
 		parts = append(parts, fmt.Sprintf("%d modified", modified))
+	}
+	if unchanged > 0 {
+		parts = append(parts, fmt.Sprintf("%d unchanged", unchanged))
 	}
 
 	return strings.Join(parts, ", ") + "\n"
@@ -342,6 +382,8 @@ func gitHubCommand(dt DiffType) (command, title string) {
 		return "error", "YAML Removed"
 	case DiffModified:
 		return "warning", "YAML Modified"
+	case DiffUnchanged:
+		return "notice", "YAML Unchanged"
 	default: // DiffOrderChanged
 		return "notice", "YAML Order Changed"
 	}
@@ -361,6 +403,8 @@ func diffDescription(diff Difference) string {
 		return fmt.Sprintf("Removed: %s%s = %s", diff.Path, docSuffix, formatValue(diff.From))
 	case DiffModified:
 		return fmt.Sprintf("Modified: %s%s changed from %s to %s", diff.Path, docSuffix, formatValue(diff.From), formatValue(diff.To))
+	case DiffUnchanged:
+		return fmt.Sprintf("Unchanged: %s%s = %s", diff.Path, docSuffix, formatValue(diff.To))
 	default: // DiffOrderChanged
 		return fmt.Sprintf("Order changed: %s%s", diff.Path, docSuffix)
 	}
@@ -467,6 +511,8 @@ func gitLabSeverity(dt DiffType) string {
 		return "info"
 	case DiffRemoved, DiffModified:
 		return "major"
+	case DiffUnchanged:
+		return "info"
 	default: // DiffOrderChanged
 		return "minor"
 	}
@@ -481,6 +527,8 @@ func gitLabCheckName(dt DiffType) string {
 		return "diffyml/removed"
 	case DiffModified:
 		return "diffyml/modified"
+	case DiffUnchanged:
+		return "diffyml/unchanged"
 	default: // DiffOrderChanged
 		return "diffyml/order-changed"
 	}
@@ -606,6 +654,8 @@ func jsonDiffTypeName(dt DiffType) string {
 		return "removed"
 	case DiffModified:
 		return "modified"
+	case DiffUnchanged:
+		return "unchanged"
 	default: // DiffOrderChanged
 		return "order_changed"
 	}
@@ -731,7 +781,8 @@ func (f *JSONFormatter) FormatAll(groups []DiffGroup, opts *FormatOptions) strin
 }
 
 // JSONPatchFormatter renders differences as an RFC 6902 JSON Patch array.
-// DiffOrderChanged is skipped (RFC 6902 has no reorder operation).
+// DiffOrderChanged is skipped (RFC 6902 has no reorder operation). DiffUnchanged
+// is likewise skipped (no "unchanged" op), so inverse mode yields an empty patch.
 type JSONPatchFormatter struct{}
 
 // jsonPatchOp is a single RFC 6902 operation (add/replace).
@@ -755,7 +806,7 @@ type jsonPatchDirGroup struct {
 }
 
 // rfc6902OpName maps DiffType to RFC 6902 operation names.
-// Returns empty string for DiffOrderChanged (should be skipped).
+// Returns empty string for DiffOrderChanged and DiffUnchanged (both skipped).
 func rfc6902OpName(dt DiffType) string {
 	switch dt {
 	case DiffAdded:

@@ -1,0 +1,3 @@
+Found 1 unchanged value(s)
+
+= region : us-east-1

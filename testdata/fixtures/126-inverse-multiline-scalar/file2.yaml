@@ -1,0 +1,4 @@
+config: |
+  server.port=9090
+  server.host=0.0.0.0
+region: us-east-1

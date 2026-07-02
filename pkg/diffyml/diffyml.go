@@ -21,6 +21,9 @@ const (
 	DiffModified
 	// DiffOrderChanged indicates list order changed (when not ignoring order).
 	DiffOrderChanged
+	// DiffUnchanged indicates a value equal between both documents. Only emitted
+	// in inverse mode (Options.Unchanged); the normal comparison never reports it.
+	DiffUnchanged
 )
 
 // Difference represents a single change between two YAML documents.
@@ -43,6 +46,12 @@ type Difference struct {
 	// masking to identify Secret resources without parsing DocumentName, since apiVersion
 	// can itself contain "/" (e.g., "apps/v1").
 	DocumentKind string
+	// listEntry marks a collapsed DiffUnchanged entry whose immediate container
+	// is a sequence (inverse mode only). The normal added/removed path infers
+	// list-vs-map from the value shape via hasIdentifierField, but inverse mode
+	// emits raw collapsed values, so the walk records the container kind directly
+	// for isListEntryDiff. Unexported: only the inverse walk sets it.
+	listEntry bool
 }
 
 // Options configures the comparison behavior.
@@ -68,6 +77,10 @@ type Options struct {
 	NoCertInspection bool
 	// Swap reverses the from/to comparison.
 	Swap bool
+	// Unchanged inverts the report: instead of differences, emit the keys/values
+	// that are equal between both documents (the "inverse diff"). Equal subtrees
+	// collapse to a single entry at the highest equal node.
+	Unchanged bool
 	// Chroot changes the comparison root to this path for both files.
 	Chroot string
 	// ChrootFrom changes only the 'from' file's root to this path.
@@ -129,9 +142,16 @@ func Compare(from, to []byte, opts *Options) ([]Difference, error) {
 		}
 	}
 
-	// Compare documents and sort results.
+	// Compare documents and sort results. In inverse mode, collect equal
+	// values instead of differences; both paths feed the same sort/filter/
+	// format pipeline downstream.
 	pathOrder := extractPathOrder(fromNodes, toNodes, opts)
-	diffs := compareDocs(fromNodes, toNodes, opts)
+	var diffs []Difference
+	if opts.Unchanged {
+		diffs = collectUnchangedDocs(fromNodes, toNodes, opts)
+	} else {
+		diffs = compareDocs(fromNodes, toNodes, opts)
+	}
 	sortDiffsWithOrder(diffs, pathOrder)
 
 	return diffs, nil
@@ -301,6 +321,12 @@ func isListEntryDiff(diff Difference) bool {
 	// Check for bracket notation [0], [1], etc. (bare doc index)
 	if diff.Path.IsBareDocIndex() {
 		return true
+	}
+	// Inverse mode emits raw collapsed values, so the hasIdentifierField shape
+	// heuristic below would misfire on map subtrees whose value carries a
+	// name/id key. The inverse walk records the real container kind instead.
+	if diff.Type == DiffUnchanged {
+		return diff.listEntry
 	}
 	// Check if the value is a map with identifier fields
 	var val any

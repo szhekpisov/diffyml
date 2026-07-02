@@ -1,0 +1,6 @@
+Found 4 unchanged value(s)
+
+= service : api
+= regions.0 : us-east-1
+= regions.1 : eu-west-1
+= regions.2 : ap-south-1

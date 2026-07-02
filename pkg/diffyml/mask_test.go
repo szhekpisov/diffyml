@@ -314,7 +314,8 @@ func TestIsWholeDocDiff(t *testing.T) {
 		{DiffPath{"[0]"}, true},
 		{DiffPath{"[0]", "data"}, false},
 		{DiffPath{"data"}, false},
-		{DiffPath{}, false},
+		// Empty path = the whole single document (inverse-mode whole-doc collapse).
+		{DiffPath{}, true},
 	}
 	for _, c := range cases {
 		if got := isWholeDocDiff(c.in); got != c.want {

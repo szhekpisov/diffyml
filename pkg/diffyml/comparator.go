@@ -396,10 +396,11 @@ func compareSequenceNodesUnordered(path DiffPath, fromN, toN *yaml.Node, opts *O
 
 	// Materialize once per item for the deepEqual scan — slight up-front cost
 	// but avoids repeated nodeToInterface walks inside the O(N*M) loop. The
-	// allocation is unbounded in the sequence length; a future node-level
-	// deepEqualNodes would let us skip materialization entirely for the
-	// common scalar-list case.
-	// TODO(node-pipeline): replace deepEqual(any,any) with deepEqualNodes here.
+	// allocation is unbounded in the sequence length.
+	// TODO(node-pipeline): the node-level deepEqualNodes (used by inverse.go)
+	// could replace deepEqual(any,any) here to skip materialization entirely
+	// for the common scalar-list case; deferred to keep this mutation-tested
+	// path byte-for-byte stable for now.
 	fromValues := make([]any, len(from))
 	for i := range from {
 		fromValues[i] = nodeToInterface(from[i])
@@ -798,6 +799,79 @@ func deepEqual(from, to any, opts *Options) bool {
 	default:
 		return equalValues(from, to, opts)
 	}
+}
+
+// deepEqualNodes is the node-level twin of deepEqual: it reports whether two
+// YAML node trees are deeply equal under opts WITHOUT materializing either
+// subtree to an any view, so callers can drive recursion on nodes and only
+// materialize (nodeToInterface) when they actually emit a Difference. It must
+// agree with deepEqual(nodeToInterface(a), nodeToInterface(b), opts) for every
+// input — the equivalence is cross-checked in deep_equal_nodes_test.go.
+func deepEqualNodes(fromN, toN *yaml.Node, opts *Options) bool {
+	// Match nodeToInterface null semantics: nil / empty-doc / !!null scalar all
+	// collapse to nil, so two nulls are equal and a null vs non-null is not.
+	fromNull, toNull := isNullNode(fromN), isNullNode(toN)
+	if fromNull || toNull {
+		return fromNull && toNull
+	}
+	fromN = resolveNode(fromN)
+	toN = resolveNode(toN)
+
+	if fromN.Kind != toN.Kind {
+		return false
+	}
+
+	switch fromN.Kind {
+	case yaml.MappingNode:
+		return deepEqualMappingNodes(fromN, toN, opts)
+	case yaml.SequenceNode:
+		return deepEqualSequenceNodes(fromN, toN, opts)
+	default:
+		// ScalarNode: isNullNode already excluded !!null on both sides, so this
+		// mirrors deepEqual's scalar fall-through to equalValues.
+		return equalValues(resolveScalar(fromN), resolveScalar(toN), opts)
+	}
+}
+
+// deepEqualMappingNodes mirrors deepEqualMaps/deepEqualOrderedMaps on nodes:
+// equal count of unique keys (last-write-wins, via indexMappingValues so the
+// count matches nodeToInterface) and every from key present in to with a
+// deeply-equal value.
+func deepEqualMappingNodes(fromN, toN *yaml.Node, opts *Options) bool {
+	return mappingNodesEqualIdx(fromN, toN, opts, indexMappingValues(fromN), indexMappingValues(toN))
+}
+
+// mappingNodesEqualIdx is deepEqualMappingNodes with the value indices supplied
+// by the caller, so a caller that already built them (e.g. the inverse walk,
+// which shares them with its descent) does not pay for a second index pass.
+func mappingNodesEqualIdx(fromN, toN *yaml.Node, opts *Options, fromIdx, toIdx map[string]int) bool {
+	if len(fromIdx) != len(toIdx) {
+		return false
+	}
+	for key, fromPos := range fromIdx {
+		toPos, ok := toIdx[key]
+		if !ok {
+			return false
+		}
+		if !deepEqualNodes(fromN.Content[fromPos+1], toN.Content[toPos+1], opts) {
+			return false
+		}
+	}
+	return true
+}
+
+// deepEqualSequenceNodes mirrors deepEqualSlices on nodes: equal length and
+// positional deep equality.
+func deepEqualSequenceNodes(fromN, toN *yaml.Node, opts *Options) bool {
+	if len(fromN.Content) != len(toN.Content) {
+		return false
+	}
+	for i := range fromN.Content {
+		if !deepEqualNodes(fromN.Content[i], toN.Content[i], opts) {
+			return false
+		}
+	}
+	return true
 }
 
 // sprintIdentifier converts an identifier value to a string.

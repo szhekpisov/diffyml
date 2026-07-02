@@ -1,0 +1,9 @@
+Found 1 unchanged value(s)
+
+=  (v1/Secret/db-secret) : apiVersion: v1
+kind: Secret
+metadata:
+    name: db-secret
+type: Opaque
+data:
+    password: '***'

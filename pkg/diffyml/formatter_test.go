@@ -445,6 +445,36 @@ func TestBriefFormatter_NoDifferences(t *testing.T) {
 	}
 }
 
+// TestBriefFormatter_NoDifferences_NilOpts pins the `opts != nil` guard in
+// emptyResultMessage. BriefFormatter.Format forwards opts straight through
+// without normalizing nil, so this is the call path where a nil opts reaches
+// the guard; mutating it to `true` would nil-deref on `opts.Unchanged`.
+func TestBriefFormatter_NoDifferences_NilOpts(t *testing.T) {
+	output := (&BriefFormatter{}).Format([]Difference{}, nil)
+	if output != "no differences\n" {
+		t.Errorf("expected \"no differences\\n\" for nil opts, got: %q", output)
+	}
+}
+
+// TestEmptyResultInverseWording verifies inverse mode (--unchanged) reports an
+// empty result as "no unchanged values" rather than the backwards-reading "no
+// differences", across every formatter that special-cases empty output.
+func TestEmptyResultInverseWording(t *testing.T) {
+	for _, name := range []string{"compact", "brief", "detailed"} {
+		f, _ := FormatterByName(name)
+		opts := DefaultFormatOptions()
+		opts.Unchanged = true
+
+		output := f.Format([]Difference{}, opts)
+		if !containsSubstr(output, "no unchanged values") {
+			t.Errorf("%s: expected 'no unchanged values', got: %q", name, output)
+		}
+		if containsSubstr(output, "no differences") {
+			t.Errorf("%s: inverse empty result must not say 'no differences', got: %q", name, output)
+		}
+	}
+}
+
 func TestGitHubFormatter_WorkflowCommandFormat(t *testing.T) {
 	f, _ := FormatterByName("github")
 	opts := DefaultFormatOptions()

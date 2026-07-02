@@ -131,7 +131,7 @@ func matchesAnyRegexWithNested(diffPath string, nestedPaths []string, patterns [
 }
 
 // nestedKeyPaths returns extended path strings for diffs that report
-// added/removed map entries at the parent path. For such diffs, the
+// added/removed/unchanged map entries at the parent path. For such diffs, the
 // actual key lives inside the From/To OrderedMap. Returns nil if the
 // diff does not contain nested map keys.
 //
@@ -140,12 +140,14 @@ func matchesAnyRegexWithNested(diffPath string, nestedPaths []string, patterns [
 // metadata.labels.whatever), so deep filters can match a bulk-added/removed
 // subtree.
 //
-// Note: this also activates for list item additions/removals when the
-// item is an OrderedMap (e.g., a container removed from spec.containers).
-// In that case every descendant key of the item becomes a nested path,
-// and matching any one of them causes the entire diff to be
-// included/excluded. This is intentional — list item diffs are atomic,
-// so partial filtering would not be meaningful.
+// Note: this also activates for list item additions/removals/collapses when the
+// item is an OrderedMap (e.g., a container removed from spec.containers, or a
+// whole equal container collapsed in inverse mode). In that case every
+// descendant key of the item becomes a nested path, and matching any one of
+// them causes the entire diff to be included/excluded. This is intentional —
+// list item diffs and inverse-mode subtree collapses are atomic, so partial
+// filtering would not be meaningful. Without this, --filter/--exclude on a key
+// nested inside a collapsed unchanged subtree would silently never match.
 func nestedKeyPaths(diff Difference) []string {
 	return nestedKeyPathsFrom(diff.Path, diff)
 }
@@ -161,6 +163,9 @@ func nestedKeyPathsFrom(base DiffPath, diff Difference) []string {
 		om, _ = diff.From.(*OrderedMap)
 	case DiffAdded:
 		om, _ = diff.To.(*OrderedMap)
+	case DiffUnchanged:
+		// From and To are equal; From is always populated on a collapse.
+		om, _ = diff.From.(*OrderedMap)
 	default:
 		// gomutants:disable-next-line BRANCH_CASE reason="defensive; om stays nil → next guard returns nil too, same outcome"
 		return nil

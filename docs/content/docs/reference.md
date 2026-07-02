@@ -32,6 +32,7 @@ diffyml [flags] <from> <to>
 | `--ignore-api-version` | `bool` | — | ignore apiVersion when matching Kubernetes resources |
 | `-x`, `--no-cert-inspection` | `bool` | — | disable x509 certificate inspection |
 | `--swap` | `bool` | — | swap 'from' and 'to' for comparison |
+| `-u`, `--unchanged` | `bool` | — | report keys equal between both files (inverse diff) |
 
 ## Filtering
 

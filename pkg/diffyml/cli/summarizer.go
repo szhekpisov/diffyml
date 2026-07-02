@@ -193,6 +193,8 @@ func diffTypeLabel(dt diffyml.DiffType) string {
 		return "MODIFIED"
 	case diffyml.DiffOrderChanged:
 		return "ORDER_CHANGED"
+	case diffyml.DiffUnchanged:
+		return "UNCHANGED"
 	default:
 		return "UNKNOWN"
 	}

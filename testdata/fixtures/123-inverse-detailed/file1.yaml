@@ -1,0 +1,12 @@
+name: app
+replicas: 1
+image:
+  repo: nginx
+  tag: "1.0"
+labels:
+  app: web
+  env: prod
+ports:
+  - 80
+  - 443
+onlyleft: gone

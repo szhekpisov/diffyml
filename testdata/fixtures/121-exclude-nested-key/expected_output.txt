@@ -1,0 +1,10 @@
+Found two differences
+
+metadata  (example/v1/Kind2/foo)
+  - two map entries removed:
+    subresources:
+      example: 2
+    labels:
+      foo: bar
+      quix: qux
+

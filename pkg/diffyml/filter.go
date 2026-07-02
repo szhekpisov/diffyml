@@ -8,6 +8,7 @@ package diffyml
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -134,9 +135,14 @@ func matchesAnyRegexWithNested(diffPath string, nestedPaths []string, patterns [
 // actual key lives inside the From/To OrderedMap. Returns nil if the
 // diff does not contain nested map keys.
 //
+// Expansion is recursive: every descendant map key and list index of the
+// added/removed payload becomes a candidate path (e.g. metadata.labels and
+// metadata.labels.whatever), so deep filters can match a bulk-added/removed
+// subtree.
+//
 // Note: this also activates for list item additions/removals when the
 // item is an OrderedMap (e.g., a container removed from spec.containers).
-// In that case every top-level key of the item becomes a nested path,
+// In that case every descendant key of the item becomes a nested path,
 // and matching any one of them causes the entire diff to be
 // included/excluded. This is intentional — list item diffs are atomic,
 // so partial filtering would not be meaningful.
@@ -145,7 +151,7 @@ func nestedKeyPaths(diff Difference) []string {
 }
 
 // nestedKeyPathsFrom behaves like nestedKeyPaths but appends the diff's
-// added/removed map keys to an explicit base path rather than diff.Path. This
+// added/removed keys to an explicit base path rather than diff.Path. This
 // lets callers build nested key paths for a document-index-stripped base so
 // document-index-agnostic filters can match multi-document diffs.
 func nestedKeyPathsFrom(base DiffPath, diff Difference) []string {
@@ -159,13 +165,33 @@ func nestedKeyPathsFrom(base DiffPath, diff Difference) []string {
 		// gomutants:disable-next-line BRANCH_CASE reason="defensive; om stays nil → next guard returns nil too, same outcome"
 		return nil
 	}
-	// gomutants:disable-next-line EXPRESSION_REMOVE reason="empty Keys → make([],0) + zero-iter loop → returns []string{} vs nil; both are observed identically by all callers (range loops)"
+	// gomutants:disable-next-line EXPRESSION_REMOVE reason="empty Keys → appendValuePaths returns nil; same as this guard, callers observe identically (range loops)"
 	if om == nil || len(om.Keys) == 0 {
 		return nil
 	}
-	paths := make([]string, len(om.Keys))
-	for i, key := range om.Keys {
-		paths[i] = base.Append(key).String()
+	return appendValuePaths(nil, base, om)
+}
+
+// appendValuePaths appends the string form of every descendant path within
+// value (rooted at base) to paths and returns the result. Nested *OrderedMap
+// keys and list indices are both traversed so deep filters (e.g.
+// metadata.labels.whatever, spec.containers.0.name) can match a bulk
+// added/removed subtree. Scalars are leaves. List elements use bare numeric
+// indices to match the comparator's positional list-path form.
+func appendValuePaths(paths []string, base DiffPath, value any) []string {
+	switch v := value.(type) {
+	case *OrderedMap:
+		for _, key := range v.Keys {
+			keyPath := base.Append(key)
+			paths = append(paths, keyPath.String())
+			paths = appendValuePaths(paths, keyPath, v.Values[key])
+		}
+	case []any:
+		for i, elem := range v {
+			idxPath := base.Append(strconv.Itoa(i))
+			paths = append(paths, idxPath.String())
+			paths = appendValuePaths(paths, idxPath, elem)
+		}
 	}
 	return paths
 }

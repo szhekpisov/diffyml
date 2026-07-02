@@ -1,7 +1,10 @@
-Found one difference
+Found two differences
 
-spec.replicas  (v1/Kind1/res-a)
-  ± value change
-    - 1
-    + 3
+metadata  (example/v1/Kind2/foo)
+  - two map entries removed:
+    subresources:
+      example: 2
+    labels:
+      foo: bar
+      quix: qux
 

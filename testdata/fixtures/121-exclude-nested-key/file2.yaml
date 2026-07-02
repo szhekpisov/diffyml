@@ -1,17 +1,18 @@
-apiVersion: v1
+apiVersion: example/v1
 kind: Kind1
 metadata:
-  name: res-a
-  labels:
-    app: demo
-spec:
-  replicas: 3
+  name: foo
 ---
-apiVersion: v1
+apiVersion: example/v1
 kind: Kind2
 metadata:
-  name: res-b
-  labels:
-    app: demo
+  name: foo
 spec:
-  replicas: 2
+  bar: baz
+---
+apiVersion: example/v1
+kind: Kind3
+metadata:
+  name: foo
+spec:
+  bar: baz

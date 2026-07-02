@@ -1,23 +1,28 @@
-apiVersion: v1
+apiVersion: example/v1
 kind: Kind1
 metadata:
-  name: res-a
+  annotations: {}
   labels:
-    app: demo
-    whatever: drop-me-1
-  annotations:
-    note: drop-me-1
-spec:
-  replicas: 1
+    whatever: value
+  name: foo
 ---
-apiVersion: v1
+apiVersion: example/v1
 kind: Kind2
 metadata:
-  name: res-b
+  annotations: {}
+  subresources:
+    example: 2
   labels:
-    app: demo
-    whatever: drop-me-2
-  annotations:
-    note: drop-me-2
+    foo: bar
+    quix: qux
+  name: foo
 spec:
-  replicas: 2
+  bar: baz
+---
+apiVersion: example/v1
+kind: Kind3
+metadata:
+  annotations: {}
+  name: foo
+spec:
+  bar: baz

@@ -966,3 +966,107 @@ func TestFilterDiffsWithRegexpReport_PathExclusionNotCounted(t *testing.T) {
 		}
 	}
 }
+
+// multiDocMetadataDiffs mimics the diff shape produced for multi-document YAML:
+// every path carries a leading document-index segment like [0]. Used by the
+// document-index-prefix filter tests below (issue #189).
+func multiDocMetadataDiffs() []Difference {
+	return []Difference{
+		{Path: DiffPath{"[0]", "metadata", "annotations"}, Type: DiffRemoved, From: "a", To: nil},
+		{Path: DiffPath{"[0]", "metadata", "labels"}, Type: DiffRemoved, From: "l", To: nil},
+		{Path: DiffPath{"[1]", "metadata", "annotations"}, Type: DiffRemoved, From: "a", To: nil},
+		{Path: DiffPath{"[2]", "metadata", "annotations"}, Type: DiffRemoved, From: "a", To: nil},
+	}
+}
+
+func TestFilterDiffs_ExcludePaths_DocIndexAgnosticAcrossDocs(t *testing.T) {
+	// A bare filter path must match the same field in every document.
+	opts := &FilterOptions{ExcludePaths: []string{"metadata.annotations"}}
+
+	result := FilterDiffs(multiDocMetadataDiffs(), opts)
+
+	if len(result) != 1 {
+		t.Fatalf("expected 1 diff after excluding metadata.annotations across all docs, got %d", len(result))
+	}
+	if result[0].Path.String() != "[0].metadata.labels" {
+		t.Errorf("expected [0].metadata.labels to survive, got %s", result[0].Path)
+	}
+}
+
+func TestFilterDiffs_IncludePaths_DocIndexAgnosticAcrossDocs(t *testing.T) {
+	opts := &FilterOptions{IncludePaths: []string{"metadata.annotations"}}
+
+	result := FilterDiffs(multiDocMetadataDiffs(), opts)
+
+	if len(result) != 3 {
+		t.Fatalf("expected 3 annotations diffs across docs, got %d", len(result))
+	}
+	for _, d := range result {
+		if d.Path.Last() != "annotations" {
+			t.Errorf("unexpected diff included: %s", d.Path)
+		}
+	}
+}
+
+func TestFilterDiffs_ExcludePaths_DocScopedFilterKeepsOtherDocs(t *testing.T) {
+	// A document-scoped filter ([0].metadata) must affect only that document,
+	// proving the raw path is retained alongside the stripped candidate.
+	opts := &FilterOptions{ExcludePaths: []string{"[0].metadata"}}
+
+	result := FilterDiffs(multiDocMetadataDiffs(), opts)
+
+	if len(result) != 2 {
+		t.Fatalf("expected 2 diffs (docs 1 and 2 untouched), got %d", len(result))
+	}
+	for _, d := range result {
+		if idx, _ := d.Path.DocIndex(); idx == 0 {
+			t.Errorf("doc 0 diff should have been excluded: %s", d.Path)
+		}
+	}
+}
+
+func TestFilterDiffs_ExcludePaths_BareDocIndexExcludesWholeDoc(t *testing.T) {
+	// A bare [2] filter excludes the whole document; DocIndexPrefix returns
+	// ok=false for the bare-index diff, so the raw [2] candidate is what matches.
+	diffs := append(
+		multiDocMetadataDiffs(),
+		Difference{Path: DiffPath{"[2]"}, Type: DiffRemoved, From: "doc", To: nil},
+	)
+
+	opts := &FilterOptions{ExcludePaths: []string{"[2]"}}
+
+	result := FilterDiffs(diffs, opts)
+
+	for _, d := range result {
+		if idx, _ := d.Path.DocIndex(); idx == 2 {
+			t.Errorf("all doc 2 diffs should be excluded, got %s", d.Path)
+		}
+	}
+	if len(result) != 3 {
+		t.Fatalf("expected 3 diffs (docs 0 and 1), got %d", len(result))
+	}
+}
+
+func TestFilterDiffs_ExcludePaths_DocIndexStrippedNestedKey(t *testing.T) {
+	// A removed map carried on a doc-index-prefixed path must be excludable by
+	// its bare nested key path (exercises nestedKeyPathsFrom on the stripped base).
+	diffs := []Difference{
+		{
+			Path: DiffPath{"[1]", "metadata"},
+			Type: DiffRemoved,
+			From: &OrderedMap{Keys: []string{"annotations"}, Values: map[string]any{"annotations": "x"}},
+		},
+		{Path: DiffPath{"[1]", "data", "key1"}, Type: DiffModified, From: "old", To: "new"},
+	}
+
+	opts := &FilterOptions{ExcludePaths: []string{"metadata.annotations"}}
+
+	result := FilterDiffs(diffs, opts)
+
+	if len(result) != 1 {
+		t.Fatalf("expected 1 diff after excluding nested key across docs, got %d", len(result))
+	}
+	if result[0].Path.String() != "[1].data.key1" {
+		t.Errorf("expected [1].data.key1 to survive, got %s", result[0].Path)
+	}
+}

@@ -141,6 +141,14 @@ func matchesAnyRegexWithNested(diffPath string, nestedPaths []string, patterns [
 // included/excluded. This is intentional — list item diffs are atomic,
 // so partial filtering would not be meaningful.
 func nestedKeyPaths(diff Difference) []string {
+	return nestedKeyPathsFrom(diff.Path, diff)
+}
+
+// nestedKeyPathsFrom behaves like nestedKeyPaths but appends the diff's
+// added/removed map keys to an explicit base path rather than diff.Path. This
+// lets callers build nested key paths for a document-index-stripped base so
+// document-index-agnostic filters can match multi-document diffs.
+func nestedKeyPathsFrom(base DiffPath, diff Difference) []string {
 	var om *OrderedMap
 	switch diff.Type {
 	case DiffRemoved:
@@ -157,7 +165,7 @@ func nestedKeyPaths(diff Difference) []string {
 	}
 	paths := make([]string, len(om.Keys))
 	for i, key := range om.Keys {
-		paths[i] = diff.Path.Append(key).String()
+		paths[i] = base.Append(key).String()
 	}
 	return paths
 }
@@ -213,6 +221,14 @@ func FilterDiffsWithRegexpReport(diffs []Difference, opts *FilterOptions, report
 	for _, diff := range diffs {
 		pathStr := diff.Path.String()
 		nested := nestedKeyPaths(diff)
+		// Document-index-agnostic filters (e.g. metadata.annotations) should match
+		// multi-document diffs whose paths are prefixed with [N]. Add the stripped
+		// path and its nested keys as additional match candidates. The raw pathStr
+		// is retained so document-scoped filters ([0].metadata) still work.
+		if _, rest, ok := diff.Path.DocIndexPrefix(); ok {
+			nested = append(nested, rest.String())
+			nested = append(nested, nestedKeyPathsFrom(rest, diff)...)
+		}
 		included := true
 
 		// Step 1: Apply include filters (path or regex)

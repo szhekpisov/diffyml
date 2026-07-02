@@ -1,0 +1,18 @@
+apiVersion: example/v1
+kind: Kind1
+metadata:
+  name: foo
+---
+apiVersion: example/v1
+kind: Kind2
+metadata:
+  name: foo
+spec:
+  bar: baz
+---
+apiVersion: example/v1
+kind: Kind3
+metadata:
+  name: foo
+spec:
+  bar: baz

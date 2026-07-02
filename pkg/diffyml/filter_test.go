@@ -658,6 +658,199 @@ func TestFilterDiffs_ExcludePaths_ParentStillExcludesNestedKey(t *testing.T) {
 	}
 }
 
+func TestFilterDiffs_ExcludePaths_DeepNestedMapKey(t *testing.T) {
+	// A whole metadata sub-map is removed. Its labels sub-map contains
+	// "whatever" and "other". Excluding the deep key metadata.labels.whatever
+	// must drop the (atomic) diff. Regression for issue #189.
+	diffs := []Difference{
+		{
+			Path: DiffPath{"metadata"},
+			Type: DiffRemoved,
+			From: &OrderedMap{
+				Keys: []string{"labels"},
+				Values: map[string]any{
+					"labels": &OrderedMap{
+						Keys:   []string{"whatever", "other"},
+						Values: map[string]any{"whatever": "x", "other": "y"},
+					},
+				},
+			},
+		},
+		{Path: DiffPath{"data", "key1"}, Type: DiffModified, From: "old", To: "new"},
+	}
+
+	opts := &FilterOptions{
+		ExcludePaths: []string{"metadata.labels.whatever"},
+	}
+
+	result := FilterDiffs(diffs, opts)
+
+	if len(result) != 1 {
+		t.Fatalf("expected 1 diff, got %d", len(result))
+	}
+	if result[0].Path.String() != "data.key1" {
+		t.Errorf("expected data.key1, got %s", result[0].Path)
+	}
+}
+
+func TestFilterDiffs_ExcludePaths_DeepNestedKeyBoundaryGuard(t *testing.T) {
+	// A partial deep segment (metadata.labels.what) must NOT match
+	// metadata.labels.whatever — the boundary guard applies at depth.
+	diffs := []Difference{
+		{
+			Path: DiffPath{"metadata"},
+			Type: DiffRemoved,
+			From: &OrderedMap{
+				Keys: []string{"labels"},
+				Values: map[string]any{
+					"labels": &OrderedMap{
+						Keys:   []string{"whatever"},
+						Values: map[string]any{"whatever": "x"},
+					},
+				},
+			},
+		},
+	}
+
+	opts := &FilterOptions{
+		ExcludePaths: []string{"metadata.labels.what"},
+	}
+
+	result := FilterDiffs(diffs, opts)
+
+	if len(result) != 1 {
+		t.Fatalf("expected 1 diff (no match), got %d", len(result))
+	}
+}
+
+func TestFilterDiffs_ExcludePaths_DeepNestedListKey(t *testing.T) {
+	// A whole spec.containers list is removed. The comparator reports the
+	// removed key at the parent path (spec) with the list wrapped in an
+	// OrderedMap under "containers". Its first element has a name field.
+	// Excluding spec.containers.0.name must drop the atomic diff.
+	diffs := []Difference{
+		{
+			Path: DiffPath{"spec"},
+			Type: DiffRemoved,
+			From: &OrderedMap{
+				Keys: []string{"containers"},
+				Values: map[string]any{
+					"containers": []any{
+						&OrderedMap{
+							Keys:   []string{"name", "image"},
+							Values: map[string]any{"name": "web", "image": "nginx"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	opts := &FilterOptions{
+		ExcludePaths: []string{"spec.containers.0.name"},
+	}
+
+	result := FilterDiffs(diffs, opts)
+
+	if len(result) != 0 {
+		t.Fatalf("expected 0 diffs (deep list match), got %d", len(result))
+	}
+
+	// A bogus deep list path must not match.
+	optsNoMatch := &FilterOptions{
+		ExcludePaths: []string{"spec.containers.0.nope"},
+	}
+	if got := FilterDiffs(diffs, optsNoMatch); len(got) != 1 {
+		t.Fatalf("expected 1 diff (bogus path no match), got %d", len(got))
+	}
+}
+
+func TestFilterDiffs_ExcludePaths_ScalarListIndex(t *testing.T) {
+	// A removed map entry whose value is a list of scalars. The bare index
+	// path (spec.args.1) is the only candidate for the second element, so
+	// excluding it must drop the atomic diff.
+	diffs := []Difference{
+		{
+			Path: DiffPath{"spec"},
+			Type: DiffRemoved,
+			From: &OrderedMap{
+				Keys:   []string{"args"},
+				Values: map[string]any{"args": []any{"--a", "--b"}},
+			},
+		},
+	}
+
+	if got := FilterDiffs(diffs, &FilterOptions{ExcludePaths: []string{"spec.args.1"}}); len(got) != 0 {
+		t.Fatalf("expected 0 diffs (scalar list index match), got %d", len(got))
+	}
+	// An out-of-range index must not match.
+	if got := FilterDiffs(diffs, &FilterOptions{ExcludePaths: []string{"spec.args.2"}}); len(got) != 1 {
+		t.Fatalf("expected 1 diff (out-of-range index no match), got %d", len(got))
+	}
+}
+
+func TestFilterDiffs_ExcludePaths_DeepNestedKeyAcrossDocs(t *testing.T) {
+	// Document-index-agnostic deep filter must match a diff prefixed with [N].
+	diffs := []Difference{
+		{
+			Path: DiffPath{"[0]", "metadata"},
+			Type: DiffRemoved,
+			From: &OrderedMap{
+				Keys: []string{"labels"},
+				Values: map[string]any{
+					"labels": &OrderedMap{
+						Keys:   []string{"whatever"},
+						Values: map[string]any{"whatever": "x"},
+					},
+				},
+			},
+		},
+	}
+
+	opts := &FilterOptions{
+		ExcludePaths: []string{"metadata.labels.whatever"},
+	}
+
+	result := FilterDiffs(diffs, opts)
+
+	if len(result) != 0 {
+		t.Fatalf("expected 0 diffs (doc-agnostic deep match), got %d", len(result))
+	}
+}
+
+func TestFilterDiffs_IncludePaths_DeepNestedMapKey(t *testing.T) {
+	// Include filter targeting a deep key keeps the atomic diff.
+	diffs := []Difference{
+		{
+			Path: DiffPath{"metadata"},
+			Type: DiffRemoved,
+			From: &OrderedMap{
+				Keys: []string{"labels"},
+				Values: map[string]any{
+					"labels": &OrderedMap{
+						Keys:   []string{"whatever"},
+						Values: map[string]any{"whatever": "x"},
+					},
+				},
+			},
+		},
+		{Path: DiffPath{"data", "key1"}, Type: DiffModified, From: "old", To: "new"},
+	}
+
+	opts := &FilterOptions{
+		IncludePaths: []string{"metadata.labels.whatever"},
+	}
+
+	result := FilterDiffs(diffs, opts)
+
+	if len(result) != 1 {
+		t.Fatalf("expected 1 diff, got %d", len(result))
+	}
+	if result[0].Path.String() != "metadata" {
+		t.Errorf("expected metadata, got %s", result[0].Path)
+	}
+}
+
 func TestFilterDiffs_IncludePaths_NestedKeyInOrderedMap(t *testing.T) {
 	diffs := []Difference{
 		{
@@ -980,5 +1173,109 @@ func TestFilterDiffsWithRegexpReport_PathExclusionNotCounted(t *testing.T) {
 		if h != 0 {
 			t.Errorf("hit count[%d] should be 0 (path filter ran first), got %d", i, h)
 		}
+	}
+}
+
+// multiDocMetadataDiffs mimics the diff shape produced for multi-document YAML:
+// every path carries a leading document-index segment like [0]. Used by the
+// document-index-prefix filter tests below (issue #189).
+func multiDocMetadataDiffs() []Difference {
+	return []Difference{
+		{Path: DiffPath{"[0]", "metadata", "annotations"}, Type: DiffRemoved, From: "a", To: nil},
+		{Path: DiffPath{"[0]", "metadata", "labels"}, Type: DiffRemoved, From: "l", To: nil},
+		{Path: DiffPath{"[1]", "metadata", "annotations"}, Type: DiffRemoved, From: "a", To: nil},
+		{Path: DiffPath{"[2]", "metadata", "annotations"}, Type: DiffRemoved, From: "a", To: nil},
+	}
+}
+
+func TestFilterDiffs_ExcludePaths_DocIndexAgnosticAcrossDocs(t *testing.T) {
+	// A bare filter path must match the same field in every document.
+	opts := &FilterOptions{ExcludePaths: []string{"metadata.annotations"}}
+
+	result := FilterDiffs(multiDocMetadataDiffs(), opts)
+
+	if len(result) != 1 {
+		t.Fatalf("expected 1 diff after excluding metadata.annotations across all docs, got %d", len(result))
+	}
+	if result[0].Path.String() != "[0].metadata.labels" {
+		t.Errorf("expected [0].metadata.labels to survive, got %s", result[0].Path)
+	}
+}
+
+func TestFilterDiffs_IncludePaths_DocIndexAgnosticAcrossDocs(t *testing.T) {
+	opts := &FilterOptions{IncludePaths: []string{"metadata.annotations"}}
+
+	result := FilterDiffs(multiDocMetadataDiffs(), opts)
+
+	if len(result) != 3 {
+		t.Fatalf("expected 3 annotations diffs across docs, got %d", len(result))
+	}
+	for _, d := range result {
+		if d.Path.Last() != "annotations" {
+			t.Errorf("unexpected diff included: %s", d.Path)
+		}
+	}
+}
+
+func TestFilterDiffs_ExcludePaths_DocScopedFilterKeepsOtherDocs(t *testing.T) {
+	// A document-scoped filter ([0].metadata) must affect only that document,
+	// proving the raw path is retained alongside the stripped candidate.
+	opts := &FilterOptions{ExcludePaths: []string{"[0].metadata"}}
+
+	result := FilterDiffs(multiDocMetadataDiffs(), opts)
+
+	if len(result) != 2 {
+		t.Fatalf("expected 2 diffs (docs 1 and 2 untouched), got %d", len(result))
+	}
+	for _, d := range result {
+		if idx, _ := d.Path.DocIndex(); idx == 0 {
+			t.Errorf("doc 0 diff should have been excluded: %s", d.Path)
+		}
+	}
+}
+
+func TestFilterDiffs_ExcludePaths_BareDocIndexExcludesWholeDoc(t *testing.T) {
+	// A bare [2] filter excludes the whole document; DocIndexPrefix returns
+	// ok=false for the bare-index diff, so the raw [2] candidate is what matches.
+	diffs := append(
+		multiDocMetadataDiffs(),
+		Difference{Path: DiffPath{"[2]"}, Type: DiffRemoved, From: "doc", To: nil},
+	)
+
+	opts := &FilterOptions{ExcludePaths: []string{"[2]"}}
+
+	result := FilterDiffs(diffs, opts)
+
+	for _, d := range result {
+		if idx, _ := d.Path.DocIndex(); idx == 2 {
+			t.Errorf("all doc 2 diffs should be excluded, got %s", d.Path)
+		}
+	}
+	if len(result) != 3 {
+		t.Fatalf("expected 3 diffs (docs 0 and 1), got %d", len(result))
+	}
+}
+
+func TestFilterDiffs_ExcludePaths_DocIndexStrippedNestedKey(t *testing.T) {
+	// A removed map carried on a doc-index-prefixed path must be excludable by
+	// its bare nested key path (exercises nestedKeyPathsFrom on the stripped base).
+	diffs := []Difference{
+		{
+			Path: DiffPath{"[1]", "metadata"},
+			Type: DiffRemoved,
+			From: &OrderedMap{Keys: []string{"annotations"}, Values: map[string]any{"annotations": "x"}},
+		},
+		{Path: DiffPath{"[1]", "data", "key1"}, Type: DiffModified, From: "old", To: "new"},
+	}
+
+	opts := &FilterOptions{ExcludePaths: []string{"metadata.annotations"}}
+
+	result := FilterDiffs(diffs, opts)
+
+	if len(result) != 1 {
+		t.Fatalf("expected 1 diff after excluding nested key across docs, got %d", len(result))
+	}
+	if result[0].Path.String() != "[1].data.key1" {
+		t.Errorf("expected [1].data.key1 to survive, got %s", result[0].Path)
 	}
 }

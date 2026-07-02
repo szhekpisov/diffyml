@@ -1,0 +1,28 @@
+apiVersion: example/v1
+kind: Kind1
+metadata:
+  annotations: {}
+  labels:
+    whatever: value
+  name: foo
+---
+apiVersion: example/v1
+kind: Kind2
+metadata:
+  annotations: {}
+  subresources:
+    example: 2
+  labels:
+    foo: bar
+    quix: qux
+  name: foo
+spec:
+  bar: baz
+---
+apiVersion: example/v1
+kind: Kind3
+metadata:
+  annotations: {}
+  name: foo
+spec:
+  bar: baz

@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Kind1
+metadata:
+  name: res-a
+  labels:
+    app: demo
+    whatever: drop-me-1
+  annotations:
+    note: drop-me-1
+spec:
+  replicas: 1
+---
+apiVersion: v1
+kind: Kind2
+metadata:
+  name: res-b
+  labels:
+    app: demo
+    whatever: drop-me-2
+  annotations:
+    note: drop-me-2
+spec:
+  replicas: 2

@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Kind1
+metadata:
+  name: res-a
+  labels:
+    app: demo
+spec:
+  replicas: 3
+---
+apiVersion: v1
+kind: Kind2
+metadata:
+  name: res-b
+  labels:
+    app: demo
+spec:
+  replicas: 2

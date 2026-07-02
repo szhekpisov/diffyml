@@ -1,0 +1,7 @@
+Found one difference
+
+spec.replicas  (v1/Kind1/res-a)
+  ± value change
+    - 1
+    + 3
+

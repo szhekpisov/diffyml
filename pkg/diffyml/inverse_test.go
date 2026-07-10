@@ -365,6 +365,75 @@ func TestInverse_SequenceByIdentifierReordered(t *testing.T) {
 	}
 }
 
+func TestInverse_SequenceByIdentifierDuplicateFromUsesLastOccurrence(t *testing.T) {
+	from := `items:
+  - name: a
+    v: 1
+  - name: a
+    v: 2
+other: x
+`
+	to := `items:
+  - name: a
+    v: 2
+other: y
+`
+	diffs := mustCompareUnchanged(t, from, to, nil)
+	got := unchangedByPath(t, diffs)
+
+	if _, ok := got["items.a"]; !ok {
+		t.Fatalf("expected canonical duplicate item to collapse, got %v", keys(got))
+	}
+	if _, bad := got["items.a.name"]; bad {
+		t.Fatalf("stale duplicate item leaked unchanged leaf, got %v", keys(got))
+	}
+}
+
+func TestInverse_SequenceByAdditionalIdentifierDuplicateFromUsesLastOccurrence(t *testing.T) {
+	from := `items:
+  - key: a
+    v: 1
+  - key: a
+    v: 2
+other: x
+`
+	to := `items:
+  - key: a
+    v: 2
+other: y
+`
+	diffs := mustCompareUnchanged(t, from, to, &diffyml.Options{AdditionalIdentifiers: []string{"key"}})
+	got := unchangedByPath(t, diffs)
+
+	if _, ok := got["items.a"]; !ok {
+		t.Fatalf("expected canonical duplicate item to collapse, got %v", keys(got))
+	}
+	if _, bad := got["items.a.key"]; bad {
+		t.Fatalf("stale duplicate item leaked unchanged leaf, got %v", keys(got))
+	}
+}
+
+func TestInverse_SequenceByIdentifierDuplicateToUsesLastOccurrence(t *testing.T) {
+	from := `items:
+  - name: a
+    v: 2
+other: x
+`
+	to := `items:
+  - name: a
+    v: 1
+  - name: a
+    v: 2
+other: y
+`
+	diffs := mustCompareUnchanged(t, from, to, nil)
+	got := unchangedByPath(t, diffs)
+
+	if _, ok := got["items.a"]; !ok {
+		t.Fatalf("expected last target duplicate to be selected, got %v", keys(got))
+	}
+}
+
 func TestInverse_SequenceUnidentifiedPositionalFallback(t *testing.T) {
 	// Every item is a map (so identifier matching qualifies), but the keyless map
 	// at index 1 has no name/id and falls back to positional pairing.

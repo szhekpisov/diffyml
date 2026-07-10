@@ -374,10 +374,11 @@ func (c *CLIConfig) ToFilterOptions() *diffyml.FilterOptions {
 		excludeRegexp = slices.Concat(neat, c.NeatStripPath, excludeRegexp)
 	}
 	return &diffyml.FilterOptions{
-		IncludePaths:  c.Filter,
-		ExcludePaths:  c.Exclude,
-		IncludeRegexp: c.FilterRegexp,
-		ExcludeRegexp: excludeRegexp,
+		IncludePaths:          c.Filter,
+		ExcludePaths:          c.Exclude,
+		IncludeRegexp:         c.FilterRegexp,
+		ExcludeRegexp:         excludeRegexp,
+		AdditionalIdentifiers: c.AdditionalIdentifiers,
 	}
 }
 
@@ -396,10 +397,11 @@ func (c *CLIConfig) ToNeatOptions() diffyml.NeatOptions {
 // ToMaskOptions converts CLI config to MaskOptions.
 func (c *CLIConfig) ToMaskOptions() diffyml.MaskOptions {
 	return diffyml.MaskOptions{
-		MaskSecrets:    c.MaskSecrets,
-		MaskPaths:      c.MaskPaths,
-		MaskPathRegexp: c.MaskPathRegexp,
-		Placeholder:    c.MaskPlaceholder,
+		MaskSecrets:           c.MaskSecrets,
+		MaskPaths:             c.MaskPaths,
+		MaskPathRegexp:        c.MaskPathRegexp,
+		Placeholder:           c.MaskPlaceholder,
+		AdditionalIdentifiers: c.AdditionalIdentifiers,
 	}
 }
 

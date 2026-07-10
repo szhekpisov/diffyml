@@ -46,6 +46,8 @@ diffyml --exclude-regexp '(?i)password|secret' old.yaml new.yaml
 
 When both `--filter` and `--exclude` are given, `--exclude` wins. Same with the regex variants. Mixed include/exclude is fine — useful for `--filter spec --exclude spec.template.metadata.annotations` patterns.
 
+With `--unchanged`, fully equal subtrees collapse to one atomic entry. Filters may still target descendants using numeric list indices (`containers.0.image`) or identifiers (`containers.app.image`); a descendant match keeps or removes the entire collapsed entry.
+
 ## Chroot — narrow the input
 
 `--chroot <path>` re-roots **both** input documents at the given subtree before comparing.

@@ -64,9 +64,14 @@ func loadFilePairContent(pair diffyml.FilePair, filePairs map[string][2][]byte) 
 	return from, to, nil
 }
 
-// compareAndFilterPair compares two YAML contents and filters the results.
-func compareAndFilterPair(from, to []byte, compareOpts *diffyml.Options, filterOpts *diffyml.FilterOptions) ([]diffyml.Difference, error) {
+// compareAndFilterPair compares two YAML contents, masks sensitive values, and
+// filters the results using the same ordering as single-file mode.
+func compareAndFilterPair(from, to []byte, compareOpts *diffyml.Options, maskOpts diffyml.MaskOptions, filterOpts *diffyml.FilterOptions) ([]diffyml.Difference, error) {
 	diffs, err := diffyml.Compare(from, to, compareOpts)
+	if err != nil {
+		return nil, err
+	}
+	diffs, err = diffyml.MaskDifferences(diffs, maskOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -145,12 +150,12 @@ func buildFilePairsFromMap(m map[string][2][]byte) []diffyml.FilePair {
 
 // processDirPair processes a single file pair in directory mode.
 // Returns the diffs and an error if processing failed.
-func processDirPair(pair diffyml.FilePair, filePairs map[string][2][]byte, compareOpts *diffyml.Options, filterOpts *diffyml.FilterOptions) ([]diffyml.Difference, error) {
+func processDirPair(pair diffyml.FilePair, filePairs map[string][2][]byte, compareOpts *diffyml.Options, maskOpts diffyml.MaskOptions, filterOpts *diffyml.FilterOptions) ([]diffyml.Difference, error) {
 	fromContent, toContent, err := loadFilePairContent(pair, filePairs)
 	if err != nil {
 		return nil, fmt.Errorf("reading %s: %w", pair.Name, err)
 	}
-	diffs, err := compareAndFilterPair(fromContent, toContent, compareOpts, filterOpts)
+	diffs, err := compareAndFilterPair(fromContent, toContent, compareOpts, maskOpts, filterOpts)
 	if err != nil {
 		return nil, fmt.Errorf("comparing %s: %w", pair.Name, err)
 	}
@@ -250,6 +255,7 @@ func runDirectory(cfg *CLIConfig, rc *RunConfig, fromDir, toDir string) *ExitRes
 		compareOpts.Swap = false
 	}
 	filterOpts := cfg.ToFilterOptions()
+	maskOpts := cfg.ToMaskOptions()
 
 	sf, isStructured := formatter.(diffyml.StructuredFormatter)
 
@@ -262,7 +268,7 @@ func runDirectory(cfg *CLIConfig, rc *RunConfig, fromDir, toDir string) *ExitRes
 		wantSummary:    cfg.Summary,
 	}
 	for _, pair := range pairs {
-		diffs, diffErr := processDirPair(pair, rc.FilePairs, compareOpts, filterOpts)
+		diffs, diffErr := processDirPair(pair, rc.FilePairs, compareOpts, maskOpts, filterOpts)
 		if diffErr != nil {
 			fmt.Fprintf(rc.Stderr, "Error: %v\n", diffErr)
 			c.hasErrors = true

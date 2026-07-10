@@ -35,6 +35,33 @@ func TestRunDirectory_IdenticalFiles_Exit0(t *testing.T) {
 	}
 }
 
+func TestRunDirectory_UnchangedCollapsedValueHonorsMaskPath(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.Color = "never"
+	cfg.Output = "compact"
+	cfg.Unchanged = true
+	cfg.MaskPaths = []string{"password"}
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FilePairs = map[string][2][]byte{
+		"secret.yaml": {[]byte("name: app\npassword: sensitive\n"), []byte("name: app\npassword: sensitive\n")},
+	}
+
+	result := runDirectory(cfg, rc, "", "")
+	if result.Code != ExitCodeSuccess {
+		t.Fatalf("expected exit 0 without --set-exit-code, got %d", result.Code)
+	}
+	if strings.Contains(stdout.String(), "sensitive") {
+		t.Fatalf("directory output leaked masked value: %s", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), "password: '***'") && !strings.Contains(stdout.String(), "password: \"***\"") && !strings.Contains(stdout.String(), "password: ***") {
+		t.Fatalf("directory output should contain masked placeholder, got: %s", stdout.String())
+	}
+}
+
 func TestRunDirectory_ModifiedFile_Exit1(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.SetExitCode = true

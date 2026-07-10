@@ -66,12 +66,30 @@ func (f *DetailedFormatter) renderDocumentValue(sb *strings.Builder, val any, sy
 
 	switch v := val.(type) {
 	case *OrderedMap:
+		if len(v.Keys) == 0 && symbol == "=" {
+			f.writeColoredLine(sb, pad+"{}", palette.EmptyStructure, opts)
+			return
+		}
 		for _, key := range v.Keys {
 			f.renderKeyValueYAML(sb, key, v.Values[key], indent, palette, opts)
 		}
 	case map[string]any:
+		if len(v) == 0 && symbol == "=" {
+			f.writeColoredLine(sb, pad+"{}", palette.EmptyStructure, opts)
+			return
+		}
 		for _, key := range sortedMapKeys(v) {
 			f.renderKeyValueYAML(sb, key, v[key], indent, palette, opts)
+		}
+	case []any:
+		if symbol == "=" {
+			if len(v) == 0 {
+				f.writeColoredLine(sb, pad+"[]", palette.EmptyStructure, opts)
+				return
+			}
+			f.renderListItems(sb, v, indent, palette, opts)
+		} else {
+			f.writeColoredLine(sb, fmt.Sprintf("%s%v", pad, formatDetailedValue(val)), palette.ScalarColor(val), opts)
 		}
 	default:
 		f.writeColoredLine(sb, fmt.Sprintf("%s%v", pad, formatDetailedValue(val)), palette.ScalarColor(val), opts)

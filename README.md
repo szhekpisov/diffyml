@@ -459,6 +459,8 @@ diffyml --filter-regexp 'spec\.containers\[.*\]\.image' old.yaml new.yaml
 
 `-u, --unchanged` inverts the report: instead of the differences, it lists the keys/values that are **equal** between the two files. Equal subtrees collapse to a single entry at the highest fully-equal node, and it honors every output format, `--filter`/`--exclude`, and masking.
 
+Filters can target descendants of a collapsed equal subtree using either numeric list indices (`containers.0.image`) or list identifiers (`containers.app.image`). The collapsed subtree remains atomic in the output: matching or excluding any descendant keeps or removes the whole entry, respectively.
+
 ```bash
 # Find values that already match the chart defaults (candidates to drop)
 diffyml --unchanged values.yaml chart-defaults.yaml

@@ -75,6 +75,116 @@ func TestMaskDifferences_CustomMaskPath(t *testing.T) {
 	}
 }
 
+func TestMaskDifferences_CustomPathInsideCollapsedUnchangedMap(t *testing.T) {
+	image := &OrderedMap{
+		Keys: []string{"repo", "tag"},
+		Values: map[string]any{
+			"repo": "private.example/app",
+			"tag":  "1.0",
+		},
+	}
+	root := &OrderedMap{
+		Keys: []string{"name", "image"},
+		Values: map[string]any{
+			"name":  "app",
+			"image": image,
+		},
+	}
+	diffs := []Difference{{Path: DiffPath{}, Type: DiffUnchanged, From: root, To: root}}
+
+	got, err := MaskDifferences(diffs, MaskOptions{MaskPaths: []string{"image.repo"}})
+	if err != nil {
+		t.Fatalf("MaskDifferences: %v", err)
+	}
+
+	for side, value := range map[string]any{"from": got[0].From, "to": got[0].To} {
+		maskedRoot := value.(*OrderedMap)
+		maskedImage := maskedRoot.Values["image"].(*OrderedMap)
+		if maskedImage.Values["repo"] != "***" {
+			t.Errorf("%s image.repo should be masked, got %v", side, maskedImage.Values["repo"])
+		}
+		if maskedImage.Values["tag"] != "1.0" {
+			t.Errorf("%s image.tag should remain visible, got %v", side, maskedImage.Values["tag"])
+		}
+		if maskedRoot.Values["name"] != "app" {
+			t.Errorf("%s name should remain visible, got %v", side, maskedRoot.Values["name"])
+		}
+	}
+}
+
+func TestMaskDifferences_CustomRegexpInsideCollapsedUnchangedMap(t *testing.T) {
+	value := &OrderedMap{
+		Keys:   []string{"token", "visible"},
+		Values: map[string]any{"token": "sensitive", "visible": "keep"},
+	}
+	diffs := []Difference{{Path: DiffPath{"config"}, Type: DiffUnchanged, From: value, To: value}}
+
+	got, err := MaskDifferences(diffs, MaskOptions{MaskPathRegexp: []string{`^config\.token$`}})
+	if err != nil {
+		t.Fatalf("MaskDifferences: %v", err)
+	}
+	masked := got[0].To.(*OrderedMap)
+	if masked.Values["token"] != "***" {
+		t.Fatalf("config.token should be masked, got %v", masked.Values["token"])
+	}
+	if masked.Values["visible"] != "keep" {
+		t.Errorf("config.visible should remain visible, got %v", masked.Values["visible"])
+	}
+}
+
+func TestMaskDifferences_CustomPathInsideCollapsedNamedList(t *testing.T) {
+	container := &OrderedMap{
+		Keys: []string{"name", "image", "port"},
+		Values: map[string]any{
+			"name":  "app",
+			"image": "private.example/app:1.0",
+			"port":  8080,
+		},
+	}
+	diffs := []Difference{{
+		Path: DiffPath{"containers"},
+		Type: DiffUnchanged,
+		From: []any{container},
+		To:   []any{container},
+	}}
+
+	got, err := MaskDifferences(diffs, MaskOptions{MaskPaths: []string{"containers.app.image"}})
+	if err != nil {
+		t.Fatalf("MaskDifferences: %v", err)
+	}
+
+	masked := got[0].To.([]any)[0].(*OrderedMap)
+	if masked.Values["image"] != "***" {
+		t.Fatalf("containers.app.image should be masked, got %v", masked.Values["image"])
+	}
+	if masked.Values["port"] != 8080 {
+		t.Errorf("containers.app.port should remain visible, got %v", masked.Values["port"])
+	}
+}
+
+func TestMaskDifferences_CollapsedPlainMapWithDocIndexAndNil(t *testing.T) {
+	item := map[string]any{
+		"name":  "app",
+		"token": "sensitive",
+		"keep":  nil,
+	}
+	value := map[string]any{"items": []any{item}}
+	diffs := []Difference{{Path: DiffPath{"[1]"}, Type: DiffUnchanged, From: value, To: value}}
+
+	got, err := MaskDifferences(diffs, MaskOptions{MaskPaths: []string{"items.app.token"}})
+	if err != nil {
+		t.Fatalf("MaskDifferences: %v", err)
+	}
+
+	maskedItem := got[0].To.(map[string]any)["items"].([]any)[0].(map[string]any)
+	if maskedItem["token"] != "***" {
+		t.Fatalf("items.app.token should be masked, got %v", maskedItem["token"])
+	}
+	if maskedItem["keep"] != nil {
+		t.Errorf("nil sibling should remain nil, got %v", maskedItem["keep"])
+	}
+}
+
 func TestMaskDifferences_CustomMaskPath_PrefixMatch(t *testing.T) {
 	diffs := []Difference{
 		{Path: DiffPath{"secrets", "db", "password"}, Type: DiffModified, From: "a", To: "b"},
@@ -318,8 +428,8 @@ func TestIsWholeDocDiff(t *testing.T) {
 		{DiffPath{}, true},
 	}
 	for _, c := range cases {
-		if got := isWholeDocDiff(c.in); got != c.want {
-			t.Errorf("isWholeDocDiff(%v) = %v, want %v", c.in, got, c.want)
+		if got := isWholeDocumentPath(c.in); got != c.want {
+			t.Errorf("isWholeDocumentPath(%v) = %v, want %v", c.in, got, c.want)
 		}
 	}
 }

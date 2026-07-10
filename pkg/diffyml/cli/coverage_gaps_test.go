@@ -429,7 +429,7 @@ func TestProcessDirPair_LoadError(t *testing.T) {
 		FromPath: "/nonexistent/from.yaml",
 		ToPath:   "/nonexistent/to.yaml",
 	}
-	_, err := processDirPair(pair, nil, &diffyml.Options{}, &diffyml.FilterOptions{})
+	_, err := processDirPair(pair, nil, &diffyml.Options{}, diffyml.MaskOptions{}, &diffyml.FilterOptions{})
 	if err == nil {
 		t.Fatal("expected error for non-existent file in processDirPair")
 	}
@@ -444,7 +444,7 @@ func TestProcessDirPair_CompareError(t *testing.T) {
 		Name: "bad.yaml",
 		Type: diffyml.FilePairBothExist,
 	}
-	_, err := processDirPair(pair, filePairs, &diffyml.Options{}, &diffyml.FilterOptions{})
+	_, err := processDirPair(pair, filePairs, &diffyml.Options{}, diffyml.MaskOptions{}, &diffyml.FilterOptions{})
 	if err == nil {
 		t.Fatal("expected error for invalid YAML in processDirPair")
 	}

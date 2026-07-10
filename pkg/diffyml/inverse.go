@@ -308,6 +308,17 @@ func collectUnchangedSequenceByIdentifier(path DiffPath, fromN, toN *yaml.Node, 
 	from := fromN.Content
 	to := toN.Content
 
+	fromIndex := make(map[any]int, len(from))
+	var fromNoID []int
+	for i, item := range from {
+		id := getIdentifierNode(item, opts)
+		if isComparableIdentifier(id) {
+			fromIndex[id] = i // last-write-wins, matching the normal path
+			continue
+		}
+		fromNoID = append(fromNoID, i)
+	}
+
 	toIndex := make(map[any]int, len(to))
 	var toNoID []int
 	for i, item := range to {
@@ -320,11 +331,13 @@ func collectUnchangedSequenceByIdentifier(path DiffPath, fromN, toN *yaml.Node, 
 	}
 
 	var diffs []Difference
-	var fromNoID []int
 	for i, item := range from {
 		id := getIdentifierNode(item, opts)
+		// gomutants:disable-next-line BRANCH_IF reason="defensive; non-comparable identifiers are absent from both indexes, so the following index guards also continue"
 		if !isComparableIdentifier(id) {
-			fromNoID = append(fromNoID, i)
+			continue
+		}
+		if fromIndex[id] != i {
 			continue
 		}
 		toIdx, ok := toIndex[id]

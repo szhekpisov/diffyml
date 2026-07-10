@@ -192,9 +192,10 @@ func (f *DetailedFormatter) formatGroupDiffs(sb *strings.Builder, group pathGrou
 func (f *DetailedFormatter) formatEntryBatch(sb *strings.Builder, diffs []Difference, action string, opts *FormatOptions) {
 	n := len(diffs)
 
-	// Detect document-level diffs (path is bare "[N]")
+	// Detect document-level diffs (empty single-document root or bare "[N]").
 	// All diffs in a batch share the same path structure; checking the first is sufficient.
-	isDocLevel := diffs[0].Path.IsBareDocIndex()
+	isDocLevel := diffs[0].Path.IsBareDocIndex() ||
+		(diffs[0].Type == DiffUnchanged && diffs[0].Path.IsEmpty())
 
 	isListEntry := isListEntryDiff(diffs[0])
 	entryType := "map"

@@ -144,6 +144,109 @@ func TestInverseFormat_DetailedHeaderAndBatch(t *testing.T) {
 	}
 }
 
+func TestInverseFormat_DetailedRootDocuments(t *testing.T) {
+	tests := []struct {
+		name string
+		yaml string
+		want string
+	}{
+		{name: "scalar", yaml: "same\n", want: "(root level)\n  = one document unchanged:\n    ---\n    same\n\n"},
+		{name: "sequence", yaml: "- alpha\n- beta\n", want: "(root level)\n  = one document unchanged:\n    ---\n    - alpha\n    - beta\n\n"},
+		{name: "empty map", yaml: "{}\n", want: "(root level)\n  = one document unchanged:\n    ---\n    {}\n\n"},
+		{name: "empty sequence", yaml: "[]\n", want: "(root level)\n  = one document unchanged:\n    ---\n    []\n\n"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			diffs, err := Compare([]byte(tt.yaml), []byte(tt.yaml), &Options{Unchanged: true})
+			if err != nil {
+				t.Fatalf("Compare: %v", err)
+			}
+			got := (&DetailedFormatter{}).Format(diffs, &FormatOptions{OmitHeader: true, Unchanged: true})
+			if got != tt.want {
+				t.Fatalf("unexpected detailed output\ngot:\n%s\nwant:\n%s", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestInverseFormat_DetailedRootPlainMap(t *testing.T) {
+	value := map[string]any{}
+	diffs := []Difference{{Path: DiffPath{}, Type: DiffUnchanged, From: value, To: value}}
+
+	got := (&DetailedFormatter{}).Format(diffs, &FormatOptions{OmitHeader: true, Unchanged: true})
+	want := "(root level)\n  = one document unchanged:\n    ---\n    {}\n\n"
+	if got != want {
+		t.Fatalf("unexpected detailed output\ngot:\n%s\nwant:\n%s", got, want)
+	}
+}
+
+func TestInverseFormat_DetailedRootNonEmptyMaps(t *testing.T) {
+	ordered := &OrderedMap{
+		Keys:   []string{"name"},
+		Values: map[string]any{"name": "same"},
+	}
+	tests := []struct {
+		name  string
+		value any
+	}{
+		{name: "ordered map", value: ordered},
+		{name: "plain map", value: map[string]any{"name": "same"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			diffs := []Difference{{Path: DiffPath{}, Type: DiffUnchanged, From: tt.value, To: tt.value}}
+			got := (&DetailedFormatter{}).Format(diffs, &FormatOptions{OmitHeader: true, Unchanged: true})
+			want := "(root level)\n  = one document unchanged:\n    ---\n    name: same\n\n"
+			if got != want {
+				t.Fatalf("unexpected detailed output\ngot:\n%s\nwant:\n%s", got, want)
+			}
+		})
+	}
+}
+
+func TestRenderDocumentValue_NormalEmptyMapCompatibility(t *testing.T) {
+	tests := []struct {
+		name  string
+		value any
+	}{
+		{name: "ordered map", value: NewOrderedMap()},
+		{name: "plain map", value: map[string]any{}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var sb strings.Builder
+			(&DetailedFormatter{}).renderDocumentValue(&sb, tt.value, "+", 4, DefaultFormatOptions())
+			if got, want := sb.String(), "    ---\n"; got != want {
+				t.Fatalf("normal empty-map rendering changed\ngot: %q\nwant: %q", got, want)
+			}
+		})
+	}
+}
+
+func TestDetailedFormat_EmptyPathAdditionRemainsMapEntry(t *testing.T) {
+	diffs := []Difference{{Path: DiffPath{}, Type: DiffAdded, To: "value"}}
+	got := (&DetailedFormatter{}).Format(diffs, &FormatOptions{OmitHeader: true})
+	if !strings.Contains(got, "+ one map entry added:") {
+		t.Fatalf("empty-path addition must remain a map entry, got:\n%s", got)
+	}
+	if strings.Contains(got, "document added") {
+		t.Fatalf("empty-path addition was misclassified as a document, got:\n%s", got)
+	}
+}
+
+func TestRenderDocumentValue_NormalSequenceCompatibility(t *testing.T) {
+	var sb strings.Builder
+	opts := DefaultFormatOptions()
+	(&DetailedFormatter{}).renderDocumentValue(&sb, []any{"alpha"}, "+", 4, opts)
+
+	if got, want := sb.String(), "    ---\n    [alpha]\n"; got != want {
+		t.Fatalf("normal sequence rendering changed\ngot: %q\nwant: %q", got, want)
+	}
+}
+
 func TestInverseFormat_DetailedNeutralPalette(t *testing.T) {
 	diffs := []Difference{unchangedScalarDiff(DiffPath{"image", "repo"}, "nginx")}
 	// Exercise both the true-color neutral palette and the flat neutral palette

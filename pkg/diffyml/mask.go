@@ -10,7 +10,10 @@
 // appears in the report — only the value is replaced with the placeholder.
 package diffyml
 
-import "regexp"
+import (
+	"maps"
+	"regexp"
+)
 
 // DefaultMaskPlaceholder is the value substituted into masked diffs when
 // MaskOptions.Placeholder is empty.
@@ -32,6 +35,9 @@ type MaskOptions struct {
 	// Placeholder is the value substituted for masked scalars.
 	// Defaults to [DefaultMaskPlaceholder] when empty.
 	Placeholder string
+	// AdditionalIdentifiers supplies non-default identifier fields used when
+	// matching paths inside collapsed list values.
+	AdditionalIdentifiers []string
 }
 
 // MaskDifferences redacts sensitive values in the given diffs in-place and
@@ -59,7 +65,12 @@ func MaskDifferences(diffs []Difference, opts MaskOptions) ([]Difference, error)
 		if diffs[i].Type == DiffOrderChanged {
 			continue
 		}
-		switch maskScopeFor(diffs[i], opts, regex) {
+
+		bases := maskPathAliases(diffs[i].Path)
+		diffs[i].From = maskValueAtPaths(diffs[i].From, bases, opts, regex, placeholder)
+		diffs[i].To = maskValueAtPaths(diffs[i].To, bases, opts, regex, placeholder)
+
+		switch secretMaskScopeFor(diffs[i], opts) {
 		case maskScopeAll:
 			diffs[i].From = maskValueRecursive(diffs[i].From, placeholder)
 			diffs[i].To = maskValueRecursive(diffs[i].To, placeholder)
@@ -78,19 +89,15 @@ const (
 	// maskScopeAll redacts every leaf in From/To.
 	maskScopeAll
 	// maskScopeSecretFields redacts only the "data" and "stringData" subtrees
-	// within From/To. Used for whole-document Secret add/remove diffs so other
-	// fields (apiVersion, metadata) remain visible.
+	// within From/To. Used for whole-document Secret add/remove/unchanged diffs
+	// so other fields (apiVersion, metadata) remain visible.
 	maskScopeSecretFields
 )
 
 // secretMaskedKeys are the top-level Secret fields whose values are auto-masked.
 var secretMaskedKeys = map[string]bool{"data": true, "stringData": true}
 
-func maskScopeFor(d Difference, opts MaskOptions, regex []*regexp.Regexp) maskScope {
-	pathStr := pathWithoutDocIndex(d.Path)
-	if matchesAnyPath(pathStr, opts.MaskPaths) || matchesAnyRegex(pathStr, regex) {
-		return maskScopeAll
-	}
+func secretMaskScopeFor(d Difference, opts MaskOptions) maskScope {
 	if !opts.MaskSecrets || d.DocumentKind != "Secret" {
 		return maskScopeNone
 	}
@@ -98,10 +105,56 @@ func maskScopeFor(d Difference, opts MaskOptions, regex []*regexp.Regexp) maskSc
 	if hasField && secretMaskedKeys[first] {
 		return maskScopeAll
 	}
-	if isWholeDocDiff(d.Path) {
+	if isWholeDocumentPath(d.Path) {
 		return maskScopeSecretFields
 	}
 	return maskScopeNone
+}
+
+func maskPathAliases(path DiffPath) []DiffPath {
+	if _, ok := path.DocIndex(); ok {
+		path = path[1:]
+	}
+	return []DiffPath{path}
+}
+
+// maskValueAtPaths selectively masks descendants of a collapsed structured
+// diff. aliases contains every supported spelling of the current value's path
+// (numeric and identifier list segments); a match at the current path masks the
+// entire subtree, while a more-specific rule is found by descending further.
+func maskValueAtPaths(value any, aliases []DiffPath, opts MaskOptions, regex []*regexp.Regexp, placeholder string) any {
+	if anyAliasMatches(aliases, opts.MaskPaths, regex) {
+		return maskValueRecursive(value, placeholder)
+	}
+
+	switch val := value.(type) {
+	case *OrderedMap:
+		out := &OrderedMap{
+			Keys:   append([]string(nil), val.Keys...),
+			Values: maps.Clone(val.Values),
+		}
+		for _, key := range val.Keys {
+			childAliases := mappingValuePathAliases(aliases, key)
+			out.Values[key] = maskValueAtPaths(val.Values[key], childAliases, opts, regex, placeholder)
+		}
+		return out
+	case map[string]any:
+		out := make(map[string]any, len(val))
+		for key, child := range val {
+			childAliases := mappingValuePathAliases(aliases, key)
+			out[key] = maskValueAtPaths(child, childAliases, opts, regex, placeholder)
+		}
+		return out
+	case []any:
+		out := make([]any, len(val))
+		for i, child := range val {
+			childAliases := sequenceValuePathAliases(aliases, child, i, opts.AdditionalIdentifiers)
+			out[i] = maskValueAtPaths(child, childAliases, opts, regex, placeholder)
+		}
+		return out
+	default:
+		return value
+	}
 }
 
 // maskValueRecursive returns a copy of v with every scalar leaf replaced by
@@ -200,8 +253,12 @@ func firstFieldAfterDocIndex(p DiffPath) (string, bool) {
 	return p[0], true
 }
 
-// isWholeDocDiff reports whether the path refers to a whole document
-// (e.g., "[0]") rather than a field within one.
-func isWholeDocDiff(p DiffPath) bool {
-	return p.IsBareDocIndex()
+// isWholeDocumentPath reports whether the path refers to a whole document rather
+// than a field within one. A bare "[N]" is a whole document in a multi-document
+// file; an empty path is the whole (only) document in a single-document file —
+// inverse mode (Options.Unchanged) collapses a fully-equal single document to a
+// single entry at the empty path. Both must be recognized so --mask-secrets
+// redacts a whole-document Secret's data/stringData subtrees in either case.
+func isWholeDocumentPath(p DiffPath) bool {
+	return len(p) == 0 || p.IsBareDocIndex()
 }

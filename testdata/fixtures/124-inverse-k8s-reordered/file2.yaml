@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+spec:
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+spec:
+  replicas: 3
+  strategy: RollingUpdate

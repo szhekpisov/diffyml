@@ -45,6 +45,7 @@ type CLIConfig struct {
 	IgnoreApiVersion        bool
 	NoCertInspection        bool
 	Swap                    bool
+	Unchanged               bool
 	AdditionalIdentifiers   []string
 
 	// Filtering options
@@ -144,6 +145,8 @@ func (c *CLIConfig) initFlags() {
 	c.fs.BoolVar(&c.NoCertInspection, "x", c.NoCertInspection, "")
 	c.fs.BoolVar(&c.NoCertInspection, "no-cert-inspection", c.NoCertInspection, "disable x509 certificate inspection")
 	c.fs.BoolVar(&c.Swap, "swap", c.Swap, "swap 'from' and 'to' for comparison")
+	c.fs.BoolVar(&c.Unchanged, "u", c.Unchanged, "")
+	c.fs.BoolVar(&c.Unchanged, "unchanged", c.Unchanged, "report keys equal between both files (inverse diff)")
 
 	// Filter options - using custom slice vars
 	c.fs.Func("filter", "filter reports to a subset of differences", func(s string) error {
@@ -351,6 +354,7 @@ func (c *CLIConfig) ToCompareOptions() *diffyml.Options {
 		AdditionalIdentifiers:   c.AdditionalIdentifiers,
 		NoCertInspection:        c.NoCertInspection,
 		Swap:                    c.Swap,
+		Unchanged:               c.Unchanged,
 		Chroot:                  c.Chroot,
 		ChrootFrom:              c.ChrootFrom,
 		ChrootTo:                c.ChrootTo,
@@ -370,10 +374,11 @@ func (c *CLIConfig) ToFilterOptions() *diffyml.FilterOptions {
 		excludeRegexp = slices.Concat(neat, c.NeatStripPath, excludeRegexp)
 	}
 	return &diffyml.FilterOptions{
-		IncludePaths:  c.Filter,
-		ExcludePaths:  c.Exclude,
-		IncludeRegexp: c.FilterRegexp,
-		ExcludeRegexp: excludeRegexp,
+		IncludePaths:          c.Filter,
+		ExcludePaths:          c.Exclude,
+		IncludeRegexp:         c.FilterRegexp,
+		ExcludeRegexp:         excludeRegexp,
+		AdditionalIdentifiers: c.AdditionalIdentifiers,
 	}
 }
 
@@ -392,10 +397,11 @@ func (c *CLIConfig) ToNeatOptions() diffyml.NeatOptions {
 // ToMaskOptions converts CLI config to MaskOptions.
 func (c *CLIConfig) ToMaskOptions() diffyml.MaskOptions {
 	return diffyml.MaskOptions{
-		MaskSecrets:    c.MaskSecrets,
-		MaskPaths:      c.MaskPaths,
-		MaskPathRegexp: c.MaskPathRegexp,
-		Placeholder:    c.MaskPlaceholder,
+		MaskSecrets:           c.MaskSecrets,
+		MaskPaths:             c.MaskPaths,
+		MaskPathRegexp:        c.MaskPathRegexp,
+		Placeholder:           c.MaskPlaceholder,
+		AdditionalIdentifiers: c.AdditionalIdentifiers,
 	}
 }
 
@@ -406,6 +412,7 @@ func (c *CLIConfig) ToFormatOptions() *diffyml.FormatOptions {
 		UseGoPatchStyle:  c.UseGoPatchStyle,
 		ContextLines:     c.MultiLineContextLines,
 		NoCertInspection: c.NoCertInspection,
+		Unchanged:        c.Unchanged,
 		Palette:          c.Palette,
 	}
 }
@@ -435,6 +442,7 @@ func (c *CLIConfig) Usage() string {
 	sb.WriteString("      --ignore-api-version            ignore apiVersion when matching Kubernetes resources\n")
 	sb.WriteString("  -x, --no-cert-inspection            disable x509 certificate inspection\n")
 	sb.WriteString("      --swap                          swap 'from' and 'to' for comparison\n")
+	sb.WriteString("  -u, --unchanged                     report keys equal between both files (inverse diff)\n")
 	sb.WriteString("\n")
 
 	// Filter options

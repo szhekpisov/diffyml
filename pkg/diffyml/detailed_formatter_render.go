@@ -9,15 +9,25 @@ import (
 	"strings"
 )
 
+// diffTypeForSymbol maps an entry-batch symbol back to its DiffType so the
+// correct color palette is selected ("+" add, "=" unchanged, anything else
+// remove). Used by renderEntryValue and renderDocumentValue.
+func diffTypeForSymbol(symbol string) DiffType {
+	switch symbol {
+	case "+":
+		return DiffAdded
+	case "=":
+		return DiffUnchanged
+	default:
+		return DiffRemoved
+	}
+}
+
 // renderEntryValue renders a value for an entry batch line.
 // For list entries, renders values with "- " prefix. For map entries, renders as "key: value".
 // The entire block is colored (green for adds, red for removes).
 func (f *DetailedFormatter) renderEntryValue(sb *strings.Builder, val any, symbol string, indent int, path DiffPath, isList bool, opts *FormatOptions) {
-	diffType := DiffRemoved
-	if symbol == "+" {
-		diffType = DiffAdded
-	}
-	palette := resolvedPalette(opts).EntryPalette(diffType, opts.TrueColor)
+	palette := resolvedPalette(opts).EntryPalette(diffTypeForSymbol(symbol), opts.TrueColor)
 
 	// Map entries: render as key: value pairs
 	if !isList {
@@ -45,11 +55,7 @@ func (f *DetailedFormatter) renderEntryValue(sb *strings.Builder, val any, symbo
 
 // renderDocumentValue renders a whole YAML document (top-level key-value pairs without list "- " prefix).
 func (f *DetailedFormatter) renderDocumentValue(sb *strings.Builder, val any, symbol string, indent int, opts *FormatOptions) {
-	diffType := DiffRemoved
-	if symbol == "+" {
-		diffType = DiffAdded
-	}
-	palette := resolvedPalette(opts).EntryPalette(diffType, opts.TrueColor)
+	palette := resolvedPalette(opts).EntryPalette(diffTypeForSymbol(symbol), opts.TrueColor)
 
 	pad := strings.Repeat(" ", indent)
 	whiteCode := colorWhite
@@ -60,12 +66,30 @@ func (f *DetailedFormatter) renderDocumentValue(sb *strings.Builder, val any, sy
 
 	switch v := val.(type) {
 	case *OrderedMap:
+		if len(v.Keys) == 0 && symbol == "=" {
+			f.writeColoredLine(sb, pad+"{}", palette.EmptyStructure, opts)
+			return
+		}
 		for _, key := range v.Keys {
 			f.renderKeyValueYAML(sb, key, v.Values[key], indent, palette, opts)
 		}
 	case map[string]any:
+		if len(v) == 0 && symbol == "=" {
+			f.writeColoredLine(sb, pad+"{}", palette.EmptyStructure, opts)
+			return
+		}
 		for _, key := range sortedMapKeys(v) {
 			f.renderKeyValueYAML(sb, key, v[key], indent, palette, opts)
+		}
+	case []any:
+		if symbol == "=" {
+			if len(v) == 0 {
+				f.writeColoredLine(sb, pad+"[]", palette.EmptyStructure, opts)
+				return
+			}
+			f.renderListItems(sb, v, indent, palette, opts)
+		} else {
+			f.writeColoredLine(sb, fmt.Sprintf("%s%v", pad, formatDetailedValue(val)), palette.ScalarColor(val), opts)
 		}
 	default:
 		f.writeColoredLine(sb, fmt.Sprintf("%s%v", pad, formatDetailedValue(val)), palette.ScalarColor(val), opts)

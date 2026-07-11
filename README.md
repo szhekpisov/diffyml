@@ -43,6 +43,7 @@ diffyml compares YAML files and shows meaningful, structured differences — not
   - [AI Summary](#ai-summary)
   - [Sensitive Value Masking](#sensitive-value-masking)
   - [Filtering](#filtering)
+  - [Inverse Diff](#inverse-diff)
   - [Neat Mode](#neat-mode)
   - [Configuration File](#configuration-file)
   - [Custom Colors](#custom-colors)
@@ -454,6 +455,19 @@ diffyml --exclude 'metadata.annotations[argocd.argoproj.io/tracking-id]' old.yam
 diffyml --filter-regexp 'spec\.containers\[.*\]\.image' old.yaml new.yaml
 ```
 
+### Inverse Diff
+
+`-u, --unchanged` inverts the report: instead of the differences, it lists the keys/values that are **equal** between the two files. Equal subtrees collapse to a single entry at the highest fully-equal node, and it honors every output format, `--filter`/`--exclude`, and masking.
+
+Filters can target descendants of a collapsed equal subtree using either numeric list indices (`containers.0.image`) or list identifiers (`containers.app.image`). The collapsed subtree remains atomic in the output: matching or excluding any descendant keeps or removes the whole entry, respectively.
+
+```bash
+# Find values that already match the chart defaults (candidates to drop)
+diffyml --unchanged values.yaml chart-defaults.yaml
+```
+
+Comparison is at key/value granularity — map keys, list items, and whole scalars. List items are matched the same way as in a normal diff: by identifier (`name`/`id`), order-independently under `--ignore-order-changes` or for heterogeneous lists, and otherwise positionally. A multi-line (block) string is compared as a **single scalar**: if any line inside it differs, the whole value is "changed" and none of its lines are reported as unchanged. Inverse mode does not line-diff inside strings (unlike the normal diff, which shows a line-by-line diff for modified multi-line strings).
+
 ### Neat Mode
 
 `--neat` excludes well-known noise paths injected by the Kubernetes API server, kubectl, Helm, ArgoCD, and Flux — `metadata.managedFields`, `metadata.resourceVersion`, the entire `status` subtree, `meta.helm.sh/release-name`, `helm.sh/chart`, `argocd.argoproj.io/tracking-id`, `kustomize.toolkit.fluxcd.io/*`, and similar paths. The full strip list lives in [`doc/neat.md`](doc/neat.md).
@@ -552,6 +566,7 @@ Available environment variables: `DIFFYML_COLOR_ADDED`, `DIFFYML_COLOR_REMOVED`,
 | `--ignore-api-version` | Ignore `apiVersion` when matching Kubernetes resources |
 | `-x, --no-cert-inspection` | Disable x509 certificate inspection |
 | `--swap` | Swap from/to files |
+| `-u, --unchanged` | Inverse diff: report keys/values equal between both files instead of differences |
 
 **Filtering**
 
@@ -660,7 +675,7 @@ Contributions welcome! [Open an issue](https://github.com/szhekpisov/diffyml/iss
 <details>
 <summary>Development setup</summary>
 
-**Prerequisites:** Go 1.26.4+, [pre-commit](https://pre-commit.com/)
+**Prerequisites:** Go 1.26.5+, [pre-commit](https://pre-commit.com/)
 
 ```bash
 git clone https://github.com/szhekpisov/diffyml.git

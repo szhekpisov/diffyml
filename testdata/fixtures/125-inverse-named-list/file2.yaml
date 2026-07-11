@@ -1,0 +1,8 @@
+containers:
+  - name: sidecar
+    image: proxy:2.0
+    port: 8080
+  - name: app
+    image: nginx:1.0
+  - name: new
+    image: fresh:1.0

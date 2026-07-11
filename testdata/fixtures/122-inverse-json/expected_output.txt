@@ -1,0 +1,30 @@
+[
+  {
+    "path": "name",
+    "type": "unchanged",
+    "from": "app",
+    "to": "app",
+    "document_index": 0
+  },
+  {
+    "path": "image.repo",
+    "type": "unchanged",
+    "from": "nginx",
+    "to": "nginx",
+    "document_index": 0
+  },
+  {
+    "path": "labels.app",
+    "type": "unchanged",
+    "from": "web",
+    "to": "web",
+    "document_index": 0
+  },
+  {
+    "path": "ports.0",
+    "type": "unchanged",
+    "from": 80,
+    "to": 80,
+    "document_index": 0
+  }
+]

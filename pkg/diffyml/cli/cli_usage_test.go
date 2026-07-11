@@ -19,6 +19,7 @@ func TestCLIConfig_UsageContainsFlags(t *testing.T) {
 		"--exclude",
 		"--chroot",
 		"--swap",
+		"--unchanged",
 	}
 
 	for _, flag := range expectedFlags {

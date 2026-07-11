@@ -8,7 +8,6 @@ package diffyml
 import (
 	"fmt"
 	"regexp"
-	"strconv"
 	"strings"
 )
 
@@ -24,6 +23,9 @@ type FilterOptions struct {
 	IncludeRegexp []string
 	// ExcludeRegexp filters differences to exclude those matching specified regex patterns.
 	ExcludeRegexp []string
+	// AdditionalIdentifiers supplies non-default identifier fields used when
+	// deriving paths inside collapsed list values.
+	AdditionalIdentifiers []string
 }
 
 // FilterDiffs filters the list of differences based on the provided options.
@@ -37,8 +39,9 @@ func FilterDiffs(diffs []Difference, opts *FilterOptions) []Difference {
 		return diffs
 	}
 	pathOnly := &FilterOptions{
-		IncludePaths: opts.IncludePaths,
-		ExcludePaths: opts.ExcludePaths,
+		IncludePaths:          opts.IncludePaths,
+		ExcludePaths:          opts.ExcludePaths,
+		AdditionalIdentifiers: opts.AdditionalIdentifiers,
 	}
 	// FilterDiffsWithRegexp can only fail on invalid regex; pathOnly has none.
 	result, _ := FilterDiffsWithRegexp(diffs, pathOnly)
@@ -130,67 +133,71 @@ func matchesAnyRegexWithNested(diffPath string, nestedPaths []string, patterns [
 	return false
 }
 
-// nestedKeyPaths returns extended path strings for diffs that report
-// added/removed map entries at the parent path. For such diffs, the
-// actual key lives inside the From/To OrderedMap. Returns nil if the
-// diff does not contain nested map keys.
+// nestedKeyPaths returns extended path strings for diffs that report a
+// structured added/removed/unchanged value at the parent path. Returns nil if
+// the diff does not contain nested map keys or list items.
 //
 // Expansion is recursive: every descendant map key and list index of the
-// added/removed payload becomes a candidate path (e.g. metadata.labels and
-// metadata.labels.whatever), so deep filters can match a bulk-added/removed
-// subtree.
+// added/removed/unchanged payload becomes a candidate path (e.g.
+// metadata.labels and metadata.labels.whatever), so deep filters can match a
+// collapsed subtree.
 //
-// Note: this also activates for list item additions/removals when the
-// item is an OrderedMap (e.g., a container removed from spec.containers).
-// In that case every descendant key of the item becomes a nested path,
-// and matching any one of them causes the entire diff to be
-// included/excluded. This is intentional — list item diffs are atomic,
-// so partial filtering would not be meaningful.
-func nestedKeyPaths(diff Difference) []string {
-	return nestedKeyPathsFrom(diff.Path, diff)
+// Note: this also activates for list item additions/removals/collapses when the
+// item is an OrderedMap (e.g., a container removed from spec.containers, or a
+// whole equal container collapsed in inverse mode). In that case every
+// descendant key of the item becomes a nested path, and matching any one of
+// them causes the entire diff to be included/excluded. This is intentional —
+// list item diffs and inverse-mode subtree collapses are atomic, so partial
+// filtering would not be meaningful. Without this, --filter/--exclude on a key
+// nested inside a collapsed unchanged subtree would silently never match.
+func nestedKeyPaths(diff Difference, additionalIdentifiers []string) []string {
+	return nestedKeyPathsFrom(diff.Path, diff, additionalIdentifiers)
 }
 
 // nestedKeyPathsFrom behaves like nestedKeyPaths but appends the diff's
-// added/removed keys to an explicit base path rather than diff.Path. This
+// structured value to an explicit base path rather than diff.Path. This
 // lets callers build nested key paths for a document-index-stripped base so
 // document-index-agnostic filters can match multi-document diffs.
-func nestedKeyPathsFrom(base DiffPath, diff Difference) []string {
-	var om *OrderedMap
+func nestedKeyPathsFrom(base DiffPath, diff Difference, additionalIdentifiers []string) []string {
+	var value any
 	switch diff.Type {
 	case DiffRemoved:
-		om, _ = diff.From.(*OrderedMap)
+		value = diff.From
 	case DiffAdded:
-		om, _ = diff.To.(*OrderedMap)
+		value = diff.To
+	case DiffUnchanged:
+		// From and To are equal; From is always populated on a collapse.
+		value = diff.From
 	default:
-		// gomutants:disable-next-line BRANCH_CASE reason="defensive; om stays nil → next guard returns nil too, same outcome"
+		// gomutants:disable-next-line BRANCH_CASE reason="defensive; value stays nil → next guard returns nil too, same outcome"
 		return nil
 	}
-	// gomutants:disable-next-line EXPRESSION_REMOVE reason="empty Keys → appendValuePaths returns nil; same as this guard, callers observe identically (range loops)"
-	if om == nil || len(om.Keys) == 0 {
-		return nil
-	}
-	return appendValuePaths(nil, base, om)
+	return appendValuePaths(nil, []DiffPath{base}, value, additionalIdentifiers)
 }
 
 // appendValuePaths appends the string form of every descendant path within
-// value (rooted at base) to paths and returns the result. Nested *OrderedMap
-// keys and list indices are both traversed so deep filters (e.g.
-// metadata.labels.whatever, spec.containers.0.name) can match a bulk
-// added/removed subtree. Scalars are leaves. List elements use bare numeric
-// indices to match the comparator's positional list-path form.
-func appendValuePaths(paths []string, base DiffPath, value any) []string {
+// value (rooted at bases) to paths and returns the result. Nested maps and
+// lists are traversed so deep filters can match collapsed subtrees. List items
+// expose both bare numeric indices and identifier aliases when available.
+func appendValuePaths(paths []string, bases []DiffPath, value any, additionalIdentifiers []string) []string {
 	switch v := value.(type) {
 	case *OrderedMap:
 		for _, key := range v.Keys {
-			keyPath := base.Append(key)
-			paths = append(paths, keyPath.String())
-			paths = appendValuePaths(paths, keyPath, v.Values[key])
+			aliases := mappingValuePathAliases(bases, key)
+			paths = appendAliasStrings(paths, aliases)
+			paths = appendValuePaths(paths, aliases, v.Values[key], additionalIdentifiers)
+		}
+	case map[string]any:
+		for _, key := range sortedMapKeys(v) {
+			aliases := mappingValuePathAliases(bases, key)
+			paths = appendAliasStrings(paths, aliases)
+			paths = appendValuePaths(paths, aliases, v[key], additionalIdentifiers)
 		}
 	case []any:
 		for i, elem := range v {
-			idxPath := base.Append(strconv.Itoa(i))
-			paths = append(paths, idxPath.String())
-			paths = appendValuePaths(paths, idxPath, elem)
+			aliases := sequenceValuePathAliases(bases, elem, i, additionalIdentifiers)
+			paths = appendAliasStrings(paths, aliases)
+			paths = appendValuePaths(paths, aliases, elem, additionalIdentifiers)
 		}
 	}
 	return paths
@@ -246,14 +253,14 @@ func FilterDiffsWithRegexpReport(diffs []Difference, opts *FilterOptions, report
 
 	for _, diff := range diffs {
 		pathStr := diff.Path.String()
-		nested := nestedKeyPaths(diff)
+		nested := nestedKeyPaths(diff, opts.AdditionalIdentifiers)
 		// Document-index-agnostic filters (e.g. metadata.annotations) should match
 		// multi-document diffs whose paths are prefixed with [N]. Add the stripped
 		// path and its nested keys as additional match candidates. The raw pathStr
 		// is retained so document-scoped filters ([0].metadata) still work.
 		if _, rest, ok := diff.Path.DocIndexPrefix(); ok {
 			nested = append(nested, rest.String())
-			nested = append(nested, nestedKeyPathsFrom(rest, diff)...)
+			nested = append(nested, nestedKeyPathsFrom(rest, diff, opts.AdditionalIdentifiers)...)
 		}
 		included := true
 

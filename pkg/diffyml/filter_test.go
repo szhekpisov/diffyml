@@ -508,7 +508,7 @@ func TestNestedKeyPaths_RemovedOrderedMap(t *testing.T) {
 		Type: DiffRemoved,
 		From: &OrderedMap{Keys: []string{"namespace"}, Values: map[string]any{"namespace": "production"}},
 	}
-	paths := nestedKeyPaths(diff)
+	paths := nestedKeyPaths(diff, nil)
 	if len(paths) != 1 || paths[0] != "metadata.namespace" {
 		t.Errorf("expected [metadata.namespace], got %v", paths)
 	}
@@ -520,7 +520,23 @@ func TestNestedKeyPaths_AddedOrderedMap(t *testing.T) {
 		Type: DiffAdded,
 		To:   &OrderedMap{Keys: []string{"namespace"}, Values: map[string]any{"namespace": "staging"}},
 	}
-	paths := nestedKeyPaths(diff)
+	paths := nestedKeyPaths(diff, nil)
+	if len(paths) != 1 || paths[0] != "metadata.namespace" {
+		t.Errorf("expected [metadata.namespace], got %v", paths)
+	}
+}
+
+func TestNestedKeyPaths_UnchangedOrderedMap(t *testing.T) {
+	// Inverse mode collapses a fully-equal subtree to a single DiffUnchanged
+	// carrying the whole OrderedMap. Its top-level keys must expand so
+	// --filter/--exclude on a nested key matches, like added/removed entries.
+	diff := Difference{
+		Path: DiffPath{"metadata"},
+		Type: DiffUnchanged,
+		From: &OrderedMap{Keys: []string{"namespace"}, Values: map[string]any{"namespace": "production"}},
+		To:   &OrderedMap{Keys: []string{"namespace"}, Values: map[string]any{"namespace": "production"}},
+	}
+	paths := nestedKeyPaths(diff, nil)
 	if len(paths) != 1 || paths[0] != "metadata.namespace" {
 		t.Errorf("expected [metadata.namespace], got %v", paths)
 	}
@@ -535,7 +551,7 @@ func TestNestedKeyPaths_DottedKey(t *testing.T) {
 			Values: map[string]any{"helm.sh/chart": "myapp-1.0"},
 		},
 	}
-	paths := nestedKeyPaths(diff)
+	paths := nestedKeyPaths(diff, nil)
 	if len(paths) != 1 || paths[0] != "metadata.annotations[helm.sh/chart]" {
 		t.Errorf("expected [metadata.annotations[helm.sh/chart]], got %v", paths)
 	}
@@ -547,7 +563,7 @@ func TestNestedKeyPaths_NonOrderedMap(t *testing.T) {
 		Type: DiffRemoved,
 		From: "scalar-value",
 	}
-	paths := nestedKeyPaths(diff)
+	paths := nestedKeyPaths(diff, nil)
 	if paths != nil {
 		t.Errorf("expected nil for non-OrderedMap, got %v", paths)
 	}
@@ -560,7 +576,7 @@ func TestNestedKeyPaths_DiffModified(t *testing.T) {
 		From: "old",
 		To:   "new",
 	}
-	paths := nestedKeyPaths(diff)
+	paths := nestedKeyPaths(diff, nil)
 	if paths != nil {
 		t.Errorf("expected nil for DiffModified, got %v", paths)
 	}
@@ -572,7 +588,7 @@ func TestNestedKeyPaths_EmptyPath(t *testing.T) {
 		Type: DiffRemoved,
 		From: &OrderedMap{Keys: []string{"topkey"}, Values: map[string]any{"topkey": "val"}},
 	}
-	paths := nestedKeyPaths(diff)
+	paths := nestedKeyPaths(diff, nil)
 	if len(paths) != 1 || paths[0] != "topkey" {
 		t.Errorf("expected [topkey], got %v", paths)
 	}
@@ -832,6 +848,96 @@ func TestFilterDiffs_IncludePaths_DeepNestedMapKey(t *testing.T) {
 	}
 	if result[0].Path.String() != "metadata" {
 		t.Errorf("expected metadata, got %s", result[0].Path)
+	}
+}
+
+func TestFilterDiffs_UnchangedCollapsedSequenceNestedPaths(t *testing.T) {
+	from := []byte("containers:\n  - name: app\n    image: nginx\nversion: 1\n")
+	to := []byte("containers:\n  - name: app\n    image: nginx\nversion: 2\n")
+	diffs, err := Compare(from, to, &Options{Unchanged: true})
+	if err != nil {
+		t.Fatalf("Compare: %v", err)
+	}
+	if len(diffs) != 1 || diffs[0].Path.String() != "containers" {
+		t.Fatalf("expected one collapsed containers diff, got %+v", diffs)
+	}
+
+	for _, path := range []string{"containers.0.image", "containers.app.image"} {
+		t.Run(path, func(t *testing.T) {
+			got := FilterDiffs(diffs, &FilterOptions{IncludePaths: []string{path}})
+			if len(got) != 1 {
+				t.Fatalf("expected %q to match collapsed sequence, got %+v", path, got)
+			}
+		})
+	}
+
+	got := FilterDiffs(diffs, &FilterOptions{ExcludePaths: []string{"containers.app.image"}})
+	if len(got) != 0 {
+		t.Fatalf("expected named descendant exclusion to remove collapsed sequence, got %+v", got)
+	}
+
+	got, err = FilterDiffsWithRegexp(diffs, &FilterOptions{IncludeRegexp: []string{`^containers\.app\.image$`}})
+	if err != nil {
+		t.Fatalf("FilterDiffsWithRegexp: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("expected descendant regex to match collapsed sequence, got %+v", got)
+	}
+}
+
+func TestFilterDiffs_UnchangedCollapsedSequenceAdditionalIdentifier(t *testing.T) {
+	item := &OrderedMap{
+		Keys:   []string{"key", "value"},
+		Values: map[string]any{"key": "primary", "value": "same"},
+	}
+	diffs := []Difference{{Path: DiffPath{"items"}, Type: DiffUnchanged, From: []any{item}, To: []any{item}}}
+
+	got := FilterDiffs(diffs, &FilterOptions{
+		IncludePaths:          []string{"items.primary.value"},
+		AdditionalIdentifiers: []string{"key"},
+	})
+	if len(got) != 1 {
+		t.Fatalf("expected additional identifier path to match collapsed sequence, got %+v", got)
+	}
+}
+
+func TestNestedKeyPaths_UnchangedPlainMap(t *testing.T) {
+	diff := Difference{
+		Path: DiffPath{"config"},
+		Type: DiffUnchanged,
+		From: map[string]any{"value": "same"},
+		To:   map[string]any{"value": "same"},
+	}
+
+	paths := nestedKeyPaths(diff, nil)
+	if len(paths) != 1 || paths[0] != "config.value" {
+		t.Fatalf("expected [config.value], got %v", paths)
+	}
+}
+
+func TestNestedKeyPaths_UnchangedNestedPlainMap(t *testing.T) {
+	diff := Difference{
+		Path: DiffPath{"config"},
+		Type: DiffUnchanged,
+		From: map[string]any{"parent": map[string]any{"child": "same"}},
+		To:   map[string]any{"parent": map[string]any{"child": "same"}},
+	}
+
+	paths := nestedKeyPaths(diff, nil)
+	want := []string{"config.parent", "config.parent.child"}
+	if len(paths) != len(want) {
+		t.Fatalf("expected %v, got %v", want, paths)
+	}
+	for i := range want {
+		if paths[i] != want[i] {
+			t.Fatalf("expected %v, got %v", want, paths)
+		}
+	}
+}
+
+func TestNestedKeyPaths_NilPayload(t *testing.T) {
+	if paths := nestedKeyPaths(Difference{Type: DiffAdded}, nil); paths != nil {
+		t.Fatalf("expected nil paths for nil payload, got %v", paths)
 	}
 }
 

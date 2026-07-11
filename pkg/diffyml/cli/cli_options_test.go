@@ -39,6 +39,7 @@ func TestCLIConfig_ToFilterOptions(t *testing.T) {
 	cfg.Exclude = []string{"secret"}
 	cfg.FilterRegexp = []string{`^test\.`}
 	cfg.ExcludeRegexp = []string{`password`}
+	cfg.AdditionalIdentifiers = []string{"key"}
 
 	opts := cfg.ToFilterOptions()
 
@@ -53,6 +54,19 @@ func TestCLIConfig_ToFilterOptions(t *testing.T) {
 	}
 	if len(opts.ExcludeRegexp) != 1 {
 		t.Errorf("expected ExcludeRegexp length 1, got %d", len(opts.ExcludeRegexp))
+	}
+	if len(opts.AdditionalIdentifiers) != 1 || opts.AdditionalIdentifiers[0] != "key" {
+		t.Errorf("expected AdditionalIdentifiers=['key'], got %v", opts.AdditionalIdentifiers)
+	}
+}
+
+func TestCLIConfig_ToMaskOptions_AdditionalIdentifiers(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.AdditionalIdentifiers = []string{"key"}
+
+	opts := cfg.ToMaskOptions()
+	if len(opts.AdditionalIdentifiers) != 1 || opts.AdditionalIdentifiers[0] != "key" {
+		t.Errorf("expected AdditionalIdentifiers=['key'], got %v", opts.AdditionalIdentifiers)
 	}
 }
 

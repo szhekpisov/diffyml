@@ -1,0 +1,6 @@
+Found 3 unchanged value(s)
+
+= containers.app : name: app
+image: nginx:1.0
+= containers.sidecar.name : sidecar
+= containers.sidecar.port : 8080

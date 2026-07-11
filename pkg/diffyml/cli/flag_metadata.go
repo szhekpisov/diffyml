@@ -37,6 +37,7 @@ func FlagDocs() []FlagDoc {
 		{Long: "ignore-api-version", Type: "bool", Category: "Comparison", Usage: "ignore apiVersion when matching Kubernetes resources"},
 		{Long: "no-cert-inspection", Short: "x", Type: "bool", Category: "Comparison", Usage: "disable x509 certificate inspection"},
 		{Long: "swap", Type: "bool", Category: "Comparison", Usage: "swap 'from' and 'to' for comparison"},
+		{Long: "unchanged", Short: "u", Type: "bool", Category: "Comparison", Usage: "report keys equal between both files (inverse diff)"},
 
 		// Filtering
 		{Long: "filter", Type: "list", Category: "Filtering", Usage: "filter reports to a subset of differences (repeatable)"},

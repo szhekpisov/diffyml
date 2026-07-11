@@ -451,9 +451,11 @@ func TestApplyFileConfig_BoolFields(t *testing.T) {
 	cfg := NewCLIConfig()
 	ignoreOrder := true
 	swap := true
+	unchanged := true
 	fc := &FileConfig{
 		IgnoreOrderChanges: &ignoreOrder,
 		Swap:               &swap,
+		Unchanged:          &unchanged,
 	}
 	cfg.applyFileConfig(fc, map[string]bool{})
 
@@ -462,6 +464,9 @@ func TestApplyFileConfig_BoolFields(t *testing.T) {
 	}
 	if !cfg.Swap {
 		t.Error("expected Swap=true")
+	}
+	if !cfg.Unchanged {
+		t.Error("expected Unchanged=true")
 	}
 }
 
@@ -532,6 +537,21 @@ func TestApplyFileConfig_CLIOverridesBoolDefaultTrue(t *testing.T) {
 
 	if cfg.DetectKubernetes {
 		t.Error("expected CLI override DetectKubernetes=false")
+	}
+}
+
+// TestApplyFileConfig_CLIOverridesUnchanged pins the notSet("unchanged", "u")
+// guard: when the flag is set on the CLI, the file config must NOT apply.
+func TestApplyFileConfig_CLIOverridesUnchanged(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.Unchanged = false // CLI explicitly set --unchanged=false
+
+	unchanged := true // config wants true
+	fc := &FileConfig{Unchanged: &unchanged}
+	cfg.applyFileConfig(fc, map[string]bool{"unchanged": true})
+
+	if cfg.Unchanged {
+		t.Error("expected CLI to override file config (Unchanged stays false)")
 	}
 }
 

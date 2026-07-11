@@ -33,6 +33,7 @@ type FileConfig struct {
 	IgnoreApiVersion        *bool `yaml:"ignore-api-version"`
 	NoCertInspection        *bool `yaml:"no-cert-inspection"`
 	Swap                    *bool `yaml:"swap"`
+	Unchanged               *bool `yaml:"unchanged"`
 
 	// Filtering options
 	Filter                []string `yaml:"filter"`
@@ -193,6 +194,9 @@ func (c *CLIConfig) applyFileConfig(fc *FileConfig, cliSet map[string]bool) {
 	}
 	if fc.Swap != nil && notSet("swap") {
 		c.Swap = *fc.Swap
+	}
+	if fc.Unchanged != nil && notSet("unchanged", "u") {
+		c.Unchanged = *fc.Unchanged
 	}
 
 	// Filtering options (replace semantics: CLI replaces config entirely)

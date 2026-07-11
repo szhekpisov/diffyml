@@ -31,7 +31,7 @@ func (f *DetailedFormatter) Format(diffs []Difference, opts *FormatOptions) stri
 	}
 
 	if len(diffs) == 0 {
-		return "no differences found\n"
+		return emptyResultMessage(opts, " found")
 	}
 
 	var sb strings.Builder
@@ -53,9 +53,17 @@ func (f *DetailedFormatter) Format(diffs []Difference, opts *FormatOptions) stri
 // formatHeader renders a summary header line.
 func (f *DetailedFormatter) formatHeader(sb *strings.Builder, diffs []Difference, opts *FormatOptions) {
 	sb.WriteString(colorStart(opts, f.colorModified(opts)))
-	fmt.Fprintf(sb, "Found %s %s",
-		formatCount(len(diffs)),
-		pluralize(len(diffs), "difference", "differences"))
+	// Inverse mode (Options.Unchanged) emits only DiffUnchanged entries; use
+	// distinct wording. Normal mode is unaffected.
+	if opts.Unchanged {
+		fmt.Fprintf(sb, "Found %s %s",
+			formatCount(len(diffs)),
+			pluralize(len(diffs), "unchanged value", "unchanged values"))
+	} else {
+		fmt.Fprintf(sb, "Found %s %s",
+			formatCount(len(diffs)),
+			pluralize(len(diffs), "difference", "differences"))
+	}
 	sb.WriteString(colorEnd(opts))
 	sb.WriteString("\n\n")
 }
@@ -147,7 +155,7 @@ func (f *DetailedFormatter) writeDocLabel(sb *strings.Builder, label string, opt
 // formatGroupDiffs renders all diffs within a path group.
 // Groups consecutive additions and removals for batched descriptors.
 func (f *DetailedFormatter) formatGroupDiffs(sb *strings.Builder, group pathGroup, opts *FormatOptions) {
-	var added, removed []Difference
+	var added, removed, unchanged []Difference
 	var others []Difference
 
 	for _, diff := range group.Diffs {
@@ -156,6 +164,8 @@ func (f *DetailedFormatter) formatGroupDiffs(sb *strings.Builder, group pathGrou
 			added = append(added, diff)
 		case DiffRemoved:
 			removed = append(removed, diff)
+		case DiffUnchanged:
+			unchanged = append(unchanged, diff)
 		default:
 			others = append(others, diff)
 		}
@@ -169,6 +179,10 @@ func (f *DetailedFormatter) formatGroupDiffs(sb *strings.Builder, group pathGrou
 		f.formatEntryBatch(sb, added, "added", opts)
 	}
 
+	if len(unchanged) > 0 {
+		f.formatEntryBatch(sb, unchanged, "unchanged", opts)
+	}
+
 	for _, diff := range others {
 		f.formatChangeDescriptor(sb, diff, opts)
 	}
@@ -178,9 +192,10 @@ func (f *DetailedFormatter) formatGroupDiffs(sb *strings.Builder, group pathGrou
 func (f *DetailedFormatter) formatEntryBatch(sb *strings.Builder, diffs []Difference, action string, opts *FormatOptions) {
 	n := len(diffs)
 
-	// Detect document-level diffs (path is bare "[N]")
+	// Detect document-level diffs (empty single-document root or bare "[N]").
 	// All diffs in a batch share the same path structure; checking the first is sufficient.
-	isDocLevel := diffs[0].Path.IsBareDocIndex()
+	isDocLevel := diffs[0].Path.IsBareDocIndex() ||
+		(diffs[0].Type == DiffUnchanged && diffs[0].Path.IsEmpty())
 
 	isListEntry := isListEntryDiff(diffs[0])
 	entryType := "map"
@@ -196,8 +211,11 @@ func (f *DetailedFormatter) formatEntryBatch(sb *strings.Builder, diffs []Differ
 		noun = pluralize(n, entryType+" entry", entryType+" entries")
 	}
 	symbol := "+"
-	if action == "removed" {
+	switch action {
+	case "removed":
 		symbol = "-"
+	case "unchanged":
+		symbol = "="
 	}
 
 	sb.WriteString("  ")

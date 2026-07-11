@@ -44,6 +44,7 @@ detect-renames: true
 ignore-api-version: false
 no-cert-inspection: false
 swap: false
+unchanged: false
 
 # Filtering (lists — CLI replaces these entirely if specified)
 filter: []

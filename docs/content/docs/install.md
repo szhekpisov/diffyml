@@ -19,6 +19,33 @@ scoop bucket add diffyml https://github.com/szhekpisov/scoop-diffyml
 scoop install diffyml
 ```
 
+## Nixpkgs
+
+Available in [nixpkgs](https://github.com/NixOS/nixpkgs/blob/master/pkgs/by-name/di/diffyml/package.nix) on the **unstable** channel. It landed after the 26.05 branch-off, so it isn't in the current stable release yet — it will be in the next one.
+
+```bash
+# Ephemeral shell
+nix shell nixpkgs#diffyml
+
+# Run without installing
+nix run nixpkgs#diffyml -- old.yaml new.yaml
+
+# Install into your profile
+nix profile install nixpkgs#diffyml
+```
+
+On NixOS, add it to `environment.systemPackages`:
+
+```nix
+environment.systemPackages = with pkgs; [ diffyml ];
+```
+
+Without flakes:
+
+```bash
+nix-env -iA nixpkgs.diffyml   # or: nix-shell -p diffyml
+```
+
 ## Go install
 
 ```bash

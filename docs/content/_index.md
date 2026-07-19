@@ -24,7 +24,7 @@ diffyml old.yaml new.yaml
 
 ## Where to next
 
-- **[Install]({{< relref "/docs/install" >}})** — Homebrew, Docker, `go install`, release binaries
+- **[Install]({{< relref "/docs/install" >}})** — Homebrew, Nix, Docker, `go install`, release binaries
 - **[Quick Start]({{< relref "/docs/quick-start" >}})** — three minimal examples that cover 90% of usage
 - **[Output Formats]({{< relref "/docs/formats" >}})** — pick the right format for terminal review or CI
 - **[CI Integration]({{< relref "/docs/ci" >}})** — GitHub Actions, GitLab Code Quality, Gitea, kubectl, git

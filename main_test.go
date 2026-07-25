@@ -109,6 +109,47 @@ func TestVersionFlagWithLdflags(t *testing.T) {
 	}
 }
 
+// TestBadFlagReportsOnceWithHelpPointer covers the fallout of dropping the
+// os.Args pre-scan: "--typo --help" used to print usage and exit 0, because the
+// scan saw --help before anything was parsed. Parsing now happens first, so the
+// typo is reported instead. This runs as a subprocess because the flag package
+// writes its own error and usage dump to the FlagSet's output, which is the
+// process stderr rather than the writer run() is handed — an in-process test
+// capturing only run()'s stderr could not see the dump at all.
+func TestBadFlagReportsOnceWithHelpPointer(t *testing.T) {
+	bin := filepath.Join(t.TempDir(), testBinaryName())
+	if out, err := exec.Command("go", "build", "-o", bin).CombinedOutput(); err != nil {
+		t.Fatalf("build test binary: %v\n%s", err, out)
+	}
+
+	for _, args := range [][]string{{"--typo"}, {"--typo", "--help"}} {
+		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			cmd := exec.Command(bin, args...)
+			out, err := cmd.CombinedOutput()
+			if err == nil {
+				t.Fatalf("expected a non-zero exit for %v, got success:\n%s", args, out)
+			}
+			got := string(out)
+
+			// The flag package's own listing must not compete with Usage().
+			if strings.Contains(got, "Usage of diffyml:") {
+				t.Errorf("flag package usage dump leaked into output:\n%s", got)
+			}
+			// ...and the failure is reported exactly once, not echoed by both
+			// the flag package and main.
+			if n := strings.Count(got, "flag provided but not defined"); n != 1 {
+				t.Errorf("expected the error reported once, got %d times:\n%s", n, got)
+			}
+			if !strings.Contains(got, "Error: flag provided but not defined: -typo") {
+				t.Errorf("expected the curated error, got:\n%s", got)
+			}
+			if !strings.Contains(got, "Run 'diffyml --help' for usage.") {
+				t.Errorf("expected a pointer to --help, got:\n%s", got)
+			}
+		})
+	}
+}
+
 // TestFlagValuesNotMistakenForHelpOrVersion is a regression test: main used to
 // pre-scan os.Args for "-h"/"-V"/"--version", which also matched those strings
 // when they appeared as the *value* of a preceding flag. "--mask-placeholder -h"

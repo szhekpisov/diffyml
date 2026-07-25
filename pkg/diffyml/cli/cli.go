@@ -117,6 +117,12 @@ func NewCLIConfig() *CLIConfig {
 // initFlags sets up the flag definitions.
 func (c *CLIConfig) initFlags() {
 	c.fs = flag.NewFlagSet("diffyml", flag.ContinueOnError)
+	// On a parse failure the flag package writes the error to its own output and
+	// then dumps its generated flag listing. Both are unwanted: the error is
+	// returned to the caller, which reports it as "Error: ...", and the listing
+	// is a second, differently formatted usage text competing with Usage().
+	// Discarding leaves the caller as the only thing that reports the failure.
+	c.fs.SetOutput(io.Discard)
 
 	// Output options
 	c.fs.StringVar(&c.Output, "o", c.Output, "")

@@ -26,7 +26,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 	cfg := cli.NewCLIConfig()
 
 	if err := cfg.ParseArgs(args); err != nil {
-		_, _ = io.WriteString(stderr, "Error: "+err.Error()+"\n")
+		// A bad flag no longer falls through to the help text the way the old
+		// os.Args pre-scan allowed, so point at it instead of leaving the user
+		// with only the error.
+		_, _ = io.WriteString(stderr, "Error: "+err.Error()+"\nRun 'diffyml --help' for usage.\n")
 		return cli.ExitCodeError
 	}
 

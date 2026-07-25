@@ -7,6 +7,15 @@ import (
 	"testing"
 )
 
+// testWorkers is the GOMAXPROCS value these tests use to force the parallel
+// path. It is a fixed number rather than runtime.NumCPU() on purpose: GOMAXPROCS
+// is not capped by the CPU count, so raising it spawns real workers and
+// interleaves them even on a single-core runner. The race detector's
+// happens-before analysis does not need true parallelism to find a race, so
+// pinning it here keeps the ordering guarantees under test everywhere —
+// including the one-CPU CI containers where a latent bug is easiest to miss.
+const testWorkers = 4
+
 // withGOMAXPROCS pins GOMAXPROCS for the duration of a test so both the
 // streaming path (workers < 2) and the parallel path can be exercised
 // deterministically. These tests must not call t.Parallel(), since GOMAXPROCS
@@ -64,17 +73,13 @@ func runDirectoryCapture(t *testing.T, output string, pairs map[string][2][]byte
 // parallel compare phase: results are replayed in pair order, so output must be
 // byte-identical to the single-worker streaming path for every output format.
 func TestRunDirectory_ParallelMatchesSequential(t *testing.T) {
-	if runtime.NumCPU() < 2 {
-		t.Skip("needs at least 2 CPUs to exercise the parallel path")
-	}
-
 	formats := []string{"detailed", "compact", "brief", "json", "json-patch", "github", "gitlab", "gitea"}
 	for _, format := range formats {
 		t.Run(format, func(t *testing.T) {
 			withGOMAXPROCS(t, 1)
 			seqOut, seqErr, seqCode := runDirectoryCapture(t, format, buildParallelPairs(60))
 
-			withGOMAXPROCS(t, runtime.NumCPU())
+			withGOMAXPROCS(t, testWorkers)
 			parOut, parErr, parCode := runDirectoryCapture(t, format, buildParallelPairs(60))
 
 			if seqOut != parOut {
@@ -95,16 +100,19 @@ func TestRunDirectory_ParallelMatchesSequential(t *testing.T) {
 // leaking into the output: repeated parallel runs over identical input must
 // produce identical bytes.
 func TestRunDirectory_ParallelIsDeterministic(t *testing.T) {
-	if runtime.NumCPU() < 2 {
-		t.Skip("needs at least 2 CPUs to exercise the parallel path")
-	}
-	withGOMAXPROCS(t, runtime.NumCPU())
+	withGOMAXPROCS(t, testWorkers)
 
-	want, _, _ := runDirectoryCapture(t, "detailed", buildParallelPairs(60))
+	wantOut, wantErr, wantCode := runDirectoryCapture(t, "detailed", buildParallelPairs(60))
 	for i := range 12 {
-		got, _, _ := runDirectoryCapture(t, "detailed", buildParallelPairs(60))
-		if got != want {
-			t.Fatalf("run %d produced different output than run 0", i+1)
+		gotOut, gotErr, gotCode := runDirectoryCapture(t, "detailed", buildParallelPairs(60))
+		if gotOut != wantOut {
+			t.Fatalf("run %d produced different stdout than run 0", i+1)
+		}
+		if gotErr != wantErr {
+			t.Fatalf("run %d produced different stderr than run 0: %q vs %q", i+1, gotErr, wantErr)
+		}
+		if gotCode != wantCode {
+			t.Fatalf("run %d produced exit code %d, want %d", i+1, gotCode, wantCode)
 		}
 	}
 }
@@ -113,10 +121,6 @@ func TestRunDirectory_ParallelIsDeterministic(t *testing.T) {
 // reported in pair order rather than completion order, and that a failing pair
 // does not suppress the diffs of the pairs around it.
 func TestRunDirectory_ParallelPreservesErrorOrder(t *testing.T) {
-	if runtime.NumCPU() < 2 {
-		t.Skip("needs at least 2 CPUs to exercise the parallel path")
-	}
-
 	pairs := buildParallelPairs(30)
 	badNames := []string{"file005.yaml", "file015.yaml", "file025.yaml"}
 	for _, name := range badNames {
@@ -126,7 +130,7 @@ func TestRunDirectory_ParallelPreservesErrorOrder(t *testing.T) {
 	withGOMAXPROCS(t, 1)
 	seqOut, seqErr, seqCode := runDirectoryCapture(t, "detailed", pairs)
 
-	withGOMAXPROCS(t, runtime.NumCPU())
+	withGOMAXPROCS(t, testWorkers)
 	parOut, parErr, parCode := runDirectoryCapture(t, "detailed", pairs)
 
 	if seqErr != parErr {
@@ -164,7 +168,7 @@ func TestRunDirectory_ParallelPreservesErrorOrder(t *testing.T) {
 // by the pair count so a single pair never spawns workers, and it never exceeds
 // GOMAXPROCS.
 func TestDirWorkerCount(t *testing.T) {
-	withGOMAXPROCS(t, 4)
+	withGOMAXPROCS(t, testWorkers)
 
 	tests := []struct {
 		pairCount int
@@ -173,8 +177,8 @@ func TestDirWorkerCount(t *testing.T) {
 		{0, 0},
 		{1, 1},
 		{2, 2},
-		{4, 4},
-		{100, 4}, // capped at GOMAXPROCS
+		{testWorkers, testWorkers},
+		{100, testWorkers}, // capped at GOMAXPROCS
 	}
 	for _, tt := range tests {
 		if got := dirWorkerCount(tt.pairCount); got != tt.want {
@@ -191,7 +195,8 @@ func TestDirWorkerCount(t *testing.T) {
 // TestRunDirectory_SinglePairUsesStreamingPath confirms a one-pair run still
 // works when workers < 2 short-circuits the parallel path.
 func TestRunDirectory_SinglePairUsesStreamingPath(t *testing.T) {
-	withGOMAXPROCS(t, runtime.NumCPU())
+	// GOMAXPROCS is high, so only the pair-count cap can force streaming here.
+	withGOMAXPROCS(t, testWorkers)
 
 	if got := dirWorkerCount(1); got >= 2 {
 		t.Fatalf("dirWorkerCount(1) = %d, expected < 2 so streaming is used", got)

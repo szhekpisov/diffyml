@@ -39,8 +39,14 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return cli.ExitCodeSuccess
 	}
 
+	// Built from NewRunConfig rather than a bare literal so any future
+	// RunConfig default applies here too; only the writers are overridden.
+	rc := cli.NewRunConfig()
+	rc.Stdout = stdout
+	rc.Stderr = stderr
+
 	// cli.Run handles cfg.ShowHelp by writing usage to stdout.
-	result := cli.Run(cfg, &cli.RunConfig{Stdout: stdout, Stderr: stderr})
+	result := cli.Run(cfg, rc)
 	return result.Code
 }
 

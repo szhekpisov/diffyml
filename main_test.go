@@ -19,18 +19,35 @@ func testBinaryName() string {
 	return name
 }
 
+// buildTestBinary builds diffyml for a subprocess test and returns its path.
+// ldflags, when given, is passed through to -ldflags.
+//
+// The binary goes under t.TempDir() and never the repository root. Building
+// into the root races with test/property, which asserts the root contains no
+// pre-built binaries: `go test ./...` runs packages concurrently, so a binary
+// living there even for the length of one test can fail that check.
+func buildTestBinary(t *testing.T, ldflags ...string) string {
+	t.Helper()
+
+	bin := filepath.Join(t.TempDir(), testBinaryName())
+	args := []string{"build"}
+	if len(ldflags) > 0 {
+		args = append(args, "-ldflags", strings.Join(ldflags, " "))
+	}
+	args = append(args, "-o", bin)
+
+	if out, err := exec.Command("go", args...).CombinedOutput(); err != nil {
+		t.Fatalf("Failed to build test binary: %v\n%s", err, out)
+	}
+	return bin
+}
+
 // TestVersionFlag tests that the --version flag displays version information
 func TestVersionFlag(t *testing.T) {
-	// Build the binary for testing
-	bin := testBinaryName()
-	cmd := exec.Command("go", "build", "-o", bin)
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("Failed to build test binary: %v", err)
-	}
-	defer os.Remove(bin)
+	bin := buildTestBinary(t)
 
 	// Test --version flag
-	cmd = exec.Command("./"+bin, "--version")
+	cmd := exec.Command(bin, "--version")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("Failed to run --version: %v", err)
@@ -55,16 +72,10 @@ func TestVersionFlag(t *testing.T) {
 
 // TestVersionFlagShortForm tests that the -V flag displays version information
 func TestVersionFlagShortForm(t *testing.T) {
-	// Build the binary for testing
-	bin := testBinaryName()
-	cmd := exec.Command("go", "build", "-o", bin)
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("Failed to build test binary: %v", err)
-	}
-	defer os.Remove(bin)
+	bin := buildTestBinary(t)
 
 	// Test -V flag
-	cmd = exec.Command("./"+bin, "-V")
+	cmd := exec.Command(bin, "-V")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("Failed to run -V: %v", err)
@@ -79,17 +90,10 @@ func TestVersionFlagShortForm(t *testing.T) {
 // TestVersionFlagWithLdflags tests that version information can be injected via ldflags
 func TestVersionFlagWithLdflags(t *testing.T) {
 	// Build the binary with version injection
-	bin := testBinaryName()
-	cmd := exec.Command("go", "build",
-		"-ldflags", "-X main.version=1.2.3 -X main.commit=abc123def -X main.buildDate=2024-01-15",
-		"-o", bin)
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("Failed to build test binary with ldflags: %v", err)
-	}
-	defer os.Remove(bin)
+	bin := buildTestBinary(t, "-X main.version=1.2.3 -X main.commit=abc123def -X main.buildDate=2024-01-15")
 
 	// Test --version flag
-	cmd = exec.Command("./"+bin, "--version")
+	cmd := exec.Command(bin, "--version")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("Failed to run --version: %v", err)
@@ -117,10 +121,7 @@ func TestVersionFlagWithLdflags(t *testing.T) {
 // process stderr rather than the writer run() is handed — an in-process test
 // capturing only run()'s stderr could not see the dump at all.
 func TestBadFlagReportsOnceWithHelpPointer(t *testing.T) {
-	bin := filepath.Join(t.TempDir(), testBinaryName())
-	if out, err := exec.Command("go", "build", "-o", bin).CombinedOutput(); err != nil {
-		t.Fatalf("build test binary: %v\n%s", err, out)
-	}
+	bin := buildTestBinary(t)
 
 	for _, args := range [][]string{{"--typo"}, {"--typo", "--help"}} {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {

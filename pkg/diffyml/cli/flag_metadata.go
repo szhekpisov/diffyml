@@ -82,5 +82,6 @@ func FlagDocs() []FlagDoc {
 		// Other
 		{Long: "set-exit-code", Short: "s", Type: "bool", Category: "Other", Usage: "set program exit code based on differences"},
 		{Long: "help", Short: "h", Type: "bool", Category: "Other", Usage: "show help"},
+		{Long: "version", Short: "V", Type: "bool", Category: "Other", Usage: "show version information"},
 	}
 }

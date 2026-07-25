@@ -101,6 +101,7 @@ diffyml [flags] <from> <to>
 |------|------|---------|-------------|
 | `-s`, `--set-exit-code` | `bool` | — | set program exit code based on differences |
 | `-h`, `--help` | `bool` | — | show help |
+| `-V`, `--version` | `bool` | — | show version information |
 
 ## Version
 

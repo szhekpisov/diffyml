@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -105,6 +106,100 @@ func TestVersionFlagWithLdflags(t *testing.T) {
 		if !strings.Contains(outputStr, part) {
 			t.Errorf("Expected version output to contain '%s', got: %s", part, outputStr)
 		}
+	}
+}
+
+// TestFlagValuesNotMistakenForHelpOrVersion is a regression test: main used to
+// pre-scan os.Args for "-h"/"-V"/"--version", which also matched those strings
+// when they appeared as the *value* of a preceding flag. "--mask-placeholder -h"
+// printed usage instead of running the diff. Both are real flags now, so the
+// flag package binds the value to the flag that owns it.
+func TestFlagValuesNotMistakenForHelpOrVersion(t *testing.T) {
+	dir := t.TempDir()
+	from := filepath.Join(dir, "from.yaml")
+	to := filepath.Join(dir, "to.yaml")
+	if err := os.WriteFile(from, []byte("a: 1\n"), 0o600); err != nil {
+		t.Fatalf("write from: %v", err)
+	}
+	if err := os.WriteFile(to, []byte("a: 2\n"), 0o600); err != nil {
+		t.Fatalf("write to: %v", err)
+	}
+
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{"placeholder is -h", []string{from, to, "--mask-placeholder", "-h"}},
+		{"placeholder is --help", []string{from, to, "--mask-placeholder", "--help"}},
+		{"summary-model is -V", []string{from, to, "--summary-model", "-V"}},
+		{"summary-model is --version", []string{from, to, "--summary-model", "--version"}},
+		{"filter is -h", []string{from, to, "--filter", "-h"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var stdout, stderr strings.Builder
+			code := run(tt.args, &stdout, &stderr)
+
+			if code != 0 {
+				t.Errorf("expected exit code 0, got %d (stderr: %s)", code, stderr.String())
+			}
+			out := stdout.String()
+			if strings.Contains(out, "A diff tool for YAML files") {
+				t.Errorf("flag value was treated as --help; got usage output:\n%s", out)
+			}
+			if strings.Contains(out, "diffyml version") {
+				t.Errorf("flag value was treated as --version; got:\n%s", out)
+			}
+		})
+	}
+}
+
+// TestHelpAndVersionWithoutFileArgs verifies --help and --version still work
+// with no file arguments, which is why the os.Args pre-scan existed. ParseArgs
+// now short-circuits before the "requires two file arguments" check instead.
+func TestHelpAndVersionWithoutFileArgs(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{"short help", []string{"-h"}, "A diff tool for YAML files"},
+		{"long help", []string{"--help"}, "A diff tool for YAML files"},
+		{"single-dash help", []string{"-help"}, "A diff tool for YAML files"},
+		{"short version", []string{"-V"}, "diffyml version"},
+		{"long version", []string{"--version"}, "diffyml version"},
+		{"single-dash version", []string{"-version"}, "diffyml version"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var stdout, stderr strings.Builder
+			code := run(tt.args, &stdout, &stderr)
+
+			if code != 0 {
+				t.Errorf("expected exit code 0, got %d (stderr: %s)", code, stderr.String())
+			}
+			if !strings.Contains(stdout.String(), tt.want) {
+				t.Errorf("expected stdout to contain %q, got:\n%s", tt.want, stdout.String())
+			}
+		})
+	}
+}
+
+// TestVersionTakesPrecedenceOverHelp preserves the original ordering: main
+// checked the version flag before the help flag.
+func TestVersionTakesPrecedenceOverHelp(t *testing.T) {
+	var stdout, stderr strings.Builder
+	if code := run([]string{"--help", "--version"}, &stdout, &stderr); code != 0 {
+		t.Errorf("expected exit code 0, got %d (stderr: %s)", code, stderr.String())
+	}
+	out := stdout.String()
+	if !strings.Contains(out, "diffyml version") {
+		t.Errorf("expected version output, got:\n%s", out)
+	}
+	if strings.Contains(out, "A diff tool for YAML files") {
+		t.Errorf("expected version to win over help, got usage output:\n%s", out)
 	}
 }
 

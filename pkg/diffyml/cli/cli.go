@@ -93,6 +93,7 @@ type CLIConfig struct {
 	// Exit code behavior
 	SetExitCode bool
 	ShowHelp    bool
+	ShowVersion bool
 
 	// Internal flagset
 	fs *flag.FlagSet
@@ -213,6 +214,8 @@ func (c *CLIConfig) initFlags() {
 	c.fs.BoolVar(&c.SetExitCode, "set-exit-code", c.SetExitCode, "set program exit code based on differences")
 	c.fs.BoolVar(&c.ShowHelp, "h", c.ShowHelp, "")
 	c.fs.BoolVar(&c.ShowHelp, "help", c.ShowHelp, "show help")
+	c.fs.BoolVar(&c.ShowVersion, "V", c.ShowVersion, "")
+	c.fs.BoolVar(&c.ShowVersion, "version", c.ShowVersion, "show version information")
 }
 
 // ParseArgs parses command-line arguments.
@@ -227,6 +230,15 @@ func (c *CLIConfig) ParseArgs(args []string) error {
 
 	if err := c.fs.Parse(reordered); err != nil {
 		return err
+	}
+
+	// --help / --version short-circuit: they need neither file arguments nor a
+	// readable config file, so return before those can fail. Both are real
+	// flags rather than a raw os.Args pre-scan, so a flag *value* that happens
+	// to be "-h" or "-V" (e.g. --mask-placeholder -h) is no longer mistaken
+	// for the flag itself.
+	if c.ShowHelp || c.ShowVersion {
+		return nil
 	}
 
 	// Load and apply config file (CLI flags override config values).

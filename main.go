@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"os"
 
 	"github.com/szhekpisov/diffyml/pkg/diffyml/cli"
@@ -18,30 +19,28 @@ func formatVersion() string {
 	return "diffyml version " + version + " (commit: " + commit + ", built: " + buildDate + ")\n"
 }
 
-func main() {
+// run parses args and executes the CLI, returning the process exit code.
+// Split from main so it is testable without os.Exit; stdout/stderr are
+// injected rather than referenced globally.
+func run(args []string, stdout, stderr io.Writer) int {
 	cfg := cli.NewCLIConfig()
 
-	// Check for version flag first
-	for _, arg := range os.Args[1:] {
-		if arg == "-V" || arg == "--version" || arg == "-version" {
-			_, _ = os.Stdout.WriteString(formatVersion())
-			os.Exit(0)
-		}
+	if err := cfg.ParseArgs(args); err != nil {
+		_, _ = io.WriteString(stderr, "Error: "+err.Error()+"\n")
+		return cli.ExitCodeError
 	}
 
-	// Check for help flag
-	for _, arg := range os.Args[1:] {
-		if arg == "-h" || arg == "--help" || arg == "-help" {
-			_, _ = os.Stdout.WriteString(cfg.Usage())
-			os.Exit(0)
-		}
+	// Version takes precedence over help, matching the previous ordering.
+	if cfg.ShowVersion {
+		_, _ = io.WriteString(stdout, formatVersion())
+		return cli.ExitCodeSuccess
 	}
 
-	if err := cfg.ParseArgs(os.Args[1:]); err != nil {
-		_, _ = os.Stderr.WriteString("Error: " + err.Error() + "\n")
-		os.Exit(cli.ExitCodeError)
-	}
+	// cli.Run handles cfg.ShowHelp by writing usage to stdout.
+	result := cli.Run(cfg, &cli.RunConfig{Stdout: stdout, Stderr: stderr})
+	return result.Code
+}
 
-	result := cli.Run(cfg, nil)
-	os.Exit(result.Code)
+func main() {
+	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
 }

@@ -164,42 +164,46 @@ func TestRunDirectory_ParallelPreservesErrorOrder(t *testing.T) {
 	}
 }
 
-// TestDirWorkerCount checks the streaming/parallel decision: the count is capped
-// by the pair count so a single pair never spawns workers, and it never exceeds
-// GOMAXPROCS.
-func TestDirWorkerCount(t *testing.T) {
+// TestDirCompareWorkers checks both halves of the streaming/parallel decision:
+// the count is capped by the pair count so a single pair never spawns workers
+// and never exceeds GOMAXPROCS, and the parallel flag agrees with it.
+func TestDirCompareWorkers(t *testing.T) {
 	withGOMAXPROCS(t, testWorkers)
 
 	tests := []struct {
-		pairCount int
-		want      int
+		pairCount    int
+		want         int
+		wantParallel bool
 	}{
-		{0, 0},
-		{1, 1},
-		{2, 2},
-		{testWorkers, testWorkers},
-		{100, testWorkers}, // capped at GOMAXPROCS
+		{0, 0, false},
+		{1, 1, false}, // a single pair has nothing to overlap with
+		{2, 2, true},
+		{testWorkers, testWorkers, true},
+		{100, testWorkers, true}, // capped at GOMAXPROCS
 	}
 	for _, tt := range tests {
-		if got := dirWorkerCount(tt.pairCount); got != tt.want {
-			t.Errorf("dirWorkerCount(%d) = %d, want %d", tt.pairCount, got, tt.want)
+		got, parallel := dirCompareWorkers(tt.pairCount)
+		if got != tt.want || parallel != tt.wantParallel {
+			t.Errorf("dirCompareWorkers(%d) = (%d, %t), want (%d, %t)",
+				tt.pairCount, got, parallel, tt.want, tt.wantParallel)
 		}
 	}
 
+	// One usable CPU: plenty of pairs, but still nothing to gain.
 	withGOMAXPROCS(t, 1)
-	if got := dirWorkerCount(100); got != 1 {
-		t.Errorf("with GOMAXPROCS=1, dirWorkerCount(100) = %d, want 1 (streaming path)", got)
+	if got, parallel := dirCompareWorkers(100); got != 1 || parallel {
+		t.Errorf("with GOMAXPROCS=1, dirCompareWorkers(100) = (%d, %t), want (1, false)", got, parallel)
 	}
 }
 
 // TestRunDirectory_SinglePairUsesStreamingPath confirms a one-pair run still
-// works when workers < 2 short-circuits the parallel path.
+// works when dirCompareWorkers sends it down the streaming path.
 func TestRunDirectory_SinglePairUsesStreamingPath(t *testing.T) {
 	// GOMAXPROCS is high, so only the pair-count cap can force streaming here.
 	withGOMAXPROCS(t, testWorkers)
 
-	if got := dirWorkerCount(1); got >= 2 {
-		t.Fatalf("dirWorkerCount(1) = %d, expected < 2 so streaming is used", got)
+	if _, parallel := dirCompareWorkers(1); parallel {
+		t.Fatal("expected a single pair to take the streaming path")
 	}
 
 	stdout, _, code := runDirectoryCapture(t, "detailed", map[string][2][]byte{

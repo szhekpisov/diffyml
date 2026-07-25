@@ -172,12 +172,14 @@ type dirPairResult struct {
 	err   error
 }
 
-// dirWorkerCount returns how many goroutines the compare phase should use.
-// A result below 2 means parallelism cannot help (one pair, or one usable CPU)
-// and the caller should stream instead, which avoids buffering every pair's
-// diffs. GOMAXPROCS is container-aware, so this respects CPU limits in CI.
-func dirWorkerCount(pairCount int) int {
-	return min(runtime.GOMAXPROCS(0), pairCount)
+// dirCompareWorkers reports how many goroutines the compare phase should use,
+// and whether running it in parallel is worth doing at all. parallel is false
+// for a single pair or a single usable CPU: goroutines cannot help there, and
+// the caller's streaming path avoids buffering every pair's diffs. GOMAXPROCS is
+// container-aware, so this respects CPU limits in CI.
+func dirCompareWorkers(pairCount int) (workers int, parallel bool) {
+	workers = min(runtime.GOMAXPROCS(0), pairCount)
+	return workers, workers >= 2
 }
 
 // processDirPairs runs processDirPair over every pair using the given number of
@@ -345,17 +347,17 @@ func runDirectory(cfg *CLIConfig, rc *RunConfig, fromDir, toDir string) *ExitRes
 	}
 	// Formatting and writing always happen on this goroutine, in pair order, so
 	// output and the color/terminal state are identical on both paths below.
-	if workers := dirWorkerCount(len(pairs)); workers < 2 {
+	if workers, parallel := dirCompareWorkers(len(pairs)); parallel {
+		results := processDirPairs(pairs, workers, rc.FilePairs, compareOpts, maskOpts, filterOpts)
+		for i, pair := range pairs {
+			c.handlePairResult(pair, results[i].diffs, results[i].err)
+		}
+	} else {
 		// Nothing to gain from goroutines: compare and emit one pair at a time
 		// so only a single pair's diffs are live, as before parallelism existed.
 		for _, pair := range pairs {
 			diffs, diffErr := processDirPair(pair, rc.FilePairs, compareOpts, maskOpts, filterOpts)
 			c.handlePairResult(pair, diffs, diffErr)
-		}
-	} else {
-		results := processDirPairs(pairs, workers, rc.FilePairs, compareOpts, maskOpts, filterOpts)
-		for i, pair := range pairs {
-			c.handlePairResult(pair, results[i].diffs, results[i].err)
 		}
 	}
 

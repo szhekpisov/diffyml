@@ -190,6 +190,16 @@ func dirWorkerCount(pairCount int) int {
 // Results are buffered so the caller can replay them in pair order, keeping
 // output byte-identical to the streaming path. Peak memory therefore grows with
 // total diffs, matching what structured formatters and --summary already hold.
+//
+// Bounding that buffer was tried and measured, and is deliberately not done.
+// Emitting in batches does cap peak memory, but it also shrinks the live heap,
+// and Go's GC then runs proportionally more cycles for the same allocation
+// volume. On 3000 differing manifests with 10 workers: a 1280-pair batch cost
+// 10% wall time to save 43% peak RSS, a 640-pair batch 18% to save 61%, and a
+// 160-pair batch 38% to save 74%. GOGC=off collapses the gap to ~1%, which
+// identifies collection frequency rather than the buffering itself as the cost.
+// The curve is monotonic with no knee, so there is no bound that is close to
+// free — every megabyte saved buys proportional slowdown.
 func processDirPairs(pairs []diffyml.FilePair, workers int, filePairs map[string][2][]byte,
 	compareOpts *diffyml.Options, maskOpts diffyml.MaskOptions, filterOpts *diffyml.FilterOptions,
 ) []dirPairResult {

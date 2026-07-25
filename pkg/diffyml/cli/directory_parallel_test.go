@@ -1,0 +1,209 @@
+package cli
+
+import (
+	"fmt"
+	"runtime"
+	"strings"
+	"testing"
+)
+
+// withGOMAXPROCS pins GOMAXPROCS for the duration of a test so both the
+// streaming path (workers < 2) and the parallel path can be exercised
+// deterministically. These tests must not call t.Parallel(), since GOMAXPROCS
+// is process-global.
+func withGOMAXPROCS(t *testing.T, n int) {
+	t.Helper()
+	prev := runtime.GOMAXPROCS(n)
+	t.Cleanup(func() { runtime.GOMAXPROCS(prev) })
+}
+
+// buildParallelPairs returns n in-memory file pairs with differing content.
+// Every other pair is given multi-key content so pairs vary in comparison cost,
+// which makes workers finish out of index order.
+func buildParallelPairs(n int) map[string][2][]byte {
+	pairs := make(map[string][2][]byte, n)
+	for i := range n {
+		name := fmt.Sprintf("file%03d.yaml", i)
+		if i%2 == 0 {
+			pairs[name] = [2][]byte{
+				[]byte(fmt.Sprintf("name: svc%d\nreplicas: 1\n", i)),
+				[]byte(fmt.Sprintf("name: svc%d\nreplicas: 2\n", i)),
+			}
+			continue
+		}
+		var from, to strings.Builder
+		for k := range 40 {
+			fmt.Fprintf(&from, "key%02d: old-%d-%d\n", k, i, k)
+			fmt.Fprintf(&to, "key%02d: new-%d-%d\n", k, i, k)
+		}
+		pairs[name] = [2][]byte{[]byte(from.String()), []byte(to.String())}
+	}
+	return pairs
+}
+
+// runDirectoryCapture runs directory mode over the given pairs and returns
+// stdout, stderr and the exit code.
+func runDirectoryCapture(t *testing.T, output string, pairs map[string][2][]byte) (string, string, int) {
+	t.Helper()
+	cfg := NewCLIConfig()
+	cfg.Color = "never"
+	cfg.SetExitCode = true
+	cfg.Output = output
+
+	rc := NewRunConfig()
+	var stdout, stderr strings.Builder
+	rc.Stdout = &stdout
+	rc.Stderr = &stderr
+	rc.FilePairs = pairs
+
+	result := runDirectory(cfg, rc, "", "")
+	return stdout.String(), stderr.String(), result.Code
+}
+
+// TestRunDirectory_ParallelMatchesSequential is the core guarantee of the
+// parallel compare phase: results are replayed in pair order, so output must be
+// byte-identical to the single-worker streaming path for every output format.
+func TestRunDirectory_ParallelMatchesSequential(t *testing.T) {
+	if runtime.NumCPU() < 2 {
+		t.Skip("needs at least 2 CPUs to exercise the parallel path")
+	}
+
+	formats := []string{"detailed", "compact", "brief", "json", "json-patch", "github", "gitlab", "gitea"}
+	for _, format := range formats {
+		t.Run(format, func(t *testing.T) {
+			withGOMAXPROCS(t, 1)
+			seqOut, seqErr, seqCode := runDirectoryCapture(t, format, buildParallelPairs(60))
+
+			withGOMAXPROCS(t, runtime.NumCPU())
+			parOut, parErr, parCode := runDirectoryCapture(t, format, buildParallelPairs(60))
+
+			if seqOut != parOut {
+				t.Errorf("stdout differs between sequential and parallel paths\nsequential (%d bytes):\n%s\nparallel (%d bytes):\n%s",
+					len(seqOut), seqOut, len(parOut), parOut)
+			}
+			if seqErr != parErr {
+				t.Errorf("stderr differs: sequential %q, parallel %q", seqErr, parErr)
+			}
+			if seqCode != parCode {
+				t.Errorf("exit code differs: sequential %d, parallel %d", seqCode, parCode)
+			}
+		})
+	}
+}
+
+// TestRunDirectory_ParallelIsDeterministic guards against completion order
+// leaking into the output: repeated parallel runs over identical input must
+// produce identical bytes.
+func TestRunDirectory_ParallelIsDeterministic(t *testing.T) {
+	if runtime.NumCPU() < 2 {
+		t.Skip("needs at least 2 CPUs to exercise the parallel path")
+	}
+	withGOMAXPROCS(t, runtime.NumCPU())
+
+	want, _, _ := runDirectoryCapture(t, "detailed", buildParallelPairs(60))
+	for i := range 12 {
+		got, _, _ := runDirectoryCapture(t, "detailed", buildParallelPairs(60))
+		if got != want {
+			t.Fatalf("run %d produced different output than run 0", i+1)
+		}
+	}
+}
+
+// TestRunDirectory_ParallelPreservesErrorOrder verifies that per-pair errors are
+// reported in pair order rather than completion order, and that a failing pair
+// does not suppress the diffs of the pairs around it.
+func TestRunDirectory_ParallelPreservesErrorOrder(t *testing.T) {
+	if runtime.NumCPU() < 2 {
+		t.Skip("needs at least 2 CPUs to exercise the parallel path")
+	}
+
+	pairs := buildParallelPairs(30)
+	badNames := []string{"file005.yaml", "file015.yaml", "file025.yaml"}
+	for _, name := range badNames {
+		pairs[name] = [2][]byte{[]byte("key: old\n"), []byte(":\nbad yaml [[[")}
+	}
+
+	withGOMAXPROCS(t, 1)
+	seqOut, seqErr, seqCode := runDirectoryCapture(t, "detailed", pairs)
+
+	withGOMAXPROCS(t, runtime.NumCPU())
+	parOut, parErr, parCode := runDirectoryCapture(t, "detailed", pairs)
+
+	if seqErr != parErr {
+		t.Errorf("stderr order differs between paths\nsequential:\n%s\nparallel:\n%s", seqErr, parErr)
+	}
+	if seqOut != parOut {
+		t.Error("stdout differs between sequential and parallel paths when some pairs fail")
+	}
+	if seqCode != parCode {
+		t.Errorf("exit code differs: sequential %d, parallel %d", seqCode, parCode)
+	}
+
+	// Errors must appear in pair order, matching the sorted pair plan.
+	lastIdx := -1
+	for _, name := range badNames {
+		idx := strings.Index(parErr, name)
+		if idx < 0 {
+			t.Fatalf("expected an error mentioning %s, got:\n%s", name, parErr)
+		}
+		if idx < lastIdx {
+			t.Errorf("error for %s reported out of pair order", name)
+		}
+		lastIdx = idx
+	}
+
+	// A healthy pair on either side of a failing one still produces output.
+	for _, name := range []string{"file004.yaml", "file006.yaml"} {
+		if !strings.Contains(parOut, name) {
+			t.Errorf("expected output for %s alongside failing pairs", name)
+		}
+	}
+}
+
+// TestDirWorkerCount checks the streaming/parallel decision: the count is capped
+// by the pair count so a single pair never spawns workers, and it never exceeds
+// GOMAXPROCS.
+func TestDirWorkerCount(t *testing.T) {
+	withGOMAXPROCS(t, 4)
+
+	tests := []struct {
+		pairCount int
+		want      int
+	}{
+		{0, 0},
+		{1, 1},
+		{2, 2},
+		{4, 4},
+		{100, 4}, // capped at GOMAXPROCS
+	}
+	for _, tt := range tests {
+		if got := dirWorkerCount(tt.pairCount); got != tt.want {
+			t.Errorf("dirWorkerCount(%d) = %d, want %d", tt.pairCount, got, tt.want)
+		}
+	}
+
+	withGOMAXPROCS(t, 1)
+	if got := dirWorkerCount(100); got != 1 {
+		t.Errorf("with GOMAXPROCS=1, dirWorkerCount(100) = %d, want 1 (streaming path)", got)
+	}
+}
+
+// TestRunDirectory_SinglePairUsesStreamingPath confirms a one-pair run still
+// works when workers < 2 short-circuits the parallel path.
+func TestRunDirectory_SinglePairUsesStreamingPath(t *testing.T) {
+	withGOMAXPROCS(t, runtime.NumCPU())
+
+	if got := dirWorkerCount(1); got >= 2 {
+		t.Fatalf("dirWorkerCount(1) = %d, expected < 2 so streaming is used", got)
+	}
+
+	stdout, _, code := runDirectoryCapture(t, "detailed", map[string][2][]byte{
+		"only.yaml": {[]byte("a: 1\n"), []byte("a: 2\n")},
+	})
+	if code != ExitCodeDifferences {
+		t.Errorf("expected exit %d, got %d", ExitCodeDifferences, code)
+	}
+	if !strings.Contains(stdout, "only.yaml") {
+		t.Errorf("expected output for only.yaml, got: %q", stdout)
+	}
+}

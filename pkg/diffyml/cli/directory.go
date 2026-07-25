@@ -7,8 +7,11 @@ package cli
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"sort"
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	"github.com/szhekpisov/diffyml/pkg/diffyml"
 )
@@ -162,6 +165,56 @@ func processDirPair(pair diffyml.FilePair, filePairs map[string][2][]byte, compa
 	return diffs, nil
 }
 
+// dirPairResult is the outcome of processing one file pair, held so results can
+// be replayed in pair order regardless of the order they finish in.
+type dirPairResult struct {
+	diffs []diffyml.Difference
+	err   error
+}
+
+// dirWorkerCount returns how many goroutines the compare phase should use.
+// A result below 2 means parallelism cannot help (one pair, or one usable CPU)
+// and the caller should stream instead, which avoids buffering every pair's
+// diffs. GOMAXPROCS is container-aware, so this respects CPU limits in CI.
+func dirWorkerCount(pairCount int) int {
+	return min(runtime.GOMAXPROCS(0), pairCount)
+}
+
+// processDirPairs runs processDirPair over every pair using the given number of
+// workers, which the caller guarantees is at least 2. Each worker writes only
+// to its own results[i] slot, so the index counter is the only synchronization
+// needed; everything shared (pairs, filePairs, and the three option structs) is
+// read-only for the duration — Compare, MaskDifferences and FilterDiffsWithRegexp
+// all treat their options as immutable and compile regexes per call.
+//
+// Results are buffered so the caller can replay them in pair order, keeping
+// output byte-identical to the streaming path. Peak memory therefore grows with
+// total diffs, matching what structured formatters and --summary already hold.
+func processDirPairs(pairs []diffyml.FilePair, workers int, filePairs map[string][2][]byte,
+	compareOpts *diffyml.Options, maskOpts diffyml.MaskOptions, filterOpts *diffyml.FilterOptions,
+) []dirPairResult {
+	results := make([]dirPairResult, len(pairs))
+
+	var next atomic.Int64
+	var wg sync.WaitGroup
+	wg.Add(workers)
+	for range workers {
+		go func() {
+			defer wg.Done()
+			for {
+				i := int(next.Add(1)) - 1
+				if i >= len(pairs) {
+					return
+				}
+				results[i].diffs, results[i].err = processDirPair(pairs[i], filePairs, compareOpts, maskOpts, filterOpts)
+			}
+		}()
+	}
+	wg.Wait()
+
+	return results
+}
+
 // setupDirFormatting creates the formatter and format options for directory mode.
 func setupDirFormatting(cfg *CLIConfig) (diffyml.Formatter, *diffyml.FormatOptions, error) {
 	formatter, err := diffyml.FormatterByName(cfg.Output)
@@ -204,6 +257,19 @@ type dirPairCollector struct {
 	summaryEntries []summaryEntry
 	hasDiffs       bool
 	hasErrors      bool
+}
+
+// handlePairResult reports a pair's processing error, or collects its diffs.
+// Shared by the streaming and parallel paths so both emit identically.
+func (c *dirPairCollector) handlePairResult(pair diffyml.FilePair, diffs []diffyml.Difference, err error) {
+	if err != nil {
+		fmt.Fprintf(c.rc.Stderr, "Error: %v\n", err)
+		c.hasErrors = true
+		return
+	}
+	if len(diffs) > 0 {
+		c.collectPairResult(pair, diffs)
+	}
 }
 
 // collectPairResult records the diff results for a single file pair, emitting output as needed.
@@ -267,15 +333,19 @@ func runDirectory(cfg *CLIConfig, rc *RunConfig, fromDir, toDir string) *ExitRes
 		isBriefSummary: cfg.Output == "brief" && cfg.Summary,
 		wantSummary:    cfg.Summary,
 	}
-	for _, pair := range pairs {
-		diffs, diffErr := processDirPair(pair, rc.FilePairs, compareOpts, maskOpts, filterOpts)
-		if diffErr != nil {
-			fmt.Fprintf(rc.Stderr, "Error: %v\n", diffErr)
-			c.hasErrors = true
-			continue
+	// Formatting and writing always happen on this goroutine, in pair order, so
+	// output and the color/terminal state are identical on both paths below.
+	if workers := dirWorkerCount(len(pairs)); workers < 2 {
+		// Nothing to gain from goroutines: compare and emit one pair at a time
+		// so only a single pair's diffs are live, as before parallelism existed.
+		for _, pair := range pairs {
+			diffs, diffErr := processDirPair(pair, rc.FilePairs, compareOpts, maskOpts, filterOpts)
+			c.handlePairResult(pair, diffs, diffErr)
 		}
-		if len(diffs) > 0 {
-			c.collectPairResult(pair, diffs)
+	} else {
+		results := processDirPairs(pairs, workers, rc.FilePairs, compareOpts, maskOpts, filterOpts)
+		for i, pair := range pairs {
+			c.handlePairResult(pair, results[i].diffs, results[i].err)
 		}
 	}
 

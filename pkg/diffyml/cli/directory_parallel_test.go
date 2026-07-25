@@ -50,6 +50,54 @@ func buildParallelPairs(n int) map[string][2][]byte {
 	return pairs
 }
 
+// buildK8sPairs returns n in-memory manifest pairs shaped to exercise the
+// option-driven parts of the compare phase: Kubernetes entity detection and
+// rename detection, Secret masking, x509 inspection, and the neat bundle.
+func buildK8sPairs(n int) map[string][2][]byte {
+	pairs := make(map[string][2][]byte, n)
+	for i := range n {
+		from := fmt.Sprintf(`apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: svc%d
+  namespace: default
+  annotations:
+    meta.helm.sh/release-name: r%d
+    kubectl.kubernetes.io/last-applied-configuration: '{"a":1}'
+  labels:
+    app.kubernetes.io/managed-by: Helm
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+        - name: c
+          image: nginx:1.1
+          env:
+            - name: PASSWORD
+              value: hunter2-%d
+status:
+  readyReplicas: 1
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: s%d
+data:
+  password: aHVudGVyMg==
+`, i, i, i, i)
+		to := strings.NewReplacer(
+			"replicas: 1", "replicas: 3",
+			"nginx:1.1", "nginx:1.2",
+			"hunter2-", "hunter3-",
+			"readyReplicas: 1", "readyReplicas: 3",
+			"aHVudGVyMg==", "aHVudGVyMw==",
+		).Replace(from)
+		pairs[fmt.Sprintf("manifest%03d.yaml", i)] = [2][]byte{[]byte(from), []byte(to)}
+	}
+	return pairs
+}
+
 // runDirectoryCapture runs directory mode over the given pairs and returns
 // stdout, stderr and the exit code. Any tweak functions are applied to the
 // config before the run, for tests that need options beyond the defaults.
@@ -97,6 +145,44 @@ func TestRunDirectory_ParallelMatchesSequential(t *testing.T) {
 				t.Errorf("exit code differs: sequential %d, parallel %d", seqCode, parCode)
 			}
 		})
+	}
+}
+
+// TestRunDirectory_ParallelMatchesSequentialWithOptions extends the equivalence
+// guarantee to the option structs the workers share. Those are what the
+// safety argument for sharing rests on — Compare, MaskDifferences and
+// FilterDiffsWithRegexp treating their options as immutable and compiling
+// regexes per call — and the default-config tests exercise none of them.
+func TestRunDirectory_ParallelMatchesSequentialWithOptions(t *testing.T) {
+	heavy := func(cfg *CLIConfig) {
+		cfg.DetectKubernetes = true
+		cfg.DetectRenames = true
+		cfg.MaskSecrets = true
+		cfg.MaskPathRegexp = []string{".*[Pp]assword.*"}
+		cfg.Neat = true
+		cfg.FilterRegexp = []string{".*"}
+		cfg.ExcludeRegexp = []string{"nothing-matches-this"}
+		cfg.MultiLineContextLines = 2
+	}
+
+	withGOMAXPROCS(t, 1)
+	seqOut, seqErr, seqCode := runDirectoryCapture(t, "detailed", buildK8sPairs(40), heavy)
+
+	withGOMAXPROCS(t, testWorkers)
+	parOut, parErr, parCode := runDirectoryCapture(t, "detailed", buildK8sPairs(40), heavy)
+
+	if seqOut == "" {
+		t.Fatal("no output produced; the comparison is not exercising anything")
+	}
+	if seqOut != parOut {
+		t.Errorf("stdout differs with kubernetes/mask/neat/filter options set (%d vs %d bytes)",
+			len(seqOut), len(parOut))
+	}
+	if seqErr != parErr {
+		t.Errorf("stderr differs: sequential %q, parallel %q", seqErr, parErr)
+	}
+	if seqCode != parCode {
+		t.Errorf("exit code differs: sequential %d, parallel %d", seqCode, parCode)
 	}
 }
 

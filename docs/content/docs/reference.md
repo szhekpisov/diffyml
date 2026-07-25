@@ -104,11 +104,9 @@ diffyml [flags] <from> <to>
 | `-h`, `--help` | `bool` | — | show help |
 | `-V`, `--version` | `bool` | — | show version information |
 
-## Version
+## Help and version
 
-| Flag | Type | Default | Description |
-|------|------|---------|-------------|
-| `-V`, `--version` | `bool` | — | show version information |
-
-`--version` is handled in `main.go` before flag parsing, so it works even
-when other arguments are missing or invalid.
+`-h`/`--help` and `-V`/`--version` are parsed like any other flag, but they
+short-circuit before the `<from> <to>` arguments are required and before the
+config file is read — so they work with no arguments at all, and keep working
+when a config file is missing or malformed.

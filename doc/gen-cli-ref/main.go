@@ -106,12 +106,13 @@ diffyml [flags] <from> <to>
 
 `
 
-const versionTrailer = `## Version
+// versionTrailer explains the one behavior the flag tables cannot: --help and
+// --version are ordinary flags (listed under "Other" above, so no table here
+// would repeat them) that short-circuit argument parsing.
+const versionTrailer = `## Help and version
 
-| Flag | Type | Default | Description |
-|------|------|---------|-------------|
-| ` + "`-V`, `--version`" + ` | ` + "`bool`" + ` | — | show version information |
-
-` + "`--version`" + ` is handled in ` + "`main.go`" + ` before flag parsing, so it works even
-when other arguments are missing or invalid.
+` + "`-h`/`--help`" + ` and ` + "`-V`/`--version`" + ` are parsed like any other flag, but they
+short-circuit before the ` + "`<from> <to>`" + ` arguments are required and before the
+config file is read — so they work with no arguments at all, and keep working
+when a config file is missing or malformed.
 `

@@ -87,6 +87,14 @@ type CLIConfig struct {
 	// Config file
 	ConfigFile string
 
+	// Concurrency
+	// Jobs is the number of file pairs compared in parallel in directory mode.
+	// 0 means one worker per usable CPU. 1 forces the sequential streaming path,
+	// which keeps only one pair's differences in memory at a time — the escape
+	// hatch for memory-capped environments, since worker count is derived from
+	// the CPU limit but nothing derives it from a memory limit.
+	Jobs int
+
 	// Custom color palette (resolved from config file + env vars)
 	Palette *diffyml.CustomColorPalette
 
@@ -214,6 +222,9 @@ func (c *CLIConfig) initFlags() {
 
 	// Config file
 	c.fs.StringVar(&c.ConfigFile, "config", c.ConfigFile, "path to config file")
+
+	// Concurrency
+	c.fs.IntVar(&c.Jobs, "jobs", c.Jobs, "file pairs compared in parallel in directory mode (0 = one per CPU, 1 = sequential)")
 
 	// Exit code behavior
 	c.fs.BoolVar(&c.SetExitCode, "s", c.SetExitCode, "")
@@ -510,6 +521,10 @@ func (c *CLIConfig) Usage() string {
 	sb.WriteString("      --config string                 path to config file (default: .diffyml.yml in current directory)\n")
 	sb.WriteString("\n")
 
+	// Concurrency
+	sb.WriteString("      --jobs int                      file pairs compared in parallel in directory mode (default 0: one per CPU)\n")
+	sb.WriteString("\n")
+
 	// Other options
 	sb.WriteString("  -s, --set-exit-code                 set program exit code based on differences\n")
 	sb.WriteString("  -h, --help                          show this help\n")
@@ -594,6 +609,11 @@ func (c *CLIConfig) Validate() error {
 	// Neat option constraints
 	if len(c.NeatStripPath) > 0 && !c.Neat {
 		return fmt.Errorf("--neat-strip-path requires --neat")
+	}
+
+	// Concurrency
+	if c.Jobs < 0 {
+		return fmt.Errorf("invalid --jobs %d, must be 0 (one per CPU) or a positive count", c.Jobs)
 	}
 
 	// Validate AI summary configuration

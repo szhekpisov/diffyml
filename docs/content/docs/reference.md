@@ -94,6 +94,7 @@ diffyml [flags] <from> <to>
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `--config` | `string` | `.diffyml.yml` | path to config file |
+| `--jobs` | `int` | `0` | file pairs compared in parallel in directory mode (0 = one per CPU, 1 = sequential, lowest memory) |
 
 ## Other
 

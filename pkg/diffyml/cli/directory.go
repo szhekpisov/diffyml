@@ -175,10 +175,19 @@ type dirPairResult struct {
 // dirCompareWorkers reports how many goroutines the compare phase should use,
 // and whether running it in parallel is worth doing at all. parallel is false
 // for a single pair or a single usable CPU: goroutines cannot help there, and
-// the caller's streaming path avoids buffering every pair's diffs. GOMAXPROCS is
-// container-aware, so this respects CPU limits in CI.
-func dirCompareWorkers(pairCount int) (workers int, parallel bool) {
-	workers = min(runtime.GOMAXPROCS(0), pairCount)
+// the caller's streaming path avoids buffering every pair's diffs.
+//
+// jobs is --jobs: 0 means one worker per usable CPU, and any positive value is
+// taken as given (still capped by pairCount, since idle workers are pointless).
+// GOMAXPROCS is container-aware, so the default respects CPU limits in CI, but
+// nothing derives a worker count from a *memory* limit — --jobs 1 is how a
+// memory-capped caller gets the streaming path back. Negative values are
+// rejected by CLIConfig.Validate before reaching here.
+func dirCompareWorkers(pairCount, jobs int) (workers int, parallel bool) {
+	if jobs <= 0 {
+		jobs = runtime.GOMAXPROCS(0)
+	}
+	workers = min(jobs, pairCount)
 	return workers, workers >= 2
 }
 
@@ -201,7 +210,10 @@ func dirCompareWorkers(pairCount int) (workers int, parallel bool) {
 // 160-pair batch 38% to save 74%. GOGC=off collapses the gap to ~1%, which
 // identifies collection frequency rather than the buffering itself as the cost.
 // The curve is monotonic with no knee, so there is no bound that is close to
-// free — every megabyte saved buys proportional slowdown.
+// free — every megabyte saved buys proportional slowdown. Callers who need the
+// memory back instead of the speed pick the trade-off explicitly with --jobs:
+// on that same corpus, --jobs 1 peaks at 18 MB against 79 MB for 10 workers,
+// for roughly 1.9x the wall time.
 func processDirPairs(pairs []diffyml.FilePair, workers int, filePairs map[string][2][]byte,
 	compareOpts *diffyml.Options, maskOpts diffyml.MaskOptions, filterOpts *diffyml.FilterOptions,
 ) []dirPairResult {
@@ -347,7 +359,7 @@ func runDirectory(cfg *CLIConfig, rc *RunConfig, fromDir, toDir string) *ExitRes
 	}
 	// Formatting and writing always happen on this goroutine, in pair order, so
 	// output and the color/terminal state are identical on both paths below.
-	if workers, parallel := dirCompareWorkers(len(pairs)); parallel {
+	if workers, parallel := dirCompareWorkers(len(pairs), cfg.Jobs); parallel {
 		results := processDirPairs(pairs, workers, rc.FilePairs, compareOpts, maskOpts, filterOpts)
 		for i, pair := range pairs {
 			c.handlePairResult(pair, results[i].diffs, results[i].err)

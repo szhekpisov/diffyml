@@ -51,13 +51,17 @@ func buildParallelPairs(n int) map[string][2][]byte {
 }
 
 // runDirectoryCapture runs directory mode over the given pairs and returns
-// stdout, stderr and the exit code.
-func runDirectoryCapture(t *testing.T, output string, pairs map[string][2][]byte) (string, string, int) {
+// stdout, stderr and the exit code. Any tweak functions are applied to the
+// config before the run, for tests that need options beyond the defaults.
+func runDirectoryCapture(t *testing.T, output string, pairs map[string][2][]byte, tweak ...func(*CLIConfig)) (string, string, int) {
 	t.Helper()
 	cfg := NewCLIConfig()
 	cfg.Color = "never"
 	cfg.SetExitCode = true
 	cfg.Output = output
+	for _, fn := range tweak {
+		fn(cfg)
+	}
 
 	rc := NewRunConfig()
 	var stdout, stderr strings.Builder
@@ -172,27 +176,83 @@ func TestDirCompareWorkers(t *testing.T) {
 
 	tests := []struct {
 		pairCount    int
+		jobs         int
 		want         int
 		wantParallel bool
 	}{
-		{0, 0, false},
-		{1, 1, false}, // a single pair has nothing to overlap with
-		{2, 2, true},
-		{testWorkers, testWorkers, true},
-		{100, testWorkers, true}, // capped at GOMAXPROCS
+		{0, 0, 0, false},
+		{1, 0, 1, false}, // a single pair has nothing to overlap with
+		{2, 0, 2, true},
+		{testWorkers, 0, testWorkers, true},
+		{100, 0, testWorkers, true},                   // capped at GOMAXPROCS
+		{100, 1, 1, false},                            // --jobs 1: the caller asked for streaming
+		{100, 2, 2, true},                             // --jobs below GOMAXPROCS wins
+		{100, testWorkers * 4, testWorkers * 4, true}, // --jobs above GOMAXPROCS is honored
+		{3, testWorkers * 4, 3, true},                 // ...but never exceeds the pair count
+		{1, 8, 1, false},                              // one pair stays sequential whatever --jobs says
 	}
 	for _, tt := range tests {
-		got, parallel := dirCompareWorkers(tt.pairCount)
+		got, parallel := dirCompareWorkers(tt.pairCount, tt.jobs)
 		if got != tt.want || parallel != tt.wantParallel {
-			t.Errorf("dirCompareWorkers(%d) = (%d, %t), want (%d, %t)",
-				tt.pairCount, got, parallel, tt.want, tt.wantParallel)
+			t.Errorf("dirCompareWorkers(%d, jobs=%d) = (%d, %t), want (%d, %t)",
+				tt.pairCount, tt.jobs, got, parallel, tt.want, tt.wantParallel)
 		}
 	}
 
 	// One usable CPU: plenty of pairs, but still nothing to gain.
 	withGOMAXPROCS(t, 1)
-	if got, parallel := dirCompareWorkers(100); got != 1 || parallel {
-		t.Errorf("with GOMAXPROCS=1, dirCompareWorkers(100) = (%d, %t), want (1, false)", got, parallel)
+	if got, parallel := dirCompareWorkers(100, 0); got != 1 || parallel {
+		t.Errorf("with GOMAXPROCS=1, dirCompareWorkers(100, 0) = (%d, %t), want (1, false)", got, parallel)
+	}
+	// ...unless --jobs asks for more anyway: worker count is not capped by the
+	// CPU count, and oversubscribing is the caller's call to make.
+	if got, parallel := dirCompareWorkers(100, 4); got != 4 || !parallel {
+		t.Errorf("with GOMAXPROCS=1, dirCompareWorkers(100, 4) = (%d, %t), want (4, true)", got, parallel)
+	}
+}
+
+// TestRunDirectory_JobsOneForcesStreaming covers --jobs as the memory escape
+// hatch: with CPUs available it must still take the sequential path, and produce
+// exactly what the parallel path produces.
+func TestRunDirectory_JobsOneForcesStreaming(t *testing.T) {
+	withGOMAXPROCS(t, testWorkers)
+
+	parOut, parErr, parCode := runDirectoryCapture(t, "detailed", buildParallelPairs(60))
+	seqOut, seqErr, seqCode := runDirectoryCapture(t, "detailed", buildParallelPairs(60),
+		func(cfg *CLIConfig) { cfg.Jobs = 1 })
+
+	if seqOut != parOut {
+		t.Errorf("--jobs 1 stdout differs from the parallel path (%d vs %d bytes)", len(seqOut), len(parOut))
+	}
+	if seqErr != parErr {
+		t.Errorf("--jobs 1 stderr differs: %q vs %q", seqErr, parErr)
+	}
+	if seqCode != parCode {
+		t.Errorf("--jobs 1 exit code differs: %d vs %d", seqCode, parCode)
+	}
+}
+
+// TestRunDirectory_JobsCapsWorkers exercises a bounded worker count end to end,
+// since dirCompareWorkers is only half the contract: processDirPairs has to
+// cover all pairs with fewer workers than pairs, in order.
+func TestRunDirectory_JobsCapsWorkers(t *testing.T) {
+	withGOMAXPROCS(t, testWorkers)
+
+	wantOut, wantErr, wantCode := runDirectoryCapture(t, "detailed", buildParallelPairs(60),
+		func(cfg *CLIConfig) { cfg.Jobs = 1 })
+
+	for _, jobs := range []int{2, 3, testWorkers * 4} {
+		gotOut, gotErr, gotCode := runDirectoryCapture(t, "detailed", buildParallelPairs(60),
+			func(cfg *CLIConfig) { cfg.Jobs = jobs })
+		if gotOut != wantOut {
+			t.Errorf("--jobs %d stdout differs from --jobs 1", jobs)
+		}
+		if gotErr != wantErr {
+			t.Errorf("--jobs %d stderr differs from --jobs 1: %q vs %q", jobs, gotErr, wantErr)
+		}
+		if gotCode != wantCode {
+			t.Errorf("--jobs %d exit code %d, want %d", jobs, gotCode, wantCode)
+		}
 	}
 }
 
@@ -202,7 +262,7 @@ func TestRunDirectory_SinglePairUsesStreamingPath(t *testing.T) {
 	// GOMAXPROCS is high, so only the pair-count cap can force streaming here.
 	withGOMAXPROCS(t, testWorkers)
 
-	if _, parallel := dirCompareWorkers(1); parallel {
+	if _, parallel := dirCompareWorkers(1, 0); parallel {
 		t.Fatal("expected a single pair to take the streaming path")
 	}
 

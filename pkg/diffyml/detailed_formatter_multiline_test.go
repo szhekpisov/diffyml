@@ -1,6 +1,7 @@
 package diffyml
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -663,5 +664,66 @@ func TestDetailedFormatter_MultilineDiff_NegativeContextLines(t *testing.T) {
 	output := f.Format(diffs, opts)
 	if !strings.Contains(output, "value change in multiline text") {
 		t.Errorf("expected multiline diff output with negative context lines, got: %q", output)
+	}
+}
+
+func TestComputeLineDiff_BandEdges(t *testing.T) {
+	// The forward pass snapshots only the band of diagonals reachable at each
+	// step, and the backtrack pass indexes those snapshots through the band's
+	// own offset rather than the full row's. A pure insert walks out to
+	// diagonal k = d and a pure delete to k = -d, the two edges of that band,
+	// so these are the shapes that catch an off-by-one in the rebasing.
+	seq := func(prefix string, n int) []string {
+		lines := make([]string, n)
+		for i := range lines {
+			lines[i] = fmt.Sprintf("%s%d", prefix, i)
+		}
+		return lines
+	}
+
+	tests := []struct {
+		name               string
+		from, to           []string
+		wantAdds, wantDels int
+	}{
+		{"pure insert", nil, seq("line", 12), 12, 0},
+		{"pure delete", seq("line", 12), nil, 0, 12},
+		{"insert onto a prefix", seq("line", 3), seq("line", 15), 12, 0},
+		{"delete down to a prefix", seq("line", 15), seq("line", 3), 0, 12},
+		{"disjoint, longer on the left", seq("old", 9), seq("new", 4), 4, 9},
+		{"disjoint, longer on the right", seq("old", 4), seq("new", 9), 9, 4},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ops := computeLineDiff(tt.from, tt.to)
+
+			adds, dels := countEditOps(ops)
+			if adds != tt.wantAdds || dels != tt.wantDels {
+				t.Errorf("got %d inserts and %d deletions, want %d and %d",
+					adds, dels, tt.wantAdds, tt.wantDels)
+			}
+
+			// The script must reconstruct both sides exactly, which is what an
+			// off-by-one in the band offset would break.
+			var gotFrom, gotTo []string
+			for _, op := range ops {
+				switch op.Type {
+				case editKeep:
+					gotFrom = append(gotFrom, op.Line)
+					gotTo = append(gotTo, op.Line)
+				case editDelete:
+					gotFrom = append(gotFrom, op.Line)
+				case editInsert:
+					gotTo = append(gotTo, op.Line)
+				}
+			}
+			if !slices.Equal(gotFrom, tt.from) {
+				t.Errorf("replaying the script gives from = %q, want %q", gotFrom, tt.from)
+			}
+			if !slices.Equal(gotTo, tt.to) {
+				t.Errorf("replaying the script gives to = %q, want %q", gotTo, tt.to)
+			}
+		})
 	}
 }

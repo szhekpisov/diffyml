@@ -68,13 +68,16 @@ func allocatedBytes(fn func()) uint64 {
 // a GitHub annotation for a changed multiline value.
 //
 // The output is capped at gitHubMaxDiffLines regardless of input size, so the
-// work behind it should be bounded too. It is not automatically: the Myers
-// diff in computeLineDiff snapshots a (2*(m+n)+1)-int row per edit-script step,
-// so a fully rewritten value costs O((m+n)^2) memory to render at most 40 lines.
+// work behind it should be bounded too. It is not automatically: the Myers diff
+// searches an edit script whose length is the whole input for a fully rewritten
+// value, and snapshots a row per step of it, so without the ceiling in
+// computeLineDiffBounded rendering at most 40 lines costs O((m+n)^2) memory.
 //
 // Doubling the input must not roughly quadruple the allocations. A linear
 // implementation lands near 2x; a quadratic one near 4x. The threshold sits
 // between them, wide enough that measurement noise cannot reach it.
+// MultilineAllocationCeiling is the sharper guard — see there for why growth
+// alone does not catch a trace that snapshots more than it needs.
 func TestGitHubFormatter_MultilineWorkIsNotQuadratic(t *testing.T) {
 	const (
 		baseLines    = 500
@@ -107,11 +110,15 @@ func TestGitHubFormatter_MultilineWorkIsNotQuadratic(t *testing.T) {
 // TestGitHubFormatter_MultilineAllocationCeiling backstops the growth test with
 // an absolute bound. Growth alone cannot catch an implementation that is linear
 // but with a ruinous constant, and the ratio is only meaningful next to a scale.
-// The limit is deliberately loose — it is a blowup detector, not a budget.
+//
+// It is also what holds the trace to a band. Snapshotting the whole Myers row
+// per step is still linear in the value — the growth test above passes either
+// way — but at ~1.3 KB per line, which lands around 49x here. The limit sits
+// between that and the ~5x a banded trace costs.
 func TestGitHubFormatter_MultilineAllocationCeiling(t *testing.T) {
 	const (
 		lines            = 1000
-		maxBytesPerInput = 100
+		maxBytesPerInput = 20
 	)
 
 	from, to := generateRewrittenPair(lines)

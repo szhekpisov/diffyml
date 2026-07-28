@@ -466,8 +466,14 @@ func (f *GitHubFormatter) Format(diffs []Difference, opts *FormatOptions) string
 // also the one place escaping happens: the message is percent-encoded so that a
 // multiline description stays one command line (GitHub renders the %0A escapes
 // as line breaks), and the properties use the stricter property encoding.
+//
+// Bounding the message belongs here for the same reason. The caps in
+// githubDiffDescription bound lines and line width separately, which leaves
+// their product — and the path, which is not a value line at all — so the last
+// bound is on the assembled message. It is applied before escaping, so the
+// marker counts characters of the message rather than of its encoding.
 func gitHubWriteCommand(sb *strings.Builder, cmd, title, msg, filePath string) {
-	msg = escapeGitHubData(msg)
+	msg = escapeGitHubData(truncateRunes(msg, gitHubMaxMessageRunes))
 	title = escapeGitHubProperty(title)
 	if filePath != "" {
 		fmt.Fprintf(sb, "::%s file=%s,title=%s::%s\n", cmd, escapeGitHubProperty(filePath), title, msg)

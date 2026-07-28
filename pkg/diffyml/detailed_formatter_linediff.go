@@ -167,12 +167,14 @@ func computeLineDiff(fromLines, toLines []string) []editOp {
 }
 
 // computeLineDiffBounded is computeLineDiff with a ceiling on how far it
-// searches. The forward pass keeps one (2*(m+n)+1)-int row per step of the edit
-// script, so memory is O(D*(m+n)) — quadratic for two values that share no
-// lines. Capping D caps that at O(maxD*(m+n)), linear in the input, at the cost
-// of producing no diff at all for values that differ by more than maxD lines:
-// ok is false in that case and the caller is expected to fall back to something
-// cheaper. A budget of m+n or more searches without a ceiling.
+// searches. Memory is dominated by the trace the backtrack pass reads, which
+// holds one band per step of the edit script: (D+1)^2 ints in total, so
+// quadratic in the edit distance and independent of the value size. Capping D
+// therefore caps memory outright, at the cost of producing no diff at all for
+// values that differ by more than maxD lines: ok is false in that case and the
+// caller is expected to fall back to something cheaper. A budget of m+n or more
+// searches without a ceiling — which is where the quadratic term bites, since
+// then D may be m+n.
 func computeLineDiffBounded(fromLines, toLines []string, maxD int) (ops []editOp, ok bool) {
 	m := len(fromLines)
 	n := len(toLines)
@@ -188,9 +190,17 @@ func computeLineDiffBounded(fromLines, toLines []string, maxD int) (ops []editOp
 
 	limit := min(maxD, m+n)
 
+search:
 	for d := range limit + 1 {
-		snapshot := make([]int, vSize)
-		copy(snapshot, v)
+		// Snapshot only the band the backtrack pass can read at step d, which
+		// is diagonals [-d, d]: step d walks those diagonals and reads the
+		// previous row at k±1, and the short-circuits below keep those reads
+		// inside [-(d-1), d-1]. d never exceeds offset, so the band always
+		// fits in v. Snapshotting the whole (2*(m+n)+1)-int row instead would
+		// cost (D+1)*(2*(m+n)+1) ints — ~1.3 KB per line of the value at the
+		// ceiling the GitHub formatter uses, to render at most 40 of them.
+		snapshot := make([]int, 2*d+1)
+		copy(snapshot, v[offset-d:offset+d+1])
 		trace = append(trace, snapshot)
 
 		for k := -d; k <= d; k += 2 {
@@ -212,11 +222,8 @@ func computeLineDiffBounded(fromLines, toLines []string, maxD int) (ops []editOp
 			if x == m && y == n {
 				finalD = d
 				found = true
-				break
+				break search
 			}
-		}
-		if found {
-			break
 		}
 	}
 
@@ -229,17 +236,19 @@ func computeLineDiffBounded(fromLines, toLines []string, maxD int) (ops []editOp
 	x, y := m, n
 
 	for d := finalD; d > 0; d-- {
+		// trace[d] holds diagonals [-d, d] only, so d is its own offset:
+		// diagonal k sits at index k+d, not k+offset.
 		prev := trace[d]
 		k := x - y
 
 		var prevK int
-		if k == -d || (k != d && prev[k-1+offset] < prev[k+1+offset]) {
+		if k == -d || (k != d && prev[k-1+d] < prev[k+1+d]) {
 			prevK = k + 1
 		} else {
 			prevK = k - 1
 		}
 
-		prevX := prev[prevK+offset]
+		prevX := prev[prevK+d]
 		prevY := prevX - prevK
 
 		// Record diagonal matches (snake) in reverse

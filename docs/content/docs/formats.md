@@ -63,7 +63,9 @@ Both caps append a `[N more lines]` marker counting the lines of the value that 
 
 Individual lines are capped too, at 500 characters with a `[N more characters]` marker. Line counts alone bound the wrong dimension: a minified JSON blob or a `last-applied-configuration` annotation is a single line of any size, so it clears every line cap untouched. The count is in characters rather than bytes, so a multi-byte character is never cut in half.
 
-A value rewritten beyond recognition — more than 80 lines of difference between the two sides — is truncated like any other value instead of being diffed. Producing a line diff costs memory proportional to how different the two values are, and past that point the diff no longer fits in the 40-line cap anyway. Only wholesale rewrites reach it: a long value with a few changed lines is diffed however long it is.
+Finally, the assembled message is capped at 4000 characters. The two caps above bound lines and line width separately, but not their product — 40 lines of 500 characters is 20,000, which the percent-encoding below can triple. It is also the only bound on the parts of a message that are not value lines: a difference's path is a document key of any length. In practice it never fires on a readable annotation, and GitHub truncates the rendered message well below it.
+
+A value rewritten beyond recognition — more than 80 lines of difference between the two sides — is truncated like any other value instead of being diffed. Producing a line diff costs memory quadratic in how different the two values are, and past that point the diff no longer fits in the 40-line cap anyway. Only wholesale rewrites reach it: a long value with a few changed lines is diffed however long it is.
 
 PEM certificate values are replaced by the same one-line `Certificate(CN=…, Issuer=…, Valid=…, Serial=…)` summary the [detailed](#detailed-default) output uses, so a rotation reads as one changed line instead of a diff of base64. Pass `--no-cert-inspection` to see the raw PEM (still subject to the caps above).
 

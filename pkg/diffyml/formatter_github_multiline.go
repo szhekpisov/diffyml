@@ -8,8 +8,10 @@
 // Both paths end in a hard cap on lines and on the width of each line, so no
 // single annotation is unbounded in either dimension: collapsing alone cannot
 // shrink a value whose lines all changed, and a line cap alone cannot shrink a
-// value that is one enormous line. A wholesale rewrite also skips the diff
-// entirely rather than pay for one it cannot show — see gitHubMaxEditDistance.
+// value that is one enormous line. Those two caps bound each dimension but not
+// their product, so gitHubMaxMessageRunes bounds the whole message as well. A
+// wholesale rewrite also skips the diff entirely rather than pay for one it
+// cannot show — see gitHubMaxEditDistance.
 package diffyml
 
 import (
@@ -36,20 +38,29 @@ const gitHubMaxDiffLines = 40
 // stops at gitHubMaxDiffLines, so an edit script twice that long overflows
 // anything the annotation could show; all a full diff still buys past this
 // point is an exact insert/deletion count in the header, and computeLineDiff
-// pays O(D*(m+n)) memory for it — 63 MiB to render 40 lines of a 1000-line
-// rewrite, 1.6 GiB for 8000. Bounding D keeps the cost linear in the value
-// size. Only wholesale rewrites reach the ceiling; a value with a handful of
-// changed lines has a small edit distance however long the value is, so the
-// case collapsing exists for is never the case that falls back.
+// pays O(D^2) memory for it — 1.6 GiB for an 8000-line rewrite, to render 40
+// lines. Bounding D is what makes that cost a constant. Only wholesale
+// rewrites reach the ceiling; a value with a handful of changed lines has a
+// small edit distance however long the value is, so the case collapsing exists
+// for is never the case that falls back.
 const gitHubMaxEditDistance = 2 * gitHubMaxDiffLines
 
 // gitHubMaxLineRunes caps the length of a single rendered line. Every other cap
 // here counts lines, so a value that is one enormous line — minified JSON, a
 // base64 blob, a last-applied-configuration annotation — passes all of them
 // untouched and produces one multi-megabyte annotation. Runes rather than bytes
-// so a multi-byte character is never cut in half. Only value lines are capped;
-// the path and the edit-count header are bounded by the document's own keys.
+// so a multi-byte character is never cut in half.
 const gitHubMaxLineRunes = 500
+
+// gitHubMaxMessageRunes caps the assembled message, which the per-line and
+// per-value caps do not: they bound each dimension separately, and their
+// product is 40 lines of 500 runes, or 61 KB once percent-encoding triples a
+// message made of "%". It is also the only bound on the parts of a message that
+// are not value lines at all — the difference's path is a document key of any
+// length, and nothing else caps it. Sized well above what a readable annotation
+// reaches, so it only ever fires on the pathological shapes; GitHub truncates
+// the rendered message far below this anyway.
+const gitHubMaxMessageRunes = 4000
 
 // escapeGitHubData percent-encodes data for a GitHub Actions workflow command.
 // Without this a message containing a newline would terminate the command
@@ -152,16 +163,20 @@ func githubMultilineDiff(from, to string, contextLines int) (string, bool) {
 
 // renderChunkLine renders one chunk the way an annotation shows it: the shapes
 // the detailed formatter renders with deeper indentation and color.
+//
+// Context is the default arm rather than a case of its own so that a chunk type
+// added later renders as an unmarked line instead of claiming to be a collapsed
+// run of some other length.
 func renderChunkLine(chunk lineDiffChunk) string {
 	switch chunk.Type {
-	case chunkKeep:
-		return "  " + chunk.Line
+	case chunkCollapsed:
+		return collapsedRunLabel(chunk.Collapsed)
 	case chunkInsert:
 		return "+ " + chunk.Line
 	case chunkDelete:
 		return "- " + chunk.Line
-	default: // chunkCollapsed
-		return collapsedRunLabel(chunk.Collapsed)
+	default: // chunkKeep
+		return "  " + chunk.Line
 	}
 }
 
@@ -187,15 +202,15 @@ func githubDiffBody(chunks []lineDiffChunk, maxLines, maxRunes int) []string {
 }
 
 // githubTruncatedValue renders a value the way diffDescription does, then keeps
-// at most maxLines lines, each of at most gitHubMaxLineRunes runes, and
-// summarizes what it dropped. Truncating the rendered form rather than the
-// source value bounds structured additions too: a whole added map serializes to
-// many lines of YAML without ever being a Go string. Values within both caps
-// are returned unchanged.
-func githubTruncatedValue(val any, maxLines int) string {
+// at most maxLines lines, each of at most maxRunes runes, and summarizes what it
+// dropped. Truncating the rendered form rather than the source value bounds
+// structured additions too: a whole added map serializes to many lines of YAML
+// without ever being a Go string. Values within both caps are returned
+// unchanged.
+func githubTruncatedValue(val any, maxLines, maxRunes int) string {
 	lines := truncateLines(strings.Split(formatValue(val), "\n"), maxLines)
 	for i, line := range lines {
-		lines[i] = truncateRunes(line, gitHubMaxLineRunes)
+		lines[i] = truncateRunes(line, maxRunes)
 	}
 	return strings.Join(lines, "\n")
 }
@@ -248,13 +263,13 @@ func githubDiffDescription(diff Difference, opts *FormatOptions) string {
 	switch diff.Type {
 	case DiffAdded:
 		return fmt.Sprintf("Added: %s%s = %s", diff.Path, docSuffix,
-			githubTruncatedValue(githubCertValue(diff.To, certs), gitHubMaxValueLines))
+			githubTruncatedValue(githubCertValue(diff.To, certs), gitHubMaxValueLines, gitHubMaxLineRunes))
 	case DiffRemoved:
 		return fmt.Sprintf("Removed: %s%s = %s", diff.Path, docSuffix,
-			githubTruncatedValue(githubCertValue(diff.From, certs), gitHubMaxValueLines))
+			githubTruncatedValue(githubCertValue(diff.From, certs), gitHubMaxValueLines, gitHubMaxLineRunes))
 	case DiffUnchanged:
 		return fmt.Sprintf("Unchanged: %s%s = %s", diff.Path, docSuffix,
-			githubTruncatedValue(githubCertValue(diff.To, certs), gitHubMaxValueLines))
+			githubTruncatedValue(githubCertValue(diff.To, certs), gitHubMaxValueLines, gitHubMaxLineRunes))
 	case DiffModified:
 		from, to := githubCertPair(diff.From, diff.To, certs)
 		if fromStr, toStr, ok := multilineStrings(from, to); ok {
@@ -263,8 +278,8 @@ func githubDiffDescription(diff Difference, opts *FormatOptions) string {
 			}
 		}
 		return fmt.Sprintf("Modified: %s%s changed from %s to %s", diff.Path, docSuffix,
-			githubTruncatedValue(from, gitHubMaxValueLines),
-			githubTruncatedValue(to, gitHubMaxValueLines))
+			githubTruncatedValue(from, gitHubMaxValueLines, gitHubMaxLineRunes),
+			githubTruncatedValue(to, gitHubMaxValueLines, gitHubMaxLineRunes))
 	default: // DiffOrderChanged carries no value
 		return diffDescription(diff)
 	}

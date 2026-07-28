@@ -223,19 +223,24 @@ func TestGithubTruncatedValue(t *testing.T) {
 		name     string
 		val      any
 		maxLines int
+		maxRunes int
 		want     string
 	}{
-		{"single line untouched", "just one line", 3, "just one line"},
-		{"non-string untouched", 42, 3, "42"},
-		{"exactly at cap", "a\nb\nc", 3, "a\nb\nc"},
-		{"one over cap", "a\nb\nc\nd", 3, "a\nb\nc\n[1 more line]"},
-		{"several over cap", "a\nb\nc\nd\ne\nf", 3, "a\nb\nc\n[3 more lines]"},
+		{"single line untouched", "just one line", 3, 100, "just one line"},
+		{"non-string untouched", 42, 3, 100, "42"},
+		{"exactly at cap", "a\nb\nc", 3, 100, "a\nb\nc"},
+		{"one over cap", "a\nb\nc\nd", 3, 100, "a\nb\nc\n[1 more line]"},
+		{"several over cap", "a\nb\nc\nd\ne\nf", 3, 100, "a\nb\nc\n[3 more lines]"},
+		// Both caps apply, and the width cap reaches every kept line rather
+		// than only the first.
+		{"width cap", "abcdef\nghijkl", 3, 3, "abc…[3 more characters]\nghi…[3 more characters]"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := githubTruncatedValue(tt.val, tt.maxLines); got != tt.want {
-				t.Errorf("githubTruncatedValue(%v, %d) = %q, want %q", tt.val, tt.maxLines, got, tt.want)
+			if got := githubTruncatedValue(tt.val, tt.maxLines, tt.maxRunes); got != tt.want {
+				t.Errorf("githubTruncatedValue(%v, %d, %d) = %q, want %q",
+					tt.val, tt.maxLines, tt.maxRunes, got, tt.want)
 			}
 		})
 	}
@@ -323,7 +328,7 @@ func TestGithubTruncatedValue_StructuredValue(t *testing.T) {
 		m.Values[key] = fmt.Sprintf("value%d", i)
 	}
 
-	got := githubTruncatedValue(m, gitHubMaxValueLines)
+	got := githubTruncatedValue(m, gitHubMaxValueLines, gitHubMaxLineRunes)
 	lines := strings.Split(got, "\n")
 
 	if len(lines) != gitHubMaxValueLines+1 {
@@ -1049,5 +1054,66 @@ func TestGitHubWriteCommand_EscapesTitle(t *testing.T) {
 	want := "::warning title=a%2Cb%3Ac%25::the message\n"
 	if got := sb.String(); got != want {
 		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Whole-message cap
+// ---------------------------------------------------------------------------
+
+func TestGitHubFormatter_WideDiffIsBoundedInTotal(t *testing.T) {
+	// The line-count and line-width caps bound each dimension but not their
+	// product: 40 lines of 500 runes is 20,000 runes, and percent-encoding
+	// triples one made entirely of "%". Only gitHubMaxMessageRunes bounds this
+	// shape, and it has to fire before the escaping does.
+	wide := strings.Repeat("%", 5000)
+
+	var from, to []string
+	for i := range 20 {
+		from = append(from, fmt.Sprintf("%s-old-%d", wide, i))
+		to = append(to, fmt.Sprintf("%s-new-%d", wide, i))
+	}
+
+	f := &GitHubFormatter{}
+	msg := githubMessage(t, f.Format([]Difference{{
+		Path: DiffPath{"data", "values.yaml"}, Type: DiffModified,
+		From: strings.Join(from, "\n"), To: strings.Join(to, "\n"),
+	}}, DefaultFormatOptions()))
+
+	// Encoding can triple the message, and the marker is appended past the
+	// cap, so this is the worst case the cap admits — 61 KB without it.
+	if limit := 3*gitHubMaxMessageRunes + 64; len(msg) > limit {
+		t.Errorf("expected at most %d bytes on the wire, got %d", limit, len(msg))
+	}
+	if !strings.Contains(msg, escapeGitHubData("more characters]")) {
+		t.Errorf("expected a message truncation marker, got %d bytes", len(msg))
+	}
+}
+
+func TestGitHubFormatter_LongPathIsBounded(t *testing.T) {
+	// A difference's path is a document key of any length. No value cap
+	// reaches it, so the message cap is the only thing that bounds it.
+	f := &GitHubFormatter{}
+	msg := githubMessage(t, f.Format([]Difference{
+		{Path: DiffPath{strings.Repeat("k", 10_000)}, Type: DiffAdded, To: "v"},
+	}, DefaultFormatOptions()))
+
+	if got := utf8.RuneCountInString(msg); got > gitHubMaxMessageRunes+64 {
+		t.Errorf("expected the path to be bounded, got %d runes", got)
+	}
+}
+
+func TestGitHubCaps_MessageBoundary(t *testing.T) {
+	// 4000 runes exactly is untouched; 4001 drops exactly one.
+	var sb strings.Builder
+	gitHubWriteCommand(&sb, "warning", "t", strings.Repeat("x", gitHubMaxMessageRunes), "")
+	if strings.Contains(sb.String(), "more character") {
+		t.Errorf("a 4000-character message must not be truncated, got: %s", sb.String())
+	}
+
+	sb.Reset()
+	gitHubWriteCommand(&sb, "warning", "t", strings.Repeat("x", gitHubMaxMessageRunes+1), "")
+	if !strings.Contains(sb.String(), escapeGitHubData("…[1 more character]")) {
+		t.Errorf("a 4001-character message must drop exactly one character, got: %s", sb.String())
 	}
 }

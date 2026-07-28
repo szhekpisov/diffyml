@@ -229,6 +229,78 @@ func TestGithubTruncatedValue(t *testing.T) {
 	}
 }
 
+func TestGithubDiffDescription_OneSidedMultiline(t *testing.T) {
+	// Only one side needs to be multiline for the line diff to apply: replacing
+	// a block scalar with a single line, or vice versa, is still best shown as
+	// a diff rather than as "changed from <20 lines> to <1 line>".
+	multi := buildMultiline(20, 10, "old value")
+	single := "collapsed to one line"
+
+	tests := []struct {
+		name string
+		from string
+		to   string
+		want []string
+	}{
+		{
+			name: "from multiline, to single line",
+			from: multi,
+			to:   single,
+			want: []string{"- line0", "- line19", "+ " + single},
+		},
+		{
+			name: "from single line, to multiline",
+			from: single,
+			to:   multi,
+			want: []string{"- " + single, "+ line0", "+ line19"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			diff := Difference{Path: DiffPath{"data", "script"}, Type: DiffModified, From: tt.from, To: tt.to}
+			got := githubDiffDescription(diff, DefaultFormatOptions())
+
+			if !strings.Contains(got, "changed in multiline text") {
+				t.Fatalf("expected the line-diff path, got:\n%s", got)
+			}
+			for _, w := range tt.want {
+				if !strings.Contains(got, w) {
+					t.Errorf("expected %q in description, got:\n%s", w, got)
+				}
+			}
+			if strings.Contains(got, "changed from ") {
+				t.Errorf("expected no from/to wording on the line-diff path, got:\n%s", got)
+			}
+		})
+	}
+}
+
+func TestMultilineStrings(t *testing.T) {
+	tests := []struct {
+		name string
+		from any
+		to   any
+		want bool
+	}{
+		{"both multiline", "a\nb", "c\nd", true},
+		{"only from multiline", "a\nb", "c", true},
+		{"only to multiline", "a", "c\nd", true},
+		{"neither multiline", "a", "c", false},
+		{"from not a string", 42, "c\nd", false},
+		{"to not a string", "a\nb", 42, false},
+		{"neither a string", 42, 43, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, _, got := multilineStrings(tt.from, tt.to); got != tt.want {
+				t.Errorf("multilineStrings(%v, %v) = %v, want %v", tt.from, tt.to, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestGithubTruncatedValue_StructuredValue(t *testing.T) {
 	// A whole added map is never a Go string, but serializes to many lines of
 	// YAML. Truncation must apply to the rendered form.
@@ -419,6 +491,35 @@ func TestGiteaFormatter_MultilineMatchesGitHub(t *testing.T) {
 
 	if got, want := giteaF.Format(diffs, opts), githubF.Format(diffs, opts); got != want {
 		t.Errorf("gitea multiline output should match github\nGitea:  %s\nGitHub: %s", got, want)
+	}
+}
+
+func TestCollapseLineDiff_NeverAbsorbsChangedLines(t *testing.T) {
+	// A collapsed run is a run of *unchanged* lines. markNearChange always
+	// flags an insert or delete at its own index, so callers never hit this,
+	// but the run scan must stop at a changed line on its own merits rather
+	// than leaning on the mask: swallowing one would drop it from the output.
+	ops := []editOp{
+		{Type: editKeep, Line: "a"},
+		{Type: editInsert, Line: "b"},
+		{Type: editKeep, Line: "c"},
+	}
+	nearChange := []bool{false, false, false}
+
+	chunks := collapseLineDiff(ops, nearChange)
+
+	want := []lineDiffChunk{
+		{Type: chunkCollapsed, Collapsed: 1},
+		{Type: chunkInsert, Line: "b"},
+		{Type: chunkCollapsed, Collapsed: 1},
+	}
+	if len(chunks) != len(want) {
+		t.Fatalf("expected %d chunks, got %d: %+v", len(want), len(chunks), chunks)
+	}
+	for i, w := range want {
+		if chunks[i] != w {
+			t.Errorf("chunk %d = %+v, want %+v", i, chunks[i], w)
+		}
 	}
 }
 

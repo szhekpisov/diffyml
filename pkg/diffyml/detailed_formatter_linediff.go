@@ -100,15 +100,12 @@ func collapseLineDiff(ops []editOp, nearChange []bool) []lineDiffChunk {
 			}
 			continue
 		}
-		collapsed := 0
-		for _, sub := range ops[i:] {
-			if sub.Type != editKeep || nearChange[i+collapsed] {
-				break
-			}
-			collapsed++
+		end := i
+		for end < len(ops) && ops[end].Type == editKeep && !nearChange[end] {
+			end++
 		}
-		skipUntil = i + collapsed
-		chunks = append(chunks, lineDiffChunk{Type: chunkCollapsed, Collapsed: collapsed})
+		skipUntil = end
+		chunks = append(chunks, lineDiffChunk{Type: chunkCollapsed, Collapsed: end - i})
 	}
 	return chunks
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"unicode/utf8"
 )
 
 // buildMultiline returns a value of n lines where the line at index changeAt
@@ -809,5 +810,177 @@ func TestGitHubFormatter_EscapesFilePath(t *testing.T) {
 	props, _, _ := strings.Cut(strings.TrimPrefix(output, "::warning "), "::")
 	if got := strings.Count(props, ","); got != 1 {
 		t.Errorf("expected 1 property delimiter, got %d in %q", got, props)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Per-line width cap
+// ---------------------------------------------------------------------------
+
+func TestTruncateRunes(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		maxRunes int
+		want     string
+	}{
+		{"under cap", "abc", 5, "abc"},
+		{"exactly at cap", "abcde", 5, "abcde"},
+		{"one over cap", "abcdef", 5, "abcde…[1 more character]"},
+		{"several over cap", "abcdefgh", 5, "abcde…[3 more characters]"},
+		{"empty", "", 5, ""},
+		{"zero cap", "abc", 0, "…[3 more characters]"},
+		// The count is in characters, not bytes: three 3-byte runes dropped
+		// must report 3, and the kept prefix must stay valid UTF-8.
+		{"multi-byte dropped", "ab日本語", 2, "ab…[3 more characters]"},
+		{"multi-byte kept", "日本語です", 3, "日本語…[2 more characters]"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := truncateRunes(tt.input, tt.maxRunes)
+			if got != tt.want {
+				t.Errorf("truncateRunes(%q, %d) = %q, want %q", tt.input, tt.maxRunes, got, tt.want)
+			}
+			if !utf8.ValidString(got) {
+				t.Errorf("truncateRunes(%q, %d) produced invalid UTF-8: %q", tt.input, tt.maxRunes, got)
+			}
+		})
+	}
+}
+
+func TestGitHubFormatter_LongSingleLineIsBounded(t *testing.T) {
+	// The gap a line cap alone leaves: one enormous line passes every
+	// line-count cap untouched, so the annotation was as big as the value.
+	const valueRunes = 500_000
+
+	f := &GitHubFormatter{}
+	output := f.Format([]Difference{{
+		Path: DiffPath{"data", "blob"}, Type: DiffAdded,
+		To: strings.Repeat("x", valueRunes),
+	}}, DefaultFormatOptions())
+
+	msg := githubMessage(t, output)
+
+	if len(msg) > 4*gitHubMaxLineRunes {
+		t.Errorf("expected a bounded annotation, got %d bytes", len(msg))
+	}
+	dropped := valueRunes - gitHubMaxLineRunes
+	if !strings.Contains(msg, escapeGitHubData(fmt.Sprintf("…[%d more characters]", dropped))) {
+		t.Errorf("expected a character truncation marker, got: %s", msg)
+	}
+}
+
+func TestGitHubFormatter_LongLineInDiffBodyIsBounded(t *testing.T) {
+	// A long line inside a diff body is capped too, and capping it must not
+	// cost the diff its shape: the surrounding context lines stay intact.
+	long := strings.Repeat("y", 5000)
+	from := "alpha\n" + long + "\nomega"
+	to := "alpha\n" + long + "z\nomega"
+
+	f := &GitHubFormatter{}
+	msg := githubMessage(t, f.Format([]Difference{{
+		Path: DiffPath{"data", "script"}, Type: DiffModified, From: from, To: to,
+	}}, DefaultFormatOptions()))
+
+	for _, want := range []string{"  alpha", "  omega", "…["} {
+		if !strings.Contains(msg, escapeGitHubData(want)) {
+			t.Errorf("expected %q in message, got: %s", want, msg)
+		}
+	}
+	if len(msg) > 8*gitHubMaxLineRunes {
+		t.Errorf("expected a bounded annotation, got %d bytes", len(msg))
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Truncation marker counts value lines, not chunks
+// ---------------------------------------------------------------------------
+
+func TestGithubDiffBody_MarkerCountsValueLines(t *testing.T) {
+	// Changes spread far apart at zero context, so the body alternates between
+	// changed lines and collapse markers and overflows the cap. Counting the
+	// dropped *chunks* would report one line per dropped collapse marker; the
+	// marker must instead report the lines those runs stand for.
+	const (
+		lines    = 1000
+		interval = 25
+	)
+
+	fromLines := make([]string, lines)
+	toLines := make([]string, lines)
+	for i := range lines {
+		fromLines[i] = fmt.Sprintf("line %d", i)
+		toLines[i] = fromLines[i]
+		if i%interval == 0 {
+			fromLines[i] = fmt.Sprintf("OLD %d", i)
+			toLines[i] = fmt.Sprintf("NEW %d", i)
+		}
+	}
+
+	ops := computeLineDiff(fromLines, toLines)
+	chunks := collapseLineDiff(ops, markNearChange(ops, 0))
+	body := githubDiffBody(chunks, gitHubMaxDiffLines, gitHubMaxLineRunes)
+
+	if len(body) != gitHubMaxDiffLines+1 {
+		t.Fatalf("expected %d body lines plus a marker, got %d", gitHubMaxDiffLines, len(body))
+	}
+
+	// What the marker should say: the lines every dropped chunk stands for.
+	wantHidden := 0
+	for _, chunk := range chunks[gitHubMaxDiffLines:] {
+		wantHidden += chunk.lineCount()
+	}
+	want := fmt.Sprintf("[%d more lines]", wantHidden)
+	if got := body[len(body)-1]; got != want {
+		t.Errorf("marker = %q, want %q", got, want)
+	}
+
+	// The bug: chunk counting would have reported this far smaller number.
+	droppedChunks := len(chunks) - gitHubMaxDiffLines
+	if wantHidden <= droppedChunks {
+		t.Fatalf("test premise broken: %d lines hidden across %d chunks", wantHidden, droppedChunks)
+	}
+	if strings.Contains(body[len(body)-1], fmt.Sprintf("[%d more lines]", droppedChunks)) {
+		t.Errorf("marker counted chunks (%d) rather than lines", droppedChunks)
+	}
+}
+
+func TestLineDiffChunk_LineCount(t *testing.T) {
+	tests := []struct {
+		name  string
+		chunk lineDiffChunk
+		want  int
+	}{
+		{"keep", lineDiffChunk{Type: chunkKeep, Line: "a"}, 1},
+		{"insert", lineDiffChunk{Type: chunkInsert, Line: "a"}, 1},
+		{"delete", lineDiffChunk{Type: chunkDelete, Line: "a"}, 1},
+		{"collapsed run", lineDiffChunk{Type: chunkCollapsed, Collapsed: 24}, 24},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.chunk.lineCount(); got != tt.want {
+				t.Errorf("lineCount() = %d, want %d", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRenderChunkLine(t *testing.T) {
+	tests := []struct {
+		chunk lineDiffChunk
+		want  string
+	}{
+		{lineDiffChunk{Type: chunkKeep, Line: "ctx"}, "  ctx"},
+		{lineDiffChunk{Type: chunkInsert, Line: "new"}, "+ new"},
+		{lineDiffChunk{Type: chunkDelete, Line: "old"}, "- old"},
+		{lineDiffChunk{Type: chunkCollapsed, Collapsed: 3}, "[3 lines unchanged]"},
+	}
+
+	for _, tt := range tests {
+		if got := renderChunkLine(tt.chunk); got != tt.want {
+			t.Errorf("renderChunkLine(%+v) = %q, want %q", tt.chunk, got, tt.want)
+		}
 	}
 }

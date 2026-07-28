@@ -59,9 +59,13 @@ Every difference becomes exactly one annotation, so multiline values are kept bo
 - A **changed** multiline value (a ConfigMap block scalar, an embedded `values.yaml`) is rendered as a line diff showing only the changed lines plus `--multi-line-context-lines` of context on each side. Every other run of unchanged lines collapses into a `[N lines unchanged]` marker. Collapsing only removes *unchanged* lines, so the resulting diff is capped at 40 lines to bound a value whose lines all changed.
 - Any other value — **added**, **removed**, **unchanged**, or a **changed** pair that is not a multiline string — has nothing to diff against, so each value is truncated to its first 20 lines.
 
-Both caps append a `[N more lines]` marker, and the `(N inserts, M deletions)` header always counts the whole change even when the diff below it is truncated.
+Both caps append a `[N more lines]` marker counting the lines of the value that were dropped, so a hidden `[24 lines unchanged]` run counts as the 24 lines it stands for. The `(N inserts, M deletions)` header always counts the whole change even when the diff below it is truncated.
+
+Individual lines are capped too, at 500 characters with a `[N more characters]` marker. Line counts alone bound the wrong dimension: a minified JSON blob or a `last-applied-configuration` annotation is a single line of any size, so it clears every line cap untouched. The count is in characters rather than bytes, so a multi-byte character is never cut in half.
 
 A value rewritten beyond recognition — more than 80 lines of difference between the two sides — is truncated like any other value instead of being diffed. Producing a line diff costs memory proportional to how different the two values are, and past that point the diff no longer fits in the 40-line cap anyway. Only wholesale rewrites reach it: a long value with a few changed lines is diffed however long it is.
+
+PEM certificate values are replaced by the same one-line `Certificate(CN=…, Issuer=…, Valid=…, Serial=…)` summary the [detailed](#detailed-default) output uses, so a rotation reads as one changed line instead of a diff of base64. Pass `--no-cert-inspection` to see the raw PEM (still subject to the caps above).
 
 Annotation text is percent-encoded per the workflow command spec (`%` → `%25`, `\r` → `%0D`, `\n` → `%0A`). GitHub renders the escapes as line breaks in the annotation; a raw newline would instead terminate the command and spill the rest into the build log. Property values such as `file=` additionally encode `:` → `%3A` and `,` → `%2C`, since those delimit the property list — an unescaped comma in a path would swallow the annotation title.
 
@@ -72,6 +76,8 @@ Emits a [GitLab Code Quality](https://docs.gitlab.com/ee/ci/testing/code_quality
 ```bash
 diffyml -o gitlab old.yaml new.yaml > gl-code-quality.json
 ```
+
+Unlike the GitHub annotations above, descriptions here are **not** truncated. The report is JSON, so an embedded newline is escaped rather than terminating anything, and each entry's fingerprint is a hash of its description — bounding a description would change every fingerprint, making GitLab re-report existing findings as new, and two values sharing a truncated prefix would collide onto one fingerprint.
 
 ## gitea
 

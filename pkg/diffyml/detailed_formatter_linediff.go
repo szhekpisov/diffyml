@@ -56,6 +56,15 @@ type lineDiffChunk struct {
 	Collapsed int
 }
 
+// lineCount reports how many lines of the value the chunk stands for: a
+// collapsed run stands for its whole run, every other chunk for its one line.
+func (c lineDiffChunk) lineCount() int {
+	if c.Type == chunkCollapsed {
+		return c.Collapsed
+	}
+	return 1
+}
+
 // resolveContextLines returns the effective context line count.
 // A negative value falls back to the default of 4.
 func resolveContextLines(contextLines int) int {

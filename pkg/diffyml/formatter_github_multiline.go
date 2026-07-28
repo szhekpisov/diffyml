@@ -5,15 +5,17 @@
 // at its first newline. Modified values are rendered as a collapsed line diff
 // (the same context window the detailed formatter uses); added and removed
 // values, which have no counterpart to diff against, are truncated instead.
-// Both paths end in a hard line cap, so no single annotation runs to an
-// unbounded number of lines: collapsing alone cannot shrink a value whose lines
-// all changed. A wholesale rewrite also skips the diff entirely rather than pay
-// for one it cannot show — see gitHubMaxEditDistance.
+// Both paths end in a hard cap on lines and on the width of each line, so no
+// single annotation is unbounded in either dimension: collapsing alone cannot
+// shrink a value whose lines all changed, and a line cap alone cannot shrink a
+// value that is one enormous line. A wholesale rewrite also skips the diff
+// entirely rather than pay for one it cannot show — see gitHubMaxEditDistance.
 package diffyml
 
 import (
 	"fmt"
 	"strings"
+	"unicode/utf8"
 )
 
 // gitHubMaxValueLines caps how many lines of an added or removed multiline
@@ -40,6 +42,14 @@ const gitHubMaxDiffLines = 40
 // changed lines has a small edit distance however long the value is, so the
 // case collapsing exists for is never the case that falls back.
 const gitHubMaxEditDistance = 2 * gitHubMaxDiffLines
+
+// gitHubMaxLineRunes caps the length of a single rendered line. Every other cap
+// here counts lines, so a value that is one enormous line — minified JSON, a
+// base64 blob, a last-applied-configuration annotation — passes all of them
+// untouched and produces one multi-megabyte annotation. Runes rather than bytes
+// so a multi-byte character is never cut in half. Only value lines are capped;
+// the path and the edit-count header are bounded by the document's own keys.
+const gitHubMaxLineRunes = 500
 
 // escapeGitHubData percent-encodes data for a GitHub Actions workflow command.
 // Without this a message containing a newline would terminate the command
@@ -76,6 +86,23 @@ func truncateLines(lines []string, maxLines int) []string {
 	remaining := len(lines) - maxLines
 	return append(lines[:maxLines:maxLines],
 		fmt.Sprintf("[%d more %s]", remaining, pluralize(remaining, "line", "lines")))
+}
+
+// truncateRunes keeps at most maxRunes runes of s, appending a marker counting
+// what was dropped. Ranging a string yields rune-boundary byte indices, so the
+// cut never lands inside a multi-byte character and the count is in characters
+// rather than bytes.
+func truncateRunes(s string, maxRunes int) string {
+	count := 0
+	for i := range s {
+		if count == maxRunes {
+			dropped := utf8.RuneCountInString(s[i:])
+			return s[:i] + fmt.Sprintf("…[%d more %s]", dropped,
+				pluralize(dropped, "character", "characters"))
+		}
+		count++
+	}
+	return s
 }
 
 // isMultiline reports whether s spans more than one line.
@@ -117,65 +144,127 @@ func githubMultilineDiff(from, to string, contextLines int) (string, bool) {
 		formatCount(additions), pluralize(additions, "insert", "inserts"),
 		formatCount(deletions), pluralize(deletions, "deletion", "deletions"))
 
-	var body []string
-	for _, chunk := range collapseLineDiff(ops, markNearChange(ops, contextLines)) {
-		switch chunk.Type {
-		case chunkKeep:
-			body = append(body, "  "+chunk.Line)
-		case chunkInsert:
-			body = append(body, "+ "+chunk.Line)
-		case chunkDelete:
-			body = append(body, "- "+chunk.Line)
-		case chunkCollapsed:
-			body = append(body, collapsedRunLabel(chunk.Collapsed))
-		}
-	}
+	chunks := collapseLineDiff(ops, markNearChange(ops, contextLines))
+	body := githubDiffBody(chunks, gitHubMaxDiffLines, gitHubMaxLineRunes)
 
-	return strings.Join(append([]string{header},
-		truncateLines(body, gitHubMaxDiffLines)...), "\n"), true
+	return strings.Join(append([]string{header}, body...), "\n"), true
+}
+
+// renderChunkLine renders one chunk the way an annotation shows it: the shapes
+// the detailed formatter renders with deeper indentation and color.
+func renderChunkLine(chunk lineDiffChunk) string {
+	switch chunk.Type {
+	case chunkKeep:
+		return "  " + chunk.Line
+	case chunkInsert:
+		return "+ " + chunk.Line
+	case chunkDelete:
+		return "- " + chunk.Line
+	default: // chunkCollapsed
+		return collapsedRunLabel(chunk.Collapsed)
+	}
+}
+
+// githubDiffBody renders chunks into at most maxLines lines, each capped at
+// maxRunes, and summarizes the rest by how many lines of the *value* they stand
+// for rather than how many chunks: a dropped "[24 lines unchanged]" hides 24
+// lines, not one. That keeps the marker in the same unit as the collapse
+// markers above it.
+func githubDiffBody(chunks []lineDiffChunk, maxLines, maxRunes int) []string {
+	body := make([]string, 0, min(len(chunks), maxLines)+1)
+	for i, chunk := range chunks {
+		if i == maxLines {
+			hidden := 0
+			for _, rest := range chunks[i:] {
+				hidden += rest.lineCount()
+			}
+			return append(body, fmt.Sprintf("[%d more %s]",
+				hidden, pluralize(hidden, "line", "lines")))
+		}
+		body = append(body, truncateRunes(renderChunkLine(chunk), maxRunes))
+	}
+	return body
 }
 
 // githubTruncatedValue renders a value the way diffDescription does, then keeps
-// at most maxLines lines and summarizes the remainder. Truncating the rendered
-// form rather than the source value bounds structured additions too: a whole
-// added map serializes to many lines of YAML without ever being a Go string.
-// Values within the cap are returned unchanged.
+// at most maxLines lines, each of at most gitHubMaxLineRunes runes, and
+// summarizes what it dropped. Truncating the rendered form rather than the
+// source value bounds structured additions too: a whole added map serializes to
+// many lines of YAML without ever being a Go string. Values within both caps
+// are returned unchanged.
 func githubTruncatedValue(val any, maxLines int) string {
-	return strings.Join(
-		truncateLines(strings.Split(formatValue(val), "\n"), maxLines), "\n")
+	lines := truncateLines(strings.Split(formatValue(val), "\n"), maxLines)
+	for i, line := range lines {
+		lines[i] = truncateRunes(line, gitHubMaxLineRunes)
+	}
+	return strings.Join(lines, "\n")
+}
+
+// githubCertValue replaces a single PEM certificate with its one-line summary,
+// mirroring what the detailed formatter does to added, removed and unchanged
+// values. Anything else comes back untouched.
+func githubCertValue(val any, enabled bool) any {
+	if !enabled {
+		return val
+	}
+	if s, ok := val.(string); ok && IsPEMCertificate(s) {
+		return FormatCertificate(s)
+	}
+	return val
+}
+
+// githubCertPair does the same for a modified pair, and like the detailed
+// formatter only when *both* sides are certificates — a certificate replaced by
+// something else is still best shown as a plain value change. Callers must run
+// this before the multiline check, or a rotated certificate takes the line-diff
+// path and renders as base64 instead of a summary.
+func githubCertPair(from, to any, enabled bool) (any, any) {
+	if !enabled {
+		return from, to
+	}
+	fromStr, fromOk := from.(string)
+	toStr, toOk := to.(string)
+	if fromOk && toOk && IsPEMCertificate(fromStr) && IsPEMCertificate(toStr) {
+		return FormatCertificate(fromStr), FormatCertificate(toStr)
+	}
+	return from, to
 }
 
 // githubDiffDescription describes a difference for a GitHub Actions annotation,
 // keeping multiline values bounded. A changed multiline string becomes a
 // collapsed line diff; every other value is truncated at gitHubMaxValueLines.
-// Differences whose values fit within the cap are described exactly as
+// Differences whose values fit within the caps are described exactly as
 // diffDescription describes them.
 func githubDiffDescription(diff Difference, opts *FormatOptions) string {
-	contextLines := 4
-	if opts != nil {
-		contextLines = opts.ContextLines
+	// Normalizing here rather than reading fields off a possibly-nil opts keeps
+	// the defaults in one place: nil means DefaultFormatOptions, so a context
+	// of 4 and certificate inspection enabled, matching the detailed formatter.
+	if opts == nil {
+		opts = DefaultFormatOptions()
 	}
+	certs := !opts.NoCertInspection
 	docSuffix := diffDocSuffix(diff)
 
 	switch diff.Type {
 	case DiffAdded:
 		return fmt.Sprintf("Added: %s%s = %s", diff.Path, docSuffix,
-			githubTruncatedValue(diff.To, gitHubMaxValueLines))
+			githubTruncatedValue(githubCertValue(diff.To, certs), gitHubMaxValueLines))
 	case DiffRemoved:
 		return fmt.Sprintf("Removed: %s%s = %s", diff.Path, docSuffix,
-			githubTruncatedValue(diff.From, gitHubMaxValueLines))
+			githubTruncatedValue(githubCertValue(diff.From, certs), gitHubMaxValueLines))
 	case DiffUnchanged:
 		return fmt.Sprintf("Unchanged: %s%s = %s", diff.Path, docSuffix,
-			githubTruncatedValue(diff.To, gitHubMaxValueLines))
+			githubTruncatedValue(githubCertValue(diff.To, certs), gitHubMaxValueLines))
 	case DiffModified:
-		if fromStr, toStr, ok := multilineStrings(diff.From, diff.To); ok {
-			if body, ok := githubMultilineDiff(fromStr, toStr, contextLines); ok {
+		from, to := githubCertPair(diff.From, diff.To, certs)
+		if fromStr, toStr, ok := multilineStrings(from, to); ok {
+			if body, ok := githubMultilineDiff(fromStr, toStr, opts.ContextLines); ok {
 				return fmt.Sprintf("Modified: %s%s changed in %s", diff.Path, docSuffix, body)
 			}
 		}
 		return fmt.Sprintf("Modified: %s%s changed from %s to %s", diff.Path, docSuffix,
-			githubTruncatedValue(diff.From, gitHubMaxValueLines),
-			githubTruncatedValue(diff.To, gitHubMaxValueLines))
+			githubTruncatedValue(from, gitHubMaxValueLines),
+			githubTruncatedValue(to, gitHubMaxValueLines))
 	default: // DiffOrderChanged carries no value
 		return diffDescription(diff)
 	}

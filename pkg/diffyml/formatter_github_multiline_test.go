@@ -39,6 +39,17 @@ func githubMessage(t *testing.T, output string) string {
 	return msg
 }
 
+// mustMultilineDiff renders a line diff, failing when the values turn out to be
+// too far apart to diff and the truncation fallback takes over instead.
+func mustMultilineDiff(t *testing.T, from, to string, contextLines int) string {
+	t.Helper()
+	got, ok := githubMultilineDiff(from, to, contextLines)
+	if !ok {
+		t.Fatalf("expected a line diff, got the truncation fallback")
+	}
+	return got
+}
+
 func TestEscapeGitHubData(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -135,7 +146,7 @@ func TestGithubMultilineDiff_ContextLines(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := githubMultilineDiff(from, to, tt.contextLines)
+			got := mustMultilineDiff(t, from, to, tt.contextLines)
 			if !strings.Contains(got, tt.wantLeading) {
 				t.Errorf("expected leading marker %q, got:\n%s", tt.wantLeading, got)
 			}
@@ -154,7 +165,7 @@ func TestGithubMultilineDiff_SingularMarker(t *testing.T) {
 	from := "a\nb\nOLD\nc\nd"
 	to := "a\nb\nNEW\nc\nd"
 
-	got := githubMultilineDiff(from, to, 1)
+	got := mustMultilineDiff(t, from, to, 1)
 	if !strings.Contains(got, "[1 line unchanged]") {
 		t.Errorf("expected singular line marker, got:\n%s", got)
 	}
@@ -198,7 +209,7 @@ func TestGithubMultilineDiff_EditCountWording(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := githubMultilineDiff(tt.from, tt.to, 4)
+			got := mustMultilineDiff(t, tt.from, tt.to, 4)
 			if !strings.Contains(got, tt.want) {
 				t.Errorf("expected %q, got:\n%s", tt.want, got)
 			}
@@ -619,14 +630,15 @@ func TestTruncateLines_DoesNotClobberInput(t *testing.T) {
 func TestGithubMultilineDiff_CapsDiffBody(t *testing.T) {
 	// Context collapsing only ever removes *unchanged* lines, so a wholly
 	// rewritten value has nothing to collapse: every line is an insert or a
-	// delete. Only the hard cap bounds this.
+	// delete. Only the hard cap bounds this. Kept just under
+	// gitHubMaxEditDistance so the diff is still computed rather than skipped.
 	var from, to []string
 	for i := range 30 {
 		from = append(from, fmt.Sprintf("old %d", i))
 		to = append(to, fmt.Sprintf("new %d", i))
 	}
 
-	got := githubMultilineDiff(strings.Join(from, "\n"), strings.Join(to, "\n"), 4)
+	got := mustMultilineDiff(t, strings.Join(from, "\n"), strings.Join(to, "\n"), 4)
 	lines := strings.Split(got, "\n")
 
 	// header + gitHubMaxDiffLines of body + one truncation marker
@@ -651,7 +663,7 @@ func TestGithubMultilineDiff_UnderCapNotTruncated(t *testing.T) {
 	from := buildMultiline(20, 10, "old value")
 	to := buildMultiline(20, 10, "new value")
 
-	got := githubMultilineDiff(from, to, 4)
+	got := mustMultilineDiff(t, from, to, 4)
 
 	if strings.Contains(got, "more line") {
 		t.Errorf("expected no truncation marker under the cap, got:\n%s", got)
@@ -667,10 +679,14 @@ func TestGithubMultilineDiff_UnderCapNotTruncated(t *testing.T) {
 }
 
 func TestGitHubFormatter_ModifiedMultilineIsBounded(t *testing.T) {
-	// End to end: the regression this cap exists for. A fully rewritten value
-	// must stay one command of bounded size, not a 16KB dump.
+	// End to end: the regression these caps exist for. A fully rewritten value
+	// must stay one command of bounded size, not a 16KB dump. This one is far
+	// past gitHubMaxEditDistance, so there is no diff to show and both values
+	// are truncated instead.
+	const lines = 500
+
 	var from, to []string
-	for i := range 500 {
+	for i := range lines {
 		from = append(from, fmt.Sprintf("old line %d", i))
 		to = append(to, fmt.Sprintf("new line %d", i))
 	}
@@ -683,15 +699,66 @@ func TestGitHubFormatter_ModifiedMultilineIsBounded(t *testing.T) {
 
 	msg := githubMessage(t, output)
 
-	if rendered := strings.Count(msg, "%0A") + 1; rendered != gitHubMaxDiffLines+2 {
-		t.Errorf("expected %d rendered lines, got %d", gitHubMaxDiffLines+2, rendered)
+	// Both values capped, each with its own marker. The two share a line
+	// where "[N more lines] to <first line>" joins them, hence the -1.
+	if want := 2*(gitHubMaxValueLines+1) - 1; strings.Count(msg, "%0A")+1 != want {
+		t.Errorf("expected %d rendered lines, got %d", want, strings.Count(msg, "%0A")+1)
 	}
-	if !strings.Contains(msg, escapeGitHubData("[960 more lines]")) {
-		t.Errorf("expected a truncation marker, got: %s", msg)
+	marker := escapeGitHubData(fmt.Sprintf("[%d more lines]", lines-gitHubMaxValueLines))
+	if got := strings.Count(msg, marker); got != 2 {
+		t.Errorf("expected both values to carry a truncation marker, found %d in: %s", got, msg)
 	}
-	// The counts describe the whole change even though the body is truncated.
-	if !strings.Contains(msg, "multiline text (500 inserts, 500 deletions)") {
-		t.Errorf("expected full edit counts in the header, got: %s", msg)
+	if strings.Contains(msg, "old line 400") || strings.Contains(msg, "new line 400") {
+		t.Errorf("expected lines past the cap to be dropped, got: %s", msg)
+	}
+}
+
+func TestGithubMultilineDiff_EditDistanceCeiling(t *testing.T) {
+	// Rewriting n lines costs an edit distance of 2n, so the ceiling falls
+	// between these two: the smaller value is still worth diffing, the larger
+	// one is not and hands back ok=false for the caller to truncate instead.
+	rewrite := func(n int) (from, to string) {
+		var fromLines, toLines []string
+		for i := range n {
+			fromLines = append(fromLines, fmt.Sprintf("old %d", i))
+			toLines = append(toLines, fmt.Sprintf("new %d", i))
+		}
+		return strings.Join(fromLines, "\n"), strings.Join(toLines, "\n")
+	}
+
+	underFrom, underTo := rewrite(gitHubMaxEditDistance / 2)
+	if _, ok := githubMultilineDiff(underFrom, underTo, 4); !ok {
+		t.Errorf("expected an edit distance of exactly %d to be diffed", gitHubMaxEditDistance)
+	}
+
+	overFrom, overTo := rewrite(gitHubMaxEditDistance/2 + 1)
+	if got, ok := githubMultilineDiff(overFrom, overTo, 4); ok {
+		t.Errorf("expected an edit distance of %d to be refused, got:\n%s",
+			gitHubMaxEditDistance+2, got)
+	}
+}
+
+func TestGithubDiffDescription_FallsBackPastEditDistance(t *testing.T) {
+	// A value too far rewritten to diff must still be described, using the
+	// same truncated from/to wording a non-string pair gets.
+	var from, to []string
+	for i := range gitHubMaxEditDistance {
+		from = append(from, fmt.Sprintf("old %d", i))
+		to = append(to, fmt.Sprintf("new %d", i))
+	}
+
+	diff := Difference{
+		Path: DiffPath{"data", "values.yaml"}, Type: DiffModified,
+		From: strings.Join(from, "\n"), To: strings.Join(to, "\n"),
+	}
+
+	got := githubDiffDescription(diff, DefaultFormatOptions())
+
+	if !strings.HasPrefix(got, "Modified: data[values.yaml] changed from ") {
+		t.Errorf("expected the truncated from/to wording, got:\n%s", got)
+	}
+	if strings.Contains(got, "changed in multiline text") {
+		t.Errorf("expected no line diff past the ceiling, got:\n%s", got)
 	}
 }
 

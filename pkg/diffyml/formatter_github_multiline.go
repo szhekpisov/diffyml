@@ -5,8 +5,10 @@
 // at its first newline. Modified values are rendered as a collapsed line diff
 // (the same context window the detailed formatter uses); added and removed
 // values, which have no counterpart to diff against, are truncated instead.
-// Both paths end in a hard line cap, so no single annotation is unbounded:
-// collapsing alone cannot shrink a value whose lines all changed.
+// Both paths end in a hard line cap, so no single annotation runs to an
+// unbounded number of lines: collapsing alone cannot shrink a value whose lines
+// all changed. A wholesale rewrite also skips the diff entirely rather than pay
+// for one it cannot show — see gitHubMaxEditDistance.
 package diffyml
 
 import (
@@ -26,6 +28,18 @@ const gitHubMaxValueLines = 20
 // a wholly rewritten value still emits every insert and delete, since context
 // collapsing only ever removes *unchanged* lines.
 const gitHubMaxDiffLines = 40
+
+// gitHubMaxEditDistance caps how different two values may be before the line
+// diff is abandoned in favor of plain truncation. The rendered body already
+// stops at gitHubMaxDiffLines, so an edit script twice that long overflows
+// anything the annotation could show; all a full diff still buys past this
+// point is an exact insert/deletion count in the header, and computeLineDiff
+// pays O(D*(m+n)) memory for it — 63 MiB to render 40 lines of a 1000-line
+// rewrite, 1.6 GiB for 8000. Bounding D keeps the cost linear in the value
+// size. Only wholesale rewrites reach the ceiling; a value with a handful of
+// changed lines has a small edit distance however long the value is, so the
+// case collapsing exists for is never the case that falls back.
+const gitHubMaxEditDistance = 2 * gitHubMaxDiffLines
 
 // escapeGitHubData percent-encodes data for a GitHub Actions workflow command.
 // Without this a message containing a newline would terminate the command
@@ -87,8 +101,16 @@ func multilineStrings(from, to any) (fromStr, toStr string, ok bool) {
 // single summary marker. The body is capped at gitHubMaxDiffLines; the header
 // sits outside the cap so the edit counts survive truncation and still describe
 // the whole change.
-func githubMultilineDiff(from, to string, contextLines int) string {
-	ops := computeLineDiff(strings.Split(from, "\n"), strings.Split(to, "\n"))
+//
+// ok is false when the two values differ by more than gitHubMaxEditDistance
+// lines, which is where computing a diff costs more than the diff can show. The
+// caller falls back to truncating both values.
+func githubMultilineDiff(from, to string, contextLines int) (string, bool) {
+	ops, ok := computeLineDiffBounded(
+		strings.Split(from, "\n"), strings.Split(to, "\n"), gitHubMaxEditDistance)
+	if !ok {
+		return "", false
+	}
 	additions, deletions := countEditOps(ops)
 
 	header := fmt.Sprintf("multiline text (%s %s, %s %s)",
@@ -110,7 +132,7 @@ func githubMultilineDiff(from, to string, contextLines int) string {
 	}
 
 	return strings.Join(append([]string{header},
-		truncateLines(body, gitHubMaxDiffLines)...), "\n")
+		truncateLines(body, gitHubMaxDiffLines)...), "\n"), true
 }
 
 // githubTruncatedValue renders a value the way diffDescription does, then keeps
@@ -147,8 +169,9 @@ func githubDiffDescription(diff Difference, opts *FormatOptions) string {
 			githubTruncatedValue(diff.To, gitHubMaxValueLines))
 	case DiffModified:
 		if fromStr, toStr, ok := multilineStrings(diff.From, diff.To); ok {
-			return fmt.Sprintf("Modified: %s%s changed in %s", diff.Path, docSuffix,
-				githubMultilineDiff(fromStr, toStr, contextLines))
+			if body, ok := githubMultilineDiff(fromStr, toStr, contextLines); ok {
+				return fmt.Sprintf("Modified: %s%s changed in %s", diff.Path, docSuffix, body)
+			}
 		}
 		return fmt.Sprintf("Modified: %s%s changed from %s to %s", diff.Path, docSuffix,
 			githubTruncatedValue(diff.From, gitHubMaxValueLines),

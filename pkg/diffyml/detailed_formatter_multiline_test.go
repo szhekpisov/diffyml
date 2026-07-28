@@ -1,6 +1,7 @@
 package diffyml
 
 import (
+	"slices"
 	"strings"
 	"testing"
 )
@@ -205,6 +206,52 @@ func TestComputeLineDiff_Identical(t *testing.T) {
 		if op.Type != editKeep {
 			t.Errorf("expected all keep ops for identical content, got type %d", op.Type)
 		}
+	}
+}
+
+func TestComputeLineDiffBounded_WithinBudget(t *testing.T) {
+	// Two lines replaced is an edit distance of four; anything at or above
+	// that must produce the same script the unbounded search produces.
+	from := []string{"a", "OLD1", "OLD2", "b"}
+	to := []string{"a", "NEW1", "NEW2", "b"}
+
+	want := computeLineDiff(from, to)
+
+	for _, maxD := range []int{4, 5, 100, unboundedEditDistance} {
+		ops, ok := computeLineDiffBounded(from, to, maxD)
+		if !ok {
+			t.Fatalf("maxD=%d: expected the search to succeed", maxD)
+		}
+		if !slices.Equal(ops, want) {
+			t.Errorf("maxD=%d: got %+v, want %+v", maxD, ops, want)
+		}
+	}
+}
+
+func TestComputeLineDiffBounded_BudgetExceeded(t *testing.T) {
+	from := []string{"a", "OLD1", "OLD2", "b"}
+	to := []string{"a", "NEW1", "NEW2", "b"}
+
+	for _, maxD := range []int{0, 1, 3} {
+		ops, ok := computeLineDiffBounded(from, to, maxD)
+		if ok {
+			t.Errorf("maxD=%d: expected the search to run out of budget, got %+v", maxD, ops)
+		}
+		if ops != nil {
+			t.Errorf("maxD=%d: expected no ops on failure, got %+v", maxD, ops)
+		}
+	}
+}
+
+func TestComputeLineDiffBounded_IdenticalNeedsNoBudget(t *testing.T) {
+	// Identical inputs have an edit distance of zero, so even a budget of
+	// zero resolves them rather than falling back.
+	ops, ok := computeLineDiffBounded([]string{"a", "b"}, []string{"a", "b"}, 0)
+	if !ok {
+		t.Fatal("expected identical inputs to resolve within a zero budget")
+	}
+	if len(ops) != 2 {
+		t.Errorf("expected 2 keep ops, got %d", len(ops))
 	}
 }
 

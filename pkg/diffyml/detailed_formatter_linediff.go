@@ -148,9 +148,26 @@ func (f *DetailedFormatter) formatMultilineDiff(sb *strings.Builder, from, to st
 	sb.WriteString("\n")
 }
 
+// unboundedEditDistance lets computeLineDiffBounded search the whole edit
+// script, however long it turns out to be.
+const unboundedEditDistance = -1
+
 // computeLineDiff computes line-level diff using the Myers diff algorithm.
 // It finds the shortest edit script (SES) in O(ND) time where N=m+n and D=edit distance.
 func computeLineDiff(fromLines, toLines []string) []editOp {
+	ops, _ := computeLineDiffBounded(fromLines, toLines, unboundedEditDistance)
+	return ops
+}
+
+// computeLineDiffBounded is computeLineDiff with a ceiling on how far it
+// searches. The forward pass keeps one (2*(m+n)+1)-int row per step of the edit
+// script, so memory is O(D*(m+n)) — quadratic for two values that share no
+// lines. Capping D caps that at O(maxD*(m+n)), linear in the input, at the cost
+// of producing no diff at all for values that differ by more than maxD lines:
+// ok is false in that case and the caller is expected to fall back to something
+// cheaper. Pass unboundedEditDistance to search without a ceiling, which always
+// succeeds since D never exceeds m+n.
+func computeLineDiffBounded(fromLines, toLines []string, maxD int) (ops []editOp, ok bool) {
 	m := len(fromLines)
 	n := len(toLines)
 
@@ -161,13 +178,18 @@ func computeLineDiff(fromLines, toLines []string) []editOp {
 	v := make([]int, vSize)
 	var trace [][]int
 	finalD := 0
+	found := false
 
-	for d := range m + n + 1 {
+	limit := m + n
+	if maxD >= 0 && maxD < limit {
+		limit = maxD
+	}
+
+	for d := range limit + 1 {
 		snapshot := make([]int, vSize)
 		copy(snapshot, v)
 		trace = append(trace, snapshot)
 
-		found := false
 		for k := -d; k <= d; k += 2 {
 			var x int
 			if k == -d || (k != d && v[k-1+offset] < v[k+1+offset]) {
@@ -195,8 +217,12 @@ func computeLineDiff(fromLines, toLines []string) []editOp {
 		}
 	}
 
+	// The search ran out of budget before reaching the end of both inputs.
+	if !found {
+		return nil, false
+	}
+
 	// Backtrack through trace to produce edit operations.
-	var ops []editOp
 	x, y := m, n
 
 	for d := finalD; d > 0; d-- {
@@ -238,5 +264,5 @@ func computeLineDiff(fromLines, toLines []string) []editOp {
 
 	slices.Reverse(ops)
 
-	return ops
+	return ops, true
 }

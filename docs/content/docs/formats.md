@@ -61,6 +61,8 @@ Every difference becomes exactly one annotation, so multiline values are kept bo
 
 Both caps append a `[N more lines]` marker, and the `(N inserts, M deletions)` header always counts the whole change even when the diff below it is truncated.
 
+A value rewritten beyond recognition — more than 80 lines of difference between the two sides — is truncated like any other value instead of being diffed. Producing a line diff costs memory proportional to how different the two values are, and past that point the diff no longer fits in the 40-line cap anyway. Only wholesale rewrites reach it: a long value with a few changed lines is diffed however long it is.
+
 Annotation text is percent-encoded per the workflow command spec (`%` → `%25`, `\r` → `%0D`, `\n` → `%0A`). GitHub renders the escapes as line breaks in the annotation; a raw newline would instead terminate the command and spill the rest into the build log. Property values such as `file=` additionally encode `:` → `%3A` and `,` → `%2C`, since those delimit the property list — an unescaped comma in a path would swallow the annotation title.
 
 ## gitlab

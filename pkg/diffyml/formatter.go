@@ -389,13 +389,19 @@ func gitHubCommand(dt DiffType) (command, title string) {
 	}
 }
 
+// diffDocSuffix returns the parenthesized document name appended to a
+// difference's path in CI descriptions, or "" for unnamed documents.
+func diffDocSuffix(diff Difference) string {
+	if diff.DocumentName == "" {
+		return ""
+	}
+	return fmt.Sprintf(" (%s)", diff.DocumentName)
+}
+
 // diffDescription returns a human-readable description of a difference.
 // Shared by GitHub, GitLab, and Gitea formatters.
 func diffDescription(diff Difference) string {
-	docSuffix := ""
-	if diff.DocumentName != "" {
-		docSuffix = fmt.Sprintf(" (%s)", diff.DocumentName)
-	}
+	docSuffix := diffDocSuffix(diff)
 	switch diff.Type {
 	case DiffAdded:
 		return fmt.Sprintf("Added: %s%s = %s", diff.Path, docSuffix, formatValue(diff.To))
@@ -417,8 +423,9 @@ const gitHubAnnotationLimit = 10
 // FormatSingle renders a single difference in GitHub Actions format.
 func (f *GitHubFormatter) FormatSingle(diff Difference, opts *FormatOptions) string {
 	cmd, title := gitHubCommand(diff.Type)
-	msg := diffDescription(diff)
-	return fmt.Sprintf("::%s title=%s::%s\n", cmd, title, msg)
+	var sb strings.Builder
+	gitHubWriteCommand(&sb, cmd, title, githubDiffDescription(diff, opts), "")
+	return sb.String()
 }
 
 // Format renders differences in GitHub Actions format.
@@ -443,7 +450,7 @@ func (f *GitHubFormatter) Format(diffs []Difference, opts *FormatOptions) string
 	for _, diff := range diffs {
 		cmd, title := gitHubCommand(diff.Type)
 		if counts[cmd] < gitHubAnnotationLimit {
-			gitHubWriteCommand(&sb, cmd, title, diffDescription(diff), filePath)
+			gitHubWriteCommand(&sb, cmd, title, githubDiffDescription(diff, opts), filePath)
 			counts[cmd]++
 		} else {
 			omitted[cmd]++
@@ -454,8 +461,11 @@ func (f *GitHubFormatter) Format(diffs []Difference, opts *FormatOptions) string
 	return sb.String()
 }
 
-// gitHubWriteCommand writes a single GitHub Actions workflow command to the builder.
+// gitHubWriteCommand writes a single GitHub Actions workflow command to the
+// builder. The message is percent-encoded so that a multiline description stays
+// one command line; GitHub renders the %0A escapes as line breaks.
 func gitHubWriteCommand(sb *strings.Builder, cmd, title, msg, filePath string) {
+	msg = escapeGitHubData(msg)
 	if filePath != "" {
 		fmt.Fprintf(sb, "::%s file=%s,title=%s::%s\n", cmd, filePath, title, msg)
 	} else {
@@ -487,7 +497,7 @@ func (f *GitHubFormatter) FormatAll(groups []DiffGroup, opts *FormatOptions) str
 		for _, diff := range group.Diffs {
 			cmd, title := gitHubCommand(diff.Type)
 			if counts[cmd] < gitHubAnnotationLimit {
-				gitHubWriteCommand(&sb, cmd, title, diffDescription(diff), group.FilePath)
+				gitHubWriteCommand(&sb, cmd, title, githubDiffDescription(diff, opts), group.FilePath)
 				counts[cmd]++
 			} else {
 				omitted[cmd]++

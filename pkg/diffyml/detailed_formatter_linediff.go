@@ -38,8 +38,52 @@ func countEditOps(ops []editOp) (additions, deletions int) {
 	return additions, deletions
 }
 
-// renderLineDiffOps renders edit operations with context collapsing.
-func (f *DetailedFormatter) renderLineDiffOps(sb *strings.Builder, ops []editOp, nearChange []bool, opts *FormatOptions) {
+// lineDiffChunkType classifies a chunk of a collapsed line diff.
+type lineDiffChunkType int
+
+const (
+	chunkKeep lineDiffChunkType = iota
+	chunkInsert
+	chunkDelete
+	chunkCollapsed
+)
+
+// lineDiffChunk is one unit of a collapsed line diff: either a single line
+// (keep/insert/delete) or a run of unchanged lines summarized by Collapsed.
+type lineDiffChunk struct {
+	Type      lineDiffChunkType
+	Line      string
+	Collapsed int
+}
+
+// resolveContextLines returns the effective context line count.
+// A negative value falls back to the default of 4.
+func resolveContextLines(contextLines int) int {
+	if contextLines < 0 {
+		return 4
+	}
+	return contextLines
+}
+
+// markNearChange marks which ops lie within contextLines of an insert or delete.
+// Unmarked keep ops belong to runs that collapse into a summary marker.
+func markNearChange(ops []editOp, contextLines int) []bool {
+	contextLines = resolveContextLines(contextLines)
+	nearChange := make([]bool, len(ops))
+	for i, op := range ops {
+		if op.Type != editKeep {
+			for j := max(0, i-contextLines); j <= min(len(ops)-1, i+contextLines); j++ {
+				nearChange[j] = true
+			}
+		}
+	}
+	return nearChange
+}
+
+// collapseLineDiff turns edit operations into chunks, replacing every run of
+// unchanged lines that is not near a change with a single collapsed chunk.
+func collapseLineDiff(ops []editOp, nearChange []bool) []lineDiffChunk {
+	var chunks []lineDiffChunk
 	skipUntil := 0
 	for i, op := range ops {
 		if i < skipUntil {
@@ -48,22 +92,44 @@ func (f *DetailedFormatter) renderLineDiffOps(sb *strings.Builder, ops []editOp,
 		if op.Type != editKeep || nearChange[i] {
 			switch op.Type {
 			case editKeep:
-				f.writeColoredLine(sb, fmt.Sprintf("      %s", op.Line), f.colorContext(opts), opts)
+				chunks = append(chunks, lineDiffChunk{Type: chunkKeep, Line: op.Line})
 			case editInsert:
-				f.writeColoredLine(sb, fmt.Sprintf("    + %s", op.Line), f.colorAdded(opts), opts)
+				chunks = append(chunks, lineDiffChunk{Type: chunkInsert, Line: op.Line})
 			case editDelete:
-				f.writeColoredLine(sb, fmt.Sprintf("    - %s", op.Line), f.colorRemoved(opts), opts)
+				chunks = append(chunks, lineDiffChunk{Type: chunkDelete, Line: op.Line})
 			}
-		} else {
-			collapsed := 0
-			for _, sub := range ops[i:] {
-				if sub.Type != editKeep || nearChange[i+collapsed] {
-					break
-				}
-				collapsed++
+			continue
+		}
+		collapsed := 0
+		for _, sub := range ops[i:] {
+			if sub.Type != editKeep || nearChange[i+collapsed] {
+				break
 			}
-			skipUntil = i + collapsed
-			f.writeColoredLine(sb, fmt.Sprintf("    [%d %s unchanged]", collapsed, pluralize(collapsed, "line", "lines")), f.colorContext(opts), opts)
+			collapsed++
+		}
+		skipUntil = i + collapsed
+		chunks = append(chunks, lineDiffChunk{Type: chunkCollapsed, Collapsed: collapsed})
+	}
+	return chunks
+}
+
+// collapsedRunLabel renders the summary marker for a collapsed run of lines.
+func collapsedRunLabel(collapsed int) string {
+	return fmt.Sprintf("[%d %s unchanged]", collapsed, pluralize(collapsed, "line", "lines"))
+}
+
+// renderLineDiffOps renders edit operations with context collapsing.
+func (f *DetailedFormatter) renderLineDiffOps(sb *strings.Builder, ops []editOp, nearChange []bool, opts *FormatOptions) {
+	for _, chunk := range collapseLineDiff(ops, nearChange) {
+		switch chunk.Type {
+		case chunkKeep:
+			f.writeColoredLine(sb, fmt.Sprintf("      %s", chunk.Line), f.colorContext(opts), opts)
+		case chunkInsert:
+			f.writeColoredLine(sb, fmt.Sprintf("    + %s", chunk.Line), f.colorAdded(opts), opts)
+		case chunkDelete:
+			f.writeColoredLine(sb, fmt.Sprintf("    - %s", chunk.Line), f.colorRemoved(opts), opts)
+		case chunkCollapsed:
+			f.writeColoredLine(sb, fmt.Sprintf("    %s", collapsedRunLabel(chunk.Collapsed)), f.colorContext(opts), opts)
 		}
 	}
 }
@@ -81,23 +147,7 @@ func (f *DetailedFormatter) formatMultilineDiff(sb *strings.Builder, from, to st
 		formatCount(deletions), pluralize(deletions, "deletion", "deletions"))
 	f.writeDescriptorLine(sb, descriptor, f.colorModified, opts)
 
-	// Apply context collapsing
-	contextLines := opts.ContextLines
-	if contextLines < 0 {
-		contextLines = 4
-	}
-
-	// Mark which ops are near a change
-	nearChange := make([]bool, len(ops))
-	for i, op := range ops {
-		if op.Type != editKeep {
-			for j := max(0, i-contextLines); j <= min(len(ops)-1, i+contextLines); j++ {
-				nearChange[j] = true
-			}
-		}
-	}
-
-	f.renderLineDiffOps(sb, ops, nearChange, opts)
+	f.renderLineDiffOps(sb, ops, markNearChange(ops, opts.ContextLines), opts)
 	sb.WriteString("\n")
 }
 

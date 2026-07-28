@@ -462,12 +462,15 @@ func (f *GitHubFormatter) Format(diffs []Difference, opts *FormatOptions) string
 }
 
 // gitHubWriteCommand writes a single GitHub Actions workflow command to the
-// builder. The message is percent-encoded so that a multiline description stays
-// one command line; GitHub renders the %0A escapes as line breaks.
+// builder. It is the one place workflow command syntax is produced, so it is
+// also the one place escaping happens: the message is percent-encoded so that a
+// multiline description stays one command line (GitHub renders the %0A escapes
+// as line breaks), and the properties use the stricter property encoding.
 func gitHubWriteCommand(sb *strings.Builder, cmd, title, msg, filePath string) {
 	msg = escapeGitHubData(msg)
+	title = escapeGitHubProperty(title)
 	if filePath != "" {
-		fmt.Fprintf(sb, "::%s file=%s,title=%s::%s\n", cmd, filePath, title, msg)
+		fmt.Fprintf(sb, "::%s file=%s,title=%s::%s\n", cmd, escapeGitHubProperty(filePath), title, msg)
 	} else {
 		fmt.Fprintf(sb, "::%s title=%s::%s\n", cmd, title, msg)
 	}
@@ -475,10 +478,13 @@ func gitHubWriteCommand(sb *strings.Builder, cmd, title, msg, filePath string) {
 
 // gitHubWriteSummaries appends summary annotations for each truncated command type.
 // Summary annotations do not include the file= parameter and do not count toward the limit.
+// Like every other annotation they go through gitHubWriteCommand, so escaping
+// stays a property of emitting a command rather than of each call site.
 func gitHubWriteSummaries(sb *strings.Builder, omitted map[string]int) {
 	for _, cmd := range []string{"notice", "warning", "error"} {
 		if n := omitted[cmd]; n > 0 {
-			fmt.Fprintf(sb, "::%s title=diffyml::%d additional %s annotations omitted due to GitHub Actions limit\n", cmd, n, cmd)
+			msg := fmt.Sprintf("%d additional %s annotations omitted due to GitHub Actions limit", n, cmd)
+			gitHubWriteCommand(sb, cmd, "diffyml", msg, "")
 		}
 	}
 }

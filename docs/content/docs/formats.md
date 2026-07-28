@@ -56,10 +56,12 @@ To avoid spamming the UI, output is capped at 10 annotations per type. Combine w
 
 Every difference becomes exactly one annotation, so multiline values are kept bounded:
 
-- A **changed** multiline value (a ConfigMap block scalar, an embedded `values.yaml`) is rendered as a line diff showing only the changed lines plus `--multi-line-context-lines` of context on each side. Every other run of unchanged lines collapses into a `[N lines unchanged]` marker.
-- An **added** or **removed** multiline value has nothing to diff against, so it is truncated to its first 20 lines followed by `[N more lines]`.
+- A **changed** multiline value (a ConfigMap block scalar, an embedded `values.yaml`) is rendered as a line diff showing only the changed lines plus `--multi-line-context-lines` of context on each side. Every other run of unchanged lines collapses into a `[N lines unchanged]` marker. Collapsing only removes *unchanged* lines, so the resulting diff is capped at 40 lines to bound a value whose lines all changed.
+- Any other value — **added**, **removed**, **unchanged**, or a **changed** pair that is not a multiline string — has nothing to diff against, so each value is truncated to its first 20 lines.
 
-Annotation text is percent-encoded per the workflow command spec (`%` → `%25`, `\n` → `%0A`). GitHub renders the escapes as line breaks in the annotation; a raw newline would instead terminate the command and spill the rest into the build log.
+Both caps append a `[N more lines]` marker, and the `(N inserts, M deletions)` header always counts the whole change even when the diff below it is truncated.
+
+Annotation text is percent-encoded per the workflow command spec (`%` → `%25`, `\r` → `%0D`, `\n` → `%0A`). GitHub renders the escapes as line breaks in the annotation; a raw newline would instead terminate the command and spill the rest into the build log. Property values such as `file=` additionally encode `:` → `%3A` and `,` → `%2C`, since those delimit the property list — an unescaped comma in a path would swallow the annotation title.
 
 ## gitlab
 

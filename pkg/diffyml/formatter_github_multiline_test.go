@@ -572,3 +572,175 @@ func TestCollapsedRunLabel(t *testing.T) {
 		}
 	}
 }
+
+func TestTruncateLines(t *testing.T) {
+	tests := []struct {
+		name     string
+		lines    []string
+		maxLines int
+		want     []string
+	}{
+		{"under cap", []string{"a", "b"}, 3, []string{"a", "b"}},
+		{"exactly at cap", []string{"a", "b", "c"}, 3, []string{"a", "b", "c"}},
+		{"one over cap", []string{"a", "b", "c", "d"}, 3, []string{"a", "b", "c", "[1 more line]"}},
+		{"several over cap", []string{"a", "b", "c", "d", "e"}, 2, []string{"a", "b", "[3 more lines]"}},
+		{"empty", nil, 3, nil},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := truncateLines(tt.lines, tt.maxLines)
+			if len(got) != len(tt.want) {
+				t.Fatalf("got %d lines %q, want %d %q", len(got), got, len(tt.want), tt.want)
+			}
+			for i := range got {
+				if got[i] != tt.want[i] {
+					t.Errorf("line %d = %q, want %q", i, got[i], tt.want[i])
+				}
+			}
+		})
+	}
+}
+
+func TestTruncateLines_DoesNotClobberInput(t *testing.T) {
+	// Without the full slice expression, appending the marker would write it
+	// into the caller's backing array over the first dropped line.
+	lines := []string{"a", "b", "c", "d"}
+
+	truncateLines(lines, 2)
+
+	for i, want := range []string{"a", "b", "c", "d"} {
+		if lines[i] != want {
+			t.Errorf("input line %d = %q, want %q (backing array was clobbered)", i, lines[i], want)
+		}
+	}
+}
+
+func TestGithubMultilineDiff_CapsDiffBody(t *testing.T) {
+	// Context collapsing only ever removes *unchanged* lines, so a wholly
+	// rewritten value has nothing to collapse: every line is an insert or a
+	// delete. Only the hard cap bounds this.
+	var from, to []string
+	for i := range 30 {
+		from = append(from, fmt.Sprintf("old %d", i))
+		to = append(to, fmt.Sprintf("new %d", i))
+	}
+
+	got := githubMultilineDiff(strings.Join(from, "\n"), strings.Join(to, "\n"), 4)
+	lines := strings.Split(got, "\n")
+
+	// header + gitHubMaxDiffLines of body + one truncation marker
+	if want := gitHubMaxDiffLines + 2; len(lines) != want {
+		t.Fatalf("expected %d lines, got %d:\n%s", want, len(lines), got)
+	}
+	if want := "multiline text (30 inserts, 30 deletions)"; lines[0] != want {
+		t.Errorf("header = %q, want %q", lines[0], want)
+	}
+	// 60 body lines (30 deletes then 30 inserts), 40 kept.
+	if want := "[20 more lines]"; lines[len(lines)-1] != want {
+		t.Errorf("last line = %q, want %q", lines[len(lines)-1], want)
+	}
+	if strings.Contains(got, "new 29") {
+		t.Errorf("expected lines past the cap to be dropped, got:\n%s", got)
+	}
+}
+
+func TestGithubMultilineDiff_UnderCapNotTruncated(t *testing.T) {
+	// The common case a collapsed diff is for: one change in a long value. It
+	// must render in full, so the cap is proven not to regress it.
+	from := buildMultiline(20, 10, "old value")
+	to := buildMultiline(20, 10, "new value")
+
+	got := githubMultilineDiff(from, to, 4)
+
+	if strings.Contains(got, "more line") {
+		t.Errorf("expected no truncation marker under the cap, got:\n%s", got)
+	}
+	if lines := strings.Split(got, "\n"); len(lines) > gitHubMaxDiffLines {
+		t.Fatalf("test premise broken: %d lines is not under the cap", len(lines))
+	}
+	for _, want := range []string{"[6 lines unchanged]", "- old value", "+ new value", "[5 lines unchanged]"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("expected %q, got:\n%s", want, got)
+		}
+	}
+}
+
+func TestGitHubFormatter_ModifiedMultilineIsBounded(t *testing.T) {
+	// End to end: the regression this cap exists for. A fully rewritten value
+	// must stay one command of bounded size, not a 16KB dump.
+	var from, to []string
+	for i := range 500 {
+		from = append(from, fmt.Sprintf("old line %d", i))
+		to = append(to, fmt.Sprintf("new line %d", i))
+	}
+
+	f := &GitHubFormatter{}
+	output := f.Format([]Difference{{
+		Path: DiffPath{"data", "values.yaml"}, Type: DiffModified,
+		From: strings.Join(from, "\n"), To: strings.Join(to, "\n"),
+	}}, DefaultFormatOptions())
+
+	msg := githubMessage(t, output)
+
+	if rendered := strings.Count(msg, "%0A") + 1; rendered != gitHubMaxDiffLines+2 {
+		t.Errorf("expected %d rendered lines, got %d", gitHubMaxDiffLines+2, rendered)
+	}
+	if !strings.Contains(msg, escapeGitHubData("[960 more lines]")) {
+		t.Errorf("expected a truncation marker, got: %s", msg)
+	}
+	// The counts describe the whole change even though the body is truncated.
+	if !strings.Contains(msg, "multiline text (500 inserts, 500 deletions)") {
+		t.Errorf("expected full edit counts in the header, got: %s", msg)
+	}
+}
+
+func TestEscapeGitHubProperty(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{"plain", "config.yaml", "config.yaml"},
+		{"empty", "", ""},
+		{"colon", "a:b", "a%3Ab"},
+		{"comma", "a,b", "a%2Cb"},
+		{"percent", "50% off", "50%25 off"},
+		{"newline", "a\nb", "a%0Ab"},
+		{"carriage return", "a\rb", "a%0Db"},
+		{"url", "https://example.com/a.yaml", "https%3A//example.com/a.yaml"},
+		{"all at once", "a,b:c%", "a%2Cb%3Ac%25"},
+		// Percent is encoded first, so an escape already present in the data
+		// must not decode back into a colon on GitHub's side.
+		{"literal escape sequence", "%3A", "%253A"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := escapeGitHubProperty(tt.input); got != tt.want {
+				t.Errorf("escapeGitHubProperty(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGitHubFormatter_EscapesFilePath(t *testing.T) {
+	// A comma in the path used to end the file= value early, so GitHub read the
+	// next segment as a property name and the title was silently dropped.
+	f := &GitHubFormatter{}
+	groups := []DiffGroup{{
+		FilePath: "conf,d/a:b.yaml",
+		Diffs:    []Difference{{Path: DiffPath{"version"}, Type: DiffModified, From: "1.0", To: "2.0"}},
+	}}
+
+	output := f.FormatAll(groups, DefaultFormatOptions())
+
+	if !strings.Contains(output, "file=conf%2Cd/a%3Ab.yaml,title=YAML Modified::") {
+		t.Errorf("expected escaped file property with the title intact, got: %s", output)
+	}
+	// Exactly one comma survives in the property list: the delimiter itself.
+	props, _, _ := strings.Cut(strings.TrimPrefix(output, "::warning "), "::")
+	if got := strings.Count(props, ","); got != 1 {
+		t.Errorf("expected 1 property delimiter, got %d in %q", got, props)
+	}
+}

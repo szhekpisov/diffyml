@@ -5,6 +5,8 @@
 // at its first newline. Modified values are rendered as a collapsed line diff
 // (the same context window the detailed formatter uses); added and removed
 // values, which have no counterpart to diff against, are truncated instead.
+// Both paths end in a hard line cap, so no single annotation is unbounded:
+// collapsing alone cannot shrink a value whose lines all changed.
 package diffyml
 
 import (
@@ -18,6 +20,13 @@ import (
 // not apply and a fixed cap keeps the annotation readable.
 const gitHubMaxValueLines = 20
 
+// gitHubMaxDiffLines caps the body of a rendered line diff. The cap is higher
+// than gitHubMaxValueLines because the body is already collapsed: every line
+// that survives is either a change or context the caller asked for. Without it
+// a wholly rewritten value still emits every insert and delete, since context
+// collapsing only ever removes *unchanged* lines.
+const gitHubMaxDiffLines = 40
+
 // escapeGitHubData percent-encodes data for a GitHub Actions workflow command.
 // Without this a message containing a newline would terminate the command
 // early, dropping everything after the first line into the raw build log.
@@ -27,6 +36,32 @@ func escapeGitHubData(s string) string {
 	s = strings.ReplaceAll(s, "\r", "%0D")
 	s = strings.ReplaceAll(s, "\n", "%0A")
 	return s
+}
+
+// escapeGitHubProperty percent-encodes a workflow command property value such
+// as file= or title=. Beyond the data escapes, ":" and "," delimit the property
+// list itself: an unescaped comma in a file path ends the value early, so
+// "file=a,b.yaml,title=X" makes GitHub read "b.yaml" as a property name and
+// drop the title.
+func escapeGitHubProperty(s string) string {
+	// escapeGitHubData encodes "%" first, so the escapes introduced below are
+	// not themselves re-encoded.
+	s = escapeGitHubData(s)
+	s = strings.ReplaceAll(s, ":", "%3A")
+	s = strings.ReplaceAll(s, ",", "%2C")
+	return s
+}
+
+// truncateLines keeps at most maxLines entries, replacing the remainder with a
+// single summary marker. The full slice expression keeps the caller's backing
+// array intact, so appending the marker cannot clobber a dropped line.
+func truncateLines(lines []string, maxLines int) []string {
+	if len(lines) <= maxLines {
+		return lines
+	}
+	remaining := len(lines) - maxLines
+	return append(lines[:maxLines:maxLines],
+		fmt.Sprintf("[%d more %s]", remaining, pluralize(remaining, "line", "lines")))
 }
 
 // isMultiline reports whether s spans more than one line.
@@ -49,29 +84,33 @@ func multilineStrings(from, to any) (fromStr, toStr string, ok bool) {
 // githubMultilineDiff renders a modified multiline value as a collapsed line
 // diff: a header counting the edits, then the changed lines with contextLines
 // of surrounding context, with every other run of unchanged lines replaced by a
-// single summary marker.
+// single summary marker. The body is capped at gitHubMaxDiffLines; the header
+// sits outside the cap so the edit counts survive truncation and still describe
+// the whole change.
 func githubMultilineDiff(from, to string, contextLines int) string {
 	ops := computeLineDiff(strings.Split(from, "\n"), strings.Split(to, "\n"))
 	additions, deletions := countEditOps(ops)
 
-	lines := []string{fmt.Sprintf("multiline text (%s %s, %s %s)",
+	header := fmt.Sprintf("multiline text (%s %s, %s %s)",
 		formatCount(additions), pluralize(additions, "insert", "inserts"),
-		formatCount(deletions), pluralize(deletions, "deletion", "deletions"))}
+		formatCount(deletions), pluralize(deletions, "deletion", "deletions"))
 
+	var body []string
 	for _, chunk := range collapseLineDiff(ops, markNearChange(ops, contextLines)) {
 		switch chunk.Type {
 		case chunkKeep:
-			lines = append(lines, "  "+chunk.Line)
+			body = append(body, "  "+chunk.Line)
 		case chunkInsert:
-			lines = append(lines, "+ "+chunk.Line)
+			body = append(body, "+ "+chunk.Line)
 		case chunkDelete:
-			lines = append(lines, "- "+chunk.Line)
+			body = append(body, "- "+chunk.Line)
 		case chunkCollapsed:
-			lines = append(lines, collapsedRunLabel(chunk.Collapsed))
+			body = append(body, collapsedRunLabel(chunk.Collapsed))
 		}
 	}
 
-	return strings.Join(lines, "\n")
+	return strings.Join(append([]string{header},
+		truncateLines(body, gitHubMaxDiffLines)...), "\n")
 }
 
 // githubTruncatedValue renders a value the way diffDescription does, then keeps
@@ -80,16 +119,8 @@ func githubMultilineDiff(from, to string, contextLines int) string {
 // added map serializes to many lines of YAML without ever being a Go string.
 // Values within the cap are returned unchanged.
 func githubTruncatedValue(val any, maxLines int) string {
-	s := formatValue(val)
-
-	lines := strings.Split(s, "\n")
-	if len(lines) <= maxLines {
-		return s
-	}
-
-	remaining := len(lines) - maxLines
-	return strings.Join(lines[:maxLines], "\n") +
-		fmt.Sprintf("\n[%d more %s]", remaining, pluralize(remaining, "line", "lines"))
+	return strings.Join(
+		truncateLines(strings.Split(formatValue(val), "\n"), maxLines), "\n")
 }
 
 // githubDiffDescription describes a difference for a GitHub Actions annotation,

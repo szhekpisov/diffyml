@@ -192,16 +192,20 @@ func computeLineDiffBounded(fromLines, toLines []string, maxD int) (ops []editOp
 
 search:
 	for d := range limit + 1 {
-		// Snapshot only the band the backtrack pass can read at step d, which
-		// is diagonals [-d, d]: step d walks those diagonals and reads the
-		// previous row at k±1, and the short-circuits below keep those reads
-		// inside [-(d-1), d-1]. d never exceeds offset, so the band always
-		// fits in v. Snapshotting the whole (2*(m+n)+1)-int row instead would
-		// cost (D+1)*(2*(m+n)+1) ints — ~1.3 KB per line of the value at the
+		// v holds the state after step d-1, whose valid diagonals are exactly
+		// [-(d-1), d-1] — and that band is exactly what backtracking reads at
+		// step d, no wider. Parity is what keeps it no wider: k carries d's
+		// parity, so the k±1 reads below happen only for |k| <= d-2, and the
+		// short-circuits skip them entirely at k = ±d. Step 0 is never
+		// backtracked through, so it needs no snapshot: trace[i] holds the
+		// band for step i+1.
+		//
+		// Snapshotting the whole (2*(m+n)+1)-int row instead would cost
+		// (D+1)*(2*(m+n)+1) ints — ~1.3 KB per line of the value at the
 		// ceiling the GitHub formatter uses, to render at most 40 of them.
-		snapshot := make([]int, 2*d+1)
-		copy(snapshot, v[offset-d:offset+d+1])
-		trace = append(trace, snapshot)
+		if d > 0 {
+			trace = append(trace, slices.Clone(v[offset-d+1:offset+d]))
+		}
 
 		for k := -d; k <= d; k += 2 {
 			var x int
@@ -236,19 +240,19 @@ search:
 	x, y := m, n
 
 	for d := finalD; d > 0; d-- {
-		// trace[d] holds diagonals [-d, d] only, so d is its own offset:
-		// diagonal k sits at index k+d, not k+offset.
-		prev := trace[d]
+		// trace[d-1] holds diagonals [-(d-1), d-1] only, so that band's own
+		// offset is what indexes it, not the full row's.
+		prev, bandOffset := trace[d-1], d-1
 		k := x - y
 
 		var prevK int
-		if k == -d || (k != d && prev[k-1+d] < prev[k+1+d]) {
+		if k == -d || (k != d && prev[k-1+bandOffset] < prev[k+1+bandOffset]) {
 			prevK = k + 1
 		} else {
 			prevK = k - 1
 		}
 
-		prevX := prev[prevK+d]
+		prevX := prev[prevK+bandOffset]
 		prevY := prevX - prevK
 
 		// Record diagonal matches (snake) in reverse

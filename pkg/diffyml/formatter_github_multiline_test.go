@@ -1104,15 +1104,18 @@ func TestGitHubFormatter_LongPathIsBounded(t *testing.T) {
 }
 
 func TestGitHubCaps_MessageBoundary(t *testing.T) {
-	// 4000 runes exactly is untouched; 4001 drops exactly one.
+	// 4000 runes exactly is untouched; 4001 drops exactly one. Literal counts,
+	// not gitHubMaxMessageRunes: sizing the input from the constant would make
+	// the test follow it wherever it moved, which is the one thing these
+	// boundary tests exist to prevent.
 	var sb strings.Builder
-	gitHubWriteCommand(&sb, "warning", "t", strings.Repeat("x", gitHubMaxMessageRunes), "")
+	gitHubWriteCommand(&sb, "warning", "t", strings.Repeat("x", 4000), "")
 	if strings.Contains(sb.String(), "more character") {
 		t.Errorf("a 4000-character message must not be truncated, got: %s", sb.String())
 	}
 
 	sb.Reset()
-	gitHubWriteCommand(&sb, "warning", "t", strings.Repeat("x", gitHubMaxMessageRunes+1), "")
+	gitHubWriteCommand(&sb, "warning", "t", strings.Repeat("x", 4001), "")
 	if !strings.Contains(sb.String(), escapeGitHubData("…[1 more character]")) {
 		t.Errorf("a 4001-character message must drop exactly one character, got: %s", sb.String())
 	}

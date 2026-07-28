@@ -157,14 +157,12 @@ func (f *DetailedFormatter) formatMultilineDiff(sb *strings.Builder, from, to st
 	sb.WriteString("\n")
 }
 
-// unboundedEditDistance lets computeLineDiffBounded search the whole edit
-// script, however long it turns out to be.
-const unboundedEditDistance = -1
-
 // computeLineDiff computes line-level diff using the Myers diff algorithm.
 // It finds the shortest edit script (SES) in O(ND) time where N=m+n and D=edit distance.
 func computeLineDiff(fromLines, toLines []string) []editOp {
-	ops, _ := computeLineDiffBounded(fromLines, toLines, unboundedEditDistance)
+	// An edit script never exceeds m+n, so that budget is an unbounded search
+	// and the ok result is always true.
+	ops, _ := computeLineDiffBounded(fromLines, toLines, len(fromLines)+len(toLines))
 	return ops
 }
 
@@ -174,8 +172,7 @@ func computeLineDiff(fromLines, toLines []string) []editOp {
 // lines. Capping D caps that at O(maxD*(m+n)), linear in the input, at the cost
 // of producing no diff at all for values that differ by more than maxD lines:
 // ok is false in that case and the caller is expected to fall back to something
-// cheaper. Pass unboundedEditDistance to search without a ceiling, which always
-// succeeds since D never exceeds m+n.
+// cheaper. A budget of m+n or more searches without a ceiling.
 func computeLineDiffBounded(fromLines, toLines []string, maxD int) (ops []editOp, ok bool) {
 	m := len(fromLines)
 	n := len(toLines)
@@ -189,10 +186,7 @@ func computeLineDiffBounded(fromLines, toLines []string, maxD int) (ops []editOp
 	finalD := 0
 	found := false
 
-	limit := m + n
-	if maxD >= 0 && maxD < limit {
-		limit = maxD
-	}
+	limit := min(maxD, m+n)
 
 	for d := range limit + 1 {
 		snapshot := make([]int, vSize)

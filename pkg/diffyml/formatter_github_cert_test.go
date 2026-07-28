@@ -157,3 +157,53 @@ func TestGithubCertHelpers_PassThrough(t *testing.T) {
 		}
 	})
 }
+
+func TestGitHubFormatter_CertInspection_ChainIsNotSummarized(t *testing.T) {
+	// A bundle is not a single certificate, so IsPEMCertificate rejects it —
+	// but FormatCertificate would happily decode only its *first* block and
+	// report the bundle as that one cert, silently hiding the rest. The
+	// IsPEMCertificate guard is what stops that, on both the single-value and
+	// the modified-pair path.
+	first, second := githubTestCerts(t)
+	chain := first + second
+
+	f := &GitHubFormatter{}
+	opts := DefaultFormatOptions()
+
+	t.Run("added value", func(t *testing.T) {
+		msg := githubMessage(t, f.Format([]Difference{
+			{Path: DiffPath{"data", "ca-bundle.crt"}, Type: DiffAdded, To: chain},
+		}, opts))
+
+		if strings.Contains(msg, "Certificate(") {
+			t.Errorf("expected a bundle to stay raw, not be reported as its first cert: %s", msg)
+		}
+		if !strings.Contains(msg, escapeGitHubData("BEGIN CERTIFICATE")) {
+			t.Errorf("expected the raw bundle, got: %s", msg)
+		}
+	})
+
+	t.Run("modified pair", func(t *testing.T) {
+		// Only one side is a single certificate; the pair must not be
+		// summarized on the strength of that side alone.
+		msg := githubMessage(t, f.Format([]Difference{
+			{Path: DiffPath{"data", "ca-bundle.crt"}, Type: DiffModified, From: chain, To: second},
+		}, opts))
+
+		if strings.Contains(msg, "Certificate(") {
+			t.Errorf("expected no summary when one side is a bundle, got: %s", msg)
+		}
+	})
+
+	t.Run("helpers directly", func(t *testing.T) {
+		if got := githubCertValue(chain, true); got != chain {
+			t.Errorf("githubCertValue summarized a bundle: %v", got)
+		}
+		if from, to := githubCertPair(chain, second, true); from != chain || to != second {
+			t.Errorf("githubCertPair summarized a pair whose from side is a bundle")
+		}
+		if from, to := githubCertPair(second, chain, true); from != second || to != chain {
+			t.Errorf("githubCertPair summarized a pair whose to side is a bundle")
+		}
+	})
+}

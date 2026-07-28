@@ -171,7 +171,7 @@ func renderChunkLine(chunk lineDiffChunk) string {
 // lines, not one. That keeps the marker in the same unit as the collapse
 // markers above it.
 func githubDiffBody(chunks []lineDiffChunk, maxLines, maxRunes int) []string {
-	body := make([]string, 0, min(len(chunks), maxLines)+1)
+	var body []string
 	for i, chunk := range chunks {
 		if i == maxLines {
 			hidden := 0

@@ -984,3 +984,70 @@ func TestRenderChunkLine(t *testing.T) {
 		}
 	}
 }
+
+// ---------------------------------------------------------------------------
+// The caps' concrete values, pinned
+// ---------------------------------------------------------------------------
+//
+// The tests above express their expectations in terms of the constants, so they
+// follow a constant that moves. These pin the values themselves with literal
+// line and character counts, so a change to a cap has to be a deliberate edit
+// here rather than a silent shift in what every annotation looks like.
+
+func TestGitHubCaps_LineWidthBoundary(t *testing.T) {
+	// 500 runes exactly is untouched; 501 is truncated with one dropped.
+	f := &GitHubFormatter{}
+
+	atCap := strings.Repeat("x", 500)
+	msg := githubMessage(t, f.Format([]Difference{
+		{Path: DiffPath{"a"}, Type: DiffAdded, To: atCap},
+	}, DefaultFormatOptions()))
+	if strings.Contains(msg, "more character") {
+		t.Errorf("a 500-character value must not be truncated, got: %s", msg)
+	}
+
+	overCap := strings.Repeat("x", 501)
+	msg = githubMessage(t, f.Format([]Difference{
+		{Path: DiffPath{"a"}, Type: DiffAdded, To: overCap},
+	}, DefaultFormatOptions()))
+	if !strings.Contains(msg, "…[1 more character]") {
+		t.Errorf("a 501-character value must drop exactly one character, got: %s", msg)
+	}
+}
+
+func TestGitHubCaps_EditDistanceBoundary(t *testing.T) {
+	// Rewriting n lines costs an edit distance of 2n, and the ceiling is 80, so
+	// 40 rewritten lines are still diffed and 41 are not.
+	rewrite := func(n int) (from, to string) {
+		var fromLines, toLines []string
+		for i := range n {
+			fromLines = append(fromLines, fmt.Sprintf("old %d", i))
+			toLines = append(toLines, fmt.Sprintf("new %d", i))
+		}
+		return strings.Join(fromLines, "\n"), strings.Join(toLines, "\n")
+	}
+
+	from, to := rewrite(40)
+	if _, ok := githubMultilineDiff(from, to, 4); !ok {
+		t.Error("40 rewritten lines (edit distance 80) must still be diffed")
+	}
+
+	from, to = rewrite(41)
+	if _, ok := githubMultilineDiff(from, to, 4); ok {
+		t.Error("41 rewritten lines (edit distance 82) must fall back to truncation")
+	}
+}
+
+func TestGitHubWriteCommand_EscapesTitle(t *testing.T) {
+	// Every title diffyml produces today is plain text, so the title escaping
+	// is invisible in normal output — but the command syntax makes it load
+	// bearing: a comma in a title ends the property list and the message with
+	// it. gitHubWriteCommand is the choke point, so exercise it directly.
+	var sb strings.Builder
+	gitHubWriteCommand(&sb, "warning", "a,b:c%", "the message", "")
+
+	want := "::warning title=a%2Cb%3Ac%25::the message\n"
+	if got := sb.String(); got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}

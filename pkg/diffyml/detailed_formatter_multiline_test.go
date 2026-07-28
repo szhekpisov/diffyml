@@ -217,7 +217,7 @@ func TestComputeLineDiffBounded_WithinBudget(t *testing.T) {
 
 	want := computeLineDiff(from, to)
 
-	for _, maxD := range []int{4, 5, 100, unboundedEditDistance} {
+	for _, maxD := range []int{4, 5, 100, len(from) + len(to)} {
 		ops, ok := computeLineDiffBounded(from, to, maxD)
 		if !ok {
 			t.Fatalf("maxD=%d: expected the search to succeed", maxD)

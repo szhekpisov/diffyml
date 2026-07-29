@@ -2,8 +2,10 @@ package cli
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/szhekpisov/diffyml/pkg/diffyml"
 )
@@ -96,6 +98,9 @@ func TestBuildPrompt_Truncation(t *testing.T) {
 	got := buildPrompt(groups)
 	if !strings.Contains(got, "truncated") {
 		t.Errorf("buildPrompt should truncate large input, got length: %d", len(got))
+	}
+	if len(got) > maxPromptLen {
+		t.Errorf("buildPrompt length = %d, want <= %d", len(got), maxPromptLen)
 	}
 }
 
@@ -378,8 +383,6 @@ func TestSummarize_ServerError500_IncludesMessage(t *testing.T) {
 }
 
 func TestBuildPrompt_SingleOversizedGroup(t *testing.T) {
-	// summarizer.go:215 — single oversized group should still be included
-	// (groupsWritten > 0 condition means first group is never truncated)
 	var diffs []diffyml.Difference
 	for i := 0; i < 500; i++ {
 		diffs = append(diffs, diffyml.Difference{
@@ -396,13 +399,17 @@ func TestBuildPrompt_SingleOversizedGroup(t *testing.T) {
 
 	got := buildPrompt(groups)
 
-	// The single group must be included even if it exceeds maxPromptLen
 	if !strings.Contains(got, "File: single-big.yaml") {
-		t.Error("single oversized group should still be included in prompt")
+		t.Error("single oversized group should retain its file header")
 	}
-	// Should NOT contain truncation message since it's the only group
-	if strings.Contains(got, "truncated") {
-		t.Error("single oversized group should not trigger truncation")
+	if !strings.Contains(got, "truncated") {
+		t.Error("single oversized group should be truncated")
+	}
+	if len(got) > maxPromptLen {
+		t.Errorf("buildPrompt length = %d, want <= %d", len(got), maxPromptLen)
+	}
+	if !utf8.ValidString(got) {
+		t.Error("truncated prompt must remain valid UTF-8")
 	}
 }
 
@@ -427,20 +434,22 @@ func TestBuildPrompt_TruncationRemainingCount(t *testing.T) {
 
 	got := buildPrompt(groups)
 
-	// file1 should be included (first group always is)
+	// The first file should be represented before truncation.
 	if !strings.Contains(got, "File: file1.yaml") {
-		t.Error("first group should always be included")
+		t.Error("first group should be present")
 	}
 
-	// If truncated, remaining count should be correct (3 files with correct diff counts)
-	if strings.Contains(got, "truncated") {
-		// Remaining should be 3 files (file2, file3, file4) with 3 total changes
-		if !strings.Contains(got, "3 more files") {
-			t.Errorf("truncation message should say '3 more files', got: %s", got)
-		}
-		if !strings.Contains(got, "3 more changes") {
-			t.Errorf("truncation message should say '3 more changes', got: %s", got)
-		}
+	if !strings.Contains(got, "truncated") {
+		t.Fatal("expected prompt to be truncated")
+	}
+	writtenChanges := strings.Count(got, "\n- [")
+	remainingChanges := len(bigDiffs) + 3 - writtenChanges
+	expectedMarker := fmt.Sprintf("%d more changes across 4 files", remainingChanges)
+	if !strings.Contains(got, expectedMarker) {
+		t.Errorf("truncation marker should contain %q, got: %s", expectedMarker, got)
+	}
+	if len(got) > maxPromptLen {
+		t.Errorf("buildPrompt length = %d, want <= %d", len(got), maxPromptLen)
 	}
 }
 
@@ -508,7 +517,10 @@ func TestBuildPrompt_ExactBoundary(t *testing.T) {
 }
 
 func TestBuildPrompt_OneByteOverBoundary(t *testing.T) {
-	// Companion test: verify that one byte over the boundary DOES truncate.
+	// Companion test: verify that one byte of content over the boundary DOES
+	// truncate. The serializer may omit the optional final blank line, so add
+	// two bytes to the complete representation to put the diff line itself one
+	// byte over the limit.
 	singleDiff := diffyml.Difference{
 		Path: diffyml.DiffPath{"test", "path"},
 		Type: diffyml.DiffModified,
@@ -522,7 +534,7 @@ func TestBuildPrompt_OneByteOverBoundary(t *testing.T) {
 	singlePrompt := buildPrompt([]diffyml.DiffGroup{testGroup})
 	singleLen := len(singlePrompt)
 
-	remaining := maxPromptLen - singleLen + 1 // one byte over
+	remaining := maxPromptLen - singleLen + 2
 	if remaining <= 0 {
 		t.Skip("single group already exceeds maxPromptLen")
 	}
@@ -544,15 +556,14 @@ func TestBuildPrompt_OneByteOverBoundary(t *testing.T) {
 	groups := []diffyml.DiffGroup{testGroup, group2}
 	got := buildPrompt(groups)
 
-	// Second group should be truncated since total > maxPromptLen
 	if !strings.Contains(got, "File: test.yaml") {
-		t.Error("first group should always be present")
-	}
-	if strings.Contains(got, "File: pad.yaml") {
-		t.Error("second group should be truncated when total exceeds maxPromptLen")
+		t.Error("first group should be present")
 	}
 	if !strings.Contains(got, "truncated") {
 		t.Error("should truncate when total exceeds maxPromptLen by 1")
+	}
+	if len(got) > maxPromptLen {
+		t.Errorf("buildPrompt length = %d, want <= %d", len(got), maxPromptLen)
 	}
 }
 

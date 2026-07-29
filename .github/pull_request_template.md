@@ -17,7 +17,7 @@
 - [ ] PR title follows convention (`feat:`, `bug:`, `fix:`, `doc:`, `chore:`, `test:`)
 - [ ] `make ci` passes locally
 - [ ] New/changed behavior covered by tests
-- [ ] Coverage thresholds met (parser 100%, ordered_map 100%, kubernetes 95%)
+- [ ] Aggregate core + CLI coverage threshold met (98%)
 - [ ] No new dependencies (or justified)
 
 ## Notes for reviewers

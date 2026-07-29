@@ -10,6 +10,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
+	"strings"
 
 	"go.yaml.in/yaml/v3"
 )
@@ -72,13 +74,16 @@ func (p *DocumentParser) Done() bool {
 // ParseError represents a YAML parsing error with location information.
 type ParseError struct {
 	Line    int    // Line number where error occurred (1-based)
-	Column  int    // Column number where error occurred (1-based)
+	Column  int    // Column number where error occurred (1-based, or 0 when unavailable)
 	Message string // Error message
 	Err     error  // Underlying error
 }
 
 // Error implements the error interface.
 func (e *ParseError) Error() string {
+	if e.Line > 0 && e.Column > 0 {
+		return fmt.Sprintf("yaml: line %d: column %d: %s", e.Line, e.Column, e.Message)
+	}
 	if e.Line > 0 {
 		return fmt.Sprintf("yaml: line %d: %s", e.Line, e.Message)
 	}
@@ -90,20 +95,52 @@ func (e *ParseError) Unwrap() error {
 	return e.Err
 }
 
-// wrapParseError wraps a yaml parsing error with line information if available.
-func wrapParseError(err error) error {
-	// yaml.v3 includes line info in the error message
-	// Try to extract it if possible
-	var typeErr *yaml.TypeError
-	if errors.As(err, &typeErr) {
-		return &ParseError{
-			Message: typeErr.Error(),
-			Err:     err,
+// parseErrorLocation extracts the leading location emitted by yaml.v3. The
+// decoder currently reports a line for syntax errors and may omit the column.
+func parseErrorLocation(message string) (line, column int, detail string) {
+	detail = strings.TrimPrefix(message, "yaml: ")
+	if !strings.HasPrefix(detail, "line ") {
+		return 0, 0, detail
+	}
+
+	locationEnd := strings.IndexByte(detail, ':')
+	if locationEnd < 0 {
+		return 0, 0, detail
+	}
+
+	parsedLine, err := strconv.Atoi(strings.TrimSpace(strings.TrimPrefix(detail[:locationEnd], "line ")))
+	if err != nil || parsedLine < 1 {
+		return 0, 0, detail
+	}
+
+	remainder := strings.TrimSpace(detail[locationEnd+1:])
+	if strings.HasPrefix(remainder, "column ") {
+		columnEnd := strings.IndexByte(remainder, ':')
+		if columnEnd >= 0 {
+			parsedColumn, columnErr := strconv.Atoi(strings.TrimSpace(strings.TrimPrefix(remainder[:columnEnd], "column ")))
+			if columnErr == nil && parsedColumn > 0 {
+				return parsedLine, parsedColumn, strings.TrimSpace(remainder[columnEnd+1:])
+			}
 		}
 	}
 
-	// Return original error if we can't wrap it nicely
-	return err
+	return parsedLine, 0, remainder
+}
+
+// wrapParseError wraps every yaml parsing error in a consistent public type
+// and extracts location information when yaml.v3 provides it.
+func wrapParseError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	line, column, message := parseErrorLocation(err.Error())
+	return &ParseError{
+		Line:    line,
+		Column:  column,
+		Message: message,
+		Err:     err,
+	}
 }
 
 // parse parses YAML content into per-document *yaml.Node trees, padding the

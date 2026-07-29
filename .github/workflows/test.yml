@@ -33,11 +33,16 @@ jobs:
               - '**/*.go'
               - 'go.mod'
               - 'go.sum'
+              - 'testdata/**'
+              - 'Makefile'
+              - '.github/workflows/test.yml'
             docker:
               - 'Dockerfile*'
+              - '.github/workflows/test.yml'
             packaging:
               - '.goreleaser.yaml'
               - 'Makefile'
+              - '.github/workflows/test.yml'
 
   hadolint:
     needs: changes
@@ -136,7 +141,7 @@ jobs:
           go-version: "1.26.5"
 
       - name: Run tests with coverage
-        run: go test ./pkg/diffyml/ -coverprofile=coverage.out
+        run: go test ./pkg/diffyml/... -coverprofile=coverage.out
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
@@ -172,7 +177,7 @@ jobs:
             printf "%-20s %7s%% %9s%% %s\n" "$file" "$actual" "$required" "$status"
           }
 
-          check_threshold "TOTAL" "$TOTAL_COV" "99.0"
+          check_threshold "TOTAL" "$TOTAL_COV" "98.0"
 
           echo ""
 

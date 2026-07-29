@@ -107,7 +107,7 @@ func TestParseError_Error(t *testing.T) {
 	t.Run("with line", func(t *testing.T) {
 		pe := &ParseError{Line: 5, Column: 3, Message: "bad indent"}
 		got := pe.Error()
-		expected := "yaml: line 5: bad indent"
+		expected := "yaml: line 5: column 3: bad indent"
 		if got != expected {
 			t.Errorf("expected %q, got %q", expected, got)
 		}
@@ -148,13 +148,53 @@ func TestWrapParseError(t *testing.T) {
 		if !errors.Is(pe.Err, typeErr) {
 			t.Error("expected Err to wrap original TypeError")
 		}
+		if pe.Message != "unmarshal errors:\n  test error" {
+			t.Errorf("unexpected message: %q", pe.Message)
+		}
 	})
 
 	t.Run("other error", func(t *testing.T) {
 		orig := errors.New("some other error")
 		got := wrapParseError(orig)
+		var pe *ParseError
+		if !errors.As(got, &pe) {
+			t.Fatalf("expected *ParseError, got %T", got)
+		}
 		if !errors.Is(got, orig) {
-			t.Errorf("expected original error returned unchanged, got %v", got)
+			t.Errorf("expected wrapped original error, got %v", got)
+		}
+		if pe.Line != 0 || pe.Column != 0 || pe.Message != orig.Error() {
+			t.Errorf("unexpected ParseError fields: %#v", pe)
+		}
+	})
+
+	t.Run("line location", func(t *testing.T) {
+		orig := errors.New("yaml: line 7: bad indentation")
+		got := wrapParseError(orig)
+		var pe *ParseError
+		if !errors.As(got, &pe) {
+			t.Fatalf("expected *ParseError, got %T", got)
+		}
+		if pe.Line != 7 || pe.Column != 0 || pe.Message != "bad indentation" {
+			t.Errorf("unexpected ParseError fields: %#v", pe)
+		}
+		if got.Error() != orig.Error() {
+			t.Errorf("expected error text %q, got %q", orig, got)
+		}
+	})
+
+	t.Run("line and column location", func(t *testing.T) {
+		orig := errors.New("yaml: line 7: column 4: bad indentation")
+		got := wrapParseError(orig)
+		var pe *ParseError
+		if !errors.As(got, &pe) {
+			t.Fatalf("expected *ParseError, got %T", got)
+		}
+		if pe.Line != 7 || pe.Column != 4 || pe.Message != "bad indentation" {
+			t.Errorf("unexpected ParseError fields: %#v", pe)
+		}
+		if got.Error() != orig.Error() {
+			t.Errorf("expected error text %q, got %q", orig, got)
 		}
 	})
 }

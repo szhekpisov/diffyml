@@ -10,8 +10,9 @@
 // shrink a value whose lines all changed, and a line cap alone cannot shrink a
 // value that is one enormous line. Those two caps bound each dimension but not
 // their product, so gitHubMaxMessageRunes bounds the whole message as well. A
-// wholesale rewrite also skips the diff entirely rather than pay for one it
-// cannot show — see gitHubMaxEditDistance.
+// wholesale rewrite skips the diff entirely rather than pay for one it cannot
+// show, and is rendered as each side truncated on its own — see
+// gitHubMaxEditDistance and githubRewrittenPair.
 package diffyml
 
 import (
@@ -34,10 +35,11 @@ const gitHubMaxValueLines = 20
 const gitHubMaxDiffLines = 40
 
 // gitHubMaxEditDistance caps how different two values may be before the line
-// diff is abandoned in favor of plain truncation. The rendered body already
-// stops at gitHubMaxDiffLines, so an edit script twice that long overflows
-// anything the annotation could show; all a full diff still buys past this
-// point is an exact insert/deletion count in the header, and computeLineDiff
+// diff is abandoned in favor of showing each side on its own (see
+// githubRewrittenPair). The rendered body already stops at gitHubMaxDiffLines,
+// so an edit script twice that long overflows anything the annotation could
+// show; all a full diff still buys past this point is an exact
+// insert/deletion count in the header, and computeLineDiff
 // pays O(D^2) memory for it — 1.6 GiB for an 8000-line rewrite, to render 40
 // lines. Bounding D is what makes that cost a constant. Only wholesale
 // rewrites reach the ceiling; a value with a handful of changed lines has a
@@ -141,8 +143,8 @@ func multilineStrings(from, to any) (fromStr, toStr string, ok bool) {
 // the whole change.
 //
 // ok is false when the two values differ by more than gitHubMaxEditDistance
-// lines, which is where computing a diff costs more than the diff can show. The
-// caller falls back to truncating both values.
+// lines, which is where computing a diff costs more than the diff can show.
+// githubRewrittenPair renders that case instead.
 func githubMultilineDiff(from, to string, contextLines int) (string, bool) {
 	ops, ok := computeLineDiffBounded(
 		strings.Split(from, "\n"), strings.Split(to, "\n"), gitHubMaxEditDistance)
@@ -199,6 +201,39 @@ func githubDiffBody(chunks []lineDiffChunk, maxLines, maxRunes int) []string {
 		body = append(body, truncateRunes(renderChunkLine(chunk), maxRunes))
 	}
 	return body
+}
+
+// githubRewrittenPair renders a modified multiline pair that githubMultilineDiff
+// refused as too far apart: a header saying so, then each side truncated on its
+// own, the before side marked "-" and the after side "+".
+//
+// Falling through to the shared "changed from X to Y" wording instead would show
+// no more of either value than this does — both are capped at maxLines — while
+// dropping the header and every sign that this is a multiline change at all. The
+// one thing the ceiling really costs is the alignment between the two sides, and
+// the exact insert/deletion counts that computing it would have bought; the
+// header states the fact that stands in for them.
+func githubRewrittenPair(from, to string, maxLines, maxRunes int) string {
+	lines := []string{fmt.Sprintf("multiline text (rewritten, more than %d lines differ)",
+		gitHubMaxEditDistance)}
+	lines = append(lines, githubMarkedValue(from, "- ", maxLines, maxRunes)...)
+	lines = append(lines, githubMarkedValue(to, "+ ", maxLines, maxRunes)...)
+	return strings.Join(lines, "\n")
+}
+
+// githubMarkedValue truncates one side of a rewritten pair and marks each kept
+// line. The "[N more lines]" marker truncateLines appends is left unmarked, so
+// it reads as a marker rather than as one more removed or added line.
+func githubMarkedValue(val, mark string, maxLines, maxRunes int) []string {
+	lines := truncateLines(strings.Split(val, "\n"), maxLines)
+	out := make([]string, len(lines))
+	for i, line := range lines {
+		if i < maxLines {
+			line = mark + line
+		}
+		out[i] = truncateRunes(line, maxRunes)
+	}
+	return out
 }
 
 // githubTruncatedValue renders a value the way diffDescription does, then keeps
@@ -273,9 +308,15 @@ func githubDiffDescription(diff Difference, opts *FormatOptions) string {
 	case DiffModified:
 		from, to := githubCertPair(diff.From, diff.To, certs)
 		if fromStr, toStr, ok := multilineStrings(from, to); ok {
-			if body, ok := githubMultilineDiff(fromStr, toStr, opts.ContextLines); ok {
-				return fmt.Sprintf("Modified: %s%s changed in %s", diff.Path, docSuffix, body)
+			// A multiline pair keeps the multiline framing either way: when it
+			// is too far apart to diff, githubRewrittenPair says so rather than
+			// letting it fall through to the shared from/to wording below,
+			// which is for values that were never diffable in the first place.
+			body, ok := githubMultilineDiff(fromStr, toStr, opts.ContextLines)
+			if !ok {
+				body = githubRewrittenPair(fromStr, toStr, gitHubMaxValueLines, gitHubMaxLineRunes)
 			}
+			return fmt.Sprintf("Modified: %s%s changed in %s", diff.Path, docSuffix, body)
 		}
 		return fmt.Sprintf("Modified: %s%s changed from %s to %s", diff.Path, docSuffix,
 			githubTruncatedValue(from, gitHubMaxValueLines, gitHubMaxLineRunes),

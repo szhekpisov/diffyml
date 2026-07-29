@@ -2,6 +2,7 @@ package diffyml
 
 import (
 	"fmt"
+	"math"
 	"runtime"
 	"strings"
 	"testing"
@@ -51,17 +52,42 @@ func formatGitHubMultiline(from, to string) string {
 	}}, DefaultFormatOptions())
 }
 
+// allocationSamples is how many times allocatedBytes runs fn before taking the
+// smallest reading. fn here is well under a millisecond, so the extra runs are
+// free next to what they buy — see allocatedBytes for why the minimum is the
+// right summary rather than the mean.
+const allocationSamples = 5
+
 // allocatedBytes reports the heap bytes fn allocates. TotalAlloc is cumulative
 // and counts memory that fn frees again, so it measures the work done rather
 // than the memory still held afterwards — which is the point here: a transient
 // gigabyte is just as fatal to a CI runner as a retained one.
+//
+// TotalAlloc is also process-wide, so anything else allocating between the two
+// reads lands in the delta. Today nothing does: no test in this package calls
+// t.Parallel, so tests run one at a time and the formatter path spawns no
+// goroutines — the readings vary by well under a percent, with or without
+// -race. The hazard is that none of that is enforced, and the day someone adds
+// a t.Parallel elsewhere in the package these thresholds start failing for a
+// reason that has nothing to do with the formatter.
+//
+// Interference can only ever *add* to the delta, never subtract, so the
+// smallest of several readings is the closest estimate of what fn alone costs,
+// and one clean run is enough to get it. The mean would instead drag toward
+// whatever else was running.
 func allocatedBytes(fn func()) uint64 {
-	var before, after runtime.MemStats
-	runtime.GC()
-	runtime.ReadMemStats(&before)
-	fn()
-	runtime.ReadMemStats(&after)
-	return after.TotalAlloc - before.TotalAlloc
+	smallest := uint64(math.MaxUint64)
+	for range allocationSamples {
+		var before, after runtime.MemStats
+		runtime.GC()
+		runtime.ReadMemStats(&before)
+		fn()
+		runtime.ReadMemStats(&after)
+		if d := after.TotalAlloc - before.TotalAlloc; d < smallest {
+			smallest = d
+		}
+	}
+	return smallest
 }
 
 // TestGitHubFormatter_MultilineWorkIsNotQuadratic guards the cost of producing
@@ -113,8 +139,9 @@ func TestGitHubFormatter_MultilineWorkIsNotQuadratic(t *testing.T) {
 //
 // It is also what holds the trace to a band. Snapshotting the whole Myers row
 // per step is still linear in the value — the growth test above passes either
-// way — but at ~1.3 KB per line, which lands around 49x here. The limit sits
-// between that and the ~5x a banded trace costs.
+// way — but at ~1.3 KB per line, which measures ~46x here against the ~3x a
+// banded trace costs. The limit sits between them, far enough from both that
+// neither measurement noise nor a modest constant-factor change can reach it.
 func TestGitHubFormatter_MultilineAllocationCeiling(t *testing.T) {
 	const (
 		lines            = 1000

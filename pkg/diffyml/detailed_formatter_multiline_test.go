@@ -2,6 +2,7 @@ package diffyml
 
 import (
 	"fmt"
+	"math/rand/v2"
 	"slices"
 	"strings"
 	"testing"
@@ -706,18 +707,7 @@ func TestComputeLineDiff_BandEdges(t *testing.T) {
 
 			// The script must reconstruct both sides exactly, which is what an
 			// off-by-one in the band offset would break.
-			var gotFrom, gotTo []string
-			for _, op := range ops {
-				switch op.Type {
-				case editKeep:
-					gotFrom = append(gotFrom, op.Line)
-					gotTo = append(gotTo, op.Line)
-				case editDelete:
-					gotFrom = append(gotFrom, op.Line)
-				case editInsert:
-					gotTo = append(gotTo, op.Line)
-				}
-			}
+			gotFrom, gotTo := replayEditScript(ops)
 			if !slices.Equal(gotFrom, tt.from) {
 				t.Errorf("replaying the script gives from = %q, want %q", gotFrom, tt.from)
 			}
@@ -725,5 +715,117 @@ func TestComputeLineDiff_BandEdges(t *testing.T) {
 				t.Errorf("replaying the script gives to = %q, want %q", gotTo, tt.to)
 			}
 		})
+	}
+}
+
+// replayEditScript applies an edit script back to both sides: keeps belong to
+// each, deletes only to the from side, inserts only to the to side.
+func replayEditScript(ops []editOp) (from, to []string) {
+	for _, op := range ops {
+		switch op.Type {
+		case editKeep:
+			from = append(from, op.Line)
+			to = append(to, op.Line)
+		case editDelete:
+			from = append(from, op.Line)
+		case editInsert:
+			to = append(to, op.Line)
+		}
+	}
+	return from, to
+}
+
+// lcsLength is the length of the longest common subsequence of a and b, by the
+// textbook O(mn) dynamic program. It shares no code with the Myers search it
+// checks, which is the point: a shortest edit script keeps exactly the LCS, so
+// this is an independent oracle for whether Myers found a *shortest* script and
+// not merely a valid one.
+func lcsLength(a, b []string) int {
+	prev := make([]int, len(b)+1)
+	cur := make([]int, len(b)+1)
+	for i := 1; i <= len(a); i++ {
+		for j := 1; j <= len(b); j++ {
+			if a[i-1] == b[j-1] {
+				cur[j] = prev[j-1] + 1
+			} else {
+				cur[j] = max(prev[j], cur[j-1])
+			}
+		}
+		prev, cur = cur, prev
+	}
+	return prev[len(b)]
+}
+
+func TestComputeLineDiff_RandomScriptsAreShortestAndReplay(t *testing.T) {
+	// TestComputeLineDiff_BandEdges pins the two edges of the band, k = ±d,
+	// where an off-by-one is likeliest. The banded trace rebases every index in
+	// between as well, and only randomized shapes reach those systematically.
+	//
+	// Round-tripping alone is a weak oracle — "delete everything, then insert
+	// everything" replays perfectly — so each case is also checked against an
+	// independent LCS dynamic program. A shortest edit script keeps exactly the
+	// LCS, so any script that is valid but not shortest fails here even though
+	// it reconstructs both sides.
+	//
+	// Deterministic seed: a failure is reproducible, and the shape that broke
+	// belongs in BandEdges as a named case afterwards.
+	rng := rand.New(rand.NewPCG(0x6469666679, 0x6d6c))
+
+	// Small alphabets are what make this exercise the interior of the band:
+	// repeated lines create snakes, so the search follows diagonals other than
+	// the two extremes a fully disjoint pair walks out to.
+	for _, alphabet := range []int{2, 3, 8, 40} {
+		for range 250 {
+			// At least one line in total. Two empty inputs are the one shape
+			// computeLineDiff cannot take — offset and vSize both collapse to
+			// the k+1 read at d=0 — but strings.Split never yields an empty
+			// slice, so no caller can reach it. Pre-existing, out of scope here.
+			m := rng.IntN(20)
+			n := rng.IntN(20)
+			if m+n == 0 {
+				n = 1
+			}
+
+			line := func() string { return fmt.Sprintf("L%d", rng.IntN(alphabet)) }
+			from := make([]string, m)
+			for i := range from {
+				from[i] = line()
+			}
+			to := make([]string, n)
+			for i := range to {
+				to[i] = line()
+			}
+
+			ops := computeLineDiff(from, to)
+
+			gotFrom, gotTo := replayEditScript(ops)
+			if !slices.Equal(gotFrom, from) || !slices.Equal(gotTo, to) {
+				t.Fatalf("replay mismatch\nfrom %q -> %q\nto   %q -> %q",
+					from, gotFrom, to, gotTo)
+			}
+
+			// A shortest script keeps exactly the LCS and edits the rest.
+			adds, dels := countEditOps(ops)
+			wantEdits := m + n - 2*lcsLength(from, to)
+			if adds+dels != wantEdits {
+				t.Fatalf("script is not shortest: %d edits (%d inserts, %d deletions), want %d\nfrom %q\nto   %q",
+					adds+dels, adds, dels, wantEdits, from, to)
+			}
+
+			// The budget the caller must allow is exactly that edit distance:
+			// one less and the search runs out, which is the contract
+			// githubMultilineDiff relies on to fall back.
+			bounded, ok := computeLineDiffBounded(from, to, wantEdits)
+			if !ok || !slices.Equal(bounded, ops) {
+				t.Fatalf("budget %d should reproduce the unbounded script (ok=%v)\nfrom %q\nto   %q",
+					wantEdits, ok, from, to)
+			}
+			if wantEdits > 0 {
+				if _, ok := computeLineDiffBounded(from, to, wantEdits-1); ok {
+					t.Fatalf("budget %d should have run out\nfrom %q\nto   %q",
+						wantEdits-1, from, to)
+				}
+			}
+		}
 	}
 }

@@ -1103,6 +1103,36 @@ func TestGitHubWriteCommand_EscapesTitle(t *testing.T) {
 	}
 }
 
+func TestGitHubWriteCommand_DoesNotTruncateFilePath(t *testing.T) {
+	// The message cap deliberately stops at the message. GitHub matches file=
+	// against the files in the diff to attach the annotation, so truncating it
+	// would not bound anything worth bounding — it would silently attach the
+	// annotation to nothing, or to whatever other file the cut path happens to
+	// name. A long file= costs a long line and nothing else.
+	//
+	// This is the pin on that decision: adding a cap on the property is a
+	// deliberate edit here, not a quiet tightening of "bound every dimension".
+	longPath := strings.Repeat("nested/", 400) + "values.yaml"
+
+	var sb strings.Builder
+	gitHubWriteCommand(&sb, "warning", "YAML Modified", "msg", longPath)
+	got := sb.String()
+
+	if !strings.Contains(got, "file="+longPath+",") {
+		t.Errorf("expected the path passed through intact, got %d bytes: %s", len(got), got)
+	}
+	if strings.Contains(got, "more character") {
+		t.Errorf("expected no truncation marker on the path, got: %s", got)
+	}
+	// Intact, but still escaped — the property encoding is what keeps a comma
+	// or colon in the path from ending the value early.
+	sb.Reset()
+	gitHubWriteCommand(&sb, "warning", "YAML Modified", "msg", "a,b:c/"+longPath)
+	if !strings.Contains(sb.String(), "file=a%2Cb%3Ac/"+longPath+",") {
+		t.Errorf("expected a long path to still be escaped, got: %s", sb.String())
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Whole-message cap
 // ---------------------------------------------------------------------------

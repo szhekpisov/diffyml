@@ -73,6 +73,8 @@ PEM certificate values are replaced by the same one-line `Certificate(CN=…, Is
 
 Annotation text is percent-encoded per the workflow command spec (`%` → `%25`, `\r` → `%0D`, `\n` → `%0A`). GitHub renders the escapes as line breaks in the annotation; a raw newline would instead terminate the command and spill the rest into the build log. Property values such as `file=` additionally encode `:` → `%3A` and `,` → `%2C`, since those delimit the property list — an unescaped comma in a path would swallow the annotation title.
 
+The caps above apply to the message only. `file=` is escaped but never truncated: GitHub matches it against the files in the diff to attach the annotation, so a shortened path is a wrong path that would attach to nothing — or to another file that happens to match it. A long path costs a long line and nothing else.
+
 ## gitlab
 
 Emits a [GitLab Code Quality](https://docs.gitlab.com/ee/ci/testing/code_quality.html) JSON report. Surface the report as a Code Quality artifact and GitLab will render diffs in the merge request UI.

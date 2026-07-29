@@ -469,9 +469,19 @@ func (f *GitHubFormatter) Format(diffs []Difference, opts *FormatOptions) string
 //
 // Bounding the message belongs here for the same reason. The caps in
 // githubDiffDescription bound lines and line width separately, which leaves
-// their product — and the path, which is not a value line at all — so the last
-// bound is on the assembled message. It is applied before escaping, so the
-// marker counts characters of the message rather than of its encoding.
+// their product — and the difference's own path, which is not a value line at
+// all — so the last bound is on the assembled message. It is applied before
+// escaping, so the marker counts characters of the message rather than of its
+// encoding.
+//
+// filePath is deliberately not bounded. It is not free-form text like the
+// message: GitHub matches it against the files in the diff to attach the
+// annotation, so a truncated path is a wrong path, and the annotation would
+// silently attach to nothing or to another file. Passing it through intact is
+// the safe failure — an over-long file= costs a long line and nothing else.
+// It is bounded in practice anyway, by the filesystem: it reaches here either
+// from a file that had to exist to be read or from git's own repo-relative
+// path.
 func gitHubWriteCommand(sb *strings.Builder, cmd, title, msg, filePath string) {
 	msg = escapeGitHubData(truncateRunes(msg, gitHubMaxMessageRunes))
 	title = escapeGitHubProperty(title)

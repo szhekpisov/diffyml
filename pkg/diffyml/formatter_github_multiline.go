@@ -6,10 +6,12 @@
 // (the same context window the detailed formatter uses); added and removed
 // values, which have no counterpart to diff against, are truncated instead.
 // Both paths end in a hard cap on lines and on the width of each line, so no
-// single annotation is unbounded in either dimension: collapsing alone cannot
-// shrink a value whose lines all changed, and a line cap alone cannot shrink a
-// value that is one enormous line. Those two caps bound each dimension but not
-// their product, so gitHubMaxMessageRunes bounds the whole message as well. A
+// annotation *message* is unbounded in either dimension: collapsing alone
+// cannot shrink a value whose lines all changed, and a line cap alone cannot
+// shrink a value that is one enormous line. Those two caps bound each dimension
+// but not their product, so gitHubMaxMessageRunes bounds the whole message as
+// well. The file= property is outside all of this on purpose — see
+// gitHubWriteCommand. A
 // wholesale rewrite skips the diff entirely rather than pay for one it cannot
 // show, and is rendered as each side truncated on its own — see
 // gitHubMaxEditDistance and githubRewrittenPair.

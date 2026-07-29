@@ -1,0 +1,1 @@
+::warning file=dummy-to,title=YAML Modified::Modified: config.script changed in multiline text (one insert, one deletion)%0A[5 lines unchanged]%0A  step 6%0A  step 7%0A  step 8%0A  step 9%0A- run: deploy --replicas 2%0A+ run: deploy --replicas 3%0A  step 11%0A  step 12%0A  step 13%0A  step 14%0A[7 lines unchanged]

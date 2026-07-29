@@ -1,6 +1,7 @@
 package diffyml
 
 import (
+	"fmt"
 	"math/big"
 	"strings"
 	"testing"
@@ -78,10 +79,16 @@ func TestGitHubFormatter_CertInspection_Disabled(t *testing.T) {
 	opts := DefaultFormatOptions()
 	opts.NoCertInspection = true
 
+	// With inspection off a PEM is just a long multiline string, so the value
+	// caps reach it like any other. One test certificate is well under
+	// gitHubMaxValueLines; a bundle of three is over it.
+	bundle := strings.Repeat(fromCert, 3)
+
 	f := &GitHubFormatter{}
 	diffs := []Difference{
 		{Path: DiffPath{"data", "tls.crt"}, Type: DiffModified, From: fromCert, To: toCert},
 		{Path: DiffPath{"data", "ca.crt"}, Type: DiffAdded, To: fromCert},
+		{Path: DiffPath{"data", "bundle.crt"}, Type: DiffAdded, To: bundle},
 	}
 	output := f.Format(diffs, opts)
 
@@ -91,11 +98,29 @@ func TestGitHubFormatter_CertInspection_Disabled(t *testing.T) {
 	if !strings.Contains(output, escapeGitHubData("BEGIN CERTIFICATE")) {
 		t.Errorf("expected the raw PEM when inspection is off, got: %s", output)
 	}
-	// Still bounded: the caps apply to a PEM like any other value.
-	for _, line := range strings.Split(strings.TrimSuffix(output, "\n"), "\n") {
-		if !strings.Contains(line, escapeGitHubData("[")) {
-			t.Errorf("expected a truncation marker on each annotation, got: %s", line)
+
+	// One command per difference: the PEM's line breaks are escaped rather
+	// than terminating the command and spilling the rest into the build log.
+	lines := strings.Split(strings.TrimSuffix(output, "\n"), "\n")
+	if len(lines) != len(diffs) {
+		t.Fatalf("expected %d annotations, got %d:\n%s", len(diffs), len(lines), output)
+	}
+	for i, line := range lines {
+		if !strings.Contains(line, "%0A") {
+			t.Errorf("annotation %d: expected the PEM's line breaks escaped, got: %s", i, line)
 		}
+	}
+
+	// Still bounded: the bundle is past gitHubMaxValueLines and is truncated
+	// like any other over-long value. Asserting the exact marker rather than
+	// its "[" — every message already contains one, in the path itself.
+	dropped := len(strings.Split(bundle, "\n")) - gitHubMaxValueLines
+	marker := escapeGitHubData(fmt.Sprintf("[%d more lines]", dropped))
+	if !strings.Contains(lines[2], marker) {
+		t.Errorf("expected %q on the bundle annotation, got: %s", marker, lines[2])
+	}
+	if strings.Contains(lines[1], "more lines]") {
+		t.Errorf("a single certificate is under the cap and must not be truncated, got: %s", lines[1])
 	}
 }
 

@@ -31,6 +31,8 @@ jobs:
               - '**/*.go'
               - 'go.mod'
               - 'go.sum'
+              - 'testdata/perf/**'
+              - '.github/workflows/benchmark.yml'
 
   benchmark:
     needs: changes

@@ -105,9 +105,18 @@ func TestDocumentParser(t *testing.T) {
 
 func TestParseError_Error(t *testing.T) {
 	t.Run("with line", func(t *testing.T) {
-		pe := &ParseError{Line: 5, Column: 3, Message: "bad indent"}
+		pe := &ParseError{Line: 1, Column: 1, Message: "bad indent"}
 		got := pe.Error()
-		expected := "yaml: line 5: bad indent"
+		expected := "yaml: line 1: column 1: bad indent"
+		if got != expected {
+			t.Errorf("expected %q, got %q", expected, got)
+		}
+	})
+
+	t.Run("column without line", func(t *testing.T) {
+		pe := &ParseError{Line: 0, Column: 3, Message: "bad indent"}
+		got := pe.Error()
+		expected := "yaml: bad indent"
 		if got != expected {
 			t.Errorf("expected %q, got %q", expected, got)
 		}
@@ -148,13 +157,125 @@ func TestWrapParseError(t *testing.T) {
 		if !errors.Is(pe.Err, typeErr) {
 			t.Error("expected Err to wrap original TypeError")
 		}
+		if pe.Message != "unmarshal errors:\n  test error" {
+			t.Errorf("unexpected message: %q", pe.Message)
+		}
 	})
 
 	t.Run("other error", func(t *testing.T) {
 		orig := errors.New("some other error")
 		got := wrapParseError(orig)
+		var pe *ParseError
+		if !errors.As(got, &pe) {
+			t.Fatalf("expected *ParseError, got %T", got)
+		}
 		if !errors.Is(got, orig) {
-			t.Errorf("expected original error returned unchanged, got %v", got)
+			t.Errorf("expected wrapped original error, got %v", got)
+		}
+		if pe.Line != 0 || pe.Column != 0 || pe.Message != orig.Error() {
+			t.Errorf("unexpected ParseError fields: %#v", pe)
+		}
+	})
+
+	t.Run("line location", func(t *testing.T) {
+		orig := errors.New("yaml: line 7: bad indentation")
+		got := wrapParseError(orig)
+		var pe *ParseError
+		if !errors.As(got, &pe) {
+			t.Fatalf("expected *ParseError, got %T", got)
+		}
+		if pe.Line != 7 || pe.Column != 0 || pe.Message != "bad indentation" {
+			t.Errorf("unexpected ParseError fields: %#v", pe)
+		}
+		if got.Error() != orig.Error() {
+			t.Errorf("expected error text %q, got %q", orig, got)
+		}
+	})
+
+	t.Run("line and column location", func(t *testing.T) {
+		orig := errors.New("yaml: line 1: column 1: bad indentation")
+		got := wrapParseError(orig)
+		var pe *ParseError
+		if !errors.As(got, &pe) {
+			t.Fatalf("expected *ParseError, got %T", got)
+		}
+		if pe.Line != 1 || pe.Column != 1 || pe.Message != "bad indentation" {
+			t.Errorf("unexpected ParseError fields: %#v", pe)
+		}
+		if got.Error() != orig.Error() {
+			t.Errorf("expected error text %q, got %q", orig, got)
+		}
+	})
+
+	t.Run("malformed locations", func(t *testing.T) {
+		tests := []struct {
+			name       string
+			message    string
+			wantLine   int
+			wantColumn int
+			wantDetail string
+		}{
+			{
+				name:       "line without separator",
+				message:    "yaml: line nope",
+				wantDetail: "line nope",
+			},
+			{
+				name:       "numeric line without separator",
+				message:    "yaml: line 7",
+				wantDetail: "line 7",
+			},
+			{
+				name:       "non-location with parseable prefix",
+				message:    "yaml: 7: bad indentation",
+				wantDetail: "7: bad indentation",
+			},
+			{
+				name:       "non-numeric line",
+				message:    "yaml: line nope: bad indentation",
+				wantDetail: "line nope: bad indentation",
+			},
+			{
+				name:       "zero line",
+				message:    "yaml: line 0: bad indentation",
+				wantDetail: "line 0: bad indentation",
+			},
+			{
+				name:       "column without separator",
+				message:    "yaml: line 7: column nope",
+				wantLine:   7,
+				wantDetail: "column nope",
+			},
+			{
+				name:       "numeric column without separator",
+				message:    "yaml: line 7: column 4",
+				wantLine:   7,
+				wantDetail: "column 4",
+			},
+			{
+				name:       "non-numeric column",
+				message:    "yaml: line 7: column nope: bad indentation",
+				wantLine:   7,
+				wantDetail: "column nope: bad indentation",
+			},
+			{
+				name:       "zero column",
+				message:    "yaml: line 7: column 0: bad indentation",
+				wantLine:   7,
+				wantDetail: "column 0: bad indentation",
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				line, column, detail := parseErrorLocation(tt.message)
+				if line != tt.wantLine || column != tt.wantColumn || detail != tt.wantDetail {
+					t.Errorf(
+						"parseErrorLocation(%q) = (%d, %d, %q), want (%d, %d, %q)",
+						tt.message, line, column, detail, tt.wantLine, tt.wantColumn, tt.wantDetail,
+					)
+				}
+			})
 		}
 	})
 }

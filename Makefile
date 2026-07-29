@@ -10,7 +10,7 @@ coverage:
 	go tool cover -html=coverage.out
 
 check-coverage:
-	@go test ./pkg/diffyml/ -coverprofile=coverage.out
+	@go test ./pkg/diffyml/... -coverprofile=coverage.out
 	@COVER_OUTPUT=$$(go tool cover -func=coverage.out); \
 	TOTAL_COV=$$(echo "$$COVER_OUTPUT" | grep '^total:' | awk '{print $$NF}' | tr -d '%'); \
 	echo ""; \

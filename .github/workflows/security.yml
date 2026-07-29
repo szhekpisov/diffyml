@@ -20,6 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       code: ${{ steps.filter.outputs.code }}
+      lint: ${{ steps.filter.outputs.lint }}
       workflows: ${{ steps.filter.outputs.workflows }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -34,6 +35,13 @@ jobs:
               - '**/*.go'
               - 'go.mod'
               - 'go.sum'
+              - '.github/workflows/security.yml'
+            lint:
+              - '**/*.go'
+              - 'go.mod'
+              - 'go.sum'
+              - '.golangci.yml'
+              - '.github/workflows/security.yml'
             workflows:
               - '.github/workflows/**'
 
@@ -72,7 +80,7 @@ jobs:
 
   golangci-lint:
     needs: changes
-    if: needs.changes.outputs.code == 'true' || github.event_name == 'schedule'
+    if: needs.changes.outputs.lint == 'true' || github.event_name == 'schedule'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

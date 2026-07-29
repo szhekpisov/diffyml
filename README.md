@@ -692,7 +692,7 @@ See the [package documentation](https://pkg.go.dev/github.com/szhekpisov/diffyml
   [misspell](https://github.com/client9/misspell),
   [staticcheck](https://staticcheck.dev/) (all checks except style conventions)
 
-**Test quality.** 1,500+ tests (unit, e2e, fuzz, property-based), 99.4% code coverage, [mutation testing](https://github.com/szhekpisov/gomutants) gated per-PR (no LIVED mutant on changed lines) with an 85.65% post-merge efficacy floor. CI enforces a 99% coverage floor.
+**Test quality.** 1,500+ tests (unit, e2e, fuzz, property-based), 99%+ aggregate code coverage across the core and CLI packages, [mutation testing](https://github.com/szhekpisov/gomutants) gated per-PR (no LIVED mutant on changed lines) with an 85% post-merge efficacy floor. CI enforces a 99% aggregate coverage floor.
 
 **Reporting vulnerabilities.** See [SECURITY.md](SECURITY.md) — preferred path is a [private GitHub Security Advisory](https://github.com/szhekpisov/diffyml/security/advisories/new).
 
@@ -717,7 +717,7 @@ pre-commit install
 |------|---------------|
 | `gofmt` | Code formatting |
 | `go vet` | Static analysis |
-| `check-coverage` | Coverage threshold (99% overall) |
+| `check-coverage` | Aggregate core + CLI coverage threshold (99% overall) |
 | `govulncheck` | Known vulnerabilities |
 | `golangci-lint` | 7 linters (errcheck, gocritic, gosec, govet, ineffassign, misspell, staticcheck) |
 

@@ -281,14 +281,13 @@ valid: content
 		t.Fatal("expected error for invalid YAML")
 	}
 
-	// Check if error can be converted to ParseError
 	var pe *ParseError
-	if errors.As(err, &pe) {
-		if pe.Line == 0 {
-			t.Error("expected non-zero line number in ParseError")
-		}
+	if !errors.As(err, &pe) {
+		t.Fatalf("expected *ParseError, got %T", err)
 	}
-	// Note: yaml.v3 errors may not always be wrapped as ParseError
+	if pe.Line == 0 {
+		t.Error("expected non-zero line number in ParseError")
+	}
 }
 
 func TestParse_DocumentIndex(t *testing.T) {

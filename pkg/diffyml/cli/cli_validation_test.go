@@ -110,6 +110,21 @@ func TestCLIConfig_Validate_InvalidExcludeRegexp(t *testing.T) {
 	}
 }
 
+func TestCLIConfig_Validate_InvalidMaskPathRegexp(t *testing.T) {
+	cfg := NewCLIConfig()
+	cfg.FromFile = "from.yaml"
+	cfg.ToFile = "to.yaml"
+	cfg.MaskPathRegexp = []string{`[invalid`}
+
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("expected error for invalid mask path regex")
+	}
+	if !strings.Contains(err.Error(), "mask-path-regexp") {
+		t.Errorf("error should mention mask-path-regexp, got %q", err)
+	}
+}
+
 func TestCLIConfig_Validate_NeatStripPath_RequiresNeat(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.FromFile = "from.yaml"

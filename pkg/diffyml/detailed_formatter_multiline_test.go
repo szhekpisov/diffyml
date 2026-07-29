@@ -1,6 +1,8 @@
 package diffyml
 
 import (
+	"fmt"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -205,6 +207,52 @@ func TestComputeLineDiff_Identical(t *testing.T) {
 		if op.Type != editKeep {
 			t.Errorf("expected all keep ops for identical content, got type %d", op.Type)
 		}
+	}
+}
+
+func TestComputeLineDiffBounded_WithinBudget(t *testing.T) {
+	// Two lines replaced is an edit distance of four; anything at or above
+	// that must produce the same script the unbounded search produces.
+	from := []string{"a", "OLD1", "OLD2", "b"}
+	to := []string{"a", "NEW1", "NEW2", "b"}
+
+	want := computeLineDiff(from, to)
+
+	for _, maxD := range []int{4, 5, 100, len(from) + len(to)} {
+		ops, ok := computeLineDiffBounded(from, to, maxD)
+		if !ok {
+			t.Fatalf("maxD=%d: expected the search to succeed", maxD)
+		}
+		if !slices.Equal(ops, want) {
+			t.Errorf("maxD=%d: got %+v, want %+v", maxD, ops, want)
+		}
+	}
+}
+
+func TestComputeLineDiffBounded_BudgetExceeded(t *testing.T) {
+	from := []string{"a", "OLD1", "OLD2", "b"}
+	to := []string{"a", "NEW1", "NEW2", "b"}
+
+	for _, maxD := range []int{0, 1, 3} {
+		ops, ok := computeLineDiffBounded(from, to, maxD)
+		if ok {
+			t.Errorf("maxD=%d: expected the search to run out of budget, got %+v", maxD, ops)
+		}
+		if ops != nil {
+			t.Errorf("maxD=%d: expected no ops on failure, got %+v", maxD, ops)
+		}
+	}
+}
+
+func TestComputeLineDiffBounded_IdenticalNeedsNoBudget(t *testing.T) {
+	// Identical inputs have an edit distance of zero, so even a budget of
+	// zero resolves them rather than falling back.
+	ops, ok := computeLineDiffBounded([]string{"a", "b"}, []string{"a", "b"}, 0)
+	if !ok {
+		t.Fatal("expected identical inputs to resolve within a zero budget")
+	}
+	if len(ops) != 2 {
+		t.Errorf("expected 2 keep ops, got %d", len(ops))
 	}
 }
 
@@ -616,5 +664,66 @@ func TestDetailedFormatter_MultilineDiff_NegativeContextLines(t *testing.T) {
 	output := f.Format(diffs, opts)
 	if !strings.Contains(output, "value change in multiline text") {
 		t.Errorf("expected multiline diff output with negative context lines, got: %q", output)
+	}
+}
+
+func TestComputeLineDiff_BandEdges(t *testing.T) {
+	// The forward pass snapshots only the band of diagonals reachable at each
+	// step, and the backtrack pass indexes those snapshots through the band's
+	// own offset rather than the full row's. A pure insert walks out to
+	// diagonal k = d and a pure delete to k = -d, the two edges of that band,
+	// so these are the shapes that catch an off-by-one in the rebasing.
+	seq := func(prefix string, n int) []string {
+		lines := make([]string, n)
+		for i := range lines {
+			lines[i] = fmt.Sprintf("%s%d", prefix, i)
+		}
+		return lines
+	}
+
+	tests := []struct {
+		name               string
+		from, to           []string
+		wantAdds, wantDels int
+	}{
+		{"pure insert", nil, seq("line", 12), 12, 0},
+		{"pure delete", seq("line", 12), nil, 0, 12},
+		{"insert onto a prefix", seq("line", 3), seq("line", 15), 12, 0},
+		{"delete down to a prefix", seq("line", 15), seq("line", 3), 0, 12},
+		{"disjoint, longer on the left", seq("old", 9), seq("new", 4), 4, 9},
+		{"disjoint, longer on the right", seq("old", 4), seq("new", 9), 9, 4},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ops := computeLineDiff(tt.from, tt.to)
+
+			adds, dels := countEditOps(ops)
+			if adds != tt.wantAdds || dels != tt.wantDels {
+				t.Errorf("got %d inserts and %d deletions, want %d and %d",
+					adds, dels, tt.wantAdds, tt.wantDels)
+			}
+
+			// The script must reconstruct both sides exactly, which is what an
+			// off-by-one in the band offset would break.
+			var gotFrom, gotTo []string
+			for _, op := range ops {
+				switch op.Type {
+				case editKeep:
+					gotFrom = append(gotFrom, op.Line)
+					gotTo = append(gotTo, op.Line)
+				case editDelete:
+					gotFrom = append(gotFrom, op.Line)
+				case editInsert:
+					gotTo = append(gotTo, op.Line)
+				}
+			}
+			if !slices.Equal(gotFrom, tt.from) {
+				t.Errorf("replaying the script gives from = %q, want %q", gotFrom, tt.from)
+			}
+			if !slices.Equal(gotTo, tt.to) {
+				t.Errorf("replaying the script gives to = %q, want %q", gotTo, tt.to)
+			}
+		})
 	}
 }

@@ -65,11 +65,15 @@ Individual lines are capped too, at 500 characters with a `[N more characters]` 
 
 Finally, the assembled message is capped at 4000 characters. The two caps above bound lines and line width separately, but not their product — 40 lines of 500 characters is 20,000, which the percent-encoding below can triple. It is also the only bound on the parts of a message that are not value lines: a difference's path is a document key of any length. In practice it never fires on a readable annotation, and GitHub truncates the rendered message well below it.
 
-A value rewritten beyond recognition — more than 80 lines of difference between the two sides — is truncated like any other value instead of being diffed. Producing a line diff costs memory quadratic in how different the two values are, and past that point the diff no longer fits in the 40-line cap anyway. Only wholesale rewrites reach it: a long value with a few changed lines is diffed however long it is.
+A value rewritten beyond recognition — more than 80 lines of difference between the two sides — is not diffed. Producing a line diff costs memory quadratic in how different the two values are, and past that point the diff no longer fits in the 40-line cap anyway. Only wholesale rewrites reach it: a long value with a few changed lines is diffed however long it is.
+
+Such a value is still reported as a multiline change rather than as a plain `changed from … to …`. The annotation carries a `(rewritten, more than 80 lines differ)` header, then each side truncated on its own — the before side marked `-`, the after side `+`. What the ceiling costs is the alignment between the two sides and the exact insert/deletion counts, not the values themselves.
 
 PEM certificate values are replaced by the same one-line `Certificate(CN=…, Issuer=…, Valid=…, Serial=…)` summary the [detailed](#detailed-default) output uses, so a rotation reads as one changed line instead of a diff of base64. Pass `--no-cert-inspection` to see the raw PEM (still subject to the caps above).
 
 Annotation text is percent-encoded per the workflow command spec (`%` → `%25`, `\r` → `%0D`, `\n` → `%0A`). GitHub renders the escapes as line breaks in the annotation; a raw newline would instead terminate the command and spill the rest into the build log. Property values such as `file=` additionally encode `:` → `%3A` and `,` → `%2C`, since those delimit the property list — an unescaped comma in a path would swallow the annotation title.
+
+The caps above apply to the message only. `file=` is escaped but never truncated: GitHub matches it against the files in the diff to attach the annotation, so a shortened path is a wrong path that would attach to nothing — or to another file that happens to match it. A long path costs a long line and nothing else.
 
 ## gitlab
 

@@ -105,9 +105,18 @@ func TestDocumentParser(t *testing.T) {
 
 func TestParseError_Error(t *testing.T) {
 	t.Run("with line", func(t *testing.T) {
-		pe := &ParseError{Line: 5, Column: 3, Message: "bad indent"}
+		pe := &ParseError{Line: 1, Column: 1, Message: "bad indent"}
 		got := pe.Error()
-		expected := "yaml: line 5: column 3: bad indent"
+		expected := "yaml: line 1: column 1: bad indent"
+		if got != expected {
+			t.Errorf("expected %q, got %q", expected, got)
+		}
+	})
+
+	t.Run("column without line", func(t *testing.T) {
+		pe := &ParseError{Line: 0, Column: 3, Message: "bad indent"}
+		got := pe.Error()
+		expected := "yaml: bad indent"
 		if got != expected {
 			t.Errorf("expected %q, got %q", expected, got)
 		}
@@ -184,13 +193,13 @@ func TestWrapParseError(t *testing.T) {
 	})
 
 	t.Run("line and column location", func(t *testing.T) {
-		orig := errors.New("yaml: line 7: column 4: bad indentation")
+		orig := errors.New("yaml: line 1: column 1: bad indentation")
 		got := wrapParseError(orig)
 		var pe *ParseError
 		if !errors.As(got, &pe) {
 			t.Fatalf("expected *ParseError, got %T", got)
 		}
-		if pe.Line != 7 || pe.Column != 4 || pe.Message != "bad indentation" {
+		if pe.Line != 1 || pe.Column != 1 || pe.Message != "bad indentation" {
 			t.Errorf("unexpected ParseError fields: %#v", pe)
 		}
 		if got.Error() != orig.Error() {
@@ -212,6 +221,16 @@ func TestWrapParseError(t *testing.T) {
 				wantDetail: "line nope",
 			},
 			{
+				name:       "numeric line without separator",
+				message:    "yaml: line 7",
+				wantDetail: "line 7",
+			},
+			{
+				name:       "non-location with parseable prefix",
+				message:    "yaml: 7: bad indentation",
+				wantDetail: "7: bad indentation",
+			},
+			{
 				name:       "non-numeric line",
 				message:    "yaml: line nope: bad indentation",
 				wantDetail: "line nope: bad indentation",
@@ -226,6 +245,12 @@ func TestWrapParseError(t *testing.T) {
 				message:    "yaml: line 7: column nope",
 				wantLine:   7,
 				wantDetail: "column nope",
+			},
+			{
+				name:       "numeric column without separator",
+				message:    "yaml: line 7: column 4",
+				wantLine:   7,
+				wantDetail: "column 4",
 			},
 			{
 				name:       "non-numeric column",

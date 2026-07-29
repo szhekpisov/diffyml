@@ -103,23 +103,23 @@ func parseErrorLocation(message string) (line, column int, detail string) {
 		return 0, 0, detail
 	}
 
-	locationEnd := strings.IndexByte(detail, ':')
-	if locationEnd < 0 {
+	location, remainder, found := strings.Cut(detail, ":")
+	if !found {
 		return 0, 0, detail
 	}
 
-	parsedLine, err := strconv.Atoi(strings.TrimSpace(strings.TrimPrefix(detail[:locationEnd], "line ")))
+	parsedLine, err := strconv.Atoi(strings.TrimSpace(strings.TrimPrefix(location, "line ")))
 	if err != nil || parsedLine < 1 {
 		return 0, 0, detail
 	}
 
-	remainder := strings.TrimSpace(detail[locationEnd+1:])
+	remainder = strings.TrimSpace(remainder)
 	if strings.HasPrefix(remainder, "column ") {
-		columnEnd := strings.IndexByte(remainder, ':')
-		if columnEnd >= 0 {
-			parsedColumn, columnErr := strconv.Atoi(strings.TrimSpace(strings.TrimPrefix(remainder[:columnEnd], "column ")))
+		columnLocation, columnDetail, columnFound := strings.Cut(remainder, ":")
+		if columnFound {
+			parsedColumn, columnErr := strconv.Atoi(strings.TrimSpace(strings.TrimPrefix(columnLocation, "column ")))
 			if columnErr == nil && parsedColumn > 0 {
-				return parsedLine, parsedColumn, strings.TrimSpace(remainder[columnEnd+1:])
+				return parsedLine, parsedColumn, strings.TrimSpace(columnDetail)
 			}
 		}
 	}

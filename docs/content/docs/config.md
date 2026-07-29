@@ -76,6 +76,9 @@ summary-model: "claude-haiku-4-5-20251001"
 
 # Exit code
 set-exit-code: false
+
+# Parallelism (directory mode only; 0 = one worker per CPU)
+jobs: 0
 ```
 
 See [Sensitive Value Masking]({{< relref "/docs/masking" >}}) for usage.

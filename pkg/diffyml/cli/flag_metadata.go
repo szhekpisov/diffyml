@@ -78,9 +78,11 @@ func FlagDocs() []FlagDoc {
 
 		// Configuration
 		{Long: "config", Type: "string", Default: ".diffyml.yml", Category: "Configuration", Usage: "path to config file"},
+		{Long: "jobs", Type: "int", Default: "0", Category: "Configuration", Usage: "file pairs compared in parallel in directory mode (0 = one per CPU, 1 = sequential, lowest memory)"},
 
 		// Other
 		{Long: "set-exit-code", Short: "s", Type: "bool", Category: "Other", Usage: "set program exit code based on differences"},
 		{Long: "help", Short: "h", Type: "bool", Category: "Other", Usage: "show help"},
+		{Long: "version", Short: "V", Type: "bool", Category: "Other", Usage: "show version information"},
 	}
 }

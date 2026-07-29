@@ -17,7 +17,7 @@
 - [ ] PR title follows convention (`feat:`, `bug:`, `fix:`, `doc:`, `chore:`, `test:`)
 - [ ] `make ci` passes locally
 - [ ] New/changed behavior covered by tests
-- [ ] Aggregate core + CLI coverage threshold met (98%)
+- [ ] Aggregate core + CLI coverage threshold met (99%)
 - [ ] No new dependencies (or justified)
 
 ## Notes for reviewers

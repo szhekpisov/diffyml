@@ -197,4 +197,60 @@ func TestWrapParseError(t *testing.T) {
 			t.Errorf("expected error text %q, got %q", orig, got)
 		}
 	})
+
+	t.Run("malformed locations", func(t *testing.T) {
+		tests := []struct {
+			name       string
+			message    string
+			wantLine   int
+			wantColumn int
+			wantDetail string
+		}{
+			{
+				name:       "line without separator",
+				message:    "yaml: line nope",
+				wantDetail: "line nope",
+			},
+			{
+				name:       "non-numeric line",
+				message:    "yaml: line nope: bad indentation",
+				wantDetail: "line nope: bad indentation",
+			},
+			{
+				name:       "zero line",
+				message:    "yaml: line 0: bad indentation",
+				wantDetail: "line 0: bad indentation",
+			},
+			{
+				name:       "column without separator",
+				message:    "yaml: line 7: column nope",
+				wantLine:   7,
+				wantDetail: "column nope",
+			},
+			{
+				name:       "non-numeric column",
+				message:    "yaml: line 7: column nope: bad indentation",
+				wantLine:   7,
+				wantDetail: "column nope: bad indentation",
+			},
+			{
+				name:       "zero column",
+				message:    "yaml: line 7: column 0: bad indentation",
+				wantLine:   7,
+				wantDetail: "column 0: bad indentation",
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				line, column, detail := parseErrorLocation(tt.message)
+				if line != tt.wantLine || column != tt.wantColumn || detail != tt.wantDetail {
+					t.Errorf(
+						"parseErrorLocation(%q) = (%d, %d, %q), want (%d, %d, %q)",
+						tt.message, line, column, detail, tt.wantLine, tt.wantColumn, tt.wantDetail,
+					)
+				}
+			})
+		}
+	})
 }

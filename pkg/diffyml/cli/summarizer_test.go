@@ -453,6 +453,60 @@ func TestBuildPrompt_TruncationRemainingCount(t *testing.T) {
 	}
 }
 
+func TestRemainingPromptItems_SkipsEmptyAndConsumedGroups(t *testing.T) {
+	groups := []diffyml.DiffGroup{
+		{FilePath: "empty.yaml"},
+		{
+			FilePath: "changes.yaml",
+			Diffs: []diffyml.Difference{
+				{Path: diffyml.DiffPath{"a"}, Type: diffyml.DiffAdded, To: 1},
+				{Path: diffyml.DiffPath{"b"}, Type: diffyml.DiffAdded, To: 2},
+			},
+		},
+	}
+
+	changes, files := remainingPromptItems(groups, 0, 0)
+	if changes != 2 || files != 1 {
+		t.Errorf("remainingPromptItems() = (%d, %d), want (2, 1)", changes, files)
+	}
+
+	changes, files = remainingPromptItems(groups, 1, len(groups[1].Diffs))
+	if changes != 0 || files != 0 {
+		t.Errorf("consumed group = (%d, %d), want (0, 0)", changes, files)
+	}
+}
+
+func TestBuildPrompt_HeaderExceedsLimit(t *testing.T) {
+	groups := []diffyml.DiffGroup{{
+		FilePath: strings.Repeat("x", maxPromptLen),
+		Diffs:    []diffyml.Difference{{Path: diffyml.DiffPath{"a"}, Type: diffyml.DiffAdded, To: 1}},
+	}}
+
+	got := buildPrompt(groups)
+	if len(got) > maxPromptLen {
+		t.Errorf("buildPrompt length = %d, want <= %d", len(got), maxPromptLen)
+	}
+	if strings.Contains(got, "File: ") {
+		t.Error("oversized file header should not be written")
+	}
+	if !strings.Contains(got, "1 more change across 1 file (truncated)") {
+		t.Errorf("expected exact truncation marker, got %q", got)
+	}
+}
+
+func TestBuildTruncatedPrompt_InputFits(t *testing.T) {
+	groups := []diffyml.DiffGroup{{
+		FilePath: "small.yaml",
+		Diffs:    []diffyml.Difference{{Path: diffyml.DiffPath{"a"}, Type: diffyml.DiffAdded, To: 1}},
+	}}
+
+	got := buildTruncatedPrompt(groups)
+	want := buildPrompt(groups)
+	if got != want {
+		t.Errorf("buildTruncatedPrompt() = %q, want %q", got, want)
+	}
+}
+
 func TestBuildPrompt_ExactBoundary(t *testing.T) {
 	// summarizer.go:215 — `> maxPromptLen` → `>= maxPromptLen`
 	// If mutated, a prompt that totals exactly maxPromptLen would be truncated.

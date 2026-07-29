@@ -218,7 +218,18 @@ func remainingPromptItems(groups []diffyml.DiffGroup, groupIndex, diffIndex int)
 }
 
 func truncationMarker(remainingChanges, remainingFiles int) string {
-	return fmt.Sprintf("\n... and %d more changes across %d files (truncated)\n", remainingChanges, remainingFiles)
+	changeLabel := "changes"
+	if remainingChanges == 1 {
+		changeLabel = "change"
+	}
+	fileLabel := "files"
+	if remainingFiles == 1 {
+		fileLabel = "file"
+	}
+	return fmt.Sprintf(
+		"\n... and %d more %s across %d %s (truncated)\n",
+		remainingChanges, changeLabel, remainingFiles, fileLabel,
+	)
 }
 
 // buildTruncatedPrompt rebuilds an oversized prompt while reserving space for

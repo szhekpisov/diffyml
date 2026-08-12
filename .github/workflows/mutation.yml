@@ -65,7 +65,7 @@ jobs:
       # "no LIVED mutant in the diff" via threshold-efficacy=100.
       - name: Run mutation testing (PR — diff only)
         if: github.event_name == 'pull_request'
-        uses: szhekpisov/gomutants@d4f545a8c3cd6ba076892a1c1424fbf90e941cc2 # v0.4.0
+        uses: szhekpisov/gomutants@ef71dbb7fab9db1fd364a92e093bd017393c230a # v0.5.1
         with:
           version: v0.4.0
           threshold-efficacy: "100"
@@ -87,7 +87,7 @@ jobs:
       # to leave margin for run-to-run variance.
       - name: Run mutation testing (post-merge — full)
         if: github.event_name == 'push'
-        uses: szhekpisov/gomutants@d4f545a8c3cd6ba076892a1c1424fbf90e941cc2 # v0.4.0
+        uses: szhekpisov/gomutants@ef71dbb7fab9db1fd364a92e093bd017393c230a # v0.5.1
         with:
           version: v0.4.0
           threshold-efficacy: "85.0"

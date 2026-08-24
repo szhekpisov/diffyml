@@ -38,6 +38,7 @@ diffyml old.yaml new.yaml
 | Kubernetes resource matching | apiVersion + kind + name (or generateName) | apiVersion + kind + name | No |
 | Rename detection | Yes (content similarity) | Yes (identifier) | No |
 | API version migration | Yes (`--ignore-api-version`) | No | No |
+| Inverse diff (report unchanged values) | Yes (`--unchanged`) | No | No |
 | CI annotation formats | 3 (GitHub, GitLab, Gitea) | 0 | 0 |
 | Module dependencies | 1 (yaml.v3) | 23 | 0 |
 | Performance (78 KB) | 19 ms | 120 ms (6.4×) | 6 ms |

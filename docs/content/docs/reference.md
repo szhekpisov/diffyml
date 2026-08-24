@@ -94,6 +94,7 @@ diffyml [flags] <from> <to>
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `--config` | `string` | `.diffyml.yml` | path to config file |
+| `--jobs` | `int` | `0` | file pairs compared in parallel in directory mode (0 = one per CPU, 1 = sequential, lowest memory) |
 
 ## Other
 
@@ -101,12 +102,11 @@ diffyml [flags] <from> <to>
 |------|------|---------|-------------|
 | `-s`, `--set-exit-code` | `bool` | — | set program exit code based on differences |
 | `-h`, `--help` | `bool` | — | show help |
-
-## Version
-
-| Flag | Type | Default | Description |
-|------|------|---------|-------------|
 | `-V`, `--version` | `bool` | — | show version information |
 
-`--version` is handled in `main.go` before flag parsing, so it works even
-when other arguments are missing or invalid.
+## Help and version
+
+`-h`/`--help` and `-V`/`--version` are parsed like any other flag, but they
+short-circuit before the `<from> <to>` arguments are required and before the
+config file is read — so they work with no arguments at all, and keep working
+when a config file is missing or malformed.

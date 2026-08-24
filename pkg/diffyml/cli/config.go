@@ -66,6 +66,9 @@ type FileConfig struct {
 	Summary      *bool   `yaml:"summary"`
 	SummaryModel *string `yaml:"summary-model"`
 
+	// Concurrency
+	Jobs *int `yaml:"jobs"`
+
 	// Exit code behavior
 	SetExitCode *bool `yaml:"set-exit-code"`
 
@@ -284,6 +287,11 @@ func (c *CLIConfig) applyFileConfig(fc *FileConfig, cliSet map[string]bool) {
 	}
 	if fc.SummaryModel != nil && notSet("summary-model") {
 		c.SummaryModel = *fc.SummaryModel
+	}
+
+	// Concurrency
+	if fc.Jobs != nil && notSet("jobs") {
+		c.Jobs = *fc.Jobs
 	}
 
 	// Exit code behavior

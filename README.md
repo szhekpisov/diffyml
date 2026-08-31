@@ -703,7 +703,7 @@ Contributions welcome! [Open an issue](https://github.com/szhekpisov/diffyml/iss
 <details>
 <summary>Development setup</summary>
 
-**Prerequisites:** Go 1.26.5+, [pre-commit](https://pre-commit.com/)
+**Prerequisites:** Go 1.26.7+, [pre-commit](https://pre-commit.com/)
 
 ```bash
 git clone https://github.com/szhekpisov/diffyml.git

@@ -87,12 +87,21 @@ type CLIConfig struct {
 	// Config file
 	ConfigFile string
 
+	// Concurrency
+	// Jobs is the number of file pairs compared in parallel in directory mode.
+	// 0 means one worker per usable CPU. 1 forces the sequential streaming path,
+	// which keeps only one pair's differences in memory at a time — the escape
+	// hatch for memory-capped environments, since worker count is derived from
+	// the CPU limit but nothing derives it from a memory limit.
+	Jobs int
+
 	// Custom color palette (resolved from config file + env vars)
 	Palette *diffyml.CustomColorPalette
 
 	// Exit code behavior
 	SetExitCode bool
 	ShowHelp    bool
+	ShowVersion bool
 
 	// Internal flagset
 	fs *flag.FlagSet
@@ -116,6 +125,12 @@ func NewCLIConfig() *CLIConfig {
 // initFlags sets up the flag definitions.
 func (c *CLIConfig) initFlags() {
 	c.fs = flag.NewFlagSet("diffyml", flag.ContinueOnError)
+	// On a parse failure the flag package writes the error to its own output and
+	// then dumps its generated flag listing. Both are unwanted: the error is
+	// returned to the caller, which reports it as "Error: ...", and the listing
+	// is a second, differently formatted usage text competing with Usage().
+	// Discarding leaves the caller as the only thing that reports the failure.
+	c.fs.SetOutput(io.Discard)
 
 	// Output options
 	c.fs.StringVar(&c.Output, "o", c.Output, "")
@@ -208,11 +223,16 @@ func (c *CLIConfig) initFlags() {
 	// Config file
 	c.fs.StringVar(&c.ConfigFile, "config", c.ConfigFile, "path to config file")
 
+	// Concurrency
+	c.fs.IntVar(&c.Jobs, "jobs", c.Jobs, "file pairs compared in parallel in directory mode (0 = one per CPU, 1 = sequential)")
+
 	// Exit code behavior
 	c.fs.BoolVar(&c.SetExitCode, "s", c.SetExitCode, "")
 	c.fs.BoolVar(&c.SetExitCode, "set-exit-code", c.SetExitCode, "set program exit code based on differences")
 	c.fs.BoolVar(&c.ShowHelp, "h", c.ShowHelp, "")
 	c.fs.BoolVar(&c.ShowHelp, "help", c.ShowHelp, "show help")
+	c.fs.BoolVar(&c.ShowVersion, "V", c.ShowVersion, "")
+	c.fs.BoolVar(&c.ShowVersion, "version", c.ShowVersion, "show version information")
 }
 
 // ParseArgs parses command-line arguments.
@@ -227,6 +247,15 @@ func (c *CLIConfig) ParseArgs(args []string) error {
 
 	if err := c.fs.Parse(reordered); err != nil {
 		return err
+	}
+
+	// --help / --version short-circuit: they need neither file arguments nor a
+	// readable config file, so return before those can fail. Both are real
+	// flags rather than a raw os.Args pre-scan, so a flag *value* that happens
+	// to be "-h" or "-V" (e.g. --mask-placeholder -h) is no longer mistaken
+	// for the flag itself.
+	if c.ShowHelp || c.ShowVersion {
+		return nil
 	}
 
 	// Load and apply config file (CLI flags override config values).
@@ -492,6 +521,10 @@ func (c *CLIConfig) Usage() string {
 	sb.WriteString("      --config string                 path to config file (default: .diffyml.yml in current directory)\n")
 	sb.WriteString("\n")
 
+	// Concurrency
+	sb.WriteString("      --jobs int                      file pairs compared in parallel in directory mode (default 0: one per CPU)\n")
+	sb.WriteString("\n")
+
 	// Other options
 	sb.WriteString("  -s, --set-exit-code                 set program exit code based on differences\n")
 	sb.WriteString("  -h, --help                          show this help\n")
@@ -576,6 +609,11 @@ func (c *CLIConfig) Validate() error {
 	// Neat option constraints
 	if len(c.NeatStripPath) > 0 && !c.Neat {
 		return fmt.Errorf("--neat-strip-path requires --neat")
+	}
+
+	// Concurrency
+	if c.Jobs < 0 {
+		return fmt.Errorf("invalid --jobs %d, must be 0 (one per CPU) or a positive count", c.Jobs)
 	}
 
 	// Validate AI summary configuration

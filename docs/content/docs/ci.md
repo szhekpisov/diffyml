@@ -129,3 +129,18 @@ repos:
 ```
 
 Customize to taste — pre-commit hooks for diffing don't have a one-size-fits-all shape.
+
+## Parallelism and memory
+
+In directory mode, diffyml compares file pairs on one worker per usable CPU. `GOMAXPROCS` is container-aware, so the worker count already respects a runner's CPU quota — nothing needs configuring for the common case.
+
+Parallel comparison buffers every pair's differences so output can be replayed in file order, which makes peak memory grow with total diff volume rather than with the largest single pair. On 3000 differing manifests that is roughly 79 MB, against 18 MB when comparing sequentially, for about half the wall time.
+
+Container CPU limits are visible to diffyml; container *memory* limits are not. If a job is memory-capped rather than CPU-capped, trade the speed back with `--jobs`:
+
+```bash
+diffyml --jobs 1 manifests/old manifests/new   # sequential: one pair in memory at a time
+diffyml --jobs 4 manifests/old manifests/new   # cap CPU use at 4 workers
+```
+
+`--jobs 1` is the only setting that avoids the buffering, since results are only replayable in order if they are held. Any value of 2 or more caps CPU use but not peak memory. `--jobs 0` (the default) means one worker per CPU. Output is byte-identical at every setting.

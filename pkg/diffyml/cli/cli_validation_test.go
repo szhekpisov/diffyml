@@ -40,6 +40,33 @@ func TestCLIConfig_Validate_InvalidOutput(t *testing.T) {
 	}
 }
 
+func TestCLIConfig_Validate_Jobs(t *testing.T) {
+	// 0 means "one worker per CPU", so only negative counts are rejected.
+	for _, jobs := range []int{0, 1, 2, 64} {
+		cfg := NewCLIConfig()
+		cfg.Jobs = jobs
+		cfg.FromFile = "from.yaml"
+		cfg.ToFile = "to.yaml"
+
+		if err := cfg.Validate(); err != nil {
+			t.Errorf("expected --jobs %d to be accepted, got: %v", jobs, err)
+		}
+	}
+
+	cfg := NewCLIConfig()
+	cfg.Jobs = -1
+	cfg.FromFile = "from.yaml"
+	cfg.ToFile = "to.yaml"
+
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("expected an error for a negative --jobs")
+	}
+	if !containsSubstr(err.Error(), "--jobs") {
+		t.Errorf("error should mention --jobs, got: %v", err)
+	}
+}
+
 func TestCLIConfig_Validate_InvalidColor(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.Color = "invalid"

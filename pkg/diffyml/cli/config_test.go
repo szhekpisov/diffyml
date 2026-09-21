@@ -45,6 +45,7 @@ chroot-list-to-documents: true
 summary: true
 summary-model: "claude-sonnet-4-20250514"
 set-exit-code: true
+jobs: 3
 colors:
   added: "#6aa3a5"
   removed: "#702d06"
@@ -157,6 +158,11 @@ colors:
 	// Exit code
 	if fc.SetExitCode == nil || !*fc.SetExitCode {
 		t.Error("expected SetExitCode=true")
+	}
+
+	// Concurrency
+	if fc.Jobs == nil || *fc.Jobs != 3 {
+		t.Errorf("expected Jobs=3, got %v", fc.Jobs)
 	}
 
 	// Custom colors
@@ -674,6 +680,24 @@ func TestApplyFileConfig_IntField_CLIOverrides(t *testing.T) {
 
 	if cfg.MultiLineContextLines != 2 {
 		t.Errorf("expected CLI override MultiLineContextLines=2, got %d", cfg.MultiLineContextLines)
+	}
+}
+
+func TestApplyFileConfig_Jobs(t *testing.T) {
+	jobs := 3
+
+	cfg := NewCLIConfig()
+	cfg.applyFileConfig(&FileConfig{Jobs: &jobs}, map[string]bool{})
+	if cfg.Jobs != 3 {
+		t.Errorf("expected Jobs=3 from config file, got %d", cfg.Jobs)
+	}
+
+	// An explicit --jobs on the command line wins over the config file.
+	cfg = NewCLIConfig()
+	cfg.Jobs = 1
+	cfg.applyFileConfig(&FileConfig{Jobs: &jobs}, map[string]bool{"jobs": true})
+	if cfg.Jobs != 1 {
+		t.Errorf("expected CLI override Jobs=1, got %d", cfg.Jobs)
 	}
 }
 

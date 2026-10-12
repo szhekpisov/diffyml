@@ -635,3 +635,47 @@ func BenchmarkSortDiffsWithOrder(b *testing.B) {
 		})
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Benchmarks: CI annotation rendering
+// ---------------------------------------------------------------------------
+
+// BenchmarkGitHubFormatter_ModifiedMultiline measures what it costs to render
+// one changed multiline value as a GitHub annotation. The output is capped at
+// gitHubMaxDiffLines, so B/op should track the input size and not the square of
+// it; TestGitHubFormatter_MultilineWorkIsNotQuadratic asserts that, and these
+// numbers are where a regression shows its shape.
+//
+// Rewritten is the worst case (no unchanged lines to collapse, so the edit
+// distance equals the whole input); SingleChange is the common one.
+func BenchmarkGitHubFormatter_ModifiedMultiline(b *testing.B) {
+	sizes := []struct {
+		name string
+		n    int
+	}{
+		{"Small", 100},
+		{"Medium", 500},
+		{"Large", 1000},
+	}
+
+	shapes := []struct {
+		name string
+		gen  func(int) (string, string)
+	}{
+		{"Rewritten", generateRewrittenPair},
+		{"SingleChange", generateSingleChangePair},
+	}
+
+	for _, shape := range shapes {
+		for _, sz := range sizes {
+			from, to := shape.gen(sz.n)
+			b.Run(shape.name+"/"+sz.name, func(b *testing.B) {
+				b.ReportAllocs()
+				b.ResetTimer()
+				for i := 0; i < b.N; i++ {
+					perfSink = formatGitHubMultiline(from, to)
+				}
+			})
+		}
+	}
+}

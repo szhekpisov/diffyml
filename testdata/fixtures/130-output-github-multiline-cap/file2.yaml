@@ -1,0 +1,27 @@
+config:
+  script: |
+    new step 1
+    new step 2
+    new step 3
+    new step 4
+    new step 5
+    new step 6
+    new step 7
+    new step 8
+    new step 9
+    new step 10
+    new step 11
+    new step 12
+    new step 13
+    new step 14
+    new step 15
+    new step 16
+    new step 17
+    new step 18
+    new step 19
+    new step 20
+    new step 21
+    new step 22
+    new step 23
+    new step 24
+    new step 25

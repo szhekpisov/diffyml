@@ -2,10 +2,13 @@ package cli
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/szhekpisov/diffyml/pkg/diffyml"
 )
 
 // Tests for main execution flow (Task 5.4)
@@ -21,6 +24,48 @@ func TestRunConfig_Defaults(t *testing.T) {
 	if rc.Stderr == nil {
 		t.Error("expected Stderr to be initialized")
 	}
+}
+
+func TestWriteNeatExplain(t *testing.T) {
+	cfg := NewCLIConfig()
+	patterns := diffyml.NeatPatterns(cfg.ToNeatOptions())
+	if len(patterns) < 2 {
+		t.Fatalf("need at least two neat patterns, got %d", len(patterns))
+	}
+
+	t.Run("no patterns fired", func(t *testing.T) {
+		report := &diffyml.FilterReport{ExcludeHits: make([]int, len(patterns))}
+		var output strings.Builder
+
+		writeNeatExplain(&output, cfg, report)
+
+		if got := output.String(); got != "neat: no patterns fired\n" {
+			t.Errorf("writeNeatExplain() = %q", got)
+		}
+	})
+
+	t.Run("singular and plural hits", func(t *testing.T) {
+		hits := make([]int, len(patterns))
+		hits[0] = 1
+		hits[1] = 2
+		report := &diffyml.FilterReport{ExcludeHits: hits}
+		var output strings.Builder
+
+		writeNeatExplain(&output, cfg, report)
+
+		got := output.String()
+		if !strings.Contains(got, "neat: filtered 3 diffs across 2 patterns") {
+			t.Errorf("missing summary in %q", got)
+		}
+		wantFirst := fmt.Sprintf("[%s] %s (1 hit)", patterns[0].Profile, patterns[0].Label)
+		if !strings.Contains(got, wantFirst) {
+			t.Errorf("missing singular hit entry %q in %q", wantFirst, got)
+		}
+		wantSecond := fmt.Sprintf("[%s] %s (2 hits)", patterns[1].Profile, patterns[1].Label)
+		if !strings.Contains(got, wantSecond) {
+			t.Errorf("missing plural hit entry %q in %q", wantSecond, got)
+		}
+	})
 }
 
 func TestRun_MissingFromFile(t *testing.T) {

@@ -200,41 +200,112 @@ func diffTypeLabel(dt diffyml.DiffType) string {
 	}
 }
 
-// buildPrompt serializes DiffGroups into structured text for the API.
-func buildPrompt(groups []diffyml.DiffGroup) string {
+// remainingPromptItems counts changes and files that have not yet been written.
+// diffIndex is the first unwritten difference in groups[groupIndex].
+func remainingPromptItems(groups []diffyml.DiffGroup, groupIndex, diffIndex int) (changes, files int) {
+	for i := groupIndex; i < len(groups); i++ {
+		start := 0
+		if i == groupIndex {
+			start = diffIndex
+		}
+		if start >= len(groups[i].Diffs) {
+			continue
+		}
+		changes += len(groups[i].Diffs) - start
+		files++
+	}
+	return changes, files
+}
+
+func truncationMarker(remainingChanges, remainingFiles int) string {
+	changeLabel := "changes"
+	if remainingChanges == 1 {
+		changeLabel = "change"
+	}
+	fileLabel := "files"
+	if remainingFiles == 1 {
+		fileLabel = "file"
+	}
+	return fmt.Sprintf(
+		"\n... and %d more %s across %d %s (truncated)\n",
+		remainingChanges, changeLabel, remainingFiles, fileLabel,
+	)
+}
+
+// buildTruncatedPrompt rebuilds an oversized prompt while reserving space for
+// an exact truncation marker. Only complete headers and differences are
+// written, so the marker's remaining-change count always matches the content.
+func buildTruncatedPrompt(groups []diffyml.DiffGroup) string {
 	var sb strings.Builder
-	totalLen := 0
-	groupsWritten := 0
-	totalGroups := len(groups)
-	totalRemainingDiffs := 0
+	remainingChanges, remainingFiles := remainingPromptItems(groups, 0, 0)
 
 	for _, group := range groups {
-		// Serialize this group into a temporary buffer
-		var groupBuf strings.Builder
-		fmt.Fprintf(&groupBuf, "File: %s\n", group.FilePath)
+		marker := truncationMarker(remainingChanges, remainingFiles)
+		header := fmt.Sprintf("File: %s\n", group.FilePath)
+		if sb.Len()+len(header)+len(marker) > maxPromptLen {
+			return sb.String() + marker
+		}
+		sb.WriteString(header)
+
+		for diffIndex, diff := range group.Diffs {
+			from := diffyml.SerializeValue(diff.From)
+			to := diffyml.SerializeValue(diff.To)
+			line := fmt.Sprintf("- [%s] %s: %q → %q\n", diffTypeLabel(diff.Type), diff.Path, from, to)
+
+			changesAfter := remainingChanges - 1
+			filesAfter := remainingFiles
+			if diffIndex == len(group.Diffs)-1 {
+				filesAfter--
+			}
+
+			reserved := ""
+			if changesAfter > 0 {
+				reserved = truncationMarker(changesAfter, filesAfter)
+			}
+			if sb.Len()+len(line)+len(reserved) > maxPromptLen {
+				return sb.String() + marker
+			}
+
+			sb.WriteString(line)
+			remainingChanges = changesAfter
+			remainingFiles = filesAfter
+			marker = reserved
+		}
+
+		if sb.Len()+1+len(marker) <= maxPromptLen {
+			sb.WriteByte('\n')
+		}
+	}
+
+	return sb.String()
+}
+
+// buildPrompt serializes DiffGroups into structured text for the API while
+// keeping the complete request prompt within maxPromptLen bytes. It writes one
+// difference at a time so a single large file cannot bypass the limit.
+func buildPrompt(groups []diffyml.DiffGroup) string {
+	var sb strings.Builder
+
+	for _, group := range groups {
+		header := fmt.Sprintf("File: %s\n", group.FilePath)
+		if sb.Len()+len(header) > maxPromptLen {
+			return buildTruncatedPrompt(groups)
+		}
+		sb.WriteString(header)
+
 		for _, diff := range group.Diffs {
 			from := diffyml.SerializeValue(diff.From)
 			to := diffyml.SerializeValue(diff.To)
-			fmt.Fprintf(&groupBuf, "- [%s] %s: %q → %q\n", diffTypeLabel(diff.Type), diff.Path, from, to)
-		}
-		groupBuf.WriteString("\n")
-
-		groupText := groupBuf.String()
-
-		// Check truncation before adding
-		if totalLen+len(groupText) > maxPromptLen && groupsWritten > 0 {
-			// Count remaining diffs
-			for _, g := range groups[groupsWritten:] {
-				totalRemainingDiffs += len(g.Diffs)
+			line := fmt.Sprintf("- [%s] %s: %q → %q\n", diffTypeLabel(diff.Type), diff.Path, from, to)
+			if sb.Len()+len(line) > maxPromptLen {
+				return buildTruncatedPrompt(groups)
 			}
-			remainingFiles := totalGroups - groupsWritten
-			fmt.Fprintf(&sb, "... and %d more changes across %d more files (truncated)\n", totalRemainingDiffs, remainingFiles)
-			break
+			sb.WriteString(line)
 		}
 
-		sb.WriteString(groupText)
-		totalLen += len(groupText)
-		groupsWritten++
+		if sb.Len() < maxPromptLen {
+			sb.WriteByte('\n')
+		}
 	}
 
 	return sb.String()

@@ -470,6 +470,70 @@ func TestApplyFileConfig_BoolFields(t *testing.T) {
 	}
 }
 
+func TestApplyFileConfig_RemainingScalarAndMaskFields(t *testing.T) {
+	cfg := NewCLIConfig()
+	enabled := true
+	trueColor := "always"
+	maskPlaceholder := "[MASKED]"
+	fc := &FileConfig{
+		TrueColor:               &trueColor,
+		IgnoreWhitespaceChanges: &enabled,
+		FormatStrings:           &enabled,
+		IgnoreValueChanges:      &enabled,
+		IgnoreApiVersion:        &enabled,
+		NoCertInspection:        &enabled,
+		MaskSecrets:             &enabled,
+		MaskPaths:               []string{"data.password"},
+		MaskPathRegexp:          []string{`^stringData\.`},
+		MaskPlaceholder:         &maskPlaceholder,
+		OmitHeader:              &enabled,
+		UseGoPatchStyle:         &enabled,
+		SetExitCode:             &enabled,
+	}
+
+	cfg.applyFileConfig(fc, map[string]bool{})
+
+	if cfg.TrueColor != trueColor {
+		t.Errorf("TrueColor = %q, want %q", cfg.TrueColor, trueColor)
+	}
+	if !cfg.IgnoreWhitespaceChanges {
+		t.Error("expected IgnoreWhitespaceChanges=true")
+	}
+	if !cfg.FormatStrings {
+		t.Error("expected FormatStrings=true")
+	}
+	if !cfg.IgnoreValueChanges {
+		t.Error("expected IgnoreValueChanges=true")
+	}
+	if !cfg.IgnoreApiVersion {
+		t.Error("expected IgnoreApiVersion=true")
+	}
+	if !cfg.NoCertInspection {
+		t.Error("expected NoCertInspection=true")
+	}
+	if !cfg.MaskSecrets {
+		t.Error("expected MaskSecrets=true")
+	}
+	if len(cfg.MaskPaths) != 1 || cfg.MaskPaths[0] != "data.password" {
+		t.Errorf("MaskPaths = %v, want [data.password]", cfg.MaskPaths)
+	}
+	if len(cfg.MaskPathRegexp) != 1 || cfg.MaskPathRegexp[0] != `^stringData\.` {
+		t.Errorf("MaskPathRegexp = %v, want [^stringData\\.]", cfg.MaskPathRegexp)
+	}
+	if cfg.MaskPlaceholder != maskPlaceholder {
+		t.Errorf("MaskPlaceholder = %q, want %q", cfg.MaskPlaceholder, maskPlaceholder)
+	}
+	if !cfg.OmitHeader {
+		t.Error("expected OmitHeader=true")
+	}
+	if !cfg.UseGoPatchStyle {
+		t.Error("expected UseGoPatchStyle=true")
+	}
+	if !cfg.SetExitCode {
+		t.Error("expected SetExitCode=true")
+	}
+}
+
 func TestApplyFileConfig_BoolDefaultTrue_ConfigSetsFalse(t *testing.T) {
 	cfg := NewCLIConfig()
 	if !cfg.DetectKubernetes {

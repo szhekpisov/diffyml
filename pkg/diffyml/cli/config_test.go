@@ -657,45 +657,36 @@ func TestApplyFileConfig_SliceFields_CLIOverrides(t *testing.T) {
 
 func TestApplyFileConfig_IntField(t *testing.T) {
 	cfg := NewCLIConfig()
-	lines := 10
+	lines, jobs := 10, 3
 	fc := &FileConfig{
 		MultiLineContextLines: &lines,
+		Jobs:                  &jobs,
 	}
 	cfg.applyFileConfig(fc, map[string]bool{})
 
 	if cfg.MultiLineContextLines != 10 {
 		t.Errorf("expected MultiLineContextLines=10, got %d", cfg.MultiLineContextLines)
 	}
+	if cfg.Jobs != 3 {
+		t.Errorf("expected Jobs=3, got %d", cfg.Jobs)
+	}
 }
 
 func TestApplyFileConfig_IntField_CLIOverrides(t *testing.T) {
 	cfg := NewCLIConfig()
 	cfg.MultiLineContextLines = 2
+	cfg.Jobs = 1
 
-	lines := 10
+	lines, jobs := 10, 3
 	fc := &FileConfig{
 		MultiLineContextLines: &lines,
+		Jobs:                  &jobs,
 	}
-	cfg.applyFileConfig(fc, map[string]bool{"multi-line-context-lines": true})
+	cfg.applyFileConfig(fc, map[string]bool{"multi-line-context-lines": true, "jobs": true})
 
 	if cfg.MultiLineContextLines != 2 {
 		t.Errorf("expected CLI override MultiLineContextLines=2, got %d", cfg.MultiLineContextLines)
 	}
-}
-
-func TestApplyFileConfig_Jobs(t *testing.T) {
-	jobs := 3
-
-	cfg := NewCLIConfig()
-	cfg.applyFileConfig(&FileConfig{Jobs: &jobs}, map[string]bool{})
-	if cfg.Jobs != 3 {
-		t.Errorf("expected Jobs=3 from config file, got %d", cfg.Jobs)
-	}
-
-	// An explicit --jobs on the command line wins over the config file.
-	cfg = NewCLIConfig()
-	cfg.Jobs = 1
-	cfg.applyFileConfig(&FileConfig{Jobs: &jobs}, map[string]bool{"jobs": true})
 	if cfg.Jobs != 1 {
 		t.Errorf("expected CLI override Jobs=1, got %d", cfg.Jobs)
 	}

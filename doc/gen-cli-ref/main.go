@@ -47,7 +47,7 @@ func render(w io.Writer) error {
 		fmt.Fprintln(w)
 	}
 
-	if _, err := io.WriteString(w, versionTrailer); err != nil {
+	if _, err := io.WriteString(w, helpVersionTrailer); err != nil {
 		return err
 	}
 	return nil
@@ -106,10 +106,9 @@ diffyml [flags] <from> <to>
 
 `
 
-// versionTrailer explains the one behavior the flag tables cannot: --help and
-// --version are ordinary flags (listed under "Other" above, so no table here
-// would repeat them) that short-circuit argument parsing.
-const versionTrailer = `## Help and version
+// helpVersionTrailer explains the one behavior the flag tables cannot: --help
+// and --version short-circuit argument parsing.
+const helpVersionTrailer = `## Help and version
 
 ` + "`-h`/`--help`" + ` and ` + "`-V`/`--version`" + ` are parsed like any other flag, but they
 short-circuit before the ` + "`<from> <to>`" + ` arguments are required and before the

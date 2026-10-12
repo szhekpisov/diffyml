@@ -15,6 +15,8 @@ func TestCLIConfig_UsageContainsFlags(t *testing.T) {
 		"-i", "--ignore-order-changes",
 		"-s", "--set-exit-code",
 		"-h", "--help",
+		"-V", "--version",
+		"--jobs",
 		"--filter",
 		"--exclude",
 		"--chroot",

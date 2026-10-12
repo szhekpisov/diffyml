@@ -42,51 +42,6 @@ func buildTestBinary(t *testing.T, ldflags ...string) string {
 	return bin
 }
 
-// TestVersionFlag tests that the --version flag displays version information
-func TestVersionFlag(t *testing.T) {
-	bin := buildTestBinary(t)
-
-	// Test --version flag
-	cmd := exec.Command(bin, "--version")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("Failed to run --version: %v", err)
-	}
-
-	outputStr := string(output)
-	if !strings.Contains(outputStr, "diffyml version") {
-		t.Errorf("Expected version output to contain 'diffyml version', got: %s", outputStr)
-	}
-	if !strings.Contains(outputStr, "commit:") {
-		t.Errorf("Expected version output to contain 'commit:', got: %s", outputStr)
-	}
-	if !strings.Contains(outputStr, "built:") {
-		t.Errorf("Expected version output to contain 'built:', got: %s", outputStr)
-	}
-
-	// Verify exit code is 0
-	if cmd.ProcessState.ExitCode() != 0 {
-		t.Errorf("Expected exit code 0, got: %d", cmd.ProcessState.ExitCode())
-	}
-}
-
-// TestVersionFlagShortForm tests that the -V flag displays version information
-func TestVersionFlagShortForm(t *testing.T) {
-	bin := buildTestBinary(t)
-
-	// Test -V flag
-	cmd := exec.Command(bin, "-V")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("Failed to run -V: %v", err)
-	}
-
-	outputStr := string(output)
-	if !strings.Contains(outputStr, "diffyml version") {
-		t.Errorf("Expected version output to contain 'diffyml version', got: %s", outputStr)
-	}
-}
-
 // TestVersionFlagWithLdflags tests that version information can be injected via ldflags
 func TestVersionFlagWithLdflags(t *testing.T) {
 	// Build the binary with version injection

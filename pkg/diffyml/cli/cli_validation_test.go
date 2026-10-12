@@ -42,28 +42,22 @@ func TestCLIConfig_Validate_InvalidOutput(t *testing.T) {
 
 func TestCLIConfig_Validate_Jobs(t *testing.T) {
 	// 0 means "one worker per CPU", so only negative counts are rejected.
-	for _, jobs := range []int{0, 1, 2, 64} {
+	for _, tt := range []struct {
+		jobs    int
+		wantErr bool
+	}{{0, false}, {1, false}, {2, false}, {64, false}, {-1, true}} {
 		cfg := NewCLIConfig()
-		cfg.Jobs = jobs
+		cfg.Jobs = tt.jobs
 		cfg.FromFile = "from.yaml"
 		cfg.ToFile = "to.yaml"
 
-		if err := cfg.Validate(); err != nil {
-			t.Errorf("expected --jobs %d to be accepted, got: %v", jobs, err)
+		err := cfg.Validate()
+		if (err != nil) != tt.wantErr {
+			t.Errorf("--jobs %d: Validate() error = %v, wantErr %t", tt.jobs, err, tt.wantErr)
 		}
-	}
-
-	cfg := NewCLIConfig()
-	cfg.Jobs = -1
-	cfg.FromFile = "from.yaml"
-	cfg.ToFile = "to.yaml"
-
-	err := cfg.Validate()
-	if err == nil {
-		t.Fatal("expected an error for a negative --jobs")
-	}
-	if !containsSubstr(err.Error(), "--jobs") {
-		t.Errorf("error should mention --jobs, got: %v", err)
+		if err != nil && !containsSubstr(err.Error(), "--jobs") {
+			t.Errorf("error should mention --jobs, got: %v", err)
+		}
 	}
 }
 

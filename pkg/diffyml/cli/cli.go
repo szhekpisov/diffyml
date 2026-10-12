@@ -224,7 +224,7 @@ func (c *CLIConfig) initFlags() {
 	c.fs.StringVar(&c.ConfigFile, "config", c.ConfigFile, "path to config file")
 
 	// Concurrency
-	c.fs.IntVar(&c.Jobs, "jobs", c.Jobs, "file pairs compared in parallel in directory mode (0 = one per CPU, 1 = sequential)")
+	c.fs.IntVar(&c.Jobs, "jobs", c.Jobs, "file pairs compared in parallel in directory mode (0 = one per CPU, 1 = sequential, lowest memory)")
 
 	// Exit code behavior
 	c.fs.BoolVar(&c.SetExitCode, "s", c.SetExitCode, "")
@@ -249,11 +249,8 @@ func (c *CLIConfig) ParseArgs(args []string) error {
 		return err
 	}
 
-	// --help / --version short-circuit: they need neither file arguments nor a
-	// readable config file, so return before those can fail. Both are real
-	// flags rather than a raw os.Args pre-scan, so a flag *value* that happens
-	// to be "-h" or "-V" (e.g. --mask-placeholder -h) is no longer mistaken
-	// for the flag itself.
+	// --help / --version need neither file arguments nor a readable config
+	// file, so return before those can fail.
 	if c.ShowHelp || c.ShowVersion {
 		return nil
 	}
@@ -519,10 +516,7 @@ func (c *CLIConfig) Usage() string {
 
 	// Config file
 	sb.WriteString("      --config string                 path to config file (default: .diffyml.yml in current directory)\n")
-	sb.WriteString("\n")
-
-	// Concurrency
-	sb.WriteString("      --jobs int                      file pairs compared in parallel in directory mode (default 0: one per CPU)\n")
+	sb.WriteString("      --jobs int                      file pairs compared in parallel in directory mode (0 = one per CPU, 1 = sequential, lowest memory)\n")
 	sb.WriteString("\n")
 
 	// Other options

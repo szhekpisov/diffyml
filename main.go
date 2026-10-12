@@ -26,28 +26,23 @@ func run(args []string, stdout, stderr io.Writer) int {
 	cfg := cli.NewCLIConfig()
 
 	if err := cfg.ParseArgs(args); err != nil {
-		// A bad flag no longer falls through to the help text the way the old
-		// os.Args pre-scan allowed, so point at it instead of leaving the user
-		// with only the error.
+		// Point at --help rather than leaving the user with only the error.
 		_, _ = io.WriteString(stderr, "Error: "+err.Error()+"\nRun 'diffyml --help' for usage.\n")
 		return cli.ExitCodeError
 	}
 
-	// Version takes precedence over help, matching the previous ordering.
+	// Version takes precedence over help.
 	if cfg.ShowVersion {
 		_, _ = io.WriteString(stdout, formatVersion())
 		return cli.ExitCodeSuccess
 	}
 
-	// Built from NewRunConfig rather than a bare literal so any future
-	// RunConfig default applies here too; only the writers are overridden.
 	rc := cli.NewRunConfig()
 	rc.Stdout = stdout
 	rc.Stderr = stderr
 
 	// cli.Run handles cfg.ShowHelp by writing usage to stdout.
-	result := cli.Run(cfg, rc)
-	return result.Code
+	return cli.Run(cfg, rc).Code
 }
 
 func main() {

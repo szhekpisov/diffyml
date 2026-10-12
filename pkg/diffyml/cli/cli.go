@@ -229,7 +229,7 @@ func (c *CLIConfig) ParseArgs(args []string) error {
 		return err
 	}
 
-	if err := c.fs.Parse(reordered); err != nil {
+	if err = c.fs.Parse(reordered); err != nil {
 		return err
 	}
 

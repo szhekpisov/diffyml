@@ -22,11 +22,11 @@ jobs:
     outputs:
       code: ${{ steps.filter.outputs.code }}
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4.0.2
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
           filters: |
@@ -53,7 +53,7 @@ jobs:
       GOPROXY: direct
       GOSUMDB: "off"
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           # --changed-since needs the merge-base with the PR base ref
@@ -65,9 +65,8 @@ jobs:
       # "no LIVED mutant in the diff" via threshold-efficacy=100.
       - name: Run mutation testing (PR — diff only)
         if: github.event_name == 'pull_request'
-        uses: szhekpisov/gomutants@d4f545a8c3cd6ba076892a1c1424fbf90e941cc2 # v0.4.0
+        uses: gomutants/gomutants@00cee107527a0b5ea79f966babca731ff85bbb01 # v0.7.0
         with:
-          version: v0.4.0
           threshold-efficacy: "100"
           args: >-
             --workers 2
@@ -87,9 +86,8 @@ jobs:
       # to leave margin for run-to-run variance.
       - name: Run mutation testing (post-merge — full)
         if: github.event_name == 'push'
-        uses: szhekpisov/gomutants@d4f545a8c3cd6ba076892a1c1424fbf90e941cc2 # v0.4.0
+        uses: gomutants/gomutants@00cee107527a0b5ea79f966babca731ff85bbb01 # v0.7.0
         with:
-          version: v0.4.0
           threshold-efficacy: "85.0"
           args: >-
             --workers 2

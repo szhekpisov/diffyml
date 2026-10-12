@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -199,6 +200,31 @@ func TestLoadColorPalette_InvalidColor(t *testing.T) {
 	_, err := loadColorPalette(fc)
 	if err == nil {
 		t.Error("expected error for invalid color")
+	}
+}
+
+func TestLoadColorPalette_InvalidRemainingColorFields(t *testing.T) {
+	for _, field := range []string{"removed", "context", "doc-name"} {
+		t.Run(field, func(t *testing.T) {
+			invalid := "notacolor"
+			colors := &ColorOverrides{}
+			switch field {
+			case "removed":
+				colors.Removed = &invalid
+			case "context":
+				colors.Context = &invalid
+			case "doc-name":
+				colors.DocName = &invalid
+			}
+
+			_, err := loadColorPalette(&FileConfig{Colors: colors})
+			if err == nil {
+				t.Fatalf("expected error for invalid %s color", field)
+			}
+			if !strings.Contains(err.Error(), field) {
+				t.Errorf("error %q should identify %s", err, field)
+			}
+		})
 	}
 }
 

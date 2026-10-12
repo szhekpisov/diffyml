@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.1] - 2026-08-31
+
+### Fixed
+
+- Bound and escape github/gitea annotations (#218) ([#218](https://github.com/szhekpisov/diffyml/pull/218))
+- Tighten prompt parsing and CI quality gates (#220) ([#220](https://github.com/szhekpisov/diffyml/pull/220))
+
+### Documentation
+
+- Document nixpkgs installation (#203) ([#203](https://github.com/szhekpisov/diffyml/pull/203))
+
 ## [1.8.0] - 2026-07-11
 
 ### Added
@@ -68,13 +79,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.5.25] - 2026-04-23
 
-### Added
-
-- Publish multi-arch Docker images to GHCR with pre-push scan (#113) ([#113](https://github.com/szhekpisov/diffyml/pull/113))
-
 ### Fixed
 
 - Pass docker-archive scheme to Grype image scans (#119) ([#119](https://github.com/szhekpisov/diffyml/pull/119))
+
+## [1.5.24] - 2026-04-22
+
+### Added
+
+- Publish multi-arch Docker images to GHCR with pre-push scan (#113) ([#113](https://github.com/szhekpisov/diffyml/pull/113))
 
 ### Documentation
 
@@ -307,13 +320,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add GOPATH/bin PATH hint to Go Install section (#3) ([#3](https://github.com/szhekpisov/diffyml/pull/3))
 - Cleanup (#6) ([#6](https://github.com/szhekpisov/diffyml/pull/6))
 
+[1.8.1]: https://github.com/szhekpisov/diffyml/compare/v1.8.0...v1.8.1
 [1.8.0]: https://github.com/szhekpisov/diffyml/compare/v1.7.1...v1.8.0
 [1.7.1]: https://github.com/szhekpisov/diffyml/compare/v1.7.0...v1.7.1
 [1.7.0]: https://github.com/szhekpisov/diffyml/compare/v1.6.2...v1.7.0
 [1.6.2]: https://github.com/szhekpisov/diffyml/compare/v1.6.1...v1.6.2
 [1.6.1]: https://github.com/szhekpisov/diffyml/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/szhekpisov/diffyml/compare/v1.5.25...v1.6.0
-[1.5.25]: https://github.com/szhekpisov/diffyml/compare/v1.5.23...v1.5.25
+[1.5.25]: https://github.com/szhekpisov/diffyml/compare/v1.5.24...v1.5.25
+[1.5.24]: https://github.com/szhekpisov/diffyml/compare/v1.5.23...v1.5.24
 [1.5.23]: https://github.com/szhekpisov/diffyml/compare/v1.5.22...v1.5.23
 [1.5.22]: https://github.com/szhekpisov/diffyml/compare/v1.5.21...v1.5.22
 [1.5.21]: https://github.com/szhekpisov/diffyml/compare/v1.5.20...v1.5.21

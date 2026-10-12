@@ -1,6 +1,9 @@
 package diffyml
 
 import (
+	"fmt"
+	"math/rand/v2"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -205,6 +208,52 @@ func TestComputeLineDiff_Identical(t *testing.T) {
 		if op.Type != editKeep {
 			t.Errorf("expected all keep ops for identical content, got type %d", op.Type)
 		}
+	}
+}
+
+func TestComputeLineDiffBounded_WithinBudget(t *testing.T) {
+	// Two lines replaced is an edit distance of four; anything at or above
+	// that must produce the same script the unbounded search produces.
+	from := []string{"a", "OLD1", "OLD2", "b"}
+	to := []string{"a", "NEW1", "NEW2", "b"}
+
+	want := computeLineDiff(from, to)
+
+	for _, maxD := range []int{4, 5, 100, len(from) + len(to)} {
+		ops, ok := computeLineDiffBounded(from, to, maxD)
+		if !ok {
+			t.Fatalf("maxD=%d: expected the search to succeed", maxD)
+		}
+		if !slices.Equal(ops, want) {
+			t.Errorf("maxD=%d: got %+v, want %+v", maxD, ops, want)
+		}
+	}
+}
+
+func TestComputeLineDiffBounded_BudgetExceeded(t *testing.T) {
+	from := []string{"a", "OLD1", "OLD2", "b"}
+	to := []string{"a", "NEW1", "NEW2", "b"}
+
+	for _, maxD := range []int{0, 1, 3} {
+		ops, ok := computeLineDiffBounded(from, to, maxD)
+		if ok {
+			t.Errorf("maxD=%d: expected the search to run out of budget, got %+v", maxD, ops)
+		}
+		if ops != nil {
+			t.Errorf("maxD=%d: expected no ops on failure, got %+v", maxD, ops)
+		}
+	}
+}
+
+func TestComputeLineDiffBounded_IdenticalNeedsNoBudget(t *testing.T) {
+	// Identical inputs have an edit distance of zero, so even a budget of
+	// zero resolves them rather than falling back.
+	ops, ok := computeLineDiffBounded([]string{"a", "b"}, []string{"a", "b"}, 0)
+	if !ok {
+		t.Fatal("expected identical inputs to resolve within a zero budget")
+	}
+	if len(ops) != 2 {
+		t.Errorf("expected 2 keep ops, got %d", len(ops))
 	}
 }
 
@@ -616,5 +665,167 @@ func TestDetailedFormatter_MultilineDiff_NegativeContextLines(t *testing.T) {
 	output := f.Format(diffs, opts)
 	if !strings.Contains(output, "value change in multiline text") {
 		t.Errorf("expected multiline diff output with negative context lines, got: %q", output)
+	}
+}
+
+func TestComputeLineDiff_BandEdges(t *testing.T) {
+	// The forward pass snapshots only the band of diagonals reachable at each
+	// step, and the backtrack pass indexes those snapshots through the band's
+	// own offset rather than the full row's. A pure insert walks out to
+	// diagonal k = d and a pure delete to k = -d, the two edges of that band,
+	// so these are the shapes that catch an off-by-one in the rebasing.
+	seq := func(prefix string, n int) []string {
+		lines := make([]string, n)
+		for i := range lines {
+			lines[i] = fmt.Sprintf("%s%d", prefix, i)
+		}
+		return lines
+	}
+
+	tests := []struct {
+		name               string
+		from, to           []string
+		wantAdds, wantDels int
+	}{
+		{"pure insert", nil, seq("line", 12), 12, 0},
+		{"pure delete", seq("line", 12), nil, 0, 12},
+		{"insert onto a prefix", seq("line", 3), seq("line", 15), 12, 0},
+		{"delete down to a prefix", seq("line", 15), seq("line", 3), 0, 12},
+		{"disjoint, longer on the left", seq("old", 9), seq("new", 4), 4, 9},
+		{"disjoint, longer on the right", seq("old", 4), seq("new", 9), 9, 4},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ops := computeLineDiff(tt.from, tt.to)
+
+			adds, dels := countEditOps(ops)
+			if adds != tt.wantAdds || dels != tt.wantDels {
+				t.Errorf("got %d inserts and %d deletions, want %d and %d",
+					adds, dels, tt.wantAdds, tt.wantDels)
+			}
+
+			// The script must reconstruct both sides exactly, which is what an
+			// off-by-one in the band offset would break.
+			gotFrom, gotTo := replayEditScript(ops)
+			if !slices.Equal(gotFrom, tt.from) {
+				t.Errorf("replaying the script gives from = %q, want %q", gotFrom, tt.from)
+			}
+			if !slices.Equal(gotTo, tt.to) {
+				t.Errorf("replaying the script gives to = %q, want %q", gotTo, tt.to)
+			}
+		})
+	}
+}
+
+// replayEditScript applies an edit script back to both sides: keeps belong to
+// each, deletes only to the from side, inserts only to the to side.
+func replayEditScript(ops []editOp) (from, to []string) {
+	for _, op := range ops {
+		switch op.Type {
+		case editKeep:
+			from = append(from, op.Line)
+			to = append(to, op.Line)
+		case editDelete:
+			from = append(from, op.Line)
+		case editInsert:
+			to = append(to, op.Line)
+		}
+	}
+	return from, to
+}
+
+// lcsLength is the length of the longest common subsequence of a and b, by the
+// textbook O(mn) dynamic program. It shares no code with the Myers search it
+// checks, which is the point: a shortest edit script keeps exactly the LCS, so
+// this is an independent oracle for whether Myers found a *shortest* script and
+// not merely a valid one.
+func lcsLength(a, b []string) int {
+	prev := make([]int, len(b)+1)
+	cur := make([]int, len(b)+1)
+	for i := 1; i <= len(a); i++ {
+		for j := 1; j <= len(b); j++ {
+			if a[i-1] == b[j-1] {
+				cur[j] = prev[j-1] + 1
+			} else {
+				cur[j] = max(prev[j], cur[j-1])
+			}
+		}
+		prev, cur = cur, prev
+	}
+	return prev[len(b)]
+}
+
+func TestComputeLineDiff_RandomScriptsAreShortestAndReplay(t *testing.T) {
+	// TestComputeLineDiff_BandEdges pins the two edges of the band, k = ±d,
+	// where an off-by-one is likeliest. The banded trace rebases every index in
+	// between as well, and only randomized shapes reach those systematically.
+	//
+	// Round-tripping alone is a weak oracle — "delete everything, then insert
+	// everything" replays perfectly — so each case is also checked against an
+	// independent LCS dynamic program. A shortest edit script keeps exactly the
+	// LCS, so any script that is valid but not shortest fails here even though
+	// it reconstructs both sides.
+	//
+	// Deterministic seed: a failure is reproducible, and the shape that broke
+	// belongs in BandEdges as a named case afterwards.
+	rng := rand.New(rand.NewPCG(0x6469666679, 0x6d6c))
+
+	// Small alphabets are what make this exercise the interior of the band:
+	// repeated lines create snakes, so the search follows diagonals other than
+	// the two extremes a fully disjoint pair walks out to.
+	for _, alphabet := range []int{2, 3, 8, 40} {
+		for range 250 {
+			// At least one line in total. Two empty inputs are the one shape
+			// computeLineDiff cannot take — offset and vSize both collapse to
+			// the k+1 read at d=0 — but strings.Split never yields an empty
+			// slice, so no caller can reach it. Pre-existing, out of scope here.
+			m := rng.IntN(20)
+			n := rng.IntN(20)
+			if m+n == 0 {
+				n = 1
+			}
+
+			line := func() string { return fmt.Sprintf("L%d", rng.IntN(alphabet)) }
+			from := make([]string, m)
+			for i := range from {
+				from[i] = line()
+			}
+			to := make([]string, n)
+			for i := range to {
+				to[i] = line()
+			}
+
+			ops := computeLineDiff(from, to)
+
+			gotFrom, gotTo := replayEditScript(ops)
+			if !slices.Equal(gotFrom, from) || !slices.Equal(gotTo, to) {
+				t.Fatalf("replay mismatch\nfrom %q -> %q\nto   %q -> %q",
+					from, gotFrom, to, gotTo)
+			}
+
+			// A shortest script keeps exactly the LCS and edits the rest.
+			adds, dels := countEditOps(ops)
+			wantEdits := m + n - 2*lcsLength(from, to)
+			if adds+dels != wantEdits {
+				t.Fatalf("script is not shortest: %d edits (%d inserts, %d deletions), want %d\nfrom %q\nto   %q",
+					adds+dels, adds, dels, wantEdits, from, to)
+			}
+
+			// The budget the caller must allow is exactly that edit distance:
+			// one less and the search runs out, which is the contract
+			// githubMultilineDiff relies on to fall back.
+			bounded, ok := computeLineDiffBounded(from, to, wantEdits)
+			if !ok || !slices.Equal(bounded, ops) {
+				t.Fatalf("budget %d should reproduce the unbounded script (ok=%v)\nfrom %q\nto   %q",
+					wantEdits, ok, from, to)
+			}
+			if wantEdits > 0 {
+				if _, ok := computeLineDiffBounded(from, to, wantEdits-1); ok {
+					t.Fatalf("budget %d should have run out\nfrom %q\nto   %q",
+						wantEdits-1, from, to)
+				}
+			}
+		}
 	}
 }

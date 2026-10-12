@@ -139,8 +139,8 @@ Parallel comparison buffers every pair's differences so output can be replayed i
 Container CPU limits are visible to diffyml; container *memory* limits are not. If a job is memory-capped rather than CPU-capped, trade the speed back with `--jobs`:
 
 ```bash
-diffyml --jobs 1 manifests/old manifests/new   # sequential: one pair in memory at a time
+diffyml --jobs 1 manifests/old manifests/new   # sequential: one pair in memory at a time (streaming formats)
 diffyml --jobs 4 manifests/old manifests/new   # cap CPU use at 4 workers
 ```
 
-`--jobs 1` is the only setting that avoids the buffering, since results are only replayable in order if they are held. Any value of 2 or more caps CPU use but not peak memory. `--jobs 0` (the default) means one worker per CPU. Output is byte-identical at every setting.
+`--jobs 1` is the only setting that avoids the buffering, since results are only replayable in order if they are held. Any value of 2 or more caps CPU use but not peak memory. This applies to the streaming formats (`detailed`, `compact`, `brief`): the aggregated formats (`github`, `gitea`, `gitlab`, `json`, `json-patch`) and `--summary` emit everything at the end, so they hold every pair's differences whatever `--jobs` is set to. `--jobs 0` (the default) means one worker per CPU. Output is byte-identical at every setting.

@@ -208,7 +208,11 @@ func dirCompareWorkers(pairCount, jobs int) int {
 // is monotonic with no knee, so there is no bound that is close to free.
 // Callers who need the memory back pick the trade-off explicitly with --jobs:
 // on that same corpus, --jobs 1 peaks at 18 MB against 79 MB for 10 workers,
-// for roughly 1.9x the wall time.
+// for roughly 1.9x the wall time. Releasing each slot as soon as it is replayed
+// sits at the far end of the batching curve: on a comparable corpus (3000
+// manifests of 5 Deployments, 10 workers) it cut peak RSS from 93 MB to 30 MB
+// but made -o detailed and -o compact ~45% slower, again with no gap under
+// GOGC=off.
 func processDirPairs(pairs []diffyml.FilePair, workers int, filePairs map[string][2][]byte,
 	compareOpts *diffyml.Options, maskOpts diffyml.MaskOptions, filterOpts *diffyml.FilterOptions,
 ) []dirPairResult {

@@ -98,10 +98,16 @@ data:
 	return pairs
 }
 
-// runDirectoryCapture runs directory mode over the given pairs and returns
-// stdout, stderr and the exit code. Any tweak functions are applied to the
-// config before the run, for tests that need options beyond the defaults.
-func runDirectoryCapture(t *testing.T, output string, pairs map[string][2][]byte, tweak ...func(*CLIConfig)) (string, string, int) {
+// dirRun is the observable outcome of one directory-mode run.
+type dirRun struct {
+	stdout, stderr string
+	code           int
+}
+
+// runDirectoryCapture runs directory mode over the given pairs and returns what
+// it wrote and its exit code. Any tweak functions are applied to the config
+// before the run, for tests that need options beyond the defaults.
+func runDirectoryCapture(t *testing.T, output string, pairs map[string][2][]byte, tweak ...func(*CLIConfig)) dirRun {
 	t.Helper()
 	cfg := NewCLIConfig()
 	cfg.Color = "never"
@@ -118,7 +124,22 @@ func runDirectoryCapture(t *testing.T, output string, pairs map[string][2][]byte
 	rc.FilePairs = pairs
 
 	result := runDirectory(cfg, rc, "", "")
-	return stdout.String(), stderr.String(), result.Code
+	return dirRun{stdout.String(), stderr.String(), result.Code}
+}
+
+// assertSameRun fails the test if two runs differ in output or exit code.
+func assertSameRun(t *testing.T, label string, want, got dirRun) {
+	t.Helper()
+	if got.stdout != want.stdout {
+		t.Errorf("%s: stdout differs\nwant (%d bytes):\n%s\ngot (%d bytes):\n%s",
+			label, len(want.stdout), want.stdout, len(got.stdout), got.stdout)
+	}
+	if got.stderr != want.stderr {
+		t.Errorf("%s: stderr differs\nwant:\n%s\ngot:\n%s", label, want.stderr, got.stderr)
+	}
+	if got.code != want.code {
+		t.Errorf("%s: exit code %d, want %d", label, got.code, want.code)
+	}
 }
 
 // TestRunDirectory_ParallelMatchesSequential is the core guarantee of the
@@ -129,21 +150,12 @@ func TestRunDirectory_ParallelMatchesSequential(t *testing.T) {
 	for _, format := range formats {
 		t.Run(format, func(t *testing.T) {
 			withGOMAXPROCS(t, 1)
-			seqOut, seqErr, seqCode := runDirectoryCapture(t, format, buildParallelPairs(60))
+			seq := runDirectoryCapture(t, format, buildParallelPairs(60))
 
 			withGOMAXPROCS(t, testWorkers)
-			parOut, parErr, parCode := runDirectoryCapture(t, format, buildParallelPairs(60))
+			par := runDirectoryCapture(t, format, buildParallelPairs(60))
 
-			if seqOut != parOut {
-				t.Errorf("stdout differs between sequential and parallel paths\nsequential (%d bytes):\n%s\nparallel (%d bytes):\n%s",
-					len(seqOut), seqOut, len(parOut), parOut)
-			}
-			if seqErr != parErr {
-				t.Errorf("stderr differs: sequential %q, parallel %q", seqErr, parErr)
-			}
-			if seqCode != parCode {
-				t.Errorf("exit code differs: sequential %d, parallel %d", seqCode, parCode)
-			}
+			assertSameRun(t, "parallel vs sequential", seq, par)
 		})
 	}
 }
@@ -151,8 +163,8 @@ func TestRunDirectory_ParallelMatchesSequential(t *testing.T) {
 // TestRunDirectory_ParallelMatchesSequentialWithOptions extends the equivalence
 // guarantee to the option structs the workers share. Those are what the
 // safety argument for sharing rests on — Compare, MaskDifferences and
-// FilterDiffsWithRegexp treating their options as immutable and compiling
-// regexes per call — and the default-config tests exercise none of them.
+// FilterDiffsWithRegexp treating their options as immutable — and the
+// default-config tests exercise none of them.
 func TestRunDirectory_ParallelMatchesSequentialWithOptions(t *testing.T) {
 	heavy := func(cfg *CLIConfig) {
 		cfg.DetectKubernetes = true
@@ -166,24 +178,15 @@ func TestRunDirectory_ParallelMatchesSequentialWithOptions(t *testing.T) {
 	}
 
 	withGOMAXPROCS(t, 1)
-	seqOut, seqErr, seqCode := runDirectoryCapture(t, "detailed", buildK8sPairs(40), heavy)
+	seq := runDirectoryCapture(t, "detailed", buildK8sPairs(40), heavy)
 
 	withGOMAXPROCS(t, testWorkers)
-	parOut, parErr, parCode := runDirectoryCapture(t, "detailed", buildK8sPairs(40), heavy)
+	par := runDirectoryCapture(t, "detailed", buildK8sPairs(40), heavy)
 
-	if seqOut == "" {
+	if seq.stdout == "" {
 		t.Fatal("no output produced; the comparison is not exercising anything")
 	}
-	if seqOut != parOut {
-		t.Errorf("stdout differs with kubernetes/mask/neat/filter options set (%d vs %d bytes)",
-			len(seqOut), len(parOut))
-	}
-	if seqErr != parErr {
-		t.Errorf("stderr differs: sequential %q, parallel %q", seqErr, parErr)
-	}
-	if seqCode != parCode {
-		t.Errorf("exit code differs: sequential %d, parallel %d", seqCode, parCode)
-	}
+	assertSameRun(t, "parallel vs sequential with kubernetes/mask/neat/filter options", seq, par)
 }
 
 // TestRunDirectory_ParallelIsDeterministic guards against completion order
@@ -192,17 +195,11 @@ func TestRunDirectory_ParallelMatchesSequentialWithOptions(t *testing.T) {
 func TestRunDirectory_ParallelIsDeterministic(t *testing.T) {
 	withGOMAXPROCS(t, testWorkers)
 
-	wantOut, wantErr, wantCode := runDirectoryCapture(t, "detailed", buildParallelPairs(60))
+	want := runDirectoryCapture(t, "detailed", buildParallelPairs(60))
 	for i := range 12 {
-		gotOut, gotErr, gotCode := runDirectoryCapture(t, "detailed", buildParallelPairs(60))
-		if gotOut != wantOut {
-			t.Fatalf("run %d produced different stdout than run 0", i+1)
-		}
-		if gotErr != wantErr {
-			t.Fatalf("run %d produced different stderr than run 0: %q vs %q", i+1, gotErr, wantErr)
-		}
-		if gotCode != wantCode {
-			t.Fatalf("run %d produced exit code %d, want %d", i+1, gotCode, wantCode)
+		assertSameRun(t, fmt.Sprintf("run %d vs run 0", i+1), want, runDirectoryCapture(t, "detailed", buildParallelPairs(60)))
+		if t.Failed() {
+			return
 		}
 	}
 }
@@ -218,27 +215,19 @@ func TestRunDirectory_ParallelPreservesErrorOrder(t *testing.T) {
 	}
 
 	withGOMAXPROCS(t, 1)
-	seqOut, seqErr, seqCode := runDirectoryCapture(t, "detailed", pairs)
+	seq := runDirectoryCapture(t, "detailed", pairs)
 
 	withGOMAXPROCS(t, testWorkers)
-	parOut, parErr, parCode := runDirectoryCapture(t, "detailed", pairs)
+	par := runDirectoryCapture(t, "detailed", pairs)
 
-	if seqErr != parErr {
-		t.Errorf("stderr order differs between paths\nsequential:\n%s\nparallel:\n%s", seqErr, parErr)
-	}
-	if seqOut != parOut {
-		t.Error("stdout differs between sequential and parallel paths when some pairs fail")
-	}
-	if seqCode != parCode {
-		t.Errorf("exit code differs: sequential %d, parallel %d", seqCode, parCode)
-	}
+	assertSameRun(t, "parallel vs sequential with failing pairs", seq, par)
 
 	// Errors must appear in pair order, matching the sorted pair plan.
 	lastIdx := -1
 	for _, name := range badNames {
-		idx := strings.Index(parErr, name)
+		idx := strings.Index(par.stderr, name)
 		if idx < 0 {
-			t.Fatalf("expected an error mentioning %s, got:\n%s", name, parErr)
+			t.Fatalf("expected an error mentioning %s, got:\n%s", name, par.stderr)
 		}
 		if idx < lastIdx {
 			t.Errorf("error for %s reported out of pair order", name)
@@ -248,117 +237,56 @@ func TestRunDirectory_ParallelPreservesErrorOrder(t *testing.T) {
 
 	// A healthy pair on either side of a failing one still produces output.
 	for _, name := range []string{"file004.yaml", "file006.yaml"} {
-		if !strings.Contains(parOut, name) {
+		if !strings.Contains(par.stdout, name) {
 			t.Errorf("expected output for %s alongside failing pairs", name)
 		}
 	}
 }
 
-// TestDirCompareWorkers checks both halves of the streaming/parallel decision:
-// the count is capped by the pair count so a single pair never spawns workers
-// and never exceeds GOMAXPROCS, and the parallel flag agrees with it.
+// TestDirCompareWorkers checks the streaming/parallel decision: the count is
+// capped by the pair count so a single pair never spawns workers, defaults to
+// GOMAXPROCS, and honors an explicit --jobs either way.
 func TestDirCompareWorkers(t *testing.T) {
-	withGOMAXPROCS(t, testWorkers)
-
 	tests := []struct {
-		pairCount    int
-		jobs         int
-		want         int
-		wantParallel bool
+		gomaxprocs int
+		pairCount  int
+		jobs       int
+		want       int
 	}{
-		{0, 0, 0, false},
-		{1, 0, 1, false}, // a single pair has nothing to overlap with
-		{2, 0, 2, true},
-		{testWorkers, 0, testWorkers, true},
-		{100, 0, testWorkers, true},                   // capped at GOMAXPROCS
-		{100, 1, 1, false},                            // --jobs 1: the caller asked for streaming
-		{100, 2, 2, true},                             // --jobs below GOMAXPROCS wins
-		{100, testWorkers * 4, testWorkers * 4, true}, // --jobs above GOMAXPROCS is honored
-		{3, testWorkers * 4, 3, true},                 // ...but never exceeds the pair count
-		{1, 8, 1, false},                              // one pair stays sequential whatever --jobs says
+		{testWorkers, 0, 0, 0},
+		{testWorkers, 1, 0, 1}, // a single pair has nothing to overlap with
+		{testWorkers, 2, 0, 2},
+		{testWorkers, testWorkers, 0, testWorkers},
+		{testWorkers, 100, 0, testWorkers},                   // capped at GOMAXPROCS
+		{testWorkers, 100, 1, 1},                             // --jobs 1: the caller asked for streaming
+		{testWorkers, 100, 2, 2},                             // --jobs below GOMAXPROCS wins
+		{testWorkers, 100, testWorkers * 4, testWorkers * 4}, // --jobs above GOMAXPROCS is honored
+		{testWorkers, 3, testWorkers * 4, 3},                 // ...but never exceeds the pair count
+		{testWorkers, 1, 8, 1},                               // one pair stays sequential whatever --jobs says
+		{1, 100, 0, 1},                                       // one usable CPU: nothing to gain
+		{1, 100, 4, 4},                                       // ...unless --jobs oversubscribes on purpose
 	}
 	for _, tt := range tests {
-		got, parallel := dirCompareWorkers(tt.pairCount, tt.jobs)
-		if got != tt.want || parallel != tt.wantParallel {
-			t.Errorf("dirCompareWorkers(%d, jobs=%d) = (%d, %t), want (%d, %t)",
-				tt.pairCount, tt.jobs, got, parallel, tt.want, tt.wantParallel)
+		withGOMAXPROCS(t, tt.gomaxprocs)
+		if got := dirCompareWorkers(tt.pairCount, tt.jobs); got != tt.want {
+			t.Errorf("GOMAXPROCS=%d: dirCompareWorkers(%d, jobs=%d) = %d, want %d",
+				tt.gomaxprocs, tt.pairCount, tt.jobs, got, tt.want)
 		}
 	}
-
-	// One usable CPU: plenty of pairs, but still nothing to gain.
-	withGOMAXPROCS(t, 1)
-	if got, parallel := dirCompareWorkers(100, 0); got != 1 || parallel {
-		t.Errorf("with GOMAXPROCS=1, dirCompareWorkers(100, 0) = (%d, %t), want (1, false)", got, parallel)
-	}
-	// ...unless --jobs asks for more anyway: worker count is not capped by the
-	// CPU count, and oversubscribing is the caller's call to make.
-	if got, parallel := dirCompareWorkers(100, 4); got != 4 || !parallel {
-		t.Errorf("with GOMAXPROCS=1, dirCompareWorkers(100, 4) = (%d, %t), want (4, true)", got, parallel)
-	}
 }
 
-// TestRunDirectory_JobsOneForcesStreaming covers --jobs as the memory escape
-// hatch: with CPUs available it must still take the sequential path, and produce
-// exactly what the parallel path produces.
-func TestRunDirectory_JobsOneForcesStreaming(t *testing.T) {
-	withGOMAXPROCS(t, testWorkers)
-
-	parOut, parErr, parCode := runDirectoryCapture(t, "detailed", buildParallelPairs(60))
-	seqOut, seqErr, seqCode := runDirectoryCapture(t, "detailed", buildParallelPairs(60),
-		func(cfg *CLIConfig) { cfg.Jobs = 1 })
-
-	if seqOut != parOut {
-		t.Errorf("--jobs 1 stdout differs from the parallel path (%d vs %d bytes)", len(seqOut), len(parOut))
-	}
-	if seqErr != parErr {
-		t.Errorf("--jobs 1 stderr differs: %q vs %q", seqErr, parErr)
-	}
-	if seqCode != parCode {
-		t.Errorf("--jobs 1 exit code differs: %d vs %d", seqCode, parCode)
-	}
-}
-
-// TestRunDirectory_JobsCapsWorkers exercises a bounded worker count end to end,
-// since dirCompareWorkers is only half the contract: processDirPairs has to
-// cover all pairs with fewer workers than pairs, in order.
+// TestRunDirectory_JobsCapsWorkers exercises --jobs end to end against the
+// --jobs 1 streaming path: the default (one per CPU), fewer workers than CPUs,
+// and more workers than CPUs must all cover every pair, in order.
 func TestRunDirectory_JobsCapsWorkers(t *testing.T) {
 	withGOMAXPROCS(t, testWorkers)
 
-	wantOut, wantErr, wantCode := runDirectoryCapture(t, "detailed", buildParallelPairs(60),
+	want := runDirectoryCapture(t, "detailed", buildParallelPairs(60),
 		func(cfg *CLIConfig) { cfg.Jobs = 1 })
 
-	for _, jobs := range []int{2, 3, testWorkers * 4} {
-		gotOut, gotErr, gotCode := runDirectoryCapture(t, "detailed", buildParallelPairs(60),
+	for _, jobs := range []int{0, 2, 3, testWorkers * 4} {
+		got := runDirectoryCapture(t, "detailed", buildParallelPairs(60),
 			func(cfg *CLIConfig) { cfg.Jobs = jobs })
-		if gotOut != wantOut {
-			t.Errorf("--jobs %d stdout differs from --jobs 1", jobs)
-		}
-		if gotErr != wantErr {
-			t.Errorf("--jobs %d stderr differs from --jobs 1: %q vs %q", jobs, gotErr, wantErr)
-		}
-		if gotCode != wantCode {
-			t.Errorf("--jobs %d exit code %d, want %d", jobs, gotCode, wantCode)
-		}
-	}
-}
-
-// TestRunDirectory_SinglePairUsesStreamingPath confirms a one-pair run still
-// works when dirCompareWorkers sends it down the streaming path.
-func TestRunDirectory_SinglePairUsesStreamingPath(t *testing.T) {
-	// GOMAXPROCS is high, so only the pair-count cap can force streaming here.
-	withGOMAXPROCS(t, testWorkers)
-
-	if _, parallel := dirCompareWorkers(1, 0); parallel {
-		t.Fatal("expected a single pair to take the streaming path")
-	}
-
-	stdout, _, code := runDirectoryCapture(t, "detailed", map[string][2][]byte{
-		"only.yaml": {[]byte("a: 1\n"), []byte("a: 2\n")},
-	})
-	if code != ExitCodeDifferences {
-		t.Errorf("expected exit %d, got %d", ExitCodeDifferences, code)
-	}
-	if !strings.Contains(stdout, "only.yaml") {
-		t.Errorf("expected output for only.yaml, got: %q", stdout)
+		assertSameRun(t, fmt.Sprintf("--jobs %d vs --jobs 1", jobs), want, got)
 	}
 }

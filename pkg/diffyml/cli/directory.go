@@ -10,7 +10,6 @@ import (
 	"runtime"
 	"sort"
 	"strings"
-	"sync"
 	"sync/atomic"
 
 	"github.com/szhekpisov/diffyml/pkg/diffyml"
@@ -170,71 +169,67 @@ func processDirPair(pair diffyml.FilePair, filePairs map[string][2][]byte, compa
 type dirPairResult struct {
 	diffs []diffyml.Difference
 	err   error
+	done  chan struct{} // closed once diffs and err are set
 }
 
-// dirCompareWorkers reports how many goroutines the compare phase should use,
-// and whether running it in parallel is worth doing at all. parallel is false
-// for a single pair or a single usable CPU: goroutines cannot help there, and
-// the caller's streaming path avoids buffering every pair's diffs.
+// dirCompareWorkers reports how many goroutines the compare phase should use;
+// fewer than 2 means the caller should take the streaming path, since goroutines
+// cannot help with a single pair or a single usable CPU.
 //
-// jobs is --jobs: 0 means one worker per usable CPU, and any positive value is
-// taken as given (still capped by pairCount, since idle workers are pointless).
-// GOMAXPROCS is container-aware, so the default respects CPU limits in CI, but
-// nothing derives a worker count from a *memory* limit — --jobs 1 is how a
-// memory-capped caller gets the streaming path back. Negative values are
+// jobs is --jobs: 0 means one worker per usable CPU (GOMAXPROCS, which is
+// container-aware), and any positive value is taken as given. Either way it is
+// capped by pairCount, since idle workers are pointless. Negative values are
 // rejected by CLIConfig.Validate before reaching here.
-func dirCompareWorkers(pairCount, jobs int) (workers int, parallel bool) {
+func dirCompareWorkers(pairCount, jobs int) int {
 	if jobs <= 0 {
 		jobs = runtime.GOMAXPROCS(0)
 	}
-	workers = min(jobs, pairCount)
-	return workers, workers >= 2
+	return min(jobs, pairCount)
 }
 
-// processDirPairs runs processDirPair over every pair using the given number of
-// workers, which the caller guarantees is at least 2. Each worker writes only
-// to its own results[i] slot, so the index counter is the only synchronization
-// needed; everything shared (pairs, filePairs, and the three option structs) is
-// read-only for the duration — Compare, MaskDifferences and FilterDiffsWithRegexp
-// all treat their options as immutable and compile regexes per call.
+// processDirPairs starts the given number of workers (at least 2) running
+// processDirPair over every pair, and returns immediately. The caller replays
+// the results in pair order, waiting on each slot's done channel, so formatting
+// overlaps the remaining compares. Each worker writes only to its own
+// results[i] slot, and the close of done publishes it; everything shared (pairs,
+// filePairs, and the three option structs) is read-only for the duration —
+// Compare, MaskDifferences and FilterDiffsWithRegexp all treat their options as
+// immutable.
 //
-// Results are buffered so the caller can replay them in pair order, keeping
-// output byte-identical to the streaming path. Peak memory therefore grows with
-// total diffs, matching what structured formatters and --summary already hold.
-//
-// Bounding that buffer was tried and measured, and is deliberately not done.
-// Emitting in batches does cap peak memory, but it also shrinks the live heap,
-// and Go's GC then runs proportionally more cycles for the same allocation
-// volume. On 3000 differing manifests with 10 workers: a 1280-pair batch cost
-// 10% wall time to save 43% peak RSS, a 640-pair batch 18% to save 61%, and a
-// 160-pair batch 38% to save 74%. GOGC=off collapses the gap to ~1%, which
-// identifies collection frequency rather than the buffering itself as the cost.
-// The curve is monotonic with no knee, so there is no bound that is close to
-// free — every megabyte saved buys proportional slowdown. Callers who need the
-// memory back instead of the speed pick the trade-off explicitly with --jobs:
+// Replayed slots are kept rather than released, so peak memory grows with total
+// diffs, matching what structured formatters and --summary already hold.
+// Bounding that was tried and measured, and is deliberately not done. Emitting
+// in batches does cap peak memory, but it also shrinks the live heap, and Go's
+// GC then runs proportionally more cycles for the same allocation volume. On
+// 3000 differing manifests with 10 workers: a 1280-pair batch cost 10% wall
+// time to save 43% peak RSS, a 640-pair batch 18% to save 61%, and a 160-pair
+// batch 38% to save 74%. GOGC=off collapses the gap to ~1%, which identifies
+// collection frequency rather than the buffering itself as the cost. The curve
+// is monotonic with no knee, so there is no bound that is close to free.
+// Callers who need the memory back pick the trade-off explicitly with --jobs:
 // on that same corpus, --jobs 1 peaks at 18 MB against 79 MB for 10 workers,
 // for roughly 1.9x the wall time.
 func processDirPairs(pairs []diffyml.FilePair, workers int, filePairs map[string][2][]byte,
 	compareOpts *diffyml.Options, maskOpts diffyml.MaskOptions, filterOpts *diffyml.FilterOptions,
 ) []dirPairResult {
 	results := make([]dirPairResult, len(pairs))
+	for i := range results {
+		results[i].done = make(chan struct{})
+	}
 
 	var next atomic.Int64
-	var wg sync.WaitGroup
-	wg.Add(workers)
 	for range workers {
 		go func() {
-			defer wg.Done()
 			for {
 				i := int(next.Add(1)) - 1
 				if i >= len(pairs) {
 					return
 				}
 				results[i].diffs, results[i].err = processDirPair(pairs[i], filePairs, compareOpts, maskOpts, filterOpts)
+				close(results[i].done)
 			}
 		}()
 	}
-	wg.Wait()
 
 	return results
 }
@@ -359,9 +354,10 @@ func runDirectory(cfg *CLIConfig, rc *RunConfig, fromDir, toDir string) *ExitRes
 	}
 	// Formatting and writing always happen on this goroutine, in pair order, so
 	// output and the color/terminal state are identical on both paths below.
-	if workers, parallel := dirCompareWorkers(len(pairs), cfg.Jobs); parallel {
+	if workers := dirCompareWorkers(len(pairs), cfg.Jobs); workers >= 2 {
 		results := processDirPairs(pairs, workers, rc.FilePairs, compareOpts, maskOpts, filterOpts)
 		for i, pair := range pairs {
+			<-results[i].done
 			c.handlePairResult(pair, results[i].diffs, results[i].err)
 		}
 	} else {

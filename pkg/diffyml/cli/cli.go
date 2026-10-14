@@ -221,11 +221,15 @@ func (c *CLIConfig) initFlags() {
 //
 // Supports interspersed flags and positional arguments (e.g.
 // "dir1 dir2 --set-exit-code") because kubectl places
-// KUBECTL_EXTERNAL_DIFF flags after the directory paths.
+// KUBECTL_EXTERNAL_DIFF flags after the directory paths. Unknown flags
+// are rejected wherever they appear, except after a literal "--".
 func (c *CLIConfig) ParseArgs(args []string) error {
-	reordered := reorderArgs(args, c.fs)
+	reordered, err := reorderArgs(args, c.fs)
+	if err != nil {
+		return err
+	}
 
-	if err := c.fs.Parse(reordered); err != nil {
+	if err = c.fs.Parse(reordered); err != nil {
 		return err
 	}
 
@@ -298,7 +302,10 @@ func isBoolFlag(f *flag.Flag) bool {
 // reorderArgs moves flag arguments before positional arguments so that
 // Go's flag package (which stops at the first non-flag arg) can parse
 // all flags. Positional arguments preserve their relative order.
-func reorderArgs(args []string, fs *flag.FlagSet) []string {
+// Unknown flags are moved too, so fs.Parse reports them even when they
+// follow the positional arguments. Everything after "--" is left as is.
+// Returns an error if a non-bool flag is the last argument and has no value.
+func reorderArgs(args []string, fs *flag.FlagSet) ([]string, error) {
 	var flags, positional []string
 
 	skip := false
@@ -313,7 +320,8 @@ func reorderArgs(args []string, fs *flag.FlagSet) []string {
 			break
 		}
 
-		if !strings.HasPrefix(arg, "-") {
+		// A bare "-" is positional; flag.Parse would stop at it.
+		if arg == "-" || !strings.HasPrefix(arg, "-") {
 			positional = append(positional, arg)
 			continue
 		}
@@ -324,21 +332,24 @@ func reorderArgs(args []string, fs *flag.FlagSet) []string {
 
 		f := fs.Lookup(name)
 		if f == nil {
-			// Unknown flag — keep as positional so fs.Parse reports the error.
-			positional = append(positional, arg)
+			// Unknown flag — move ahead of positionals so fs.Parse reports it.
+			flags = append(flags, arg)
 			continue
 		}
 
 		flags = append(flags, arg)
 
 		// If this is a non-bool flag without "=" form, consume next arg as value.
-		if !strings.Contains(arg, "=") && !isBoolFlag(f) && i+1 < len(args) {
+		if !strings.Contains(arg, "=") && !isBoolFlag(f) {
+			if i+1 >= len(args) {
+				return nil, fmt.Errorf("flag needs an argument: -%s", name)
+			}
 			flags = append(flags, args[i+1])
 			skip = true
 		}
 	}
 
-	return append(flags, positional...)
+	return append(flags, positional...), nil
 }
 
 // ToCompareOptions converts CLI config to comparison Options.

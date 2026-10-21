@@ -263,7 +263,6 @@ gh attestation verify diffyml_<VERSION>_linux_amd64.tar.gz \
 
 ```bash
 cosign verify \
-  --registry-referrers-mode=oci-1-1 \
   --certificate-identity-regexp 'https://github.com/szhekpisov/diffyml/' \
   --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
   ghcr.io/szhekpisov/diffyml:<VERSION>

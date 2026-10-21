@@ -238,12 +238,14 @@ Published release artifacts are never modified or re-uploaded — each version i
 <details>
 <summary>Verification commands</summary>
 
+The `cosign` commands require cosign v3 or later.
+
 **Verify the checksums signature:**
 
 ```bash
 cosign verify-blob checksums.txt \
   --bundle checksums.txt.sigstore.json \
-  --certificate-identity-regexp 'https://github.com/szhekpisov/diffyml/' \
+  --certificate-identity-regexp '^https://github\.com/szhekpisov/diffyml/\.github/workflows/release\.yml@refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$' \
   --certificate-oidc-issuer 'https://token.actions.githubusercontent.com'
 
 # Linux
@@ -263,8 +265,7 @@ gh attestation verify diffyml_<VERSION>_linux_amd64.tar.gz \
 
 ```bash
 cosign verify \
-  --registry-referrers-mode=oci-1-1 \
-  --certificate-identity-regexp 'https://github.com/szhekpisov/diffyml/' \
+  --certificate-identity-regexp '^https://github\.com/szhekpisov/diffyml/\.github/workflows/release\.yml@refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$' \
   --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
   ghcr.io/szhekpisov/diffyml:<VERSION>
 ```

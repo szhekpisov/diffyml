@@ -157,10 +157,12 @@ Every release ships:
 - **SBOMs** (`*.spdx.json`) — SPDX Software Bill of Materials per archive
 - **SLSA provenance** — Level 3 attestation
 
+The `cosign` commands below require cosign v3 or later.
+
 ```bash
 cosign verify-blob checksums.txt \
   --bundle checksums.txt.sigstore.json \
-  --certificate-identity-regexp 'https://github.com/szhekpisov/diffyml/' \
+  --certificate-identity-regexp '^https://github\.com/szhekpisov/diffyml/\.github/workflows/release\.yml@refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$' \
   --certificate-oidc-issuer 'https://token.actions.githubusercontent.com'
 
 # Linux
@@ -179,8 +181,7 @@ Verify a container image:
 
 ```bash
 cosign verify \
-  --registry-referrers-mode=oci-1-1 \
-  --certificate-identity-regexp 'https://github.com/szhekpisov/diffyml/' \
+  --certificate-identity-regexp '^https://github\.com/szhekpisov/diffyml/\.github/workflows/release\.yml@refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$' \
   --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
   ghcr.io/szhekpisov/diffyml:<VERSION>
 ```

@@ -189,9 +189,8 @@ changelog:
       order: 99
   filters:
     exclude:
-      - "^doc"
       - "^test:"
-      - "^chore:"
+      - "^chore: update CHANGELOG"
 
 release:
   draft: true

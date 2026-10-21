@@ -15,6 +15,11 @@ updates:
       day: "monday"
     cooldown:
       default-days: 7
+    groups:
+      # All codeql-action steps must run the same version.
+      codeql-action:
+        patterns:
+          - "github/codeql-action*"
 
   - package-ecosystem: "docker"
     directory: "/"

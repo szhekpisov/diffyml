@@ -267,18 +267,6 @@ func TestCLIConfig_ParseArgs_EqualsForm(t *testing.T) {
 	}
 }
 
-func TestCLIConfig_ParseArgs_UnknownFlagAfterPositional(t *testing.T) {
-	cfg := NewCLIConfig()
-	// Unknown flags are passed through as positional args by reorderArgs,
-	// then fs.Parse reports the error.
-	args := []string{"--unknown-flag", "from.yaml", "to.yaml"}
-
-	err := cfg.ParseArgs(args)
-	if err == nil {
-		t.Fatal("expected error for unknown flag, got nil")
-	}
-}
-
 func TestCLIConfig_ParseArgs_SummaryFlag(t *testing.T) {
 	cfg := NewCLIConfig()
 	args := []string{"--summary", "from.yaml", "to.yaml"}
@@ -397,14 +385,27 @@ func TestReorderArgs_NonBoolFlagConsumesNextArg(t *testing.T) {
 func TestReorderArgs_NonBoolFlagAtEnd(t *testing.T) {
 	// cli.go:235 — when non-bool flag is the LAST arg (no value following),
 	// `i+1 < len(args)` prevents OOB. If mutated to `<=`, would panic.
-	cfg := NewCLIConfig()
-	// --output with no following value → will fail at Parse, but should NOT panic
-	args := []string{"from.yaml", "to.yaml", "--output"}
+	// The dangling flag must be reported, not left to swallow a file path.
+	tests := []struct {
+		name    string
+		args    []string
+		wantErr string
+	}{
+		{"mask-placeholder", []string{"from.yaml", "to.yaml", "--mask-placeholder"}, "flag needs an argument: -mask-placeholder"},
+		{"output", []string{"from.yaml", "to.yaml", "--output"}, "flag needs an argument: -output"},
+	}
 
-	err := cfg.ParseArgs(args)
-	// This might succeed or fail depending on flag parsing, but must not panic.
-	// The key is that reorderArgs doesn't panic when non-bool flag is last.
-	_ = err
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := NewCLIConfig().ParseArgs(tt.args)
+			if err == nil {
+				t.Fatalf("ParseArgs(%q) = nil, want error containing %q", tt.args, tt.wantErr)
+			}
+			if !containsSubstr(err.Error(), tt.wantErr) {
+				t.Errorf("ParseArgs(%q) error = %q, want it to contain %q", tt.args, err, tt.wantErr)
+			}
+		})
+	}
 }
 
 func TestReorderArgs_MultipleFlagValuePairs(t *testing.T) {
@@ -446,6 +447,73 @@ func TestReorderArgs_TrailingNonBoolFlag(t *testing.T) {
 	}
 	if cfg.FromFile != "from.yaml" {
 		t.Errorf("expected FromFile='from.yaml', got %q", cfg.FromFile)
+	}
+}
+
+// --- Unknown flags (issue #211) ---
+
+func TestParseArgs_UnknownFlagRejectedAnywhere(t *testing.T) {
+	// An unknown flag must be reported wherever it appears, not only before
+	// the positional arguments.
+	const wantErr = "flag provided but not defined: -typo"
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{"before positionals", []string{"--typo", "a.yaml", "b.yaml"}},
+		{"between positionals", []string{"a.yaml", "--typo", "b.yaml"}},
+		{"after positionals", []string{"a.yaml", "b.yaml", "--typo"}},
+		{"after, equals form", []string{"a.yaml", "b.yaml", "--typo=x"}},
+		{"single dash after", []string{"a.yaml", "b.yaml", "-typo"}},
+		{"after, followed by known flag", []string{"a.yaml", "b.yaml", "--typo", "-s"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := NewCLIConfig().ParseArgs(tt.args)
+			if err == nil {
+				t.Fatalf("ParseArgs(%q) = nil, want error containing %q", tt.args, wantErr)
+			}
+			if !containsSubstr(err.Error(), wantErr) {
+				t.Errorf("ParseArgs(%q) error = %q, want it to contain %q", tt.args, err, wantErr)
+			}
+		})
+	}
+}
+
+func TestParseArgs_TrailingFlagGuards(t *testing.T) {
+	// Arguments that must keep parsing once unknown trailing flags are
+	// rejected: recognized trailing flags (kubectl), anything after "--",
+	// and a bare "-", which flag.Parse treats as the end of flags.
+	tests := []struct {
+		name        string
+		args        []string
+		wantFrom    string
+		wantTo      string
+		wantExitSet bool
+	}{
+		{"kubectl-style recognized trailing flag", []string{"a.yaml", "b.yaml", "-s"}, "a.yaml", "b.yaml", true},
+		{"dash-prefixed file after --", []string{"--", "a.yaml", "-typo.yaml"}, "a.yaml", "-typo.yaml", false},
+		{"flag-like args after -- with flags before", []string{"-s", "--", "a.yaml", "--typo"}, "a.yaml", "--typo", true},
+		{"bare - stays positional", []string{"-", "b.yaml", "-s"}, "-", "b.yaml", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := NewCLIConfig()
+			if err := cfg.ParseArgs(tt.args); err != nil {
+				t.Fatalf("ParseArgs(%q) unexpected error: %v", tt.args, err)
+			}
+			if cfg.FromFile != tt.wantFrom {
+				t.Errorf("FromFile = %q, want %q", cfg.FromFile, tt.wantFrom)
+			}
+			if cfg.ToFile != tt.wantTo {
+				t.Errorf("ToFile = %q, want %q", cfg.ToFile, tt.wantTo)
+			}
+			if cfg.SetExitCode != tt.wantExitSet {
+				t.Errorf("SetExitCode = %v, want %v", cfg.SetExitCode, tt.wantExitSet)
+			}
+		})
 	}
 }
 
